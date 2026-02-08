@@ -1,0 +1,232 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}New Entry Requests - DSA Loan Management{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="dashboard-header bg-white p-4 mb-4 border-bottom">
+    <div class="container-fluid d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="fw-bold fs-3 mb-1">
+                <i class="bi bi-inbox-fill me-2"></i>New Entry Requests
+            </h1>
+            <p class="text-muted mb-0">Loans awaiting your action - recently assigned by admin</p>
+        </div>
+        <a href="/employee/dashboard/" class="btn btn-outline-secondary fw-semibold rounded-3">
+            <i class="bi bi-arrow-left"></i> Back to Dashboard
+        </a>
+    </div>
+</div>
+
+<!-- Quick Stats -->
+<div class="container-fluid mb-4">
+    <div class="row g-3">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="mb-1 opacity-75">Pending Requests</p>
+                            <h4 class="mb-0" id="total-pending">0</h4>
+                        </div>
+                        <i class="bi bi-inbox" style="font-size: 2.5rem; opacity: 0.3;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="mb-1 opacity-75">Avg Hours Pending</p>
+                            <h4 class="mb-0" id="avg-hours">0h</h4>
+                        </div>
+                        <i class="bi bi-hourglass-split" style="font-size: 2.5rem; opacity: 0.3;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm bg-light">
+                <div class="card-body">
+                    <p class="mb-2 text-muted"><strong>Instructions:</strong></p>
+                    <p class="mb-0 small">Click on any loan to view details, upload documents, and take action (Approve/Reject).</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Search & Filter -->
+<div class="container-fluid mb-4">
+    <div class="row g-3">
+        <div class="col-md-6">
+            <input type="text" id="search-input" class="form-control bg-light border-0" 
+                   placeholder="Search by applicant name, phone, or email..." />
+        </div>
+        <div class="col-md-6 text-end">
+            <button class="btn btn-outline-primary fw-semibold" id="reset-filters">
+                <i class="bi bi-arrow-clockwise"></i> Reset Filters
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Loans Table -->
+<div class="container-fluid">
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+            <strong><i class="bi bi-list-task"></i> Requests Awaiting Action</strong>
+            <span id="loan-count" class="badge bg-danger">0</span>
+        </div>
+        <div class="card-body p-0">
+            <div id="loans-container" class="text-center py-5">
+                <div class="spinner-border spinner-border-sm" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="text-muted mt-2">Loading requests...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .status-badge {
+        padding: 0.35rem 0.65rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+    .status-waiting { background-color: #fef3c7; color: #92400e; }
+    .status-follow_up { background-color: #fce7f3; color: #831843; }
+    
+    .hours-badge {
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    .hours-fresh { background-color: #dcfce7; color: #166534; }
+    .hours-warning { background-color: #fef3c7; color: #92400e; }
+    .hours-overdue { background-color: #fee2e2; color: #991b1b; }
+</style>
+
+<script>
+    let currentPage = 1;
+    let loansPerPage = 20;
+    
+    async function loadLoans() {
+        try {
+            const search = document.getElementById('search-input').value;
+            
+            const url = new URL('/api/employee/new-entry-requests/', window.location.origin);
+            if (search) url.searchParams.append('search', search);
+            url.searchParams.append('page', currentPage);
+            url.searchParams.append('limit', loansPerPage);
+            
+            const response = await fetch(url, {
+                headers: {'X-Requested-With': 'XMLHttpRequest'}
+            });
+            
+            if (!response.ok) throw new Error('Failed to load requests');
+            const data = await response.json();
+            
+            if (data.success) {
+                document.getElementById('loan-count').textContent = data.loans.length;
+                document.getElementById('total-pending').textContent = data.loans.length;
+                
+                // Calculate average hours
+                if (data.loans.length > 0) {
+                    const avgHours = Math.round(data.loans.reduce((sum, loan) => sum + loan.hours_pending, 0) / data.loans.length);
+                    document.getElementById('avg-hours').textContent = avgHours + 'h';
+                }
+                
+                buildTable(data.loans);
+            }
+        } catch (error) {
+            console.error('Error loading requests:', error);
+            document.getElementById('loans-container').innerHTML = `
+                <div class="alert alert-danger m-3">
+                    <i class="bi bi-exclamation-triangle"></i> Error loading requests. Please try again.
+                </div>
+            `;
+        }
+    }
+    
+    function getHoursBadge(hours) {
+        let cssClass = 'hours-fresh';
+        if (hours > 24) cssClass = 'hours-overdue';
+        else if (hours > 12) cssClass = 'hours-warning';
+        
+        return `<span class="hours-badge ${cssClass}">${Math.round(hours)}h</span>`;
+    }
+    
+    function buildTable(loans) {
+        if (loans.length === 0) {
+            document.getElementById('loans-container').innerHTML = `
+                <div class="alert alert-success m-3">
+                    <i class="bi bi-check-circle"></i> All caught up! No pending requests at the moment.
+                </div>
+            `;
+            return;
+        }
+        
+        const html = `
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Applicant Name</th>
+                        <th>Loan Type</th>
+                        <th>Amount</th>
+                        <th>Assigned Date</th>
+                        <th>Hours Pending</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${loans.map(loan => `
+                        <tr style="vertical-align: middle;">
+                            <td><strong>${loan.applicant_name}</strong></td>
+                            <td><span class="badge bg-info">${loan.loan_type}</span></td>
+                            <td><strong>₹${loan.loan_amount.toLocaleString()}</strong></td>
+                            <td><small>${loan.assigned_date}</small></td>
+                            <td>${getHoursBadge(loan.hours_pending)}</td>
+                            <td>
+                                <span class="status-badge status-${loan.status}">
+                                    ${loan.status_display}
+                                </span>
+                            </td>
+                            <td>
+                                <button type="button" class="btn btn-sm btn-primary" 
+                                        onclick="window.location.href='/employee/loan/${loan.id}/detail/'">
+                                    <i class="bi bi-eye"></i> View & Process
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+        
+        document.getElementById('loans-container').innerHTML = html;
+    }
+    
+    // Event listeners
+    document.getElementById('search-input').addEventListener('input', () => {
+        currentPage = 1;
+        loadLoans();
+    });
+    
+    document.getElementById('reset-filters').addEventListener('click', () => {
+        document.getElementById('search-input').value = '';
+        currentPage = 1;
+        loadLoans();
+    });
+    
+    // Load on page load
+    document.addEventListener('DOMContentLoaded', loadLoans);
+</script>
+{% endblock %}

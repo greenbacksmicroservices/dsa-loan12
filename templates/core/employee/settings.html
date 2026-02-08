@@ -1,0 +1,235 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Settings - Employee Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header with Back Button -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm sticky-top">
+        <div class="container-fluid px-4">
+            <div class="d-flex align-items-center flex-grow-1">
+                <a href="{% url 'employee_dashboard' %}" class="btn btn-light border me-3">
+                    <i class="bi bi-arrow-left"></i> Back to Dashboard
+                </a>
+                <h1 class="h4 mb-0 text-dark fw-bold">
+                    <i class="bi bi-gear" style="color: #10b981;"></i> Settings
+                </h1>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <!-- Settings Menu (Sidebar) -->
+            <div class="col-lg-3 mb-4">
+                <div class="list-group shadow">
+                    <a href="#account-settings" class="list-group-item list-group-item-action active" data-bs-toggle="list">
+                        <i class="bi bi-person-check"></i> Account Settings
+                    </a>
+                    <a href="#password-settings" class="list-group-item list-group-item-action" data-bs-toggle="list">
+                        <i class="bi bi-key"></i> Change Password
+                    </a>
+                    <a href="#notification-settings" class="list-group-item list-group-item-action" data-bs-toggle="list">
+                        <i class="bi bi-bell"></i> Notifications
+                    </a>
+                    <a href="#security-settings" class="list-group-item list-group-item-action" data-bs-toggle="list">
+                        <i class="bi bi-shield-lock"></i> Security
+                    </a>
+                </div>
+            </div>
+
+            <!-- Settings Content -->
+            <div class="col-lg-9">
+                <!-- Account Settings -->
+                <div class="card shadow mb-4">
+                    <div class="card-header bg-success text-white">
+                        <h6 class="m-0 fw-bold"><i class="bi bi-person-check"></i> Account Settings</h6>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" action="#">
+                            {% csrf_token %}
+                            
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">First Name</label>
+                                    <input type="text" class="form-control" value="{{ user.first_name }}" readonly>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">Last Name</label>
+                                    <input type="text" class="form-control" value="{{ user.last_name }}" readonly>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Email Address</label>
+                                <input type="email" class="form-control" value="{{ user.email }}" readonly>
+                                <small class="text-muted">Your email cannot be changed. Contact admin if needed.</small>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Phone Number</label>
+                                <input type="text" class="form-control" value="{{ user.phone|default:'Not provided' }}" readonly>
+                            </div>
+
+                            <div class="alert alert-info" role="alert">
+                                <i class="bi bi-info-circle"></i> To update account details, please contact your administrator.
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Change Password -->
+                <div class="card shadow mb-4">
+                    <div class="card-header bg-info text-white">
+                        <h6 class="m-0 fw-bold"><i class="bi bi-key"></i> Change Password</h6>
+                    </div>
+                    <div class="card-body">
+                        <form id="password-form">
+                            {% csrf_token %}
+                            
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Current Password</label>
+                                <input type="password" class="form-control" id="current-password" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">New Password</label>
+                                <input type="password" class="form-control" id="new-password" required>
+                                <small class="text-muted">At least 8 characters, with numbers and special characters</small>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Confirm Password</label>
+                                <input type="password" class="form-control" id="confirm-password" required>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle"></i> Update Password
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Notification Settings -->
+                <div class="card shadow mb-4">
+                    <div class="card-header bg-warning text-dark">
+                        <h6 class="m-0 fw-bold"><i class="bi bi-bell"></i> Notification Preferences</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="email-notifications" checked>
+                            <label class="form-check-label" for="email-notifications">
+                                <strong>Email Notifications</strong>
+                                <br>
+                                <small class="text-muted">Receive email notifications for new assignments and updates</small>
+                            </label>
+                        </div>
+
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="followup-reminders" checked>
+                            <label class="form-check-label" for="followup-reminders">
+                                <strong>Follow-up Reminders</strong>
+                                <br>
+                                <small class="text-muted">Get reminded about follow-up required applications</small>
+                            </label>
+                        </div>
+
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="approval-alerts" checked>
+                            <label class="form-check-label" for="approval-alerts">
+                                <strong>Approval Alerts</strong>
+                                <br>
+                                <small class="text-muted">Notify when your applications are approved or rejected</small>
+                            </label>
+                        </div>
+
+                        <button class="btn btn-success" onclick="saveNotificationPreferences()">
+                            <i class="bi bi-check-circle"></i> Save Preferences
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Security Settings -->
+                <div class="card shadow mb-4">
+                    <div class="card-header bg-danger text-white">
+                        <h6 class="m-0 fw-bold"><i class="bi bi-shield-lock"></i> Security</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info" role="alert">
+                            <i class="bi bi-info-circle"></i> Your account is secure. Here are some security recommendations:
+                        </div>
+
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>
+                                    <strong>Strong Password</strong>
+                                    <br>
+                                    <small class="text-muted">Use a unique password with special characters</small>
+                                </span>
+                                <span class="badge bg-success rounded-pill"><i class="bi bi-check-circle"></i> Good</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>
+                                    <strong>Session Activity</strong>
+                                    <br>
+                                    <small class="text-muted">Last login: Today at {{ now|date:"H:i" }}</small>
+                                </span>
+                                <span class="badge bg-info rounded-pill"><i class="bi bi-clock-history"></i></span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>
+                                    <strong>Two-Factor Authentication</strong>
+                                    <br>
+                                    <small class="text-muted">Coming soon for enhanced security</small>
+                                </span>
+                                <span class="badge bg-secondary rounded-pill">Coming Soon</span>
+                            </li>
+                        </ul>
+
+                        <div class="mt-3">
+                            <a href="{% url 'logout' %}" class="btn btn-outline-danger">
+                                <i class="bi bi-box-arrow-right"></i> Logout from All Devices
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.getElementById('password-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const newPassword = document.getElementById('new-password').value;
+        const confirmPassword = document.getElementById('confirm-password').value;
+        
+        if (newPassword !== confirmPassword) {
+            alert('Passwords do not match!');
+            return;
+        }
+        
+        if (newPassword.length < 8) {
+            alert('Password must be at least 8 characters long!');
+            return;
+        }
+        
+        alert('Password change feature coming soon!');
+    });
+
+    function saveNotificationPreferences() {
+        const preferences = {
+            email_notifications: document.getElementById('email-notifications').checked,
+            followup_reminders: document.getElementById('followup-reminders').checked,
+            approval_alerts: document.getElementById('approval-alerts').checked,
+        };
+        
+        console.log('Saving preferences:', preferences);
+        alert('Notification preferences saved successfully!');
+    }
+</script>
+
+{% endblock %}

@@ -1,0 +1,243 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Waiting for Processing Applications{% endblock %}
+
+{% block extra_css %}
+<style>
+    .waiting-container {
+        margin: 20px;
+        padding: 20px;
+    }
+    
+    .page-header {
+        background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 8px;
+        margin-bottom: 30px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .page-header h1 {
+        margin: 0;
+        font-size: 28px;
+        font-weight: 700;
+    }
+    
+    .app-count {
+        background: rgba(255, 255, 255, 0.3);
+        padding: 10px 20px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 18px;
+    }
+    
+    .table-responsive {
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    .table {
+        margin: 0;
+    }
+    
+    .table thead {
+        background-color: #f8f9fa;
+        border-bottom: 2px solid #dee2e6;
+    }
+    
+    .table-hover tbody tr:hover {
+        background-color: #f5f6fa;
+    }
+    
+    .aging-badge {
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+    
+    .aging-green {
+        background-color: #d1e7dd;
+        color: #0f5132;
+    }
+    
+    .aging-yellow {
+        background-color: #fff3cd;
+        color: #664d03;
+    }
+    
+    .aging-red {
+        background-color: #f8d7da;
+        color: #842029;
+    }
+    
+    .action-buttons {
+        display: flex;
+        gap: 5px;
+        flex-wrap: wrap;
+    }
+    
+    .action-buttons .btn {
+        padding: 6px 12px;
+        font-size: 12px;
+        white-space: nowrap;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #999;
+    }
+    
+    .empty-state i {
+        font-size: 48px;
+        margin-bottom: 20px;
+        opacity: 0.5;
+    }
+    
+    .back-link {
+        display: inline-block;
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="waiting-container">
+    <a href="{% url 'workflow_dashboard' %}" class="back-link">
+        <i class="fas fa-arrow-left"></i> Back to Workflow Dashboard
+    </a>
+    
+    <div class="page-header">
+        <h1><i class="fas fa-hourglass-half"></i> Waiting for Processing</h1>
+        <span class="app-count">{{ count }} Applications</span>
+    </div>
+    
+    {% if applications %}
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Applicant Name</th>
+                    <th>Loan Type</th>
+                    <th>Amount (₹)</th>
+                    <th>Assigned To</th>
+                    <th>Assigned Since</th>
+                    <th>Hours Waiting</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in applications %}
+                <tr>
+                    <td>
+                        <strong>{{ item.app.applicant.full_name }}</strong><br>
+                        <small class="text-muted">{{ item.app.applicant.email }}</small>
+                    </td>
+                    <td>
+                        <span class="badge bg-info">{{ item.app.applicant.get_loan_type_display }}</span>
+                    </td>
+                    <td>
+                        <strong>₹{{ item.app.applicant.loan_amount|floatformat:0 }}</strong>
+                    </td>
+                    <td>
+                        {% if item.app.assigned_employee %}
+                            <strong>{{ item.app.assigned_employee.first_name }} {{ item.app.assigned_employee.last_name }}</strong><br>
+                            <small class="badge bg-primary">Employee</small>
+                        {% elif item.app.assigned_agent %}
+                            <strong>{{ item.app.assigned_agent.name }}</strong><br>
+                            <small class="badge bg-info">Agent</small>
+                        {% else %}
+                            <span class="text-muted">Unassigned</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ item.app.assigned_at|date:"M d, Y H:i" }}</td>
+                    <td>
+                        {% if item.hours_since_assignment %}
+                            {{ item.hours_since_assignment|floatformat:0 }} hours
+                            {% if item.requires_follow_up %}
+                                <span class="aging-badge aging-red">
+                                    <i class="fas fa-exclamation-triangle"></i> OVERDUE
+                                </span>
+                            {% elif item.hours_since_assignment > 20 %}
+                                <span class="aging-badge aging-yellow">
+                                    <i class="fas fa-clock"></i> DUE SOON
+                                </span>
+                            {% else %}
+                                <span class="aging-badge aging-green">
+                                    <i class="fas fa-check-circle"></i> OK
+                                </span>
+                            {% endif %}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="badge" style="background-color: #ffc107; color: #000;">{{ item.app.status }}</span>
+                    </td>
+                    <td>
+                        <div class="action-buttons">
+                            <a href="{% url 'view_application' item.app.applicant.id %}" class="btn btn-sm btn-info">
+                                <i class="fas fa-eye"></i> View
+                            </a>
+                            {% if item.requires_follow_up %}
+                                <button class="btn btn-sm btn-danger" onclick="triggerFollowUp({{ item.app.applicant.id }})">
+                                    <i class="fas fa-bell"></i> Follow-up
+                                </button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div style="font-size: 48px; margin-bottom: 20px; opacity: 0.5;">
+            <i class="fas fa-inbox"></i>
+        </div>
+        <h3>No Applications Waiting</h3>
+        <p>All applications are being processed efficiently!</p>
+        <a href="{% url 'workflow_dashboard' %}" class="btn btn-primary mt-3">
+            Go to Dashboard
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function triggerFollowUp(applicantId) {
+    if (!confirm('Trigger follow-up for this application?')) return;
+    
+    fetch(`/api/workflow/manual-follow-up/${applicantId}/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken(),
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    });
+}
+
+function getCSRFToken() {
+    return document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
+           document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1] || '';
+}
+</script>
+{% endblock %}

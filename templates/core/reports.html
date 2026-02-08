@@ -1,0 +1,396 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Reports - DSA Loan Management System{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2><i class="bi bi-file-earmark-bar-graph"></i> Reports</h2>
+</div>
+
+<!-- Filters -->
+<div class="table-container mb-4">
+    <h5 class="mb-3">Filter Options</h5>
+    <form id="reportFilters" class="row g-3">
+        <div class="col-md-3">
+            <label for="start_date" class="form-label">Start Date</label>
+            <input type="date" class="form-control" id="start_date">
+        </div>
+        <div class="col-md-3">
+            <label for="end_date" class="form-label">End Date</label>
+            <input type="date" class="form-control" id="end_date">
+        </div>
+        <div class="col-md-3">
+            <label for="filter_status" class="form-label">Status</label>
+            <select class="form-select" id="filter_status">
+                <option value="">All Status</option>
+                <option value="new_entry">New Entry</option>
+                <option value="waiting">Waiting</option>
+                <option value="follow_up">Follow-up</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+                <option value="disbursed">Disbursed</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label for="filter_agent" class="form-label">Agent</label>
+            <select class="form-select" id="filter_agent">
+                <option value="">All Agents</option>
+            </select>
+        </div>
+        <div class="col-12">
+            <button type="button" class="btn btn-primary" onclick="generateReport()">
+                <i class="bi bi-search"></i> Generate Report
+            </button>
+            <button type="button" class="btn btn-success" onclick="exportExcel()">
+                <i class="bi bi-file-earmark-excel"></i> Export to Excel
+            </button>
+            <button type="button" class="btn btn-danger" onclick="exportPDF()">
+                <i class="bi bi-file-earmark-pdf"></i> Export to PDF
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- Report Summary Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="stat-card approved">
+            <div class="stat-card-header">
+                <span class="stat-card-title">Total Loans</span>
+                <i class="bi bi-file-text stat-card-icon"></i>
+            </div>
+            <div class="stat-card-value" id="report-total-loans">0</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card approved">
+            <div class="stat-card-header">
+                <span class="stat-card-title">Total Amount</span>
+                <i class="bi bi-currency-rupee stat-card-icon"></i>
+            </div>
+            <div class="stat-card-value" id="report-total-amount">₹0</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card approved">
+            <div class="stat-card-header">
+                <span class="stat-card-title">Approval Rate</span>
+                <i class="bi bi-percent stat-card-icon"></i>
+            </div>
+            <div class="stat-card-value" id="report-approval-rate">0%</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card approved">
+            <div class="stat-card-header">
+                <span class="stat-card-title">Disbursed Amount</span>
+                <i class="bi bi-cash-coin stat-card-icon"></i>
+            </div>
+            <div class="stat-card-value" id="report-disbursed-amount">₹0</div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="chart-container">
+            <h5 class="chart-title">Approval vs Rejection Ratio</h5>
+            <canvas id="approvalChart" height="250"></canvas>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="chart-container">
+            <h5 class="chart-title">Loan Type Distribution</h5>
+            <canvas id="loanTypeChart" height="250"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Report Table -->
+<div class="table-container">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">Loan Report</h5>
+        <div class="d-flex gap-2">
+            <input type="text" class="form-control form-control-sm" id="searchReport" placeholder="Search..." style="max-width: 300px;">
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover" id="reportTable">
+            <thead>
+                <tr>
+                    <th>Loan ID</th>
+                    <th>Customer Name</th>
+                    <th>Mobile</th>
+                    <th>Loan Type</th>
+                    <th>Amount</th>
+                    <th>Bank</th>
+                    <th>Agent</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody id="reportTableBody">
+                <tr>
+                    <td colspan="9" class="text-center text-muted py-4">Select filters and click "Generate Report"</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <nav aria-label="Page navigation">
+        <ul class="pagination justify-content-center" id="pagination">
+        </ul>
+    </nav>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let approvalChartInstance = null;
+    let loanTypeChartInstance = null;
+    let currentPage = 1;
+
+    // Load agents for filter
+    async function loadAgents() {
+        try {
+            const response = await fetch('/api/agents/');
+            const data = await response.json();
+            const select = document.getElementById('filter_agent');
+            
+            if (data.results) {
+                data.results.forEach(agent => {
+                    const option = document.createElement('option');
+                    option.value = agent.id;
+                    option.textContent = `${agent.name} - ${agent.phone}`;
+                    select.appendChild(option);
+                });
+            }
+        } catch (error) {
+            console.error('Error loading agents:', error);
+        }
+    }
+
+    // Generate Report
+    async function generateReport() {
+        const params = new URLSearchParams();
+        
+        const startDate = document.getElementById('start_date').value;
+        const endDate = document.getElementById('end_date').value;
+        const status = document.getElementById('filter_status').value;
+        const agent = document.getElementById('filter_agent').value;
+        
+        if (startDate) params.append('created_at__gte', startDate);
+        if (endDate) params.append('created_at__lte', endDate);
+        if (status) params.append('status', status);
+        if (agent) params.append('assigned_agent', agent);
+        
+        params.append('page', currentPage);
+        params.append('page_size', 20);
+        
+        try {
+            const response = await fetch(`/api/loans/?${params.toString()}`, {
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                credentials: 'same-origin'
+            });
+            const data = await response.json();
+            
+            updateReportTable(data);
+            updateReportSummary(data);
+            updateCharts(data);
+        } catch (error) {
+            console.error('Error generating report:', error);
+        }
+    }
+
+    // Update Report Table
+    function updateReportTable(data) {
+        const tbody = document.getElementById('reportTableBody');
+        
+        if (data.results && data.results.length > 0) {
+            tbody.innerHTML = data.results.map((loan, index) => `
+                <tr>
+                    <td>#${loan.id}</td>
+                    <td>${loan.customer_name}</td>
+                    <td>${loan.mobile_number}</td>
+                    <td><span class="badge bg-info">${loan.loan_type}</span></td>
+                    <td>₹${parseFloat(loan.loan_amount).toLocaleString('en-IN')}</td>
+                    <td>${loan.bank_name}</td>
+                    <td>${loan.assigned_agent_name || 'N/A'}</td>
+                    <td><span class="badge bg-${getStatusColor(loan.status)}">${loan.status.replace('_', ' ')}</span></td>
+                    <td>${new Date(loan.created_at).toLocaleDateString()}</td>
+                </tr>
+            `).join('');
+            
+            // Update pagination
+            updatePagination(data);
+        } else {
+            tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">No data found</td></tr>';
+        }
+    }
+
+    // Update Report Summary
+    function updateReportSummary(data) {
+        // This would ideally come from a summary endpoint
+        // For now, calculate from results
+        const loans = data.results || [];
+        const totalLoans = loans.length;
+        const totalAmount = loans.reduce((sum, loan) => sum + parseFloat(loan.loan_amount || 0), 0);
+        const approved = loans.filter(l => l.status === 'approved').length;
+        const disbursed = loans.filter(l => l.status === 'disbursed');
+        const disbursedAmount = disbursed.reduce((sum, loan) => sum + parseFloat(loan.loan_amount || 0), 0);
+        const approvalRate = totalLoans > 0 ? ((approved / totalLoans) * 100).toFixed(1) : 0;
+        
+        document.getElementById('report-total-loans').textContent = totalLoans;
+        document.getElementById('report-total-amount').textContent = `₹${totalAmount.toLocaleString('en-IN')}`;
+        document.getElementById('report-approval-rate').textContent = `${approvalRate}%`;
+        document.getElementById('report-disbursed-amount').textContent = `₹${disbursedAmount.toLocaleString('en-IN')}`;
+    }
+
+    // Update Charts
+    function updateCharts(data) {
+        const loans = data.results || [];
+        
+        // Approval vs Rejection Chart
+        const approved = loans.filter(l => l.status === 'approved').length;
+        const rejected = loans.filter(l => l.status === 'rejected').length;
+        
+        const approvalCtx = document.getElementById('approvalChart').getContext('2d');
+        if (approvalChartInstance) approvalChartInstance.destroy();
+        
+        approvalChartInstance = new Chart(approvalCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Approved', 'Rejected'],
+                datasets: [{
+                    data: [approved, rejected],
+                    backgroundColor: ['#10b981', '#ef4444']
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
+        
+        // Loan Type Distribution Chart
+        const typeCounts = {};
+        loans.forEach(loan => {
+            typeCounts[loan.loan_type] = (typeCounts[loan.loan_type] || 0) + 1;
+        });
+        
+        const typeCtx = document.getElementById('loanTypeChart').getContext('2d');
+        if (loanTypeChartInstance) loanTypeChartInstance.destroy();
+        
+        loanTypeChartInstance = new Chart(typeCtx, {
+            type: 'bar',
+            data: {
+                labels: Object.keys(typeCounts),
+                datasets: [{
+                    label: 'Count',
+                    data: Object.values(typeCounts),
+                    backgroundColor: '#4f46e5'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+    }
+
+    // Update Pagination
+    function updatePagination(data) {
+        const pagination = document.getElementById('pagination');
+        if (!data.count || data.count <= 20) {
+            pagination.innerHTML = '';
+            return;
+        }
+        
+        const totalPages = Math.ceil(data.count / 20);
+        let html = '';
+        
+        if (currentPage > 1) {
+            html += `<li class="page-item"><a class="page-link" href="#" onclick="changePage(${currentPage - 1})">Previous</a></li>`;
+        }
+        
+        for (let i = 1; i <= totalPages; i++) {
+            html += `<li class="page-item ${i === currentPage ? 'active' : ''}"><a class="page-link" href="#" onclick="changePage(${i})">${i}</a></li>`;
+        }
+        
+        if (currentPage < totalPages) {
+            html += `<li class="page-item"><a class="page-link" href="#" onclick="changePage(${currentPage + 1})">Next</a></li>`;
+        }
+        
+        pagination.innerHTML = html;
+    }
+
+    function changePage(page) {
+        currentPage = page;
+        generateReport();
+    }
+
+    function getStatusColor(status) {
+        const colors = {
+            'new_entry': 'info',
+            'waiting': 'warning',
+            'follow_up': 'danger',
+            'approved': 'success',
+            'rejected': 'danger',
+            'disbursed': 'primary'
+        };
+        return colors[status] || 'secondary';
+    }
+
+    // Export Functions
+    function exportExcel() {
+        alert('Excel export functionality will be implemented with backend support');
+    }
+
+    function exportPDF() {
+        alert('PDF export functionality will be implemented with backend support');
+    }
+
+    // Search functionality
+    document.getElementById('searchReport').addEventListener('input', function(e) {
+        const searchTerm = e.target.value.toLowerCase();
+        const rows = document.querySelectorAll('#reportTableBody tr');
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(searchTerm) ? '' : 'none';
+        });
+    });
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    // Load on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        loadAgents();
+        // Set default dates (last 30 days)
+        const endDate = new Date();
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - 30);
+        document.getElementById('end_date').value = endDate.toISOString().split('T')[0];
+        document.getElementById('start_date').value = startDate.toISOString().split('T')[0];
+    });
+</script>
+{% endblock %}
+
+

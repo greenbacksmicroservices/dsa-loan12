@@ -1,0 +1,405 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}My Agents - DSA Loan Management System{% endblock %}
+
+{% block content %}
+<!-- Header with Back Button -->
+<div class="dashboard-header bg-white p-3 mb-4 border-bottom shadow-sm" style="background: linear-gradient(135deg, #667eea 0%, #09186f 100%); border: none; border-radius: 0 0 16px 16px;">
+    <div class="container-fluid d-flex justify-content-between align-items-center">
+        <div>
+            <h2 class="fw-bold mb-0 text-white" style="font-size: 28px; letter-spacing: 0.5px;">
+                <i class="bi bi-people me-2" style="font-size: 24px;"></i>My Agents
+            </h2>
+            <p class="text-white-50 mb-0 mt-1" style="font-size: 13px;">Manage and view all your agents</p>
+        </div>
+        <button class="btn btn-light fw-semibold rounded-pill shadow-sm" id="add-agent-btn" style="padding: 8px 18px; font-size: 13px;">
+            <i class="bi bi-plus-circle"></i> Add New Agent
+        </button>
+    </div>
+</div>
+
+<div class="container-fluid">
+    <!-- Agents Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm" style="border-radius: 16px; overflow: hidden;">
+
+                <div class="card-body" style="padding: 0;">
+                    <div id="agents-container" style="padding: 24px;">
+                        <div class="text-center py-4">
+                            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="text-muted mt-2">Loading agents...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Agent Modal -->
+<div class="modal fade" id="addAgentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0" style="border-radius: 12px;">
+            <div class="modal-header border-0" style="background: linear-gradient(135deg, #667eea 0%, #2c1199 100%); color: white; padding: 24px;">
+                <h5 class="modal-title" style="font-weight: 600;">
+                    <i class="bi bi-person-plus" style="margin-right: 8px;"></i>Add New Agent
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" style="padding: 24px; max-height: 70vh; overflow-y: auto;">
+                <form id="addAgentForm">
+                    {% csrf_token %}
+                    
+                    <!-- Profile Photo Section -->
+                    <div class="mb-3 text-center">
+                        <label for="agentPhoto" class="form-label" style="font-weight: 600; display: block; margin-bottom: 12px;">Profile Photo</label>
+                        <div id="photoPreview" class="mx-auto mb-3" style="width: 100px; height: 100px; border-radius: 50%; background: #e5e7eb; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+                            <i class="bi bi-person-circle" style="font-size: 40px; color: #9ca3af;"></i>
+                        </div>
+                        <input type="file" class="form-control" id="agentPhoto" name="photo" accept="image/*" style="border-radius: 8px; border: 1px solid #e9ecef; padding: 10px 14px;">
+                        <small class="text-muted">Optional - Max 5MB</small>
+                    </div>
+                    
+                    <hr class="my-3">
+                    
+                    <!-- Row 1: Name and Phone -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="agentName" class="form-label" style="font-weight: 600;">Full Name *</label>
+                            <input type="text" class="form-control" id="agentName" name="name" placeholder="Enter agent name" required style="border-radius: 8px; border: 1px solid #e9ecef; padding: 10px 14px;">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="agentPhone" class="form-label" style="font-weight: 600;">Phone Number *</label>
+                            <input type="tel" class="form-control" id="agentPhone" name="phone" placeholder="Enter phone number" required style="border-radius: 8px; border: 1px solid #e9ecef; padding: 10px 14px;">
+                        </div>
+                    </div>
+                    
+                    <!-- Row 2: Email and Gender -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="agentEmail" class="form-label" style="font-weight: 600;">Email *</label>
+                            <input type="email" class="form-control" id="agentEmail" name="email" placeholder="Enter email address" required style="border-radius: 8px; border: 1px solid #e9ecef; padding: 10px 14px;">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="agentGender" class="form-label" style="font-weight: 600;">Gender</label>
+                            <select class="form-select" id="agentGender" name="gender" style="border-radius: 8px; border: 1px solid #e9ecef; padding: 10px 14px;">
+                                <option value="">Select Gender</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Row 3: Address and Pin -->
+                    <div class="row">
+                        <div class="col-md-8 mb-3">
+                            <label for="agentAddress" class="form-label" style="font-weight: 600;">Address</label>
+                            <textarea class="form-control" id="agentAddress" name="address" placeholder="Enter address" rows="2" style="border-radius: 8px; border: 1px solid #e9ecef; padding: 10px 14px;"></textarea>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="agentPin" class="form-label" style="font-weight: 600;">PIN Code</label>
+                            <input type="text" class="form-control" id="agentPin" name="pin_code" placeholder="PIN" style="border-radius: 8px; border: 1px solid #e9ecef; padding: 10px 14px;">
+                        </div>
+                    </div>
+                    
+                    <!-- Row 4: State and Status -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="agentState" class="form-label" style="font-weight: 600;">State</label>
+                            <input type="text" class="form-control" id="agentState" name="state" placeholder="Enter state" style="border-radius: 8px; border: 1px solid #e9ecef; padding: 10px 14px;">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="agentStatus" class="form-label" style="font-weight: 600;">Status *</label>
+                            <select class="form-select" id="agentStatus" name="status" required style="border-radius: 8px; border: 1px solid #e9ecef; padding: 10px 14px;">
+                                <option value="active">Active</option>
+                                <option value="blocked">Blocked</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <hr class="my-3">
+                    
+                    <!-- Row 5: Password -->
+                    <div class="mb-3">
+                        <label for="agentPassword" class="form-label" style="font-weight: 600;">Password *</label>
+                        <input type="password" class="form-control" id="agentPassword" name="password" placeholder="Enter password" required style="border-radius: 8px; border: 1px solid #e9ecef; padding: 10px 14px;">
+                        <small class="text-muted">Password for agent login</small>
+                    </div>
+                    
+                    <!-- Buttons -->
+                    <div style="display: flex; gap: 12px; margin-top: 24px;">
+                        <button type="submit" class="btn btn-primary" style="flex: 1; border-radius: 8px; font-weight: 600; padding: 10px;">
+                            <i class="bi bi-check-circle" style="margin-right: 6px;"></i>Create Agent
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" style="flex: 1; border-radius: 8px; font-weight: 600; padding: 10px;">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .table {
+        margin: 0;
+        font-size: 14px;
+    }
+
+    .table thead th {
+        background: #f8f9fa;
+        border-bottom: 1px solid #e9ecef;
+        font-weight: 600;
+        color: #495057;
+        padding: 14px 12px;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .table tbody tr {
+        border-bottom: 1px solid #e9ecef;
+        transition: all 0.2s ease;
+    }
+
+    .table tbody tr:hover {
+        background: #f8f9fa;
+    }
+
+    .table tbody td {
+        padding: 14px 12px;
+        vertical-align: middle;
+    }
+
+    .badge {
+        font-weight: 600;
+        padding: 6px 12px;
+        font-size: 11px;
+        letter-spacing: 0.5px;
+    }
+
+    .agent-name {
+        font-weight: 600;
+        color: #1f2937;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+    }
+
+    .empty-icon {
+        font-size: 48px;
+        color: #d1d5db;
+        margin-bottom: 12px;
+    }
+
+    .empty-text {
+        color: #6b7280;
+        font-size: 14px;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.15);
+    }
+
+    @media (max-width: 768px) {
+        .table {
+            font-size: 12px;
+        }
+
+        .table th, .table td {
+            padding: 10px 8px;
+        }
+    }
+</style>
+{% endblock %}
+
+<script>
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    async function loadAgents() {
+        try {
+            const response = await fetch('/api/employee/my-agents/', {
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                credentials: 'same-origin'
+            });
+
+            if (!response.ok) throw new Error('Failed to load agents');
+
+            const data = await response.json();
+            const agents = data.agents || [];
+            const container = document.getElementById('agents-container');
+
+            if (agents.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon"><i class="bi bi-people"></i></div>
+                        <div class="empty-text">No agents linked to you yet</div>
+                        <div style="margin-top: 20px;">
+                            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addAgentModal" style="border-radius: 8px;">
+                                <i class="bi bi-plus-circle"></i> Add First Agent
+                            </button>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = `
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Agent Name</th>
+                                <th>Email</th>
+                                <th>Phone</th>
+                                <th>Total Loans</th>
+                                <th>Approved</th>
+                                <th>Rejected</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${agents.map(agent => `
+                                <tr>
+                                    <td><span class="agent-name">${agent.agent_name || 'N/A'}</span></td>
+                                    <td>${agent.email || 'N/A'}</td>
+                                    <td>${agent.phone || 'N/A'}</td>
+                                    <td><strong>${agent.total_loans || 0}</strong></td>
+                                    <td><span class="badge bg-success">${agent.approved_loans || 0}</span></td>
+                                    <td><span class="badge bg-danger">${agent.rejected_loans || 0}</span></td>
+                                    <td><span class="badge ${agent.is_active ? 'bg-success' : 'bg-secondary'}">${agent.is_active ? 'Active' : 'Inactive'}</span></td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        } catch (error) {
+            console.error('Error loading agents:', error);
+            document.getElementById('agents-container').innerHTML = `
+                <div class="alert alert-danger m-0">Failed to load agents. Please try again.</div>
+            `;
+        }
+    }
+
+    async function submitAddAgent(e) {
+        e.preventDefault();
+        const form = e.target;
+        
+        // Get form values
+        const name = document.getElementById('agentName').value.trim();
+        const phone = document.getElementById('agentPhone').value.trim();
+        const email = document.getElementById('agentEmail').value.trim();
+        const password = document.getElementById('agentPassword').value.trim();
+        const status = document.getElementById('agentStatus').value;
+        const gender = document.getElementById('agentGender').value;
+        const address = document.getElementById('agentAddress').value.trim();
+        const pin_code = document.getElementById('agentPin').value.trim();
+        const state = document.getElementById('agentState').value.trim();
+        const photo = document.getElementById('agentPhoto').files[0];
+        
+        // Validation
+        if (!name || !phone || !email || !password) {
+            alert('Please fill all required fields: Name, Phone, Email, Password');
+            return;
+        }
+        
+        try {
+            // Create FormData for file upload
+            const formData = new FormData();
+            formData.append('name', name);
+            formData.append('phone', phone);
+            formData.append('email', email);
+            formData.append('password', password);
+            formData.append('status', status);
+            formData.append('gender', gender);
+            formData.append('address', address);
+            formData.append('pin_code', pin_code);
+            formData.append('state', state);
+            if (photo) {
+                formData.append('photo', photo);
+            }
+            
+            const response = await fetch('/api/employee/add-agent/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: formData,
+                credentials: 'same-origin'
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                // Close modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('addAgentModal'));
+                if (modal) modal.hide();
+                
+                // Reset form
+                form.reset();
+                document.getElementById('photoPreview').innerHTML = '<i class="bi bi-person-circle" style="font-size: 40px; color: #9ca3af;"></i>';
+                
+                // Reload agents
+                await loadAgents();
+                
+                // Show success message
+                alert('Agent created successfully!');
+            } else {
+                alert('Error: ' + (data.error || 'Failed to add agent'));
+            }
+        } catch (error) {
+            console.error('Error adding agent:', error);
+            alert('Error adding agent: ' + error.message);
+        }
+    }
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function() {
+        loadAgents();
+        
+        // Photo preview
+        document.getElementById('agentPhoto').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    document.getElementById('photoPreview').innerHTML = '<img src="' + event.target.result + '" style="width: 100%; height: 100%; object-fit: cover;">';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+        
+        document.getElementById('add-agent-btn').addEventListener('click', function() {
+            const modal = new bootstrap.Modal(document.getElementById('addAgentModal'));
+            modal.show();
+        });
+
+        document.getElementById('addAgentForm').addEventListener('submit', submitAddAgent);
+    });
+</script>

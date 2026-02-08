@@ -1,0 +1,160 @@
+{% extends "subadmin/base_subadmin.html" %}
+{% load static %}
+
+{% block title %}Complaints - SubAdmin{% endblock %}
+{% block page_title %}Complaints & Support{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex justify-between items-center">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">⚠️ Complaints & Support</h1>
+            <p class="text-gray-600 mt-1">Manage customer complaints and support tickets</p>
+        </div>
+        <button class="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2">
+            <i class="fas fa-plus"></i> New Complaint
+        </button>
+    </div>
+
+    <!-- Filter Section -->
+    <div class="bg-white rounded-lg shadow-md p-4">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <input type="text" placeholder="Search complaints..." 
+                   class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-red-500">
+            <select class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-red-500">
+                <option>All Status</option>
+                <option>Open</option>
+                <option>In Progress</option>
+                <option>Resolved</option>
+                <option>Closed</option>
+            </select>
+            <select class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-red-500">
+                <option>All Priority</option>
+                <option>High</option>
+                <option>Medium</option>
+                <option>Low</option>
+            </select>
+            <button class="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Search</button>
+        </div>
+    </div>
+
+    <!-- Complaint Stats -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="bg-white rounded-lg shadow-md p-4 text-center">
+            <p class="text-gray-600 text-sm">Total Complaints</p>
+            <p class="text-2xl font-bold text-gray-900 mt-1">{{ stats.total }}</p>
+        </div>
+        <div class="bg-white rounded-lg shadow-md p-4 text-center">
+            <p class="text-gray-600 text-sm">Open</p>
+            <p class="text-2xl font-bold text-red-600 mt-1">{{ stats.open }}</p>
+        </div>
+        <div class="bg-white rounded-lg shadow-md p-4 text-center">
+            <p class="text-gray-600 text-sm">In Progress</p>
+            <p class="text-2xl font-bold text-yellow-600 mt-1">{{ stats.in_progress }}</p>
+        </div>
+        <div class="bg-white rounded-lg shadow-md p-4 text-center">
+            <p class="text-gray-600 text-sm">Resolved</p>
+            <p class="text-2xl font-bold text-green-600 mt-1">{{ stats.resolved }}</p>
+        </div>
+    </div>
+
+    <!-- Complaints Table -->
+    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">ID</th>
+                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Complainant</th>
+                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Subject</th>
+                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Category</th>
+                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Priority</th>
+                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Status</th>
+                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Date</th>
+                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    {% if complaints %}
+                        {% for complaint in complaints %}
+                        <tr class="hover:bg-gray-50 transition-colors">
+                            <td class="px-6 py-4 text-sm font-semibold text-gray-900">#{{ complaint.id }}</td>
+                            <td class="px-6 py-4 text-sm text-gray-600">{{ complaint.complainant_name }}</td>
+                            <td class="px-6 py-4 text-sm text-gray-900">{{ complaint.subject }}</td>
+                            <td class="px-6 py-4 text-sm">
+                                <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-semibold">
+                                    {{ complaint.category }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 text-sm">
+                                {% with priority=complaint.priority %}
+                                    {% if priority == "High" %}
+                                        <span class="px-3 py-1 bg-red-100 text-red-800 rounded-full text-xs font-semibold">High</span>
+                                    {% elif priority == "Medium" %}
+                                        <span class="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-semibold">Medium</span>
+                                    {% else %}
+                                        <span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-semibold">Low</span>
+                                    {% endif %}
+                                {% endwith %}
+                            </td>
+                            <td class="px-6 py-4 text-sm">
+                                {% with status=complaint.status %}
+                                    {% if status == "Open" %}
+                                        <span class="px-3 py-1 bg-red-100 text-red-800 rounded-full text-xs font-semibold">Open</span>
+                                    {% elif status == "In Progress" %}
+                                        <span class="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-semibold">Progress</span>
+                                    {% elif status == "Resolved" %}
+                                        <span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-semibold">Resolved</span>
+                                    {% else %}
+                                        <span class="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-xs font-semibold">Closed</span>
+                                    {% endif %}
+                                {% endwith %}
+                            </td>
+                            <td class="px-6 py-4 text-sm text-gray-600">{{ complaint.date|date:"M d, Y" }}</td>
+                            <td class="px-6 py-4 text-sm">
+                                <div class="flex gap-2">
+                                    <button class="text-blue-600 hover:text-blue-800 font-medium" title="View Details">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button class="text-green-600 hover:text-green-800 font-medium" title="Reply">
+                                        <i class="fas fa-reply"></i>
+                                    </button>
+                                    <button class="text-orange-600 hover:text-orange-800 font-medium" title="More Options">
+                                        <i class="fas fa-ellipsis-v"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                    <tr>
+                        <td colspan="8" class="px-6 py-8 text-center text-gray-500">
+                            <i class="fas fa-inbox text-4xl mb-3"></i>
+                            <p class="mt-2">No complaints found</p>
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    {% if is_paginated %}
+    <div class="flex justify-center gap-2">
+        {% if page_obj.has_previous %}
+            <a href="?page=1" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">First</a>
+            <a href="?page={{ page_obj.previous_page_number }}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Previous</a>
+        {% endif %}
+        
+        <span class="px-4 py-2 text-gray-600">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        
+        {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Next</a>
+            <a href="?page={{ page_obj.paginator.num_pages }}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Last</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,964 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Assigned Loans - Request Processing{% endblock %}
+
+{% block content %}
+<style>
+    :root {
+        --primary-color: #667eea;
+        --secondary-color: #764ba2;
+        --success-color: #10b981;
+        --danger-color: #ef4444;
+        --warning-color: #f59e0b;
+        --info-color: #06b6d4;
+        --text-dark: #1f2937;
+        --text-light: #6b7280;
+        --border-color: #e5e7eb;
+        --bg-light: #f9fafb;
+    }
+
+    .page-header {
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+        color: white;
+        padding: 35px;
+        border-radius: 12px;
+        margin-bottom: 30px;
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.15);
+    }
+
+    .page-header h1 {
+        margin: 0;
+        font-size: 28px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .page-header p {
+        margin: 8px 0 0 0;
+        opacity: 0.95;
+        font-size: 14px;
+    }
+
+    .loans-container {
+        display: grid;
+        gap: 25px;
+    }
+
+    .loan-card {
+        background: white;
+        border-radius: 12px;
+        border: 1px solid var(--border-color);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+
+    .loan-card:hover {
+        box-shadow: 0 8px 24px rgba(102, 126, 234, 0.15);
+        transform: translateY(-2px);
+    }
+
+    .card-header {
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+        color: white;
+        padding: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .card-header h3 {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 600;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .status-badge.pending {
+        background: rgba(245, 158, 11, 0.2);
+        color: var(--warning-color);
+    }
+
+    .status-badge.under-review {
+        background: rgba(102, 126, 234, 0.2);
+        color: var(--primary-color);
+    }
+
+    .status-badge.approved {
+        background: rgba(16, 185, 129, 0.2);
+        color: var(--success-color);
+    }
+
+    .status-badge.rejected {
+        background: rgba(239, 68, 68, 0.2);
+        color: var(--danger-color);
+    }
+
+    .card-body {
+        padding: 25px;
+    }
+
+    .details-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+        margin-bottom: 25px;
+    }
+
+    .detail-item {
+        padding: 15px;
+        background: var(--bg-light);
+        border-radius: 8px;
+        border-left: 4px solid var(--primary-color);
+    }
+
+    .detail-label {
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        color: var(--text-light);
+        letter-spacing: 0.5px;
+        margin-bottom: 6px;
+    }
+
+    .detail-value {
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--text-dark);
+    }
+
+    .details-section {
+        background: var(--bg-light);
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+
+    .section-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--text-dark);
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid var(--border-color);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .info-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .info-table tr:not(:last-child) {
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .info-table td {
+        padding: 12px;
+    }
+
+    .info-table .label {
+        font-weight: 600;
+        color: var(--text-dark);
+        width: 40%;
+    }
+
+    .info-table .value {
+        color: var(--text-light);
+        word-break: break-word;
+    }
+
+    .documents-list {
+        display: grid;
+        gap: 10px;
+    }
+
+    .document-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px;
+        background: white;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        transition: all 0.3s ease;
+    }
+
+    .document-item:hover {
+        border-color: var(--primary-color);
+        background: rgba(102, 126, 234, 0.05);
+    }
+
+    .document-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex: 1;
+    }
+
+    .document-icon {
+        font-size: 20px;
+        color: var(--primary-color);
+    }
+
+    .document-name {
+        font-weight: 500;
+        color: var(--text-dark);
+        font-size: 14px;
+    }
+
+    .document-date {
+        font-size: 12px;
+        color: var(--text-light);
+        margin-top: 2px;
+    }
+
+    .btn-download {
+        background: var(--primary-color);
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-block;
+    }
+
+    .btn-download:hover {
+        background: var(--secondary-color);
+        transform: translateY(-2px);
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+    }
+
+    .empty-icon {
+        font-size: 64px;
+        color: #d1d5db;
+        margin-bottom: 16px;
+    }
+
+    .empty-text {
+        color: var(--text-light);
+        font-size: 16px;
+        margin-bottom: 12px;
+    }
+
+    .empty-subtext {
+        color: #9ca3af;
+        font-size: 14px;
+    }
+
+    .card-footer {
+        border-top: 1px solid var(--border-color);
+        padding: 20px;
+        background: var(--bg-light);
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        justify-content: flex-start;
+    }
+
+    .btn {
+        padding: 12px 24px;
+        border: none;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        text-decoration: none;
+        white-space: nowrap;
+    }
+
+    .btn-approve {
+        background: var(--success-color);
+        color: white;
+    }
+
+    .btn-approve:hover {
+        background: #059669;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+
+    .btn-reject {
+        background: var(--danger-color);
+        color: white;
+    }
+
+    .btn-reject:hover {
+        background: #dc2626;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    }
+
+    .btn-dispute {
+        background: var(--warning-color);
+        color: white;
+    }
+
+    .btn-dispute:hover {
+        background: #d97706;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+    }
+
+    .btn-secondary {
+        background: white;
+        color: var(--primary-color);
+        border: 2px solid var(--primary-color);
+    }
+
+    .btn-secondary:hover {
+        background: var(--primary-color);
+        color: white;
+        transform: translateY(-2px);
+    }
+
+    .btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none !important;
+    }
+
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-overlay.active {
+        display: flex;
+    }
+
+    .modal {
+        background: white;
+        border-radius: 12px;
+        padding: 30px;
+        max-width: 500px;
+        width: 90%;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        animation: slideUp 0.3s ease;
+    }
+
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .modal-header {
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid var(--border-color);
+    }
+
+    .modal-header h3 {
+        margin: 0;
+        font-size: 20px;
+        color: var(--text-dark);
+    }
+
+    .modal-body {
+        margin-bottom: 20px;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 8px;
+        color: var(--text-dark);
+        font-size: 14px;
+    }
+
+    .form-group textarea {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        font-family: inherit;
+        font-size: 14px;
+        resize: vertical;
+        min-height: 100px;
+    }
+
+    .form-group textarea:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .modal-footer {
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+    }
+
+    .modal-footer button {
+        padding: 10px 24px;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        border: none;
+        transition: all 0.3s ease;
+    }
+
+    .modal-footer .btn-cancel {
+        background: var(--border-color);
+        color: var(--text-dark);
+    }
+
+    .modal-footer .btn-cancel:hover {
+        background: #d1d5db;
+    }
+
+    .modal-footer .btn-confirm {
+        background: var(--danger-color);
+        color: white;
+    }
+
+    .modal-footer .btn-confirm:hover {
+        background: #dc2626;
+    }
+
+    .success-message {
+        background: rgba(16, 185, 129, 0.1);
+        border-left: 4px solid var(--success-color);
+        color: var(--success-color);
+        padding: 15px;
+        border-radius: 6px;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .success-message i {
+        font-size: 20px;
+    }
+
+    @media (max-width: 768px) {
+        .page-header {
+            padding: 20px;
+        }
+
+        .page-header h1 {
+            font-size: 20px;
+        }
+
+        .details-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .card-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .action-buttons {
+            flex-direction: column;
+        }
+
+        .btn {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .modal {
+            width: 95%;
+            padding: 20px;
+        }
+    }
+</style>
+
+<!-- Page Header -->
+<div class="page-header">
+    <h1><i class="bi bi-inbox"></i> Assigned Loan Requests</h1>
+    <p>Review and process loan applications assigned to you by the admin</p>
+</div>
+
+<!-- Success Message -->
+<div id="successMessage" class="success-message" style="display: none;">
+    <i class="bi bi-check-circle"></i>
+    <span id="successText"></span>
+</div>
+
+<!-- Loans Container -->
+<div class="loans-container" id="loansContainer">
+    <!-- Loan cards will be loaded here -->
+    <div class="empty-state">
+        <div class="empty-icon"><i class="bi bi-inbox"></i></div>
+        <div class="empty-text">No assigned loans yet</div>
+        <div class="empty-subtext">Admin will assign loan requests to you here</div>
+    </div>
+</div>
+
+<!-- Reject Modal -->
+<div class="modal-overlay" id="rejectModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3><i class="bi bi-x-circle"></i> Reject Loan Request</h3>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label for="rejectReason">Rejection Reason *</label>
+                <textarea id="rejectReason" placeholder="Please provide detailed reason for rejection..." required></textarea>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-cancel" onclick="closeRejectModal()">Cancel</button>
+            <button class="btn-confirm" onclick="confirmReject()">Confirm Rejection</button>
+        </div>
+    </div>
+</div>
+
+<!-- Dispute Modal -->
+<div class="modal-overlay" id="disputeModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3><i class="bi bi-exclamation-circle"></i> Dispute Loan Request</h3>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label for="disputeReason">Dispute Reason *</label>
+                <textarea id="disputeReason" placeholder="Please explain why you're disputing this loan request..." required></textarea>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-cancel" onclick="closeDisputeModal()">Cancel</button>
+            <button class="btn-confirm" onclick="confirmDispute()">Submit Dispute</button>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentLoanId = null;
+const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadAssignedLoans();
+});
+
+function loadAssignedLoans() {
+    fetch('{% url "api_get_assigned_loans" %}')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to load loans');
+            }
+            return response.json();
+        })
+        .then(data => {
+            renderLoans(data.loans || []);
+        })
+        .catch(error => {
+            console.error('Error loading loans:', error);
+            showError('Failed to load assigned loans');
+        });
+}
+
+function renderLoans(loans) {
+    const container = document.getElementById('loansContainer');
+    
+    if (loans.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon"><i class="bi bi-inbox"></i></div>
+                <div class="empty-text">No assigned loans yet</div>
+                <div class="empty-subtext">Admin will assign loan requests to you here</div>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = loans.map(loan => `
+        <div class="loan-card">
+            <div class="card-header">
+                <div>
+                    <h3>${loan.applicant_name}</h3>
+                </div>
+                <span class="status-badge ${getStatusClass(loan.status)}">${loan.status}</span>
+            </div>
+            
+            <div class="card-body">
+                <!-- Loan Basic Info -->
+                <div class="details-grid">
+                    <div class="detail-item">
+                        <div class="detail-label">Loan Amount</div>
+                        <div class="detail-value">₹ ${formatNumber(loan.loan_amount)}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Loan Type</div>
+                        <div class="detail-value">${loan.loan_type}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Tenure</div>
+                        <div class="detail-value">${loan.tenure_months || 'N/A'} months</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Interest Rate</div>
+                        <div class="detail-value">${loan.interest_rate || 'N/A'}%</div>
+                    </div>
+                </div>
+
+                <!-- Applicant Details Section -->
+                <div class="details-section">
+                    <div class="section-title"><i class="bi bi-person-fill"></i> Applicant Details</div>
+                    <table class="info-table">
+                        <tr>
+                            <td class="label">Full Name</td>
+                            <td class="value">${loan.applicant_name}</td>
+                        </tr>
+                        <tr>
+                            <td class="label">Mobile Number</td>
+                            <td class="value">${loan.mobile_number}</td>
+                        </tr>
+                        <tr>
+                            <td class="label">Email</td>
+                            <td class="value">${loan.email || 'N/A'}</td>
+                        </tr>
+                        <tr>
+                            <td class="label">City</td>
+                            <td class="value">${loan.city || 'N/A'}</td>
+                        </tr>
+                        <tr>
+                            <td class="label">State</td>
+                            <td class="value">${loan.state || 'N/A'}</td>
+                        </tr>
+                        <tr>
+                            <td class="label">PIN Code</td>
+                            <td class="value">${loan.pin_code || 'N/A'}</td>
+                        </tr>
+                        <tr>
+                            <td class="label">Permanent Address</td>
+                            <td class="value">${loan.permanent_address || 'N/A'}</td>
+                        </tr>
+                        <tr>
+                            <td class="label">Current Address</td>
+                            <td class="value">${loan.current_address || 'N/A'}</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- Loan Details Section -->
+                <div class="details-section">
+                    <div class="section-title"><i class="bi bi-briefcase-fill"></i> Loan Details</div>
+                    <table class="info-table">
+                        <tr>
+                            <td class="label">Loan Purpose</td>
+                            <td class="value">${loan.loan_purpose || 'N/A'}</td>
+                        </tr>
+                        <tr>
+                            <td class="label">EMI (Estimated)</td>
+                            <td class="value">₹ ${loan.emi ? formatNumber(loan.emi) : 'N/A'}</td>
+                        </tr>
+                        <tr>
+                            <td class="label">Requested On</td>
+                            <td class="value">${formatDate(loan.created_at)}</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- Bank Details Section -->
+                <div class="details-section">
+                    <div class="section-title"><i class="bi bi-bank"></i> Bank Details</div>
+                    <table class="info-table">
+                        <tr>
+                            <td class="label">Bank Name</td>
+                            <td class="value">${loan.bank_name || 'N/A'}</td>
+                        </tr>
+                        <tr>
+                            <td class="label">Account Number</td>
+                            <td class="value">${maskAccountNumber(loan.bank_account_number)}</td>
+                        </tr>
+                        <tr>
+                            <td class="label">IFSC Code</td>
+                            <td class="value">${loan.bank_ifsc_code || 'N/A'}</td>
+                        </tr>
+                        <tr>
+                            <td class="label">Bank Type</td>
+                            <td class="value">${loan.bank_type || 'N/A'}</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- Co-applicant Section -->
+                ${loan.has_co_applicant ? `
+                <div class="details-section">
+                    <div class="section-title"><i class="bi bi-person-plus-fill"></i> Co-applicant Details</div>
+                    <table class="info-table">
+                        <tr>
+                            <td class="label">Name</td>
+                            <td class="value">${loan.co_applicant_name}</td>
+                        </tr>
+                        <tr>
+                            <td class="label">Phone</td>
+                            <td class="value">${loan.co_applicant_phone}</td>
+                        </tr>
+                        <tr>
+                            <td class="label">Email</td>
+                            <td class="value">${loan.co_applicant_email || 'N/A'}</td>
+                        </tr>
+                    </table>
+                </div>
+                ` : ''}
+
+                <!-- Guarantor Section -->
+                ${loan.has_guarantor ? `
+                <div class="details-section">
+                    <div class="section-title"><i class="bi bi-shield-fill"></i> Guarantor Details</div>
+                    <table class="info-table">
+                        <tr>
+                            <td class="label">Name</td>
+                            <td class="value">${loan.guarantor_name}</td>
+                        </tr>
+                        <tr>
+                            <td class="label">Phone</td>
+                            <td class="value">${loan.guarantor_phone}</td>
+                        </tr>
+                        <tr>
+                            <td class="label">Email</td>
+                            <td class="value">${loan.guarantor_email || 'N/A'}</td>
+                        </tr>
+                    </table>
+                </div>
+                ` : ''}
+
+                <!-- Documents Section -->
+                ${loan.documents && loan.documents.length > 0 ? `
+                <div class="details-section">
+                    <div class="section-title"><i class="bi bi-file-earmark-pdf"></i> Documents</div>
+                    <div class="documents-list">
+                        ${loan.documents.map(doc => `
+                            <div class="document-item">
+                                <div class="document-info">
+                                    <div class="document-icon"><i class="bi bi-file-earmark-pdf"></i></div>
+                                    <div>
+                                        <div class="document-name">${doc.document_type_display}</div>
+                                        <div class="document-date">${formatDate(doc.uploaded_at)}</div>
+                                    </div>
+                                </div>
+                                <a href="${doc.file_url}" class="btn-download" download>
+                                    <i class="bi bi-download"></i> Download
+                                </a>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                ` : ''}
+
+                <!-- Remarks -->
+                ${loan.remarks ? `
+                <div class="details-section">
+                    <div class="section-title"><i class="bi bi-chat-left-text"></i> Remarks</div>
+                    <p style="margin: 0; color: var(--text-dark); line-height: 1.6;">${loan.remarks}</p>
+                </div>
+                ` : ''}
+            </div>
+
+            <!-- Action Buttons at Bottom -->
+            <div class="card-footer">
+                <div class="action-buttons">
+                    <button class="btn btn-approve" onclick="approveLoan(${loan.id})">
+                        <i class="bi bi-check-lg"></i> Approve
+                    </button>
+                    <button class="btn btn-reject" onclick="openRejectModal(${loan.id})">
+                        <i class="bi bi-x-lg"></i> Reject
+                    </button>
+                    <button class="btn btn-dispute" onclick="openDisputeModal(${loan.id})">
+                        <i class="bi bi-exclamation-triangle"></i> Dispute
+                    </button>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function getStatusClass(status) {
+    const statusMap = {
+        'New Entry': 'pending',
+        'Waiting for Processing': 'under-review',
+        'Approved': 'approved',
+        'Rejected': 'rejected',
+    };
+    return statusMap[status] || 'pending';
+}
+
+function approveLoan(loanId) {
+    if (confirm('Are you sure you want to approve this loan request?')) {
+        performLoanAction(loanId, 'approve');
+    }
+}
+
+function openRejectModal(loanId) {
+    currentLoanId = loanId;
+    document.getElementById('rejectModal').classList.add('active');
+}
+
+function closeRejectModal() {
+    document.getElementById('rejectModal').classList.remove('active');
+    document.getElementById('rejectReason').value = '';
+    currentLoanId = null;
+}
+
+function confirmReject() {
+    const reason = document.getElementById('rejectReason').value.trim();
+    if (!reason) {
+        alert('Please provide a reason for rejection');
+        return;
+    }
+    performLoanAction(currentLoanId, 'reject', reason);
+    closeRejectModal();
+}
+
+function openDisputeModal(loanId) {
+    currentLoanId = loanId;
+    document.getElementById('disputeModal').classList.add('active');
+}
+
+function closeDisputeModal() {
+    document.getElementById('disputeModal').classList.remove('active');
+    document.getElementById('disputeReason').value = '';
+    currentLoanId = null;
+}
+
+function confirmDispute() {
+    const reason = document.getElementById('disputeReason').value.trim();
+    if (!reason) {
+        alert('Please provide a reason for dispute');
+        return;
+    }
+    performLoanAction(currentLoanId, 'dispute', reason);
+    closeDisputeModal();
+}
+
+function performLoanAction(loanId, action, reason = '') {
+    const url = `{% url 'employee_loan_action' %}?loan_id=${loanId}&action=${action}`;
+    
+    const data = {
+        action: action,
+    };
+    
+    if (reason) {
+        data.reason = reason;
+    }
+
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken,
+        },
+        body: JSON.stringify(data),
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            showSuccess(`Loan request ${action}ed successfully!`);
+            setTimeout(() => {
+                loadAssignedLoans();
+            }, 1500);
+        } else {
+            showError(data.message || `Failed to ${action} loan request`);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showError(`Failed to ${action} loan request`);
+    });
+}
+
+function showSuccess(message) {
+    const successDiv = document.getElementById('successMessage');
+    document.getElementById('successText').textContent = message;
+    successDiv.style.display = 'flex';
+    setTimeout(() => {
+        successDiv.style.display = 'none';
+    }, 4000);
+}
+
+function showError(message) {
+    alert('Error: ' + message);
+}
+
+function formatNumber(num) {
+    if (!num) return '0';
+    return parseFloat(num).toLocaleString('en-IN', {
+        maximumFractionDigits: 2,
+        minimumFractionDigits: 0
+    });
+}
+
+function formatDate(dateString) {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString('en-IN', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+function maskAccountNumber(accountNumber) {
+    if (!accountNumber || accountNumber.length < 8) return accountNumber || 'N/A';
+    const last4 = accountNumber.slice(-4);
+    return `****${last4}`;
+}
+
+// Close modals when clicking outside
+document.getElementById('rejectModal').addEventListener('click', function(e) {
+    if (e.target === this) closeRejectModal();
+});
+
+document.getElementById('disputeModal').addEventListener('click', function(e) {
+    if (e.target === this) closeDisputeModal();
+});
+</script>
+{% endblock %}

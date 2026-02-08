@@ -1,0 +1,1140 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Request New Entry Loans - DSA Loan Management{% endblock %}
+
+{% block extra_css %}
+<style>
+    .request-loan-container {
+        background: linear-gradient(135deg, #667eea 0%, #183c85 100%);
+        padding: 2rem 0;
+        margin-bottom: 2rem;
+        color: white;
+        border-radius: 10px;
+    }
+
+    .request-loan-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+    }
+
+    .request-loan-header h1 {
+        font-size: 2rem;
+        font-weight: 700;
+        margin: 0;
+        color: white;
+    }
+
+    .request-loan-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+
+    .stat-card {
+        background: rgba(255, 255, 255, 0.1);
+        padding: 1rem;
+        border-radius: 8px;
+        backdrop-filter: blur(10px);
+        text-align: center;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .stat-card .stat-number {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #fff;
+    }
+
+    .stat-card .stat-label {
+        font-size: 0.9rem;
+        color: rgba(255, 255, 255, 0.8);
+        margin-top: 0.5rem;
+    }
+
+    .table-container {
+        background: white;
+        border-radius: 10px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    }
+
+    .table-controls {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .table-filters {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .table-filters select,
+    .table-filters input {
+        padding: 0.5rem;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        font-size: 0.9rem;
+    }
+
+    .btn-group {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .btn-refresh {
+        background: #667eea;
+        color: white;
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 5px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.9rem;
+        transition: background 0.3s ease;
+    }
+
+    .btn-refresh:hover {
+        background: #5568d3;
+    }
+
+    .btn-refresh.loading {
+        opacity: 0.6;
+        pointer-events: none;
+    }
+
+    .loans-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.95rem;
+    }
+
+    .loans-table thead {
+        background: #f8f9fa;
+        border-bottom: 2px solid #dee2e6;
+    }
+
+    .loans-table th {
+        padding: 1rem;
+        text-align: left;
+        font-weight: 600;
+        color: #333;
+    }
+
+    .loans-table td {
+        padding: 1rem;
+        border-bottom: 1px solid #dee2e6;
+        vertical-align: middle;
+    }
+
+    .loans-table tbody tr {
+        transition: background 0.2s ease;
+    }
+
+    .loans-table tbody tr:hover {
+        background: #f8f9fa;
+    }
+
+    .applicant-cell {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .applicant-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: #667eea;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 0.9rem;
+        flex-shrink: 0;
+    }
+
+    .applicant-info {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .applicant-name {
+        font-weight: 600;
+        color: #333;
+    }
+
+    .applicant-phone {
+        font-size: 0.85rem;
+        color: #666;
+    }
+
+    .amount-badge {
+        background: #e8f5e9;
+        color: #2e7d32;
+        padding: 0.4rem 0.8rem;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        white-space: nowrap;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 0.4rem 0.8rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .status-badge.waiting {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    .status-badge.follow-up {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .status-badge.approved {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .status-badge.rejected {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .status-badge.disbursed {
+        background: #d1ecf1;
+        color: #0c5460;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 0.4rem;
+        flex-wrap: wrap;
+    }
+
+    .btn-action {
+        padding: 0.4rem 0.8rem;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 0.85rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        white-space: nowrap;
+    }
+
+    .btn-view {
+        background: #e3f2fd;
+        color: #1976d2;
+    }
+
+    .btn-view:hover {
+        background: #bbdefb;
+    }
+
+    .btn-approve {
+        background: #c8e6c9;
+        color: #2e7d32;
+    }
+
+    .btn-approve:hover {
+        background: #a5d6a7;
+    }
+
+    .btn-reject {
+        background: #ffccbc;
+        color: #d84315;
+    }
+
+    .btn-reject:hover {
+        background: #ffab91;
+    }
+
+    .btn-disburse {
+        background: #b2dfdb;
+        color: #00695c;
+    }
+
+    .btn-disburse:hover {
+        background: #80cbc4;
+    }
+
+    .time-badge {
+        background: #f5f5f5;
+        padding: 0.4rem 0.8rem;
+        border-radius: 5px;
+        font-size: 0.85rem;
+        color: #666;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 2rem;
+        color: #999;
+    }
+
+    .empty-state-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-overlay.active {
+        display: flex;
+    }
+
+    .modal-content {
+        background: white;
+        border-radius: 10px;
+        padding: 2rem;
+        max-width: 600px;
+        width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        border-bottom: 2px solid #f0f0f0;
+        padding-bottom: 1rem;
+    }
+
+    .modal-header h2 {
+        margin: 0;
+        font-size: 1.5rem;
+        color: #333;
+    }
+
+    .modal-close {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: #999;
+    }
+
+    .modal-close:hover {
+        color: #333;
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+        color: #333;
+    }
+
+    .form-group textarea,
+    .form-group input {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        font-family: inherit;
+        font-size: 0.95rem;
+    }
+
+    .form-group textarea:focus,
+    .form-group input:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .modal-actions {
+        display: flex;
+        gap: 1rem;
+        margin-top: 2rem;
+        justify-content: flex-end;
+    }
+
+    .btn-modal-cancel {
+        background: #f0f0f0;
+        color: #333;
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: background 0.3s ease;
+    }
+
+    .btn-modal-cancel:hover {
+        background: #e0e0e0;
+    }
+
+    .btn-modal-confirm {
+        background: #667eea;
+        color: white;
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: background 0.3s ease;
+    }
+
+    .btn-modal-confirm:hover {
+        background: #5568d3;
+    }
+
+    .btn-modal-confirm.danger {
+        background: #d84315;
+    }
+
+    .btn-modal-confirm.danger:hover {
+        background: #b71c1c;
+    }
+
+    .btn-modal-confirm.success {
+        background: #2e7d32;
+    }
+
+    .btn-modal-confirm.success:hover {
+        background: #1b5e20;
+    }
+
+    .loader {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 3px solid rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        border-top-color: white;
+        animation: spin 1s ease-in-out infinite;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    .alert {
+        padding: 1rem;
+        border-radius: 5px;
+        margin-bottom: 1rem;
+        display: none;
+    }
+
+    .alert.show {
+        display: block;
+    }
+
+    .alert-success {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+
+    .alert-error {
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+
+    .alert-info {
+        background: #d1ecf1;
+        color: #0c5460;
+        border: 1px solid #bee5eb;
+    }
+
+    .assigned-info {
+        background: #f0f4ff;
+        padding: 0.75rem;
+        border-radius: 5px;
+        margin-bottom: 1rem;
+        font-size: 0.9rem;
+        color: #333;
+        border-left: 4px solid #667eea;
+    }
+
+    .no-data {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: #999;
+    }
+
+    .spinner {
+        text-align: center;
+        padding: 2rem;
+    }
+
+    .spinner-border {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #667eea;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .request-loan-stats {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .table-controls {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .table-filters {
+            flex-direction: column;
+        }
+
+        .table-filters select,
+        .table-filters input {
+            width: 100%;
+        }
+
+        .loans-table {
+            font-size: 0.85rem;
+        }
+
+        .loans-table th,
+        .loans-table td {
+            padding: 0.75rem;
+        }
+
+        .action-buttons {
+            flex-direction: column;
+        }
+
+        .btn-action {
+            width: 100%;
+            text-align: center;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="request-loan-container">
+    <div class="request-loan-header">
+        <div>
+            <h1>📋 Request New Entry Loans</h1>
+            <p style="margin: 0.5rem 0 0 0; opacity: 0.9;">Loans assigned to you for processing and approval</p>
+        </div>
+    </div>
+
+    <div class="request-loan-stats">
+        <div class="stat-card">
+            <div class="stat-number" id="stat-total">0</div>
+            <div class="stat-label">Total Assigned</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" id="stat-processing">0</div>
+            <div class="stat-label">Awaiting Action</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" id="stat-approved">0</div>
+            <div class="stat-label">Approved</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" id="stat-rejected">0</div>
+            <div class="stat-label">Rejected</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" id="stat-disbursed">0</div>
+            <div class="stat-label">Disbursed</div>
+        </div>
+    </div>
+</div>
+
+<div class="table-container">
+    <div class="alert alert-success" id="alert-success"></div>
+    <div class="alert alert-error" id="alert-error"></div>
+
+    <div class="table-controls">
+        <div class="table-filters">
+            <select id="filter-status">
+                <option value="">All Statuses</option>
+                <option value="Waiting for Processing">Waiting for Processing</option>
+                <option value="Approved">Approved</option>
+                <option value="Rejected">Rejected</option>
+                <option value="Disbursed">Disbursed</option>
+            </select>
+            <input type="date" id="filter-from-date" placeholder="From Date">
+            <input type="date" id="filter-to-date" placeholder="To Date">
+        </div>
+        <div class="btn-group">
+            <button class="btn-refresh" id="btn-refresh" onclick="loadAssignedLoans()">
+                <span>🔄 Refresh</span>
+            </button>
+        </div>
+    </div>
+
+    <div id="loans-loading" class="spinner" style="display: none;">
+        <div class="spinner-border"></div>
+        <p style="color: #999; margin-top: 1rem;">Loading loans...</p>
+    </div>
+
+    <table class="loans-table" id="loans-table" style="display: none;">
+        <thead>
+            <tr>
+                <th>Applicant</th>
+                <th>Loan Amount</th>
+                <th>Type</th>
+                <th>Assigned Date</th>
+                <th>Assigned By</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="loans-tbody">
+        </tbody>
+    </table>
+
+    <div id="no-loans" class="no-data" style="display: none;">
+        <div style="font-size: 3rem; margin-bottom: 1rem;">📭</div>
+        <p>No loans assigned to you yet.</p>
+        <p style="font-size: 0.9rem; color: #ccc;">New loans will appear here when an admin assigns them to you.</p>
+    </div>
+</div>
+
+<!-- VIEW LOAN MODAL -->
+<div class="modal-overlay" id="view-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Loan Application Details</h2>
+            <button class="modal-close" onclick="closeModal('view-modal')">✕</button>
+        </div>
+        <div id="view-modal-body">
+            <!-- Populated dynamically -->
+        </div>
+        <div class="modal-actions">
+            <button class="btn-modal-cancel" onclick="closeModal('view-modal')">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- APPROVE MODAL -->
+<div class="modal-overlay" id="approve-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>✅ Approve Loan</h2>
+            <button class="modal-close" onclick="closeModal('approve-modal')">✕</button>
+        </div>
+        <div id="approve-modal-body">
+            <div class="assigned-info" id="approve-info"></div>
+            <div class="form-group">
+                <label for="approval-notes">Approval Notes (Optional)</label>
+                <textarea id="approval-notes" rows="4" placeholder="Enter any additional notes for approval..."></textarea>
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn-modal-cancel" onclick="closeModal('approve-modal')">Cancel</button>
+            <button class="btn-modal-confirm success" id="btn-confirm-approve" onclick="confirmApprove()">Yes, Approve Loan</button>
+        </div>
+    </div>
+</div>
+
+<!-- REJECT MODAL -->
+<div class="modal-overlay" id="reject-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>❌ Reject Loan</h2>
+            <button class="modal-close" onclick="closeModal('reject-modal')">✕</button>
+        </div>
+        <div id="reject-modal-body">
+            <div class="assigned-info" id="reject-info"></div>
+            <div class="form-group">
+                <label for="rejection-reason">Rejection Reason *</label>
+                <textarea id="rejection-reason" rows="4" placeholder="Please explain why this loan is being rejected..." required></textarea>
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn-modal-cancel" onclick="closeModal('reject-modal')">Cancel</button>
+            <button class="btn-modal-confirm danger" id="btn-confirm-reject" onclick="confirmReject()">Yes, Reject Loan</button>
+        </div>
+    </div>
+</div>
+
+<!-- DISBURSE MODAL -->
+<div class="modal-overlay" id="disburse-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>💰 Mark as Disbursed</h2>
+            <button class="modal-close" onclick="closeModal('disburse-modal')">✕</button>
+        </div>
+        <div id="disburse-modal-body">
+            <div class="assigned-info" id="disburse-info"></div>
+            <div class="form-group">
+                <label for="disburse-amount">Disbursement Amount *</label>
+                <input type="number" id="disburse-amount" placeholder="Enter amount" min="0" step="0.01" required>
+            </div>
+            <div class="form-group">
+                <label for="disburse-date">Disbursement Date *</label>
+                <input type="date" id="disburse-date" required>
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn-modal-cancel" onclick="closeModal('disburse-modal')">Cancel</button>
+            <button class="btn-modal-confirm success" id="btn-confirm-disburse" onclick="confirmDisburse()">Yes, Mark Disbursed</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Global state
+    let currentLoanId = null;
+    let loansData = [];
+    let refreshInterval = null;
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        loadAssignedLoans();
+        updateDashboardStats();
+        
+        // Auto-refresh every 10 seconds
+        refreshInterval = setInterval(() => {
+            loadAssignedLoans();
+            updateDashboardStats();
+        }, 10000);
+
+        // Set today's date as default for disburse
+        document.getElementById('disburse-date').valueAsDate = new Date();
+    });
+
+    // ============ DATA LOADING ============
+
+    function loadAssignedLoans() {
+        const btn = document.getElementById('btn-refresh');
+        btn.classList.add('loading');
+        btn.innerHTML = '<span><div class="loader"></div></span>';
+
+        const status = document.getElementById('filter-status').value;
+        const fromDate = document.getElementById('filter-from-date').value;
+        const toDate = document.getElementById('filter-to-date').value;
+
+        let url = '/api/employee/assigned-loans/';
+        const params = new URLSearchParams();
+        if (status) params.append('status', status);
+        if (fromDate) params.append('from_date', fromDate);
+        if (toDate) params.append('to_date', toDate);
+        if (params.toString()) url += '?' + params.toString();
+
+        fetch(url)
+            .then(response => {
+                if (!response.ok) throw new Error('Failed to load loans');
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    loansData = data.loans || [];
+                    renderLoansTable();
+                } else {
+                    showError(data.error || 'Failed to load loans');
+                }
+            })
+            .catch(error => {
+                showError('Error loading loans: ' + error.message);
+            })
+            .finally(() => {
+                btn.classList.remove('loading');
+                btn.innerHTML = '<span>🔄 Refresh</span>';
+            });
+    }
+
+    function updateDashboardStats() {
+        fetch('/api/employee-dashboard-stats/')
+            .then(response => {
+                if (!response.ok) throw new Error('Failed to load stats');
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('stat-total').textContent = data.total_assigned || 0;
+                    document.getElementById('stat-processing').textContent = data.processing || 0;
+                    document.getElementById('stat-approved').textContent = data.approved || 0;
+                    document.getElementById('stat-rejected').textContent = data.rejected || 0;
+                    document.getElementById('stat-disbursed').textContent = data.disbursed || 0;
+                }
+            })
+            .catch(error => console.error('Error updating stats:', error));
+    }
+
+    // ============ RENDERING ============
+
+    function renderLoansTable() {
+        const table = document.getElementById('loans-table');
+        const tbody = document.getElementById('loans-tbody');
+        const noLoans = document.getElementById('no-loans');
+        const loading = document.getElementById('loans-loading');
+
+        loading.style.display = 'none';
+
+        if (!loansData || loansData.length === 0) {
+            table.style.display = 'none';
+            noLoans.style.display = 'block';
+            return;
+        }
+
+        table.style.display = 'table';
+        noLoans.style.display = 'none';
+        tbody.innerHTML = '';
+
+        loansData.forEach(loan => {
+            const row = document.createElement('tr');
+            const statusClass = getStatusClass(loan.status);
+            const applicantInitial = (loan.applicant_name || '?').charAt(0).toUpperCase();
+            const daysAgo = Math.floor((new Date() - new Date(loan.assigned_date)) / (1000 * 60 * 60 * 24));
+
+            row.innerHTML = `
+                <td>
+                    <div class="applicant-cell">
+                        <div class="applicant-avatar">${applicantInitial}</div>
+                        <div class="applicant-info">
+                            <div class="applicant-name">${loan.applicant_name}</div>
+                            <div class="applicant-phone">${loan.mobile}</div>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <span class="amount-badge">₹${formatCurrency(loan.loan_amount)}</span>
+                </td>
+                <td>${loan.loan_type}</td>
+                <td>
+                    <span>${formatDate(loan.assigned_date)}</span><br>
+                    <span class="time-badge">${daysAgo} days ago</span>
+                </td>
+                <td>Admin</td>
+                <td>
+                    <span class="status-badge ${statusClass}">${loan.status}</span>
+                </td>
+                <td>
+                    <div class="action-buttons">
+                        <button class="btn-action btn-view" onclick="viewLoan(${loan.applicant_id}, '${loan.applicant_name}')">View</button>
+                        ${loan.status === 'Waiting for Processing' ? `
+                            <button class="btn-action btn-approve" onclick="openApprovalModal(${loan.applicant_id}, '${loan.applicant_name}')">Approve</button>
+                            <button class="btn-action btn-reject" onclick="openRejectModal(${loan.applicant_id}, '${loan.applicant_name}')">Reject</button>
+                            <button class="btn-action btn-disburse" onclick="openDisburseModal(${loan.applicant_id}, '${loan.applicant_name}')">Disburse</button>
+                        ` : ''}
+                    </div>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+    }
+
+    // ============ MODAL FUNCTIONS ============
+
+    function openModal(modalId) {
+        document.getElementById(modalId).classList.add('active');
+    }
+
+    function closeModal(modalId) {
+        document.getElementById(modalId).classList.remove('active');
+        // Reset form data
+        if (modalId === 'approve-modal') {
+            document.getElementById('approval-notes').value = '';
+        } else if (modalId === 'reject-modal') {
+            document.getElementById('rejection-reason').value = '';
+        } else if (modalId === 'disburse-modal') {
+            document.getElementById('disburse-amount').value = '';
+            document.getElementById('disburse-date').valueAsDate = new Date();
+        }
+    }
+
+    // Close modal when clicking outside
+    document.querySelectorAll('.modal-overlay').forEach(modal => {
+        modal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal(this.id);
+            }
+        });
+    });
+
+    // ============ LOAN ACTIONS ============
+
+    function viewLoan(loanId, applicantName) {
+        currentLoanId = loanId;
+        // Load full loan details
+        fetch(`/api/employee/assigned-loans/${loanId}/`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    renderLoanDetails(data.loan);
+                    openModal('view-modal');
+                } else {
+                    showError('Failed to load loan details');
+                }
+            })
+            .catch(error => showError('Error: ' + error.message));
+    }
+
+    function renderLoanDetails(loan) {
+        const html = `
+            <div style="background: #f9f9f9; padding: 1rem; border-radius: 5px;">
+                <h3 style="margin-top: 0;">📋 Applicant Information</h3>
+                <p><strong>Name:</strong> ${loan.applicant_name}</p>
+                <p><strong>Phone:</strong> ${loan.mobile}</p>
+                <p><strong>Email:</strong> ${loan.email || 'N/A'}</p>
+                <p><strong>City:</strong> ${loan.city || 'N/A'}</p>
+
+                <h3>💰 Loan Details</h3>
+                <p><strong>Loan Type:</strong> ${loan.loan_type}</p>
+                <p><strong>Loan Amount:</strong> ₹${formatCurrency(loan.loan_amount)}</p>
+                <p><strong>Loan Purpose:</strong> ${loan.loan_purpose || 'N/A'}</p>
+
+                <h3>📝 Status History</h3>
+                <p><strong>Current Status:</strong> <span class="status-badge ${getStatusClass(loan.status)}">${loan.status}</span></p>
+                <p><strong>Assigned Date:</strong> ${formatDate(loan.assigned_date)}</p>
+                ${loan.approval_notes ? `<p><strong>Approval Notes:</strong> ${loan.approval_notes}</p>` : ''}
+                ${loan.rejection_reason ? `<p><strong>Rejection Reason:</strong> ${loan.rejection_reason}</p>` : ''}
+            </div>
+        `;
+        document.getElementById('view-modal-body').innerHTML = html;
+    }
+
+    function openApprovalModal(loanId, applicantName) {
+        currentLoanId = loanId;
+        document.getElementById('approve-info').innerHTML = `
+            Approving loan for <strong>${applicantName}</strong>
+        `;
+        openModal('approve-modal');
+    }
+
+    function confirmApprove() {
+        if (!currentLoanId) return;
+
+        const btn = document.getElementById('btn-confirm-approve');
+        btn.innerHTML = '<div class="loader"></div>';
+        btn.disabled = true;
+
+        const notes = document.getElementById('approval-notes').value;
+
+        fetch(`/api/employee/loan/${currentLoanId}/approve/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({ approval_notes: notes })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showSuccess('Loan approved successfully!');
+                closeModal('approve-modal');
+                loadAssignedLoans();
+                updateDashboardStats();
+            } else {
+                showError(data.error || 'Failed to approve loan');
+            }
+        })
+        .catch(error => showError('Error: ' + error.message))
+        .finally(() => {
+            btn.innerHTML = 'Yes, Approve Loan';
+            btn.disabled = false;
+        });
+    }
+
+    function openRejectModal(loanId, applicantName) {
+        currentLoanId = loanId;
+        document.getElementById('reject-info').innerHTML = `
+            Rejecting loan for <strong>${applicantName}</strong>
+        `;
+        openModal('reject-modal');
+    }
+
+    function confirmReject() {
+        if (!currentLoanId) return;
+
+        const reason = document.getElementById('rejection-reason').value;
+        if (!reason.trim()) {
+            showError('Please provide a rejection reason');
+            return;
+        }
+
+        const btn = document.getElementById('btn-confirm-reject');
+        btn.innerHTML = '<div class="loader"></div>';
+        btn.disabled = true;
+
+        fetch(`/api/employee/loan/${currentLoanId}/reject/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({ rejection_reason: reason })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showSuccess('Loan rejected successfully!');
+                closeModal('reject-modal');
+                loadAssignedLoans();
+                updateDashboardStats();
+            } else {
+                showError(data.error || 'Failed to reject loan');
+            }
+        })
+        .catch(error => showError('Error: ' + error.message))
+        .finally(() => {
+            btn.innerHTML = 'Yes, Reject Loan';
+            btn.disabled = false;
+        });
+    }
+
+    function openDisburseModal(loanId, applicantName) {
+        currentLoanId = loanId;
+        document.getElementById('disburse-info').innerHTML = `
+            Disbursing loan for <strong>${applicantName}</strong>
+        `;
+        openModal('disburse-modal');
+    }
+
+    function confirmDisburse() {
+        if (!currentLoanId) return;
+
+        const amount = document.getElementById('disburse-amount').value;
+        const date = document.getElementById('disburse-date').value;
+
+        if (!amount || !date) {
+            showError('Please fill in all required fields');
+            return;
+        }
+
+        const btn = document.getElementById('btn-confirm-disburse');
+        btn.innerHTML = '<div class="loader"></div>';
+        btn.disabled = true;
+
+        fetch(`/api/employee/loan/${currentLoanId}/disburse/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                disbursement_amount: parseFloat(amount),
+                disbursement_date: date
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showSuccess('Loan marked as disbursed successfully!');
+                closeModal('disburse-modal');
+                loadAssignedLoans();
+                updateDashboardStats();
+            } else {
+                showError(data.error || 'Failed to disburse loan');
+            }
+        })
+        .catch(error => showError('Error: ' + error.message))
+        .finally(() => {
+            btn.innerHTML = 'Yes, Mark Disbursed';
+            btn.disabled = false;
+        });
+    }
+
+    // ============ UTILITY FUNCTIONS ============
+
+    function getStatusClass(status) {
+        const classMap = {
+            'Waiting for Processing': 'waiting',
+            'Required Follow-up': 'follow-up',
+            'Approved': 'approved',
+            'Rejected': 'rejected',
+            'Disbursed': 'disbursed'
+        };
+        return classMap[status] || 'waiting';
+    }
+
+    function formatCurrency(value) {
+        if (!value) return '0';
+        return parseFloat(value).toLocaleString('en-IN', { 
+            maximumFractionDigits: 0 
+        });
+    }
+
+    function formatDate(dateStr) {
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('en-IN', { 
+            year: 'numeric', 
+            month: 'short', 
+            day: 'numeric' 
+        });
+    }
+
+    function showSuccess(message) {
+        const alert = document.getElementById('alert-success');
+        alert.textContent = message;
+        alert.classList.add('show');
+        setTimeout(() => alert.classList.remove('show'), 4000);
+    }
+
+    function showError(message) {
+        const alert = document.getElementById('alert-error');
+        alert.textContent = message;
+        alert.classList.add('show');
+        setTimeout(() => alert.classList.remove('show'), 4000);
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    // Filter handlers
+    document.getElementById('filter-status').addEventListener('change', loadAssignedLoans);
+    document.getElementById('filter-from-date').addEventListener('change', loadAssignedLoans);
+    document.getElementById('filter-to-date').addEventListener('change', loadAssignedLoans);
+
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', () => {
+        if (refreshInterval) clearInterval(refreshInterval);
+    });
+</script>
+{% endblock %}

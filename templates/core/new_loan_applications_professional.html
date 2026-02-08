@@ -1,0 +1,1044 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}New Loan Applications - Professional Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --primary-color: #10b981;
+        --secondary-color: #059669;
+        --accent-color: #06b6d4;
+        --danger-color: #ef4444;
+        --warning-color: #f59e0b;
+        --text-dark: #1f2937;
+        --text-light: #9ca3af;
+        --border-color: #e5e7eb;
+        --bg-light: #f9fafb;
+    }
+
+    .dashboard-header {
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+        color: white;
+        padding: 35px;
+        border-radius: 12px;
+        margin-bottom: 30px;
+        box-shadow: 0 10px 30px rgba(16, 185, 129, 0.15);
+    }
+
+    .dashboard-header h1 {
+        margin: 0;
+        font-size: 32px;
+        font-weight: 700;
+        letter-spacing: -0.5px;
+    }
+
+    .dashboard-header p {
+        margin: 8px 0 0 0;
+        opacity: 0.95;
+        font-size: 15px;
+    }
+
+    .controls-container {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 25px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .search-field {
+        flex: 1;
+        min-width: 300px;
+        position: relative;
+    }
+
+    .search-field input {
+        width: 100%;
+        padding: 12px 16px;
+        border: 2px solid var(--border-color);
+        border-radius: 8px;
+        font-size: 14px;
+        transition: all 0.3s ease;
+        background-color: white;
+    }
+
+    .search-field input:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+    }
+
+    .btn-controls {
+        display: flex;
+        gap: 10px;
+    }
+
+    .btn-action {
+        padding: 12px 24px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 14px;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .btn-primary {
+        background: var(--primary-color);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: var(--secondary-color);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(16, 185, 129, 0.25);
+    }
+
+    .btn-secondary {
+        background: white;
+        color: var(--primary-color);
+        border: 2px solid var(--primary-color);
+    }
+
+    .btn-secondary:hover {
+        background: var(--bg-light);
+        transform: translateY(-2px);
+    }
+
+    .btn-action:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none !important;
+    }
+
+    .table-container {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        overflow: hidden;
+    }
+
+    .table-header {
+        background: var(--bg-light);
+        padding: 20px;
+        border-bottom: 2px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .loading-indicator {
+        display: none;
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: var(--primary-color);
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        z-index: 1000;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .loading-indicator.show {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+        from {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    .spinner {
+        width: 16px;
+        height: 16px;
+        border: 2px solid rgba(255,255,255,0.3);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    .applications-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .applications-table thead th {
+        padding: 18px;
+        text-align: left;
+        font-weight: 700;
+        color: var(--text-dark);
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        background: var(--bg-light);
+        border-bottom: 2px solid var(--border-color);
+    }
+
+    .applications-table tbody tr {
+        border-bottom: 1px solid var(--border-color);
+        transition: background-color 0.2s ease;
+    }
+
+    .applications-table tbody tr:hover {
+        background-color: rgba(16, 185, 129, 0.04);
+    }
+
+    .applications-table tbody td {
+        padding: 16px 18px;
+        font-size: 14px;
+        color: var(--text-dark);
+    }
+
+    .applicant-col {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .applicant-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 16px;
+    }
+
+    .applicant-details h6 {
+        margin: 0;
+        font-weight: 600;
+        color: var(--text-dark);
+    }
+
+    .applicant-details p {
+        margin: 2px 0 0 0;
+        font-size: 12px;
+        color: var(--text-light);
+    }
+
+    .amount-cell {
+        color: var(--primary-color);
+        font-weight: 700;
+        font-size: 15px;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .status-new {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .status-waiting {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .status-approved {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .status-rejected {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .age-cell {
+        color: var(--text-light);
+        font-size: 13px;
+    }
+
+    .actions-col {
+        display: flex;
+        gap: 6px;
+    }
+
+    .btn-small {
+        padding: 6px 12px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-block;
+    }
+
+    .btn-view {
+        background: #dbeafe;
+        color: #1976d2;
+    }
+
+    .btn-view:hover {
+        background: #bfdbfe;
+        transform: translateY(-1px);
+    }
+
+    .btn-assign {
+        background: #d1fae5;
+        color: #059669;
+    }
+
+    .btn-assign:hover {
+        background: #a7f3d0;
+        transform: translateY(-1px);
+    }
+
+    .pagination-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 10px;
+        padding: 25px;
+        background: var(--bg-light);
+        border-top: 2px solid var(--border-color);
+    }
+
+    .pagination-btn {
+        padding: 8px 12px;
+        border: 1px solid var(--border-color);
+        background: white;
+        color: var(--text-dark);
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .pagination-btn:hover:not(:disabled) {
+        border-color: var(--primary-color);
+        color: var(--primary-color);
+    }
+
+    .pagination-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .pagination-info {
+        color: var(--text-light);
+        font-size: 13px;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+    }
+
+    .empty-state-icon {
+        font-size: 48px;
+        margin-bottom: 16px;
+        opacity: 0.5;
+    }
+
+    .empty-state-text {
+        color: var(--text-light);
+        margin: 0;
+    }
+
+    .detail-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 999;
+        align-items: center;
+        justify-content: center;
+        animation: fadeIn 0.3s ease;
+    }
+
+    .detail-modal.show {
+        display: flex;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
+        }
+    }
+
+    .detail-modal-content {
+        background: white;
+        border-radius: 12px;
+        width: 90%;
+        max-width: 900px;
+        max-height: 90vh;
+        overflow-y: auto;
+        animation: slideUp 0.3s ease;
+    }
+
+    @keyframes slideUp {
+        from {
+            transform: translateY(40px);
+            opacity: 0;
+        }
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+
+    .modal-header {
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+        color: white;
+        padding: 25px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 2px solid var(--border-color);
+    }
+
+    .modal-header h2 {
+        margin: 0;
+        font-size: 22px;
+        font-weight: 700;
+    }
+
+    .close-modal {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 24px;
+        cursor: pointer;
+        padding: 0;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: transform 0.2s;
+    }
+
+    .close-modal:hover {
+        transform: rotate(90deg);
+    }
+
+    .modal-body {
+        padding: 30px;
+    }
+
+    .detail-section {
+        margin-bottom: 30px;
+    }
+
+    .detail-section-title {
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--text-dark);
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid var(--primary-color);
+    }
+
+    .detail-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+    }
+
+    .detail-item {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .detail-label {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-light);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 6px;
+    }
+
+    .detail-value {
+        font-size: 15px;
+        color: var(--text-dark);
+        font-weight: 500;
+    }
+
+    .document-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 12px;
+    }
+
+    .document-item {
+        padding: 12px;
+        border: 2px solid var(--border-color);
+        border-radius: 8px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .document-item:hover {
+        border-color: var(--primary-color);
+        box-shadow: 0 4px 8px rgba(16, 185, 129, 0.1);
+    }
+
+    .document-icon {
+        font-size: 24px;
+        margin-bottom: 8px;
+    }
+
+    .document-name {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-dark);
+    }
+
+    .assignment-panel {
+        background: linear-gradient(135deg, #f0f9ff 0%, #f0f9ff 100%);
+        border: 2px solid #bfdbfe;
+        border-radius: 8px;
+        padding: 20px;
+    }
+
+    .assignment-panel h4 {
+        margin-top: 0;
+        color: var(--text-dark);
+    }
+
+    .assignment-select {
+        width: 100%;
+        padding: 10px;
+        border: 2px solid var(--border-color);
+        border-radius: 6px;
+        font-size: 14px;
+    }
+
+    .assignment-select:focus {
+        outline: none;
+        border-color: var(--primary-color);
+    }
+
+    .modal-footer {
+        padding: 20px 30px;
+        background: var(--bg-light);
+        border-top: 2px solid var(--border-color);
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+    }
+
+    .btn-modal {
+        padding: 12px 24px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .btn-modal-primary {
+        background: var(--primary-color);
+        color: white;
+    }
+
+    .btn-modal-primary:hover {
+        background: var(--secondary-color);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+    }
+
+    .btn-modal-secondary {
+        background: white;
+        color: var(--text-dark);
+        border: 2px solid var(--border-color);
+    }
+
+    .btn-modal-secondary:hover {
+        border-color: var(--text-dark);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+    <h1><i class="bi bi-inbox"></i> New Loan Applications</h1>
+    <p>Manage and process new loan applications with real-time updates</p>
+</div>
+
+<div class="controls-container">
+    <div class="search-field">
+        <input type="text" id="searchInput" placeholder="🔍 Search by name, email, or phone..." autocomplete="off">
+    </div>
+    <div class="btn-controls">
+        <button id="refreshBtn" class="btn-action btn-primary">
+            <i class="bi bi-arrow-clockwise"></i> Refresh Data
+        </button>
+    </div>
+</div>
+
+<div class="loading-indicator" id="loadingIndicator">
+    <div class="spinner"></div>
+    <span>Updating...</span>
+</div>
+
+<div class="table-container">
+    <div class="table-header">
+        <div>
+            <strong>Total Applications:</strong> <span id="totalCount">0</span>
+        </div>
+    </div>
+    
+    <table class="applications-table" id="applicationsTable">
+        <thead>
+            <tr>
+                <th>Applicant</th>
+                <th>Loan Type</th>
+                <th>Amount (₹)</th>
+                <th>Status</th>
+                <th>Age (Days)</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="tableBody">
+            <tr>
+                <td colspan="6" class="empty-state">
+                    <div class="empty-state-icon">📋</div>
+                    <p class="empty-state-text">Loading applications...</p>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="pagination-container">
+        <button class="pagination-btn" id="prevBtn" disabled>
+            <i class="bi bi-chevron-left"></i> Previous
+        </button>
+        <span class="pagination-info">
+            Page <span id="currentPage">1</span> of <span id="totalPages">1</span>
+        </span>
+        <button class="pagination-btn" id="nextBtn">
+            Next <i class="bi bi-chevron-right"></i>
+        </button>
+    </div>
+</div>
+
+<!-- Detail Modal -->
+<div class="detail-modal" id="detailModal">
+    <div class="detail-modal-content">
+        <div class="modal-header">
+            <h2 id="modalTitle">Loan Application Details</h2>
+            <button class="close-modal" onclick="closeDetailModal()">&times;</button>
+        </div>
+        <div class="modal-body" id="modalBody">
+            <!-- Details will be loaded here -->
+        </div>
+        <div class="modal-footer">
+            <button class="btn-modal btn-modal-secondary" onclick="closeDetailModal()">Close</button>
+            <button class="btn-modal btn-modal-primary" id="assignBtn" onclick="assignLoan()">
+                <i class="bi bi-person-plus"></i> Assign to Employee
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+// State management
+let currentPage = 1;
+let totalPages = 1;
+let selectedLoanId = null;
+
+// Load applications on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadApplications();
+    
+    // Event listeners
+    document.getElementById('refreshBtn').addEventListener('click', refreshData);
+    document.getElementById('searchInput').addEventListener('input', debounce(searchApplications, 300));
+    document.getElementById('prevBtn').addEventListener('click', previousPage);
+    document.getElementById('nextBtn').addEventListener('click', nextPage);
+    
+    // Close modal on outside click
+    document.getElementById('detailModal').addEventListener('click', function(e) {
+        if (e.target === this) closeDetailModal();
+    });
+});
+
+function loadApplications(page = 1) {
+    const search = document.getElementById('searchInput').value;
+    
+    showLoading();
+    
+    fetch(`/api/new-loan-applications/?page=${page}&search=${encodeURIComponent(search)}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                renderTable(data.data);
+                updatePagination(data.pagination);
+            }
+            hideLoading();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            hideLoading();
+            showError('Failed to load applications');
+        });
+}
+
+function renderTable(applications) {
+    const tbody = document.getElementById('tableBody');
+    
+    if (applications.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" class="empty-state">
+                    <div class="empty-state-icon">📭</div>
+                    <p class="empty-state-text">No applications found</p>
+                </td>
+            </tr>
+        `;
+        document.getElementById('totalCount').textContent = '0';
+        return;
+    }
+    
+    tbody.innerHTML = applications.map(app => `
+        <tr>
+            <td>
+                <div class="applicant-col">
+                    <div class="applicant-avatar">${app.name.charAt(0).toUpperCase()}</div>
+                    <div class="applicant-details">
+                        <h6>${escapeHtml(app.name)}</h6>
+                        <p>${escapeHtml(app.email)}</p>
+                    </div>
+                </div>
+            </td>
+            <td>${app.loan_type}</td>
+            <td><span class="amount-cell">₹${formatNumber(app.loan_amount)}</span></td>
+            <td>
+                <span class="status-badge status-${app.status}">${capitalize(app.status)}</span>
+            </td>
+            <td><span class="age-cell">${app.days_old} days</span></td>
+            <td>
+                <div class="actions-col">
+                    <button class="btn-small btn-view" onclick="viewDetails(${app.id})">
+                        <i class="bi bi-eye"></i> View
+                    </button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function updatePagination(pagination) {
+    currentPage = pagination.current_page;
+    totalPages = pagination.total_pages;
+    document.getElementById('totalCount').textContent = pagination.total_count;
+    document.getElementById('currentPage').textContent = currentPage;
+    document.getElementById('totalPages').textContent = totalPages;
+    document.getElementById('prevBtn').disabled = !pagination.has_prev;
+    document.getElementById('nextBtn').disabled = !pagination.has_next;
+}
+
+function viewDetails(loanId) {
+    selectedLoanId = loanId;
+    showLoading();
+    
+    fetch(`/api/loan-detail/${loanId}/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                renderDetailModal(data.data);
+                document.getElementById('detailModal').classList.add('show');
+            }
+            hideLoading();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            hideLoading();
+            showError('Failed to load details');
+        });
+}
+
+function renderDetailModal(data) {
+    const modalBody = document.getElementById('modalBody');
+    const applicant = data.applicant;
+    const loan = data.loan;
+    const bank = data.bank;
+    const docs = data.documents;
+    
+    modalBody.innerHTML = `
+        <!-- Applicant Details -->
+        <div class="detail-section">
+            <h3 class="detail-section-title"><i class="bi bi-person"></i> Applicant Details</h3>
+            <div class="detail-grid">
+                <div class="detail-item">
+                    <span class="detail-label">Full Name</span>
+                    <span class="detail-value">${escapeHtml(applicant.full_name)}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Email</span>
+                    <span class="detail-value">${escapeHtml(applicant.email)}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Mobile</span>
+                    <span class="detail-value">${escapeHtml(applicant.mobile)}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">City</span>
+                    <span class="detail-value">${escapeHtml(applicant.city || 'N/A')}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">State</span>
+                    <span class="detail-value">${escapeHtml(applicant.state || 'N/A')}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Pin Code</span>
+                    <span class="detail-value">${escapeHtml(applicant.pin_code || 'N/A')}</span>
+                </div>
+            </div>
+            <div class="detail-item" style="margin-top: 15px;">
+                <span class="detail-label">Permanent Address</span>
+                <span class="detail-value">${escapeHtml(applicant.permanent_address || 'N/A')}</span>
+            </div>
+        </div>
+
+        <!-- Loan Details -->
+        <div class="detail-section">
+            <h3 class="detail-section-title"><i class="bi bi-cash-coin"></i> Loan Details</h3>
+            <div class="detail-grid">
+                <div class="detail-item">
+                    <span class="detail-label">Loan Type</span>
+                    <span class="detail-value">${loan.type}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Loan Amount</span>
+                    <span class="detail-value">₹${formatNumber(loan.amount)}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Tenure</span>
+                    <span class="detail-value">${loan.tenure_months} Months</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Interest Rate</span>
+                    <span class="detail-value">${loan.interest_rate}%</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">EMI (Est.)</span>
+                    <span class="detail-value">₹${formatNumber(loan.emi)}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Status</span>
+                    <span class="detail-value" style="color: var(--primary-color); font-weight: 600;">${capitalize(loan.status)}</span>
+                </div>
+            </div>
+            <div class="detail-item" style="margin-top: 15px;">
+                <span class="detail-label">Loan Purpose</span>
+                <span class="detail-value">${escapeHtml(loan.purpose || 'N/A')}</span>
+            </div>
+        </div>
+
+        <!-- Bank Details -->
+        <div class="detail-section">
+            <h3 class="detail-section-title"><i class="bi bi-bank"></i> Bank Details</h3>
+            <div class="detail-grid">
+                <div class="detail-item">
+                    <span class="detail-label">Bank Name</span>
+                    <span class="detail-value">${escapeHtml(bank.name || 'N/A')}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Account Number</span>
+                    <span class="detail-value">${escapeHtml(bank.account_number || 'N/A')}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">IFSC Code</span>
+                    <span class="detail-value">${escapeHtml(bank.ifsc_code || 'N/A')}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Bank Type</span>
+                    <span class="detail-value">${bank.type}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Documents -->
+        ${docs.length > 0 ? `
+        <div class="detail-section">
+            <h3 class="detail-section-title"><i class="bi bi-file-earmark"></i> Documents</h3>
+            <div class="document-list">
+                ${docs.map(doc => `
+                    <a href="${doc.file_url}" target="_blank" class="document-item">
+                        <div class="document-icon">📄</div>
+                        <div class="document-name">${doc.type}</div>
+                    </a>
+                `).join('')}
+            </div>
+        </div>
+        ` : ''}
+
+        <!-- Assignment Panel (Admin only) -->
+        <div class="detail-section">
+            <div class="assignment-panel">
+                <h4>📋 Assignment Panel</h4>
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <span class="detail-label">Assigned Employee</span>
+                        <span class="detail-value">${data.assignment.assigned_employee.name}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Assigned Agent</span>
+                        <span class="detail-value">${data.assignment.assigned_agent.name}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function assignLoan() {
+    if (!selectedLoanId) return;
+    
+    const employeeId = prompt('Enter Employee ID or leave blank to unassign:');
+    if (employeeId === null) return;
+    
+    showLoading();
+    
+    const payload = employeeId ? { employee_id: parseInt(employeeId) } : { employee_id: null };
+    
+    fetch(`/api/assign-loan-to-employee/${selectedLoanId}/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken'),
+        },
+        body: JSON.stringify(payload),
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showSuccess(data.message);
+            closeDetailModal();
+            loadApplications(currentPage);
+        } else {
+            showError(data.error);
+        }
+        hideLoading();
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        hideLoading();
+        showError('Failed to assign loan');
+    });
+}
+
+function closeDetailModal() {
+    document.getElementById('detailModal').classList.remove('show');
+    selectedLoanId = null;
+}
+
+function refreshData() {
+    loadApplications(1);
+}
+
+function searchApplications() {
+    loadApplications(1);
+}
+
+function previousPage() {
+    if (currentPage > 1) {
+        loadApplications(currentPage - 1);
+    }
+}
+
+function nextPage() {
+    if (currentPage < totalPages) {
+        loadApplications(currentPage + 1);
+    }
+}
+
+// Utility functions
+function showLoading() {
+    document.getElementById('loadingIndicator').classList.add('show');
+}
+
+function hideLoading() {
+    document.getElementById('loadingIndicator').classList.remove('show');
+}
+
+function showSuccess(message) {
+    alert(message);
+}
+
+function showError(message) {
+    alert('Error: ' + message);
+}
+
+function debounce(func, delay) {
+    let timeoutId;
+    return function(...args) {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => func.apply(this, args), delay);
+    };
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function formatNumber(num) {
+    return new Intl.NumberFormat('en-IN').format(Math.round(num));
+}
+
+function capitalize(str) {
+    return str.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}

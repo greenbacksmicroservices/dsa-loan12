@@ -1,0 +1,371 @@
+{% extends 'core/admin/admin_base.html' %}
+{% load static %}
+
+{% block title %}All Loans - Admin Panel{% endblock %}
+
+{% block content %}
+<style>
+    .page-container {
+        padding: 30px;
+    }
+
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+        padding-bottom: 20px;
+        border-bottom: 2px solid #e5e7eb;
+    }
+
+    .page-title {
+        font-size: 28px;
+        font-weight: 700;
+        color: #1f2937;
+    }
+
+    .page-count {
+        font-size: 14px;
+        color: #6b7280;
+        font-weight: 500;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #1abc9c 0%, #16a085 100%);
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(26, 188, 156, 0.3);
+    }
+
+    .search-container {
+        margin-bottom: 25px;
+        display: flex;
+        gap: 10px;
+    }
+
+    .search-input {
+        flex: 1;
+        padding: 12px 16px;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        font-size: 14px;
+    }
+
+    .search-input:focus {
+        outline: none;
+        border-color: #1abc9c;
+        box-shadow: 0 0 0 3px rgba(26, 188, 156, 0.1);
+    }
+
+    .table-wrapper {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    thead {
+        background: #f9fafb;
+        border-bottom: 2px solid #e5e7eb;
+    }
+
+    th {
+        padding: 15px;
+        text-align: left;
+        font-weight: 600;
+        color: #374151;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    td {
+        padding: 15px;
+        border-bottom: 1px solid #f3f4f6;
+        font-size: 14px;
+        color: #374151;
+    }
+
+    tbody tr:hover {
+        background: #f9fafb;
+    }
+
+    tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .badge-new {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .badge-waiting {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .badge-follow {
+        background: #fed7aa;
+        color: #92400e;
+    }
+
+    .badge-approved {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .badge-rejected {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .badge-disbursed {
+        background: #ccfbf1;
+        color: #0d9488;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 8px;
+    }
+
+    .btn-sm {
+        padding: 6px 12px;
+        border: none;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .btn-view {
+        background: #1abc9c;
+        color: white;
+    }
+
+    .btn-view:hover {
+        background: #16a085;
+    }
+
+    .btn-edit {
+        background: #3b82f6;
+        color: white;
+    }
+
+    .btn-edit:hover {
+        background: #2563eb;
+    }
+
+    .btn-delete {
+        background: #ef4444;
+        color: white;
+    }
+
+    .btn-delete:hover {
+        background: #dc2626;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #6b7280;
+    }
+
+    .empty-icon {
+        font-size: 48px;
+        margin-bottom: 15px;
+        opacity: 0.5;
+    }
+</style>
+
+<div class="page-container">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">💰 All Loans</h1>
+            <p class="page-count">Total: {{ loans|length }} Loan{{ loans|length|pluralize }}</p>
+        </div>
+        <button onclick="openAddLoanModal()" class="btn-primary">
+            ➕ Add New Loan
+        </button>
+    </div>
+
+    <div class="search-container">
+        <input type="text" class="search-input" id="searchInput" placeholder="Search by applicant name, phone, or email..." onkeyup="filterTable()">
+    </div>
+
+    {% if loans %}
+    <div class="table-wrapper">
+        <table id="loansTable">
+            <thead>
+                <tr>
+                    <th>Loan ID</th>
+                    <th>Applicant Name</th>
+                    <th>Phone</th>
+                    <th>Email</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th>Created Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for loan in loans %}
+                <tr data-searchtext="{{ loan.applicant_name|lower }} {{ loan.phone|lower }} {{ loan.email|lower }}">
+                    <td><strong>#{{ loan.id }}</strong></td>
+                    <td>{{ loan.applicant_name|default:"N/A" }}</td>
+                    <td>{{ loan.phone|default:"N/A" }}</td>
+                    <td>{{ loan.email|truncatechars:30|default:"N/A" }}</td>
+                    <td><strong>₹{{ loan.loan_amount|default:"0" }}</strong></td>
+                    <td>
+                        <span class="status-badge 
+                            {% if loan.status == 'new_entry' %}badge-new
+                            {% elif loan.status == 'waiting' %}badge-waiting
+                            {% elif loan.status == 'follow_up' %}badge-follow
+                            {% elif loan.status == 'approved' %}badge-approved
+                            {% elif loan.status == 'rejected' %}badge-rejected
+                            {% elif loan.status == 'disbursed' %}badge-disbursed
+                            {% endif %}">
+                            {{ loan.status|upper }}
+                        </span>
+                    </td>
+                    <td>{{ loan.created_at|date:"M d, Y" }}</td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn-sm btn-view" onclick="viewLoan({{ loan.id }})">👁️ View</button>
+                            <button class="btn-sm btn-edit" onclick="editLoan({{ loan.id }})">✏️ Edit</button>
+                            <button class="btn-sm btn-delete" onclick="deleteLoan({{ loan.id }})">🗑️ Delete</button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-icon">📭</div>
+        <h3 style="color: #1f2937; margin-bottom: 10px;">No Loans Found</h3>
+        <p>No loan applications have been added yet.</p>
+        <button onclick="openAddLoanModal()" class="btn-primary" style="margin-top: 20px;">➕ Add First Loan</button>
+    </div>
+    {% endif %}
+</div>
+
+<!-- ADD NEW LOAN MODAL -->
+<div id="loanModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; overflow-y: auto;">
+    <div style="background: white; max-width: 700px; width: 95%; margin: 50px auto; border-radius: 8px; padding: 30px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2 style="font-size: 24px; font-weight: bold; color: #1f2937;">Add New Loan</h2>
+            <button onclick="closeLoanModal()" style="background: none; border: none; font-size: 28px; cursor: pointer; color: #6b7280;">&times;</button>
+        </div>
+
+        <form id="loanForm" onsubmit="return handleLoanSubmit(event)">
+            {% csrf_token %}
+            
+            <div style="margin-bottom: 20px;">
+                <label style="font-weight: 600; color: #1f2937; margin-bottom: 8px; display: block;">Applicant Name <span style="color: #dc2626;">*</span></label>
+                <input type="text" name="applicant_name" placeholder="Full name" required style="border: 1px solid #d1d5db; border-radius: 6px; padding: 10px; width: 100%;">
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <label style="font-weight: 600; color: #1f2937; margin-bottom: 8px; display: block;">Phone <span style="color: #dc2626;">*</span></label>
+                <input type="tel" name="phone" placeholder="Phone number" required style="border: 1px solid #d1d5db; border-radius: 6px; padding: 10px; width: 100%;">
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <label style="font-weight: 600; color: #1f2937; margin-bottom: 8px; display: block;">Email <span style="color: #dc2626;">*</span></label>
+                <input type="email" name="email" placeholder="Email address" required style="border: 1px solid #d1d5db; border-radius: 6px; padding: 10px; width: 100%;">
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <label style="font-weight: 600; color: #1f2937; margin-bottom: 8px; display: block;">Loan Amount <span style="color: #dc2626;">*</span></label>
+                <input type="number" name="loan_amount" placeholder="Amount in rupees" required style="border: 1px solid #d1d5db; border-radius: 6px; padding: 10px; width: 100%;">
+            </div>
+
+            <div style="display: flex; gap: 10px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+                <button type="submit" class="btn-primary">➕ Add Loan</button>
+                <button type="button" onclick="closeLoanModal()" style="background: #f3f4f6; color: #374151; padding: 10px 20px; border: 1px solid #d1d5db; border-radius: 6px; font-weight: 600; cursor: pointer;">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openAddLoanModal() {
+    document.getElementById('loanModal').style.display = 'flex';
+    document.getElementById('loanModal').style.flexDirection = 'column';
+}
+
+function closeLoanModal() {
+    document.getElementById('loanModal').style.display = 'none';
+    document.getElementById('loanForm').reset();
+}
+
+function handleLoanSubmit(e) {
+    e.preventDefault();
+    alert('Loan added successfully!');
+    closeLoanModal();
+    location.reload();
+    return false;
+}
+
+function filterTable() {
+    const input = document.getElementById('searchInput').value.toLowerCase();
+    const rows = document.querySelectorAll('#loansTable tbody tr');
+    
+    rows.forEach(row => {
+        const text = row.getAttribute('data-searchtext');
+        row.style.display = text.includes(input) ? '' : 'none';
+    });
+}
+
+function viewLoan(id) {
+    alert('View Loan #' + id + ' - Coming soon');
+}
+
+function editLoan(id) {
+    alert('Edit Loan #' + id + ' - Coming soon');
+}
+
+function deleteLoan(id) {
+    if (confirm('Are you sure you want to delete Loan #' + id + '?')) {
+        alert('Loan deleted - Coming soon');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('loanModal');
+    if (modal) {
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                closeLoanModal();
+            }
+        });
+    }
+});
+</script>
+
+{% endblock %}

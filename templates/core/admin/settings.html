@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+{% extends 'core/admin/admin_base.html' %}
+{% load static %}
+
+{% block title %}Settings - DSA Admin{% endblock %}
+{% block page_title %}Settings{% endblock %}
+
+{% block content %}
+<style>
+    .settings-container {
+        max-width: 1000px;
+        margin: 0 auto;
+    }
+
+    .settings-section {
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 25px;
+        margin-bottom: 20px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .settings-section-title {
+        font-size: 18px;
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #e5e7eb;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .settings-section-title i {
+        color: #10b981;
+        font-size: 20px;
+    }
+
+    .settings-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+    }
+
+    .setting-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px;
+        background: #f9fafb;
+        border-radius: 6px;
+        border: 1px solid #e5e7eb;
+    }
+
+    .setting-label {
+        font-weight: 500;
+        color: #374151;
+    }
+
+    .setting-value {
+        color: #6b7280;
+        font-size: 14px;
+    }
+
+    .btn-setting {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .btn-setting:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(16, 185, 129, 0.3);
+    }
+
+    .btn-secondary-setting {
+        background: #f3f4f6;
+        color: #374151;
+        border: 1px solid #d1d5db;
+    }
+
+    .btn-secondary-setting:hover {
+        background: #e5e7eb;
+    }
+
+    .toggle-switch {
+        position: relative;
+        display: inline-block;
+        width: 50px;
+        height: 26px;
+    }
+
+    .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: .4s;
+        border-radius: 26px;
+    }
+
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 20px;
+        width: 20px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: .4s;
+        border-radius: 50%;
+    }
+
+    input:checked + .slider {
+        background-color: #10b981;
+    }
+
+    input:checked + .slider:before {
+        transform: translateX(24px);
+    }
+
+    .alert-box {
+        padding: 15px;
+        border-radius: 6px;
+        margin-bottom: 15px;
+    }
+
+    .alert-info {
+        background: #ecfdf5;
+        border: 1px solid #10b981;
+        color: #047857;
+    }
+
+    .alert-warning {
+        background: #fef3c7;
+        border: 1px solid #f59e0b;
+        color: #b45309;
+    }
+
+    .info-icon {
+        display: inline-block;
+        margin-right: 8px;
+    }
+</style>
+
+<div class="settings-container">
+    <!-- Django Messages -->
+    {% if messages %}
+    <div style="margin-bottom: 20px;">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert" style="border-left: 4px solid {% if message.tags == 'success' %}#10b981{% elif message.tags == 'error' %}#dc2626{% else %}#f59e0b{% endif %};">
+            <i class="bi bi-{% if message.tags == 'success' %}check-circle{% elif message.tags == 'error' %}exclamation-circle{% else %}info-circle{% endif %}" style="margin-right: 8px;"></i>
+            <strong>{{ message }}</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- System Settings Section -->
+    <div class="settings-section">
+        <div class="settings-section-title">
+            <i class="fas fa-cog"></i> System Settings
+        </div>
+        
+        <div class="alert-box alert-info">
+            <i class="info-icon fas fa-info-circle"></i>
+            Configure general system settings and preferences
+        </div>
+
+        <div class="settings-grid">
+            <div class="setting-item">
+                <div>
+                    <div class="setting-label">Application Name</div>
+                    <div class="setting-value">DSA Loan Management</div>
+                </div>
+                <button class="btn-secondary-setting">
+                    <i class="fas fa-edit"></i> Edit
+                </button>
+            </div>
+
+            <div class="setting-item">
+                <div>
+                    <div class="setting-label">System Status</div>
+                    <div class="setting-value">Active & Running</div>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" checked>
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="setting-item">
+                <div>
+                    <div class="setting-label">Maintenance Mode</div>
+                    <div class="setting-value">Disabled</div>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="setting-item">
+                <div>
+                    <div class="setting-label">Database Backup</div>
+                    <div class="setting-value">Last: Today 12:00 PM</div>
+                </div>
+                <button class="btn-secondary-setting">
+                    <i class="fas fa-database"></i> Backup Now
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Security Settings Section -->
+    <div class="settings-section">
+        <div class="settings-section-title">
+            <i class="fas fa-shield-alt"></i> Security Settings
+        </div>
+
+        <div class="alert-box alert-info">
+            <i class="info-icon fas fa-info-circle"></i>
+            Manage security and access control settings
+        </div>
+
+        <div class="settings-grid">
+            <div class="setting-item">
+                <div>
+                    <div class="setting-label">Two-Factor Authentication</div>
+                    <div class="setting-value">Enabled</div>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" checked>
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="setting-item">
+                <div>
+                    <div class="setting-label">Password Policy</div>
+                    <div class="setting-value">Strong (8+ chars)</div>
+                </div>
+                <button class="btn-secondary-setting">
+                    <i class="fas fa-lock"></i> Configure
+                </button>
+            </div>
+
+            <div class="setting-item">
+                <div>
+                    <div class="setting-label">Session Timeout</div>
+                    <div class="setting-value">30 minutes</div>
+                </div>
+                <button class="btn-secondary-setting">
+                    <i class="fas fa-clock"></i> Change
+                </button>
+            </div>
+
+            <div class="setting-item">
+                <div>
+                    <div class="setting-label">Login Attempts</div>
+                    <div class="setting-value">Max 5 attempts</div>
+                </div>
+                <button class="btn-secondary-setting">
+                    <i class="fas fa-shield-alt"></i> Adjust
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Email Settings Section -->
+    <div class="settings-section">
+        <div class="settings-section-title">
+            <i class="fas fa-envelope"></i> Email Settings
+        </div>
+
+        <div class="alert-box alert-info">
+            <i class="info-icon fas fa-info-circle"></i>
+            Configure email notifications and SMTP settings
+        </div>
+
+        <div class="settings-grid">
+            <div class="setting-item">
+                <div>
+                    <div class="setting-label">Email Notifications</div>
+                    <div class="setting-value">Enabled</div>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" checked>
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="setting-item">
+                <div>
+                    <div class="setting-label">SMTP Server</div>
+                    <div class="setting-value">smtp.gmail.com</div>
+                </div>
+                <button class="btn-secondary-setting">
+                    <i class="fas fa-cog"></i> Configure
+                </button>
+            </div>
+
+            <div class="setting-item">
+                <div>
+                    <div class="setting-label">Admin Email</div>
+                    <div class="setting-value">admin@dsa.com</div>
+                </div>
+                <button class="btn-secondary-setting">
+                    <i class="fas fa-edit"></i> Change
+                </button>
+            </div>
+
+            <div class="setting-item">
+                <div>
+                    <div class="setting-label">Email Templates</div>
+                    <div class="setting-value">5 templates</div>
+                </div>
+                <button class="btn-secondary-setting">
+                    <i class="fas fa-file-alt"></i> Manage
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- API Settings Section -->
+    <div class="settings-section">
+        <div class="settings-section-title">
+            <i class="fas fa-plug"></i> API Settings
+        </div>
+
+        <div class="alert-box alert-info">
+            <i class="info-icon fas fa-info-circle"></i>
+            Manage API keys and third-party integrations
+        </div>
+
+        <div class="settings-grid">
+            <div class="setting-item">
+                <div>
+                    <div class="setting-label">API Access</div>
+                    <div class="setting-value">Enabled</div>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" checked>
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="setting-item">
+                <div>
+                    <div class="setting-label">API Rate Limit</div>
+                    <div class="setting-value">1000 req/hour</div>
+                </div>
+                <button class="btn-secondary-setting">
+                    <i class="fas fa-tachometer-alt"></i> Adjust
+                </button>
+            </div>
+
+            <div class="setting-item">
+                <div>
+                    <div class="setting-label">API Keys</div>
+                    <div class="setting-value">3 keys active</div>
+                </div>
+                <button class="btn-secondary-setting">
+                    <i class="fas fa-key"></i> Manage
+                </button>
+            </div>
+
+            <div class="setting-item">
+                <div>
+                    <div class="setting-label">Webhooks</div>
+                    <div class="setting-value">2 configured</div>
+                </div>
+                <button class="btn-secondary-setting">
+                    <i class="fas fa-link"></i> Configure
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Support & About Section -->
+    <div class="settings-section">
+        <div class="settings-section-title">
+            <i class="fas fa-info-circle"></i> Support & About
+        </div>
+
+        <div class="alert-box alert-info">
+            <i class="info-icon fas fa-info-circle"></i>
+            Application information and support resources
+        </div>
+
+        <div class="settings-grid">
+            <div class="setting-item">
+                <div>
+                    <div class="setting-label">Application Version</div>
+                    <div class="setting-value">v2.0.1</div>
+                </div>
+            </div>
+
+            <div class="setting-item">
+                <div>
+                    <div class="setting-label">Django Version</div>
+                    <div class="setting-value">4.2.7</div>
+                </div>
+            </div>
+
+            <div class="setting-item">
+                <div>
+                    <div class="setting-label">Database</div>
+                    <div class="setting-value">PostgreSQL</div>
+                </div>
+            </div>
+
+            <div class="setting-item">
+                <div>
+                    <div class="setting-label">Support</div>
+                    <div class="setting-value">24/7 Available</div>
+                </div>
+                <button class="btn-secondary-setting">
+                    <i class="fas fa-headset"></i> Contact
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="settings-section" style="text-align: center; padding: 20px;">
+        <button class="btn-setting" style="margin-right: 10px;">
+            <i class="fas fa-save"></i> Save Changes
+        </button>
+        <button class="btn-secondary-setting">
+            <i class="fas fa-undo"></i> Reset to Defaults
+        </button>
+    </div>
+</div>
+
+<script>
+    // Toggle switch functionality
+    document.querySelectorAll('.toggle-switch input').forEach(toggle => {
+        toggle.addEventListener('change', function() {
+            console.log('Setting changed:', this.checked);
+            // Add your logic here
+        });
+    });
+</script>
+
+{% endblock %}

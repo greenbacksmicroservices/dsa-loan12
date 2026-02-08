@@ -1,0 +1,701 @@
+{% extends "core/agent/agent_base.html" %}
+
+{% block title %}Assigned Loans - DSA{% endblock %}
+
+{% block page_title %}
+    <div class="bg-white rounded-lg shadow-sm p-6 mb-6 border-b-4 border-green-600">
+        <div class="flex items-center justify-between">
+            <div>
+                <h2 class="text-2xl font-bold text-gray-900">Assigned Loans</h2>
+                <p class="text-sm text-gray-600 mt-1">Process and review loans assigned by admin</p>
+            </div>
+            <div class="flex gap-3">
+                <button class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors flex items-center gap-2" 
+                        onclick="location.reload()">
+                    <i class="fas fa-sync"></i> Refresh
+                </button>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block content %}
+<div x-data="assignedLoansManager()" x-init="loadAssignedLoans()" class="space-y-6">
+    
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <!-- Assigned Card -->
+        <div class="loan-card" style="background: linear-gradient(135deg, #667eea 0%, #183c85 100%);">
+            <div class="card-icon">
+                <i class="fas fa-inbox"></i>
+            </div>
+            <div class="card-content">
+                <div class="card-number" x-text="loans.filter(l => l.status === 'assigned').length">0</div>
+                <div class="card-label">Assigned</div>
+            </div>
+        </div>
+
+        <!-- Processing Card -->
+        <div class="loan-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+            <div class="card-icon">
+                <i class="fas fa-spinner"></i>
+            </div>
+            <div class="card-content">
+                <div class="card-number" x-text="loans.filter(l => l.status === 'processing').length">0</div>
+                <div class="card-label">In Processing</div>
+            </div>
+        </div>
+
+        <!-- Approved Card -->
+        <div class="loan-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+            <div class="card-icon">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="card-content">
+                <div class="card-number" x-text="loans.filter(l => l.status === 'approved').length">0</div>
+                <div class="card-label">Approved</div>
+            </div>
+        </div>
+
+        <!-- Rejected Card -->
+        <div class="loan-card" style="background: linear-gradient(135deg, #30cfd0 0%, #330867 100%);">
+            <div class="card-icon">
+                <i class="fas fa-times-circle"></i>
+            </div>
+            <div class="card-content">
+                <div class="card-number" x-text="loans.filter(l => l.status === 'rejected').length">0</div>
+                <div class="card-label">Rejected</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Section -->
+    <div class="bg-white rounded-lg shadow p-4 flex gap-4 items-center flex-wrap">
+        <input 
+            type="text" 
+            x-model="searchQuery"
+            @input="debounceSearch()"
+            placeholder="Search by applicant name, loan ID, or amount..."
+            class="flex-1 min-w-xs px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        >
+        <select x-model="filterStatus" @change="loadAssignedLoans()" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+            <option value="">All Status</option>
+            <option value="assigned">Assigned</option>
+            <option value="processing">Processing</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
+        </select>
+    </div>
+
+    <!-- Assigned Loans Table -->
+    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+        <!-- Loading State -->
+        <div x-show="loading" class="flex items-center justify-center py-12">
+            <div class="text-center">
+                <div class="inline-block">
+                    <i class="fas fa-spinner fa-spin text-4xl text-blue-600 mb-4"></i>
+                </div>
+                <p class="text-gray-600 mt-4">Loading loans...</p>
+            </div>
+        </div>
+        
+        <!-- Empty State -->
+        <div x-show="!loading && loans.length === 0" class="flex items-center justify-center py-12">
+            <div class="text-center">
+                <i class="fas fa-inbox text-4xl text-gray-300 mb-4"></i>
+                <p class="text-gray-600 mt-4">No loans assigned yet</p>
+            </div>
+        </div>
+        
+        <!-- Table -->
+        <div x-show="!loading && loans.length > 0" class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Loan ID</th>
+                        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Applicant Name</th>
+                        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Loan Amount</th>
+                        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Loan Type</th>
+                        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Assigned Date</th>
+                        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    <template x-for="loan in loans" :key="loan.id">
+                        <tr class="hover:bg-gray-50 transition-colors">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="font-semibold text-gray-900" x-text="loan.loan_id"></span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="text-gray-900" x-text="loan.applicant_name"></span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="font-semibold text-gray-900" x-text="'₹' + loan.loan_amount?.toLocaleString('en-IN')"></span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="text-gray-600" x-text="loan.loan_type"></span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span :class="getStatusColor(loan.status)" class="px-3 py-1 rounded-full text-xs font-semibold inline-flex items-center gap-2">
+                                    <span :class="getStatusIcon(loan.status)"></span>
+                                    <span x-text="loan.status.charAt(0).toUpperCase() + loan.status.slice(1)"></span>
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="text-gray-600" x-text="new Date(loan.assigned_at).toLocaleDateString('en-IN')"></span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex gap-2">
+                                    <button @click="viewDetails(loan.id)" class="px-3 py-1 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded text-sm font-medium transition-colors" title="View Details">
+                                        <i class="fas fa-eye mr-1"></i> View
+                                    </button>
+                                    <template x-if="loan.status === 'assigned'">
+                                        <button @click="markProcessing(loan.id)" class="px-3 py-1 bg-purple-50 text-purple-600 hover:bg-purple-100 rounded text-sm font-medium transition-colors" title="Mark as Processing">
+                                            <i class="fas fa-spinner mr-1"></i> Process
+                                        </button>
+                                    </template>
+                                    <template x-if="loan.status === 'processing'">
+                                        <button @click="showActionModal(loan.id, 'approve')" class="px-3 py-1 bg-green-50 text-green-600 hover:bg-green-100 rounded text-sm font-medium transition-colors" title="Approve">
+                                            <i class="fas fa-check mr-1"></i> Approve
+                                        </button>
+                                    </template>
+                                    <template x-if="loan.status === 'processing'">
+                                        <button @click="showActionModal(loan.id, 'reject')" class="px-3 py-1 bg-red-50 text-red-600 hover:bg-red-100 rounded text-sm font-medium transition-colors" title="Reject">
+                                            <i class="fas fa-times mr-1"></i> Reject
+                                        </button>
+                                    </template>
+                                    <template x-if="loan.status === 'approved'">
+                                        <button @click="showActionModal(loan.id, 'disburse')" class="px-3 py-1 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded text-sm font-medium transition-colors" title="Disburse">
+                                            <i class="fas fa-money-check mr-1"></i> Disburse
+                                        </button>
+                                    </template>
+                                </div>
+                            </td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Details Modal -->
+<div id="detailsModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+    <div class="bg-white rounded-lg shadow-lg max-w-4xl w-full mx-4 max-h-screen overflow-y-auto">
+        <div class="flex items-center justify-between p-6 border-b sticky top-0 bg-white">
+            <h3 class="text-xl font-bold text-gray-900">Loan Details</h3>
+            <button onclick="closeDetailsModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        
+        <div class="p-6 space-y-6" id="detailsContent">
+            <div class="flex items-center justify-center">
+                <i class="fas fa-spinner fa-spin text-3xl text-blue-600"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Action Modal (Approve/Reject/Disburse) -->
+<div id="actionModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+    <div class="bg-white rounded-lg shadow-lg max-w-2xl w-full mx-4">
+        <div class="flex items-center justify-between p-6 border-b">
+            <h3 class="text-xl font-bold text-gray-900" id="actionTitle">Approve Loan</h3>
+            <button onclick="closeActionModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        
+        <div class="p-6 space-y-4">
+            <!-- Loan Details Summary -->
+            <div class="bg-gray-50 p-4 rounded-lg">
+                <h4 class="font-semibold text-gray-900 mb-3">Loan Details</h4>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-sm text-gray-600">Loan ID</p>
+                        <p class="font-semibold text-gray-900" id="action-loan-id">—</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-600">Applicant</p>
+                        <p class="font-semibold text-gray-900" id="action-applicant">—</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-600">Amount</p>
+                        <p class="font-semibold text-gray-900" id="action-amount">—</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-600">Status</p>
+                        <p class="font-semibold text-gray-900" id="action-status">—</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Notes -->
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2" id="actionNotesLabel">Notes</label>
+                <textarea id="actionNotes" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 resize-none" rows="3" placeholder="Add any notes..."></textarea>
+            </div>
+
+            <!-- Bank Details (for Disburse only) -->
+            <div id="bankDetailsSection" class="hidden space-y-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <h4 class="font-semibold text-gray-900">Bank Details</h4>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Account Holder Name</label>
+                    <input type="text" id="accountHolder" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="Name on bank account">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Account Number</label>
+                    <input type="text" id="accountNumber" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="Bank account number">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">IFSC Code</label>
+                    <input type="text" id="ifscCode" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="IFSC code">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Bank Name</label>
+                    <input type="text" id="bankName" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="Bank name">
+                </div>
+            </div>
+        </div>
+
+        <div class="flex gap-3 p-6 border-t bg-gray-50 rounded-b-lg justify-end">
+            <button onclick="closeActionModal()" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium">
+                Cancel
+            </button>
+            <button id="submitActionBtn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">
+                Submit
+            </button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function assignedLoansManager() {
+    return {
+        loans: [],
+        loading: true,
+        searchQuery: '',
+        filterStatus: '',
+        searchTimeout: null,
+        currentAction: null,
+        currentLoanId: null,
+        
+        async loadAssignedLoans() {
+            this.loading = true;
+            try {
+                let url = '/api/employee/assigned-loans/';
+                const params = new URLSearchParams();
+                
+                if (this.searchQuery) {
+                    params.append('search', this.searchQuery);
+                }
+                if (this.filterStatus) {
+                    params.append('status', this.filterStatus);
+                }
+                
+                if (params.toString()) {
+                    url += '?' + params.toString();
+                }
+                
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken'),
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.loans = data.loans || [];
+                    console.log('✓ Loans loaded:', this.loans.length);
+                } else {
+                    throw new Error(data.error || 'Failed to load loans');
+                }
+                
+            } catch (error) {
+                console.error('✗ Error loading loans:', error);
+                this.loans = [];
+                alert('Failed to load loans: ' + error.message);
+            } finally {
+                this.loading = false;
+            }
+        },
+        
+        debounceSearch() {
+            clearTimeout(this.searchTimeout);
+            this.searchTimeout = setTimeout(() => {
+                this.loadAssignedLoans();
+            }, 300);
+        },
+        
+        getStatusColor(status) {
+            const colors = {
+                'assigned': 'bg-yellow-100 text-yellow-800',
+                'processing': 'bg-purple-100 text-purple-800',
+                'approved': 'bg-green-100 text-green-800',
+                'rejected': 'bg-red-100 text-red-800'
+            };
+            return colors[status] || 'bg-gray-100 text-gray-800';
+        },
+        
+        getStatusIcon(status) {
+            const icons = {
+                'assigned': 'fas fa-inbox',
+                'processing': 'fas fa-spinner',
+                'approved': 'fas fa-check-circle',
+                'rejected': 'fas fa-times-circle'
+            };
+            return icons[status] || 'fas fa-circle';
+        },
+        
+        viewDetails(loanId) {
+            const loan = this.loans.find(l => l.id === loanId);
+            if (!loan) return;
+            
+            showDetailsModal(loan);
+        },
+        
+        markProcessing(loanId) {
+            this.currentLoanId = loanId;
+            this.updateLoanStatus(loanId, 'processing', 'Marked as processing');
+        },
+        
+        showActionModal(loanId, action) {
+            const loan = this.loans.find(l => l.id === loanId);
+            if (!loan) return;
+            
+            this.currentLoanId = loanId;
+            this.currentAction = action;
+            
+            showActionModal(loan, action);
+        },
+        
+        async updateLoanStatus(loanId, status, notes) {
+            try {
+                const response = await fetch(`/api/employee/assigned-loans/${loanId}/update-status/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken'),
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        status: status,
+                        notes: notes
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('Loan updated successfully!');
+                    closeActionModal();
+                    this.loadAssignedLoans();
+                } else {
+                    alert('Error: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error updating loan:', error);
+                alert('Error: ' + error.message);
+            }
+        }
+    }
+}
+
+let currentLoanData = null;
+
+function showDetailsModal(loan) {
+    const modal = document.getElementById('detailsModal');
+    const content = document.getElementById('detailsContent');
+    
+    const html = `
+        <div class="grid grid-cols-2 gap-6">
+            <div class="col-span-2">
+                <h3 class="font-bold text-lg text-gray-900 mb-4">Applicant Information</h3>
+            </div>
+            <div>
+                <p class="text-sm text-gray-600">Name</p>
+                <p class="font-semibold text-gray-900">${loan.applicant_name || '—'}</p>
+            </div>
+            <div>
+                <p class="text-sm text-gray-600">Phone</p>
+                <p class="font-semibold text-gray-900">${loan.applicant_phone || '—'}</p>
+            </div>
+            <div>
+                <p class="text-sm text-gray-600">Email</p>
+                <p class="font-semibold text-gray-900">${loan.applicant_email || '—'}</p>
+            </div>
+            <div>
+                <p class="text-sm text-gray-600">Address</p>
+                <p class="font-semibold text-gray-900">${loan.applicant_address || '—'}</p>
+            </div>
+            
+            <div class="col-span-2 pt-4 border-t">
+                <h3 class="font-bold text-lg text-gray-900 mb-4">Loan Information</h3>
+            </div>
+            <div>
+                <p class="text-sm text-gray-600">Loan ID</p>
+                <p class="font-semibold text-gray-900">${loan.loan_id || '—'}</p>
+            </div>
+            <div>
+                <p class="text-sm text-gray-600">Loan Amount</p>
+                <p class="font-semibold text-gray-900">₹${(loan.loan_amount || 0).toLocaleString('en-IN')}</p>
+            </div>
+            <div>
+                <p class="text-sm text-gray-600">Loan Type</p>
+                <p class="font-semibold text-gray-900">${loan.loan_type || '—'}</p>
+            </div>
+            <div>
+                <p class="text-sm text-gray-600">Duration (Months)</p>
+                <p class="font-semibold text-gray-900">${loan.duration_months || '—'}</p>
+            </div>
+            <div>
+                <p class="text-sm text-gray-600">Interest Rate</p>
+                <p class="font-semibold text-gray-900">${loan.interest_rate || '—'}%</p>
+            </div>
+            <div>
+                <p class="text-sm text-gray-600">Processing Fee</p>
+                <p class="font-semibold text-gray-900">₹${(loan.processing_fee || 0).toLocaleString('en-IN')}</p>
+            </div>
+            
+            <div class="col-span-2 pt-4 border-t">
+                <h3 class="font-bold text-lg text-gray-900 mb-4">Status & Timeline</h3>
+            </div>
+            <div>
+                <p class="text-sm text-gray-600">Current Status</p>
+                <p class="font-semibold text-gray-900">${loan.status || '—'}</p>
+            </div>
+            <div>
+                <p class="text-sm text-gray-600">Assigned Date</p>
+                <p class="font-semibold text-gray-900">${new Date(loan.assigned_at).toLocaleDateString('en-IN') || '—'}</p>
+            </div>
+        </div>
+    `;
+    
+    content.innerHTML = html;
+    modal.classList.remove('hidden');
+}
+
+function closeDetailsModal() {
+    document.getElementById('detailsModal').classList.add('hidden');
+}
+
+function showActionModal(loan, action) {
+    const modal = document.getElementById('actionModal');
+    const bankSection = document.getElementById('bankDetailsSection');
+    const actionTitle = document.getElementById('actionTitle');
+    const submitBtn = document.getElementById('submitActionBtn');
+    
+    // Set title based on action
+    const titles = {
+        'approve': 'Approve Loan',
+        'reject': 'Reject Loan',
+        'disburse': 'Disburse Loan',
+        'process': 'Mark as Processing'
+    };
+    
+    actionTitle.textContent = titles[action] || 'Action';
+    
+    // Show bank details only for disbursement
+    if (action === 'disburse') {
+        bankSection.classList.remove('hidden');
+    } else {
+        bankSection.classList.add('hidden');
+    }
+    
+    // Set loan details
+    document.getElementById('action-loan-id').textContent = loan.loan_id;
+    document.getElementById('action-applicant').textContent = loan.applicant_name;
+    document.getElementById('action-amount').textContent = '₹' + loan.loan_amount?.toLocaleString('en-IN');
+    document.getElementById('action-status').textContent = loan.status;
+    
+    // Clear previous data
+    document.getElementById('actionNotes').value = '';
+    document.getElementById('accountHolder').value = '';
+    document.getElementById('accountNumber').value = '';
+    document.getElementById('ifscCode').value = '';
+    document.getElementById('bankName').value = '';
+    
+    // Setup submit button
+    submitBtn.onclick = async function() {
+        const notes = document.getElementById('actionNotes').value;
+        let extraData = { notes };
+        
+        if (action === 'disburse') {
+            extraData.account_holder = document.getElementById('accountHolder').value;
+            extraData.account_number = document.getElementById('accountNumber').value;
+            extraData.ifsc_code = document.getElementById('ifscCode').value;
+            extraData.bank_name = document.getElementById('bankName').value;
+            
+            if (!extraData.account_number) {
+                alert('Please enter bank account details');
+                return;
+            }
+        }
+        
+        await updateLoanAction(loan.id, action, extraData);
+    };
+    
+    modal.classList.remove('hidden');
+}
+
+function closeActionModal() {
+    document.getElementById('actionModal').classList.add('hidden');
+}
+
+async function updateLoanAction(loanId, action, data) {
+    try {
+        const response = await fetch(`/api/employee/assigned-loans/${loanId}/action/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                action: action,
+                ...data
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('Action completed successfully!');
+            closeActionModal();
+            // Reload loans
+            document.querySelector('[x-data="assignedLoansManager()"]').__x.getUnobservedData().loadAssignedLoans();
+        } else {
+            alert('Error: ' + (result.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error: ' + error.message);
+    }
+}
+
+// Cookie helper function
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+
+<style>
+    /* Loan Card Styling */
+    .loan-card {
+        border-radius: 15px;
+        padding: 25px 20px;
+        color: white;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        min-height: 120px;
+        transition: all 0.3s ease;
+    }
+
+    .loan-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.25);
+    }
+
+    .loan-card .card-icon {
+        font-size: 32px;
+        min-width: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0.9;
+    }
+
+    .loan-card .card-content {
+        flex: 1;
+    }
+
+    .loan-card .card-number {
+        font-size: 28px;
+        font-weight: 700;
+        line-height: 1.2;
+        margin-bottom: 5px;
+    }
+
+    .loan-card .card-label {
+        font-size: 14px;
+        opacity: 0.9;
+        font-weight: 500;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 1200px) {
+        .grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    @media (max-width: 768px) {
+        .grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .loan-card {
+            min-height: 100px;
+            padding: 20px 15px;
+        }
+
+        .loan-card .card-icon {
+            font-size: 28px;
+        }
+
+        .loan-card .card-number {
+            font-size: 24px;
+        }
+
+        .loan-card .card-label {
+            font-size: 12px;
+        }
+    }
+
+    @media (max-width: 640px) {
+        .grid {
+            grid-template-columns: 1fr;
+        }
+
+        .loan-card {
+            min-height: 90px;
+            padding: 18px 15px;
+        }
+
+        .loan-card .card-icon {
+            font-size: 26px;
+        }
+
+        .loan-card .card-number {
+            font-size: 22px;
+        }
+
+        .loan-card .card-label {
+            font-size: 11px;
+        }
+    }
+</style>
+{% endblock %}

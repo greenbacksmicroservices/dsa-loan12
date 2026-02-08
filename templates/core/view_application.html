@@ -1,0 +1,513 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Application Details - {{ applicant.full_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .view-container {
+        padding: 30px 20px;
+        background-color: #f5f6fa;
+        min-height: calc(100vh - 80px);
+    }
+
+    .detail-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+        margin-bottom: 25px;
+        overflow: hidden;
+    }
+
+    .card-header {
+        background: linear-gradient(135deg, #667eea 0%, #2d8cb5 100%);
+        color: white;
+        padding: 25px;
+        font-weight: 600;
+        font-size: 18px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .card-body {
+        padding: 25px;
+    }
+
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+    }
+
+    .info-item {
+        padding: 15px;
+        background-color: #f9f9f9;
+        border-radius: 8px;
+        border-left: 4px solid #667eea;
+    }
+
+    .info-label {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #999;
+        margin-bottom: 8px;
+        font-weight: 600;
+    }
+
+    .info-value {
+        font-size: 16px;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .button-group {
+        display: flex;
+        gap: 15px;
+        margin-top: 30px;
+    }
+
+    .btn {
+        padding: 14px 30px;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        border: none;
+        transition: all 0.3s ease;
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        font-size: 15px;
+    }
+
+    .btn-approve {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+    }
+
+    .btn-approve:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3);
+    }
+
+    .btn-reject {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: white;
+    }
+
+    .btn-reject:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px rgba(239, 68, 68, 0.3);
+    }
+
+    .btn-back {
+        background-color: #f0f0f0;
+        color: #333;
+    }
+
+    .btn-back:hover {
+        background-color: #e0e0e0;
+    }
+
+    .documents-section {
+        margin-top: 30px;
+    }
+
+    .document-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 15px;
+        margin-top: 15px;
+    }
+
+    .document-card {
+        background: white;
+        border: 2px dashed #ddd;
+        border-radius: 8px;
+        padding: 15px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .document-card:hover {
+        border-color: #667eea;
+        background-color: #f9f9f9;
+    }
+
+    .document-icon {
+        font-size: 32px;
+        margin-bottom: 10px;
+    }
+
+    .document-name {
+        font-size: 12px;
+        color: #333;
+        font-weight: 600;
+        word-break: break-word;
+    }
+
+    .approval-form {
+        background-color: #f9f9f9;
+        padding: 20px;
+        border-radius: 8px;
+        margin-top: 20px;
+        display: none;
+    }
+
+    .form-group {
+        margin-bottom: 15px;
+    }
+
+    .form-label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #333;
+    }
+
+    .form-textarea {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        font-family: inherit;
+        resize: vertical;
+        min-height: 100px;
+    }
+
+    .form-buttons {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        margin-top: 15px;
+    }
+
+    .form-btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .form-btn-submit {
+        background: linear-gradient(135deg, #667eea 0%, #2d8cb5 100%);
+        color: white;
+    }
+
+    .form-btn-cancel {
+        background-color: #e0e0e0;
+        color: #333;
+    }
+
+    .status-message {
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        display: none;
+    }
+
+    .status-success {
+        background-color: #d4edda;
+        border: 1px solid #c3e6cb;
+        color: #155724;
+    }
+
+    .status-error {
+        background-color: #f8d7da;
+        border: 1px solid #f5c6cb;
+        color: #721c24;
+    }
+
+    @media (max-width: 768px) {
+        .button-group {
+            flex-direction: column;
+        }
+
+        .info-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .document-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="view-container">
+    <div id="statusMessage" class="status-message"></div>
+
+    <!-- Applicant Details -->
+    <div class="detail-card">
+        <div class="card-header">
+            <i class="bi bi-person-circle"></i> Applicant Information
+        </div>
+        <div class="card-body">
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-label">Full Name</div>
+                    <div class="info-value">{{ applicant.full_name }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Role</div>
+                    <div class="info-value">{{ applicant.get_role_display }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Mobile</div>
+                    <div class="info-value">{{ applicant.mobile }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Email</div>
+                    <div class="info-value">{{ applicant.email }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">City</div>
+                    <div class="info-value">{{ applicant.city }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">State</div>
+                    <div class="info-value">{{ applicant.state }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loan Details -->
+    <div class="detail-card">
+        <div class="card-header">
+            <i class="bi bi-cash-coin"></i> Loan Details
+        </div>
+        <div class="card-body">
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-label">Loan Type</div>
+                    <div class="info-value">{{ applicant.get_loan_type_display }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Loan Amount</div>
+                    <div class="info-value">₹{{ applicant.loan_amount|floatformat:0 }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Tenure</div>
+                    <div class="info-value">{{ applicant.tenure_months }} months</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Interest Rate</div>
+                    <div class="info-value">{{ applicant.interest_rate }}%</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Loan Purpose</div>
+                    <div class="info-value">{{ applicant.loan_purpose }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Estimated EMI</div>
+                    <div class="info-value">₹{{ applicant.calculate_emi|floatformat:0 }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bank Details -->
+    <div class="detail-card">
+        <div class="card-header">
+            <i class="bi bi-bank"></i> Bank Details
+        </div>
+        <div class="card-body">
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-label">Bank Name</div>
+                    <div class="info-value">{{ applicant.bank_name }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Account Number</div>
+                    <div class="info-value">****{{ applicant.account_number|slice:"-4:" }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">IFSC Code</div>
+                    <div class="info-value">{{ applicant.ifsc_code }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Documents -->
+    {% if documents %}
+    <div class="detail-card documents-section">
+        <div class="card-header">
+            <i class="bi bi-file-earmark-pdf"></i> Uploaded Documents
+        </div>
+        <div class="card-body">
+            <div class="document-grid">
+                {% for doc in documents %}
+                    <a href="{{ doc.file.url }}" target="_blank" class="document-card" title="{{ doc.get_document_type_display }}">
+                        <div class="document-icon">
+                            <i class="bi bi-file-earmark-arrow-down"></i>
+                        </div>
+                        <div class="document-name">{{ doc.get_document_type_display }}</div>
+                    </a>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Action Buttons -->
+    <div class="detail-card">
+        <div class="card-body">
+            <div class="button-group">
+                <button type="button" class="btn btn-approve" onclick="showApprovalForm()">
+                    <i class="bi bi-check-circle"></i> Approve
+                </button>
+                <button type="button" class="btn btn-reject" onclick="showRejectionForm()">
+                    <i class="bi bi-x-circle"></i> Reject
+                </button>
+                <a href="{% url 'my_applications' %}" class="btn btn-back" style="text-decoration: none;">
+                    <i class="bi bi-arrow-left"></i> Back
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Approval Form -->
+    <div class="approval-form" id="approvalForm">
+        <div class="form-group">
+            <label class="form-label">Approval Notes (Optional)</label>
+            <textarea id="approvalNotes" class="form-textarea" placeholder="Add any notes about the approval..."></textarea>
+        </div>
+        <div class="form-buttons">
+            <button class="form-btn form-btn-cancel" onclick="hideApprovalForm()">Cancel</button>
+            <button class="form-btn form-btn-submit" onclick="submitApproval()">Confirm Approval</button>
+        </div>
+    </div>
+
+    <!-- Rejection Form -->
+    <div class="approval-form" id="rejectionForm">
+        <div class="form-group">
+            <label class="form-label">Rejection Reason *</label>
+            <textarea id="rejectionReason" class="form-textarea" placeholder="Please provide a reason for rejection..." required></textarea>
+        </div>
+        <div class="form-buttons">
+            <button class="form-btn form-btn-cancel" onclick="hideRejectionForm()">Cancel</button>
+            <button class="form-btn form-btn-submit" onclick="submitRejection()">Confirm Rejection</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const applicantId = {{ applicant.id }};
+
+    function showApprovalForm() {
+        document.getElementById('approvalForm').style.display = 'block';
+        document.getElementById('rejectionForm').style.display = 'none';
+        document.getElementById('approvalNotes').value = '';
+    }
+
+    function hideApprovalForm() {
+        document.getElementById('approvalForm').style.display = 'none';
+    }
+
+    function showRejectionForm() {
+        document.getElementById('rejectionForm').style.display = 'block';
+        document.getElementById('approvalForm').style.display = 'none';
+        document.getElementById('rejectionReason').value = '';
+    }
+
+    function hideRejectionForm() {
+        document.getElementById('rejectionForm').style.display = 'none';
+    }
+
+    function submitApproval() {
+        const notes = document.getElementById('approvalNotes').value;
+        
+        fetch(`/api/approve/${applicantId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({ approval_notes: notes })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showStatusMessage(data.message, 'success');
+                setTimeout(() => {
+                    window.location.href = '{% url "my_applications" %}';
+                }, 1500);
+            } else {
+                showStatusMessage(data.error, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showStatusMessage('Error processing application', 'error');
+        });
+    }
+
+    function submitRejection() {
+        const reason = document.getElementById('rejectionReason').value;
+        
+        if (!reason.trim()) {
+            showStatusMessage('Please provide a rejection reason', 'error');
+            return;
+        }
+        
+        fetch(`/api/reject/${applicantId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({ rejection_reason: reason })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showStatusMessage(data.message, 'success');
+                setTimeout(() => {
+                    window.location.href = '{% url "my_applications" %}';
+                }, 1500);
+            } else {
+                showStatusMessage(data.error, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showStatusMessage('Error processing application', 'error');
+        });
+    }
+
+    function showStatusMessage(message, type) {
+        const statusDiv = document.getElementById('statusMessage');
+        statusDiv.textContent = message;
+        statusDiv.style.display = 'block';
+        statusDiv.className = `status-message status-${type}`;
+        
+        if (type === 'error') {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+</script>
+{% endblock %}

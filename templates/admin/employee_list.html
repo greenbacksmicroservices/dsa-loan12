@@ -1,0 +1,84 @@
+{% extends "core/admin/admin_base.html" %}
+{% load static %}
+
+{% block title %}Employees - Admin{% endblock %}
+
+{% block page_title %}Employees Management{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex justify-between items-center">
+        <h1 class="text-3xl font-bold text-gray-800">All Employees</h1>
+        <a href="{% url 'admin:core_user_add' %}" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center gap-2">
+            <i class="fas fa-plus"></i> Add New Employee
+        </a>
+    </div>
+
+    <!-- Employees Table -->
+    <div class="card">
+        <div class="card-header flex justify-between items-center">
+            <h2 class="text-lg font-semibold text-gray-800">Employees List</h2>
+            <span class="text-sm text-gray-600">{{ employees|length }} employees</span>
+        </div>
+        <div class="card-body table-responsive">
+            {% if employees %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Photo</th>
+                        <th>Employee ID</th>
+                        <th>Name</th>
+                        <th>Phone</th>
+                        <th>Email</th>
+                        <th>Status</th>
+                        <th>Created Date</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for emp in employees %}
+                    <tr>
+                        <td>
+                            {% if emp.profile_photo %}
+                                <img src="{{ emp.profile_photo.url }}" alt="{{ emp.name }}" class="w-10 h-10 rounded-full object-cover border-2 border-blue-200">
+                            {% else %}
+                                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-300 to-blue-500 flex items-center justify-center border-2 border-blue-200">
+                                    <i class="fas fa-user text-white"></i>
+                                </div>
+                            {% endif %}
+                        </td>
+                        <td class="font-mono text-sm"><strong>{{ emp.employee_id }}</strong></td>
+                        <td class="font-medium">{{ emp.get_full_name }}</td>
+                        <td class="text-sm">{{ emp.phone }}</td>
+                        <td class="text-sm">{{ emp.email }}</td>
+                        <td>
+                            <span class="badge {% if emp.is_active %}badge-success{% else %}badge-danger{% endif %}">
+                                {% if emp.is_active %}Active{% else %}Inactive{% endif %}
+                            </span>
+                        </td>
+                        <td class="text-sm">{{ emp.created_at|date:"M d, Y" }}</td>
+                        <td class="text-center">
+                            <div class="flex items-center justify-center gap-2">
+                                <a href="{% url 'admin:core_user_change' emp.id %}" class="text-blue-600 hover:text-blue-800 font-medium text-sm" title="Edit">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <a href="{% url 'admin:core_user_delete' emp.id %}" class="text-red-600 hover:text-red-800 font-medium text-sm" title="Delete">
+                                    <i class="fas fa-trash"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="text-center py-12">
+                <i class="fas fa-users text-gray-300 text-5xl mb-4"></i>
+                <p class="text-gray-500">No employees found</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,824 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Employee Management - Admin Panel{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --primary: #10b981;
+        --secondary: #059669;
+        --danger: #ef4444;
+        --text-dark: #1f2937;
+        --text-light: #9ca3af;
+        --border-color: #e5e7eb;
+        --bg-light: #f9fafb;
+    }
+
+    .page-header {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+        color: white;
+        padding: 35px;
+        border-radius: 12px;
+        margin-bottom: 30px;
+        box-shadow: 0 10px 30px rgba(16, 185, 129, 0.15);
+    }
+
+    .page-header h1 {
+        margin: 0;
+        font-size: 32px;
+        font-weight: 700;
+    }
+
+    .controls {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 25px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .search-box {
+        flex: 1;
+        min-width: 250px;
+    }
+
+    .search-box input {
+        width: 100%;
+        padding: 12px 16px;
+        border: 2px solid var(--border-color);
+        border-radius: 8px;
+        font-size: 14px;
+        transition: all 0.3s ease;
+    }
+
+    .search-box input:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+    }
+
+    .btn-add-employee {
+        padding: 12px 24px;
+        background: var(--primary);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.3s ease;
+    }
+
+    .btn-add-employee:hover {
+        background: var(--secondary);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(16, 185, 129, 0.25);
+    }
+
+    .table-container {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        overflow: hidden;
+    }
+
+    .employees-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .employees-table thead th {
+        padding: 18px;
+        text-align: left;
+        font-weight: 700;
+        color: var(--text-dark);
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        background: var(--bg-light);
+        border-bottom: 2px solid var(--border-color);
+    }
+
+    .employees-table tbody tr {
+        border-bottom: 1px solid var(--border-color);
+        transition: background-color 0.2s ease;
+    }
+
+    .employees-table tbody tr:hover {
+        background-color: rgba(16, 185, 129, 0.04);
+    }
+
+    .employees-table tbody td {
+        padding: 16px 18px;
+        font-size: 14px;
+        color: var(--text-dark);
+    }
+
+    .employee-cell {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .employee-avatar {
+        width: 45px;
+        height: 45px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid var(--primary);
+        background: var(--bg-light);
+    }
+
+    .employee-name {
+        font-weight: 600;
+        color: var(--text-dark);
+    }
+
+    .employee-id {
+        font-size: 12px;
+        color: var(--text-light);
+    }
+
+    .stat-cell {
+        text-align: center;
+        font-weight: 600;
+        color: var(--primary);
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .status-active {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .status-inactive {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .actions-cell {
+        display: flex;
+        gap: 6px;
+    }
+
+    .btn-small {
+        padding: 6px 12px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-block;
+    }
+
+    .btn-edit {
+        background: #dbeafe;
+        color: #1976d2;
+    }
+
+    .btn-edit:hover {
+        background: #bfdbfe;
+    }
+
+    .btn-delete {
+        background: #fee2e2;
+        color: var(--danger);
+    }
+
+    .btn-delete:hover {
+        background: #fecaca;
+    }
+
+    /* Modal Styles */
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 999;
+        align-items: center;
+        justify-content: center;
+        animation: fadeIn 0.3s ease;
+    }
+
+    .modal.show {
+        display: flex;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    .modal-content {
+        background: white;
+        border-radius: 12px;
+        width: 90%;
+        max-width: 600px;
+        animation: slideUp 0.3s ease;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    @keyframes slideUp {
+        from {
+            transform: translateY(40px);
+            opacity: 0;
+        }
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+
+    .modal-header {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+        color: white;
+        padding: 25px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 2px solid var(--border-color);
+    }
+
+    .modal-header h2 {
+        margin: 0;
+        font-size: 22px;
+        font-weight: 700;
+    }
+
+    .close-btn {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 24px;
+        cursor: pointer;
+        padding: 0;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-body {
+        padding: 30px;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        font-weight: 600;
+        color: var(--text-dark);
+        margin-bottom: 8px;
+        font-size: 14px;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        width: 100%;
+        padding: 12px;
+        border: 2px solid var(--border-color);
+        border-radius: 6px;
+        font-size: 14px;
+        font-family: inherit;
+        transition: all 0.3s ease;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+    }
+
+    .photo-input {
+        position: relative;
+        cursor: pointer;
+    }
+
+    .photo-preview {
+        width: 100px;
+        height: 100px;
+        border-radius: 8px;
+        border: 2px dashed var(--primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--bg-light);
+        margin-bottom: 10px;
+        overflow: hidden;
+    }
+
+    .photo-preview img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .photo-placeholder {
+        font-size: 32px;
+        color: var(--text-light);
+    }
+
+    .modal-footer {
+        padding: 20px 30px;
+        background: var(--bg-light);
+        border-top: 2px solid var(--border-color);
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+    }
+
+    .btn-modal {
+        padding: 12px 24px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .btn-modal-primary {
+        background: var(--primary);
+        color: white;
+    }
+
+    .btn-modal-primary:hover {
+        background: var(--secondary);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+    }
+
+    .btn-modal-secondary {
+        background: white;
+        color: var(--text-dark);
+        border: 2px solid var(--border-color);
+    }
+
+    .btn-modal-secondary:hover {
+        border-color: var(--text-dark);
+    }
+
+    .loading-indicator {
+        display: none;
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: var(--primary);
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        z-index: 1000;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .loading-indicator.show {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+        from {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    .spinner {
+        width: 16px;
+        height: 16px;
+        border: 2px solid rgba(255,255,255,0.3);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    .required::after {
+        content: ' *';
+        color: var(--danger);
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: var(--text-light);
+    }
+
+    .empty-state-icon {
+        font-size: 48px;
+        margin-bottom: 16px;
+        opacity: 0.5;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-people"></i> Employee Management</h1>
+</div>
+
+<div class="controls">
+    <div class="search-box">
+        <input type="text" id="searchInput" placeholder="🔍 Search by name, email, or ID..." autocomplete="off">
+    </div>
+    <button class="btn-add-employee" onclick="openAddEmployeeModal()">
+        <i class="bi bi-person-plus"></i> Add New Employee
+    </button>
+</div>
+
+<div class="loading-indicator" id="loadingIndicator">
+    <div class="spinner"></div>
+    <span>Processing...</span>
+</div>
+
+<div class="table-container">
+    <table class="employees-table" id="employeesTable">
+        <thead>
+            <tr>
+                <th>Employee</th>
+                <th>ID</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th style="text-align: center;">Leads</th>
+                <th style="text-align: center;">Approved</th>
+                <th style="text-align: center;">Disbursed (₹)</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="tableBody">
+            <tr>
+                <td colspan="9" class="empty-state">
+                    <div class="empty-state-icon">👥</div>
+                    <p>Loading employees...</p>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- Add/Edit Employee Modal -->
+<div class="modal" id="employeeModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalTitle">Add New Employee</h2>
+            <button class="close-btn" onclick="closeEmployeeModal()">&times;</button>
+        </div>
+        <form id="employeeForm" onsubmit="handleEmployeeSubmit(event)">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="photoInput" class="required">Photo</label>
+                    <div class="photo-preview" id="photoPreview">
+                        <div class="photo-placeholder">📷</div>
+                    </div>
+                    <input type="file" id="photoInput" name="photo" accept="image/*" onchange="previewPhoto(this)">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="employeeId" class="required">Employee ID</label>
+                        <input type="text" id="employeeId" name="employee_id" required placeholder="e.g., EMP001">
+                    </div>
+                    <div class="form-group">
+                        <label for="firstName" class="required">First Name</label>
+                        <input type="text" id="firstName" name="first_name" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="lastName" class="required">Last Name</label>
+                        <input type="text" id="lastName" name="last_name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="email" class="required">Email</label>
+                        <input type="email" id="email" name="email" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="phone" class="required">Phone</label>
+                        <input type="tel" id="phone" name="phone" required pattern="[0-9]{10,15}">
+                    </div>
+                    <div class="form-group">
+                        <label for="gender" class="required">Gender</label>
+                        <select id="gender" name="gender" required>
+                            <option value="">Select Gender</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="address">Address</label>
+                    <textarea id="address" name="address" rows="3" placeholder="Enter full address"></textarea>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="password" class="required" id="passwordLabel">Password</label>
+                        <input type="password" id="password" name="password" required placeholder="Enter a strong password">
+                    </div>
+                    <div class="form-group">
+                        <label for="confirmPassword" class="required" id="confirmPasswordLabel">Confirm Password</label>
+                        <input type="password" id="confirmPassword" placeholder="Re-enter password">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-modal btn-modal-secondary" onclick="closeEmployeeModal()">Cancel</button>
+                <button type="submit" class="btn-modal btn-modal-primary">
+                    <i class="bi bi-check-circle"></i> Save Employee
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+let employees = [];
+let filteredEmployees = [];
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadEmployees();
+    document.getElementById('searchInput').addEventListener('input', filterEmployees);
+    document.getElementById('employeeForm').addEventListener('submit', handleEmployeeSubmit);
+    
+    // Close modal on outside click
+    document.getElementById('employeeModal').addEventListener('click', function(e) {
+        if (e.target === this) closeEmployeeModal();
+    });
+});
+
+function loadEmployees() {
+    showLoading();
+    
+    fetch('/api/employees/')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                employees = data.data;
+                renderEmployees(employees);
+            }
+            hideLoading();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            hideLoading();
+            showError('Failed to load employees');
+        });
+}
+
+function renderEmployees(employeeList) {
+    const tbody = document.getElementById('tableBody');
+    
+    if (employeeList.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="9" class="empty-state">
+                    <div class="empty-state-icon">👤</div>
+                    <p>No employees found</p>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    tbody.innerHTML = employeeList.map(emp => `
+        <tr>
+            <td>
+                <div class="employee-cell">
+                    <img src="${emp.photo_url || 'https://via.placeholder.com/45'}" 
+                         alt="${escapeHtml(emp.name)}" class="employee-avatar">
+                    <div>
+                        <div class="employee-name">${escapeHtml(emp.name)}</div>
+                        <div class="employee-id">ID: ${escapeHtml(emp.employee_id)}</div>
+                    </div>
+                </div>
+            </td>
+            <td>${escapeHtml(emp.employee_id)}</td>
+            <td>${escapeHtml(emp.email)}</td>
+            <td>${escapeHtml(emp.phone)}</td>
+            <td><span class="stat-cell">${emp.leads}</span></td>
+            <td><span class="stat-cell">${emp.approved}</span></td>
+            <td><span class="stat-cell">₹${formatNumber(emp.total_disbursed)}</span></td>
+            <td>
+                <span class="status-badge status-${emp.status}">
+                    ${emp.status === 'active' ? '✓ Active' : '✗ Inactive'}
+                </span>
+            </td>
+            <td>
+                <div class="actions-cell">
+                    <button class="btn-small btn-edit" onclick="editEmployee(${emp.id})">
+                        <i class="bi bi-pencil"></i> Edit
+                    </button>
+                    <button class="btn-small btn-delete" onclick="deleteEmployee(${emp.id})">
+                        <i class="bi bi-trash"></i> Delete
+                    </button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function filterEmployees() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    filteredEmployees = employees.filter(emp =>
+        emp.name.toLowerCase().includes(searchTerm) ||
+        emp.email.toLowerCase().includes(searchTerm) ||
+        emp.employee_id.toLowerCase().includes(searchTerm) ||
+        emp.phone.toLowerCase().includes(searchTerm)
+    );
+    renderEmployees(filteredEmployees);
+}
+
+function openAddEmployeeModal() {
+    document.getElementById('modalTitle').textContent = 'Add New Employee';
+    document.getElementById('employeeForm').reset();
+    document.getElementById('photoPreview').innerHTML = '<div class="photo-placeholder">📷</div>';
+    document.getElementById('passwordLabel').classList.add('required');
+    document.getElementById('confirmPasswordLabel').classList.add('required');
+    document.getElementById('password').required = true;
+    document.getElementById('employeeModal').classList.add('show');
+}
+
+function closeEmployeeModal() {
+    document.getElementById('employeeModal').classList.remove('show');
+}
+
+function previewPhoto(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('photoPreview').innerHTML = 
+                `<img src="${e.target.result}" alt="Photo preview">`;
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+function handleEmployeeSubmit(event) {
+    event.preventDefault();
+    
+    const password = document.getElementById('password').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+    
+    if (password !== confirmPassword) {
+        showError('Passwords do not match');
+        return;
+    }
+    
+    if (password.length < 8) {
+        showError('Password must be at least 8 characters');
+        return;
+    }
+    
+    const formData = new FormData(document.getElementById('employeeForm'));
+    
+    showLoading();
+    
+    fetch('/api/create-employee/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+        },
+        body: formData,
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showSuccess(data.message);
+            closeEmployeeModal();
+            loadEmployees();
+        } else {
+            showError(data.error);
+        }
+        hideLoading();
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        hideLoading();
+        showError('Failed to create employee');
+    });
+}
+
+function editEmployee(employeeId) {
+    showError('Edit functionality coming soon');
+}
+
+function deleteEmployee(employeeId) {
+    if (!confirm('Are you sure you want to deactivate this employee?')) return;
+    
+    showLoading();
+    
+    fetch(`/api/delete-employee/${employeeId}/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken'),
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showSuccess(data.message);
+            loadEmployees();
+        } else {
+            showError(data.error);
+        }
+        hideLoading();
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        hideLoading();
+        showError('Failed to delete employee');
+    });
+}
+
+// Utility functions
+function showLoading() {
+    document.getElementById('loadingIndicator').classList.add('show');
+}
+
+function hideLoading() {
+    document.getElementById('loadingIndicator').classList.remove('show');
+}
+
+function showSuccess(message) {
+    alert(message);
+}
+
+function showError(message) {
+    alert('Error: ' + message);
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function formatNumber(num) {
+    return new Intl.NumberFormat('en-IN').format(Math.round(num));
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}

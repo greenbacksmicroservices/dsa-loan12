@@ -1,0 +1,323 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Complaints - Agent{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 text-gray-800 mb-0">
+                        <i class="bi bi-exclamation-triangle"></i> Complaints
+                    </h1>
+                    <p class="text-muted mt-2 mb-0">File and track complaints regarding your loans</p>
+                </div>
+                <div class="dropdown">
+                    <button class="btn btn-light border rounded-circle p-3" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-person-circle" style="font-size: 1.5rem; color: #007bff;"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="#"><i class="bi bi-person"></i> Profile</a></li>
+                        <li><a class="dropdown-item" href="#"><i class="bi bi-gear"></i> Settings</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-danger" href="{% url 'logout' %}"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- File New Complaint Form -->
+    <div class="row mb-4">
+        <div class="col-lg-5">
+            <div class="card shadow">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">File New Complaint</h5>
+                </div>
+                <div class="card-body">
+                    {% if form_errors %}
+                    <div class="alert alert-danger alert-dismissible fade show">
+                        <strong>Error:</strong> Please fill all required fields correctly
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                    {% endif %}
+
+                    <form method="post" action="{% url 'file_complaint' %}">
+                        {% csrf_token %}
+
+                        <div class="mb-3">
+                            <label class="form-label">Select Loan *</label>
+                            <select name="loan_id" class="form-select" required>
+                                <option value="">-- Choose a loan --</option>
+                                {% for loan in user_loans %}
+                                <option value="{{ loan.id }}">
+                                    {{ loan.applicant_name }} - ₹{{ loan.loan_amount|floatformat:0 }} ({{ loan.get_status_display }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                            {% if user_loans|length == 0 %}
+                            <small class="text-muted d-block mt-2">No loans available. <a href="{% url 'agent_add_loan' %}">Create one first</a></small>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Complaint Type *</label>
+                            <select name="complaint_type" class="form-select" required>
+                                <option value="">-- Select type --</option>
+                                <option value="processing_delay">Processing Delay</option>
+                                <option value="documentation">Documentation Issue</option>
+                                <option value="communication">Poor Communication</option>
+                                <option value="service_quality">Service Quality</option>
+                                <option value="approval_issue">Approval Issue</option>
+                                <option value="disbursement">Disbursement Issue</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Subject *</label>
+                            <input 
+                                type="text" 
+                                name="subject" 
+                                class="form-control"
+                                placeholder="Brief subject of complaint"
+                                required
+                                maxlength="100"
+                            >
+                            <small class="text-muted">Max 100 characters</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Description *</label>
+                            <textarea 
+                                name="description" 
+                                class="form-control" 
+                                rows="5"
+                                placeholder="Detailed description of the complaint"
+                                required
+                                maxlength="1000"
+                            ></textarea>
+                            <small class="text-muted">Max 1000 characters</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Priority Level</label>
+                            <select name="priority" class="form-select">
+                                <option value="normal" selected>Normal</option>
+                                <option value="high">High</option>
+                                <option value="urgent">Urgent</option>
+                            </select>
+                        </div>
+
+                        <button type="submit" class="btn btn-danger w-100">
+                            <i class="bi bi-send"></i> File Complaint
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Complaints List -->
+        <div class="col-lg-7">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-list-ul"></i> My Complaints
+                        <span class="badge bg-light text-dark float-end">{{ complaints|length }} complaints</span>
+                    </h5>
+                </div>
+
+                <!-- Filter Controls -->
+                <div class="card-body bg-light border-bottom">
+                    <div class="row g-2">
+                        <div class="col-md-6">
+                            <select id="status-filter" class="form-select form-select-sm" onchange="filterComplaints()">
+                                <option value="">All Status</option>
+                                <option value="open">Open</option>
+                                <option value="in_progress">In Progress</option>
+                                <option value="resolved">Resolved</option>
+                                <option value="closed">Closed</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <input type="text" id="search-complaint" class="form-control form-control-sm" placeholder="Search..." onkeyup="filterComplaints()">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-body p-0">
+                    {% if complaints %}
+                    <div class="list-group list-group-flush" id="complaints-list">
+                        {% for complaint in complaints %}
+                        <a href="#" class="list-group-item list-group-item-action complaint-item" 
+                           data-status="{{ complaint.status }}"
+                           data-complaint-id="{{ complaint.id }}"
+                           onclick="viewComplaintDetails({{ complaint.id }}); return false;">
+                            <div class="d-flex w-100 justify-content-between">
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-1">{{ complaint.subject }}</h6>
+                                    <p class="mb-1 text-muted small">
+                                        <i class="bi bi-file-earmark"></i> Loan: {{ complaint.loan.applicant_name }}
+                                    </p>
+                                    <small class="text-muted">{{ complaint.created_at|date:"d M, Y H:i" }}</small>
+                                </div>
+                                <div class="text-end">
+                                    <span class="badge {% if complaint.status == 'pending' %}bg-warning{% elif complaint.status == 'resolved' %}bg-success{% elif complaint.status == 'closed' %}bg-secondary{% else %}bg-info{% endif %}">
+                                        {{ complaint.get_status_display }}
+                                    </span>
+                                    <br>
+                                    <small class="text-muted">
+                                        <i class="bi bi-flag"></i> {{ complaint.get_priority_display|default:complaint.priority }}
+                                    </small>
+                                </div>
+                            </div>
+                        </a>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-chat-dots display-1 text-muted"></i>
+                        <h5 class="mt-3 text-muted">No Complaints</h5>
+                        <p class="text-muted">You haven't filed any complaints yet. Use the form to file one.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Complaint Details Modal -->
+<div class="modal fade" id="complaintDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">Complaint Details</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="complaint-details-body">
+                Loading...
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function filterComplaints() {
+    const statusFilter = document.getElementById('status-filter').value;
+    const searchText = document.getElementById('search-complaint').value.toLowerCase();
+    const items = document.querySelectorAll('.complaint-item');
+    
+    items.forEach(item => {
+        const status = item.dataset.status;
+        const text = item.textContent.toLowerCase();
+        
+        const statusMatch = statusFilter === '' || status === statusFilter;
+        const textMatch = text.includes(searchText);
+        
+        item.style.display = statusMatch && textMatch ? '' : 'none';
+    });
+}
+
+function viewComplaintDetails(complaintId) {
+    const modal = new bootstrap.Modal(document.getElementById('complaintDetailsModal'));
+    const body = document.getElementById('complaint-details-body');
+    
+    body.innerHTML = `
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    `;
+    
+    // Fetch complaint details via AJAX
+    fetch(`/api/complaint/${complaintId}/`)
+        .then(response => response.json())
+        .then(data => {
+            body.innerHTML = `
+                <div class="row mb-3">
+                    <div class="col-6">
+                        <strong>Status:</strong><br>
+                        <span class="badge bg-info">${data.status}</span>
+                    </div>
+                    <div class="col-6 text-end">
+                        <strong>Priority:</strong><br>
+                        <span class="badge bg-danger">${data.priority}</span>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-6">
+                        <strong>Loan:</strong><br>
+                        ${data.loan_applicant_name} - ₹${data.loan_amount}
+                    </div>
+                    <div class="col-6 text-end">
+                        <strong>Filed Date:</strong><br>
+                        ${new Date(data.created_at).toLocaleDateString()}
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-12">
+                        <strong>Subject:</strong><br>
+                        ${data.subject}
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-12">
+                        <strong>Description:</strong><br>
+                        <p class="text-muted">${data.description}</p>
+                    </div>
+                </div>
+                ${data.assigned_admin ? `<div class="row"><div class="col-12"><strong>Assigned to:</strong> ${data.assigned_admin_name}</div></div>` : ''}
+            `;
+        })
+        .catch(error => {
+            body.innerHTML = `<div class="alert alert-danger">Error loading complaint details</div>`;
+        });
+    
+    modal.show();
+}
+
+// Real-time refresh (optional)
+setInterval(function() {
+    // You can refresh complaints list here
+}, 30000);
+</script>
+
+<style>
+.list-group-item {
+    border: 1px solid #e3e6f0;
+    transition: all 0.3s ease;
+}
+
+.list-group-item:hover {
+    background-color: #f8f9fa;
+    border-left: 3px solid #007bff;
+}
+
+.badge {
+    font-size: 0.85rem;
+    padding: 0.35rem 0.65rem;
+}
+
+.complaint-item[data-status="open"] {
+    border-left: 3px solid #ffc107;
+}
+
+.complaint-item[data-status="in_progress"] {
+    border-left: 3px solid #0dcaf0;
+}
+
+.complaint-item[data-status="resolved"] {
+    border-left: 3px solid #28a745;
+}
+
+.complaint-item[data-status="closed"] {
+    border-left: 3px solid #6c757d;
+}
+</style>
+{% endblock %}

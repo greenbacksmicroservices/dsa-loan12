@@ -1,0 +1,254 @@
+{% extends "core/admin/admin_base.html" %}
+{% load static %}
+
+{% block page_title %}Loan Details{% endblock %}
+
+{% block page_content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="mb-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <h2><i class="fas fa-file-contract" style="color: #667eea;"></i> Loan Application Details</h2>
+            <a href="{% url 'admin_all_loans' %}" class="btn text-white" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none;">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Left Column - Details (2/3) -->
+        <div class="col-lg-8">
+            <!-- Applicant Information -->
+            <div class="card mb-4" style="border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+                <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none;">
+                    <h5 class="mb-0"><i class="fas fa-user"></i> Applicant Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">Full Name</label>
+                            <p class="mb-0"><strong>{{ loan.full_name }}</strong></p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">Email</label>
+                            <p class="mb-0"><strong>{{ loan.email|default:"N/A" }}</strong></p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">Phone Number</label>
+                            <p class="mb-0"><strong>{{ loan.mobile_number|default:"N/A" }}</strong></p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">Address</label>
+                            <p class="mb-0"><strong>{{ loan.permanent_address|default:"N/A" }}</strong></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loan Details -->
+            <div class="card mb-4" style="border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+                <div class="card-header" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; border: none;">
+                    <h5 class="mb-0"><i class="fas fa-file-contract"></i> Loan Details</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">Loan Type</label>
+                            <p class="mb-0"><strong>{{ loan.get_loan_type_display }}</strong></p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">Loan Amount</label>
+                            <p class="mb-0"><strong style="color: #667eea;">₹{{ loan.loan_amount|floatformat:2 }}</strong></p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">Loan Purpose</label>
+                            <p class="mb-0"><strong>{{ loan.loan_purpose|default:"N/A" }}</strong></p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">Applied Date</label>
+                            <p class="mb-0"><strong>{{ loan.created_at|date:"d M, Y H:i" }}</strong></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bank Information -->
+            {% if loan.bank_name %}
+            <div class="card mb-4" style="border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+                <div class="card-header" style="background: linear-gradient(135deg, #30cfd0 0%, #330867 100%); color: white; border: none;">
+                    <h5 class="mb-0"><i class="fas fa-university"></i> Bank Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">Bank Name</label>
+                            <p class="mb-0"><strong>{{ loan.bank_name }}</strong></p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">Account Number</label>
+                            <p class="mb-0"><strong>{{ loan.bank_account_number|default:"N/A" }}</strong></p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">IFSC Code</label>
+                            <p class="mb-0"><strong>{{ loan.bank_ifsc_code|default:"N/A" }}</strong></p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">Bank Type</label>
+                            <p class="mb-0"><strong>{{ loan.get_bank_type_display|default:"N/A" }}</strong></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Documents Section -->
+            <div class="card" style="border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+                <div class="card-header" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); color: white; border: none;">
+                    <h5 class="mb-0"><i class="fas fa-file-upload"></i> Documents</h5>
+                </div>
+                <div class="card-body">
+                    {% if documents %}
+                    <div class="row">
+                        {% for doc in documents %}
+                        <div class="col-md-4 mb-3">
+                            <div class="border rounded p-3 text-center" style="border: 1px solid #e5e7eb; background: #f9fafb; transition: all 0.2s ease;">
+                                <i class="fas fa-file fa-2x" style="color: #667eea; margin-bottom: 10px;"></i>
+                                <p class="small mb-2"><strong>{{ doc.document_type }}</strong></p>
+                                <a href="{{ doc.file.url }}" class="btn btn-sm text-white" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none;" download>
+                                    <i class="fas fa-download"></i> Download
+                                </a>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center py-3">No documents uploaded yet</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column - Status & Assignment (1/3) -->
+        <div class="col-lg-4">
+            <!-- Current Status -->
+            <div class="card mb-4" style="border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+                <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none;">
+                    <h5 class="mb-0"><i class="fas fa-info-circle"></i> Current Status</h5>
+                </div>
+                <div class="card-body text-center">
+                    <span class="badge" style="background-color: 
+                        {% if loan.status == 'new_entry' %}#667eea
+                        {% elif loan.status == 'in_processing' %}#f5576c
+                        {% elif loan.status == 'follow_up' %}#fa709a
+                        {% elif loan.status == 'approved' %}#30cfd0
+                        {% elif loan.status == 'rejected' %}#ff6b6b
+                        {% elif loan.status == 'disbursed' %}#11998e
+                        {% endif %};
+                        padding: 10px 15px; font-size: 16px; color: white;">
+                        {{ loan.get_status_display }}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Assigned Employee -->
+            {% if loan.assigned_employee %}
+            <div class="card mb-4" style="border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+                <div class="card-header" style="background: linear-gradient(135deg, #30cfd0 0%, #330867 100%); color: white; border: none;">
+                    <h5 class="mb-0"><i class="fas fa-user-tie"></i> Assigned Employee</h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-1"><strong>{{ loan.assigned_employee.get_full_name }}</strong></p>
+                    <p class="small text-muted mb-0">{{ loan.assigned_employee.email }}</p>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Assignment Form -->
+            {% if loan.status == 'new_entry' %}
+            <div class="card mb-4" style="border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+                <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none;">
+                    <h5 class="mb-0"><i class="fas fa-user-plus"></i> Assign Employee</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{% url 'admin_assign_employee' loan.id %}">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label class="form-label">Select Employee</label>
+                            <select name="employee_id" class="form-select" required>
+                                <option value="">Choose an employee...</option>
+                                {% for emp in employees %}
+                                <option value="{{ emp.id }}">{{ emp.get_full_name }} ({{ emp.email }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <button type="submit" class="btn text-white w-100" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none;">
+                            <i class="fas fa-save"></i> Assign & Move to Processing
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% elif loan.status == 'in_processing' %}
+            <div class="card mb-4" style="border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+                <div class="card-header" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); color: white; border: none;">
+                    <h5 class="mb-0"><i class="fas fa-exchange-alt"></i> Reassign Employee</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{% url 'admin_assign_employee' loan.id %}">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label class="form-label">Select Different Employee</label>
+                            <select name="employee_id" class="form-select" required>
+                                <option value="">Choose an employee...</option>
+                                {% for emp in employees %}
+                                {% if emp.id != loan.assigned_employee.id %}
+                                <option value="{{ emp.id }}">{{ emp.get_full_name }} ({{ emp.email }})</option>
+                                {% endif %}
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <button type="submit" class="btn text-white w-100" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); border: none;">
+                            <i class="fas fa-sync"></i> Reassign
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% elif loan.status == 'follow_up' %}
+            <div class="alert alert-warning" role="alert" style="background: linear-gradient(135deg, rgba(250,112,154,0.1) 0%, rgba(254,225,64,0.1) 100%); border: 1px solid #fa709a; color: #c84500;">
+                <i class="fas fa-bell"></i> <strong>Follow-up Required</strong>
+                <p class="mb-0 small mt-2">This loan requires follow-up action. Please review and take necessary steps.</p>
+            </div>
+            {% elif loan.status == 'approved' %}
+            <div class="alert alert-success" role="alert" style="background: linear-gradient(135deg, rgba(48,207,208,0.1) 0%, rgba(51,8,103,0.1) 100%); border: 1px solid #30cfd0; color: #0e7c86;">
+                <i class="fas fa-check-circle"></i> <strong>Approved</strong>
+                <p class="mb-0 small mt-2">This loan has been approved. Pending disbursement.</p>
+            </div>
+            {% elif loan.status == 'rejected' %}
+            <div class="alert alert-danger" role="alert" style="background: linear-gradient(135deg, rgba(255,107,107,0.1) 0%, rgba(238,90,111,0.1) 100%); border: 1px solid #ff6b6b; color: #c21807;">
+                <i class="fas fa-times-circle"></i> <strong>Rejected</strong>
+                <p class="mb-0 small mt-2">This loan application has been rejected.</p>
+            </div>
+            {% elif loan.status == 'disbursed' %}
+            <div class="alert alert-info" role="alert" style="background: linear-gradient(135deg, rgba(79,172,254,0.1) 0%, rgba(0,242,254,0.1) 100%); border: 1px solid #4facfe; color: #0c5ba1;">
+                <i class="fas fa-money-bill-wave"></i> <strong>Disbursed</strong>
+                <p class="mb-0 small mt-2">This loan has been successfully disbursed.</p>
+            </div>
+            {% endif %}
+
+            <!-- Quick Actions -->
+            <div class="card" style="border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+                <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none;">
+                    <h5 class="mb-0"><i class="fas fa-arrow-left"></i> Navigation</h5>
+                </div>
+                <div class="card-body">
+                    <a href="{% url 'admin_all_loans' %}" class="btn btn-sm w-100 mb-2 text-white" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none;">
+                        Back to All Loans
+                    </a>
+                    <a href="{% url 'admin_new_entries' %}" class="btn btn-sm w-100 text-white" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); border: none;">
+                        All Loans
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

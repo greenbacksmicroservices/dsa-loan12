@@ -1,0 +1,266 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}My Profile - Employee Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header with Back Button -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm sticky-top">
+        <div class="container-fluid px-4">
+            <div class="d-flex align-items-center flex-grow-1">
+                <a href="{% url 'employee_dashboard' %}" class="btn btn-light border me-3">
+                    <i class="bi bi-arrow-left"></i> Back to Dashboard
+                </a>
+                <h1 class="h4 mb-0 text-dark fw-bold">
+                    <i class="bi bi-person-circle" style="color: #10b981;"></i> My Profile
+                </h1>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <!-- Profile Card -->
+            <div class="col-lg-4 mb-4">
+                <div class="card shadow h-100">
+                    <div class="card-body text-center">
+                        <div class="mb-3">
+                            {% if user.profile_photo %}
+                                <img src="{{ user.profile_photo.url }}" alt="{{ user.get_full_name }}" class="rounded-circle" style="width: 120px; height: 120px; object-fit: cover; border: 3px solid #10b981;">
+                            {% else %}
+                                <div class="rounded-circle mx-auto mb-2" style="width: 120px; height: 120px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center;">
+                                    <i class="bi bi-person-circle" style="font-size: 60px; color: white;"></i>
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Photo Upload Section -->
+                        <div class="mb-3">
+                            <label for="profilePhoto" class="btn btn-sm btn-outline-primary rounded-pill" style="cursor: pointer; font-size: 12px;">
+                                <i class="bi bi-camera"></i> Change Photo
+                            </label>
+                            <input type="file" id="profilePhoto" class="d-none" accept="image/*" onchange="uploadProfilePhoto(this)">
+                        </div>
+                        
+                        <h5 class="card-title">{{ user.get_full_name|default:user.username }}</h5>
+                        <p class="text-muted small">Employee</p>
+                        <hr>
+                        <p class="small">
+                            <strong>Email:</strong><br>
+                            {{ user.email }}
+                        </p>
+                        <p class="small">
+                            <strong>Username:</strong><br>
+                            {{ user.username }}
+                        </p>
+                        <p class="small">
+                            <strong>Phone:</strong><br>
+                            {{ user.phone|default:"Not provided" }}
+                        </p>
+                        <p class="small">
+                            <strong>Member Since:</strong><br>
+                            {{ user.date_joined|date:"d M, Y" }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Profile Details -->
+            <div class="col-lg-8 mb-4">
+                <div class="card shadow h-100">
+                    <div class="card-header bg-success text-white">
+                        <h6 class="m-0 fw-bold"><i class="bi bi-info-circle"></i> Profile Information</h6>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" action="#">
+                            {% csrf_token %}
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label fw-bold">First Name</label>
+                                    <input type="text" class="form-control" value="{{ user.first_name }}" readonly>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label fw-bold">Last Name</label>
+                                    <input type="text" class="form-control" value="{{ user.last_name }}" readonly>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label fw-bold">Email</label>
+                                    <input type="email" class="form-control" value="{{ user.email }}" readonly>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label fw-bold">Phone</label>
+                                    <input type="text" class="form-control" value="{{ user.phone|default:'' }}" readonly>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label fw-bold">Role</label>
+                                    <input type="text" class="form-control" value="Employee" readonly>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label fw-bold">Status</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">
+                                            <i class="bi bi-check-circle-fill text-success"></i>
+                                        </span>
+                                        <input type="text" class="form-control" value="Active" readonly>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="alert alert-info" role="alert">
+                                <i class="bi bi-info-circle"></i> To edit your profile information, please contact your administrator.
+                            </div>
+
+                            <a href="{% url 'employee_settings' %}" class="btn btn-primary">
+                                <i class="bi bi-gear"></i> Go to Settings
+                            </a>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics Section -->
+        <div class="row mt-4">
+            <div class="col-md-3 mb-3">
+                <div class="card shadow h-100">
+                    <div class="card-body">
+                        <div class="text-center">
+                            <i class="bi bi-file-earmark-check" style="font-size: 2rem; color: #10b981;"></i>
+                            <h6 class="mt-2 text-muted">My Assignments</h6>
+                            <h3 class="fw-bold" id="total-loans">-</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3 mb-3">
+                <div class="card shadow h-100">
+                    <div class="card-body">
+                        <div class="text-center">
+                            <i class="bi bi-hourglass-split" style="font-size: 2rem; color: #f59e0b;"></i>
+                            <h6 class="mt-2 text-muted">Processing</h6>
+                            <h3 class="fw-bold" id="processing-loans">-</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3 mb-3">
+                <div class="card shadow h-100">
+                    <div class="card-body">
+                        <div class="text-center">
+                            <i class="bi bi-check-circle-fill" style="font-size: 2rem; color: #10b981;"></i>
+                            <h6 class="mt-2 text-muted">Approved</h6>
+                            <h3 class="fw-bold" id="approved-loans">-</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3 mb-3">
+                <div class="card shadow h-100">
+                    <div class="card-body">
+                        <div class="text-center">
+                            <i class="bi bi-x-circle-fill" style="font-size: 2rem; color: #ef4444;"></i>
+                            <h6 class="mt-2 text-muted">Rejected</h6>
+                            <h3 class="fw-bold" id="rejected-loans">-</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        loadProfileStats();
+    });
+
+    function loadProfileStats() {
+        fetch('/api/employee-dashboard-stats/', {
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('total-loans').textContent = data.total_assigned || 0;
+                document.getElementById('processing-loans').textContent = data.processing || 0;
+                document.getElementById('approved-loans').textContent = data.approved || 0;
+                document.getElementById('rejected-loans').textContent = data.rejected || 0;
+            }
+        })
+        .catch(error => console.error('Error loading stats:', error));
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function uploadProfilePhoto(input) {
+        if (!input.files || !input.files[0]) return;
+        
+        const file = input.files[0];
+        
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+            alert('Please select a valid image file');
+            return;
+        }
+        
+        // Validate file size (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            alert('Image size must be less than 5MB');
+            return;
+        }
+        
+        const formData = new FormData();
+        formData.append('profile_photo', file);
+        
+        fetch('/api/employee/upload-profile-photo/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: formData,
+            credentials: 'include'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Photo uploaded successfully');
+                location.reload(); // Reload to show new photo
+            } else {
+                alert('Error: ' + (data.error || 'Failed to upload photo'));
+            }
+        })
+        .catch(error => {
+            console.error('Upload error:', error);
+            alert('Error uploading photo: ' + error.message);
+        });
+    }
+</script>
+
+{% endblock %}

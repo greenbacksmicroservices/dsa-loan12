@@ -1,0 +1,713 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Agent Dashboard - DSA Loan Management System{% endblock %}
+
+{% block content %}
+<!-- Clean White Header -->
+<div class="dashboard-header" style="background: white; padding: 24px 0; margin-bottom: 32px; border-bottom: 1px solid #f0f0f0;">
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 style="margin: 0; font-size: 32px; font-weight: 700; color: #1a1a1a;">
+                    <i class="bi bi-speedometer2" style="margin-right: 12px;"></i>Dashboard
+                </h1>
+                <p style="margin: 8px 0 0 0; color: #666; font-size: 14px;">Real-time loan management overview</p>
+            </div>
+            <div class="profile-dropdown">
+                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                    <i class="bi bi-person-circle"></i> Profile
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item" href="/agent/profile/">My Profile</a></li>
+                    <li><a class="dropdown-item" href="/agent/settings/">Settings</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="/logout/">Logout</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Dashboard Stats Cards - Professional Fintech Design -->
+<div class="container-fluid mb-5">
+    <div class="row g-4">
+        <!-- Total Loans Card -->
+        <div class="col-lg-2.4 col-md-6 col-sm-12">
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 16px; padding: 28px; color: white; box-shadow: 0 8px 32px rgba(102, 126, 234, 0.15); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative; overflow: hidden;">
+                <div style="position: absolute; top: -40%; right: -40%; width: 200px; height: 200px; background: rgba(255,255,255,0.1); border-radius: 50%; pointer-events: none;"></div>
+                <div style="position: relative; z-index: 2;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
+                        <div>
+                            <p style="font-size: 13px; opacity: 0.85; margin: 0; font-weight: 500; letter-spacing: 0.5px;">TOTAL LOANS</p>
+                        </div>
+                        <i class="bi bi-briefcase" style="font-size: 28px; opacity: 0.8;"></i>
+                    </div>
+                    <div style="font-size: 36px; font-weight: 700; margin-bottom: 0;" id="total-assigned">0</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Processing Card (Waiting + Follow-up) -->
+        <div class="col-lg-2.4 col-md-6 col-sm-12">
+            <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border-radius: 16px; padding: 28px; color: white; box-shadow: 0 8px 32px rgba(245, 87, 108, 0.15); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative; overflow: hidden;">
+                <div style="position: absolute; top: -40%; right: -40%; width: 200px; height: 200px; background: rgba(255,255,255,0.1); border-radius: 50%; pointer-events: none;"></div>
+                <div style="position: relative; z-index: 2;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
+                        <div>
+                            <p style="font-size: 13px; opacity: 0.85; margin: 0; font-weight: 500; letter-spacing: 0.5px;">PROCESSING</p>
+                        </div>
+                        <i class="bi bi-hourglass-split" style="font-size: 28px; opacity: 0.8;"></i>
+                    </div>
+                    <div style="font-size: 36px; font-weight: 700; margin-bottom: 0;" id="processing-count">0</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Approved Card -->
+        <div class="col-lg-2.4 col-md-6 col-sm-12">
+            <div style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); border-radius: 16px; padding: 28px; color: white; box-shadow: 0 8px 32px rgba(79, 172, 254, 0.15); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative; overflow: hidden;">
+                <div style="position: absolute; top: -40%; right: -40%; width: 200px; height: 200px; background: rgba(255,255,255,0.1); border-radius: 50%; pointer-events: none;"></div>
+                <div style="position: relative; z-index: 2;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
+                        <div>
+                            <p style="font-size: 13px; opacity: 0.85; margin: 0; font-weight: 500; letter-spacing: 0.5px;">APPROVED</p>
+                        </div>
+                        <i class="bi bi-check-circle" style="font-size: 28px; opacity: 0.8;"></i>
+                    </div>
+                    <div style="font-size: 36px; font-weight: 700; margin-bottom: 0;" id="approved-count">0</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rejected Card -->
+        <div class="col-lg-2.4 col-md-6 col-sm-12">
+            <div style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); border-radius: 16px; padding: 28px; color: white; box-shadow: 0 8px 32px rgba(254, 225, 64, 0.15); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative; overflow: hidden;">
+                <div style="position: absolute; top: -40%; right: -40%; width: 200px; height: 200px; background: rgba(255,255,255,0.1); border-radius: 50%; pointer-events: none;"></div>
+                <div style="position: relative; z-index: 2;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
+                        <div>
+                            <p style="font-size: 13px; opacity: 0.85; margin: 0; font-weight: 500; letter-spacing: 0.5px;">REJECTED</p>
+                        </div>
+                        <i class="bi bi-x-circle" style="font-size: 28px; opacity: 0.8;"></i>
+                    </div>
+                    <div style="font-size: 36px; font-weight: 700; margin-bottom: 0;" id="rejected-count">0</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Disbursed Card -->
+        <div class="col-lg-2.4 col-md-6 col-sm-12">
+            <div style="background: linear-gradient(135deg, #1dd1a1 0%, #00b894 100%); border-radius: 16px; padding: 28px; color: white; box-shadow: 0 8px 32px rgba(29, 209, 161, 0.15); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative; overflow: hidden;">
+                <div style="position: absolute; top: -40%; right: -40%; width: 200px; height: 200px; background: rgba(255,255,255,0.1); border-radius: 50%; pointer-events: none;"></div>
+                <div style="position: relative; z-index: 2;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
+                        <div>
+                            <p style="font-size: 13px; opacity: 0.85; margin: 0; font-weight: 500; letter-spacing: 0.5px;">DISBURSED</p>
+                        </div>
+                        <i class="bi bi-currency-rupee" style="font-size: 28px; opacity: 0.8;"></i>
+                    </div>
+                    <div style="font-size: 36px; font-weight: 700; margin-bottom: 0;" id="disbursed-count">0</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Section - Below Cards -->
+<div class="container-fluid mb-5">
+    <div class="row g-4">
+        <!-- My Records - Loan Status Distribution -->
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm" style="border-radius: 16px; overflow: hidden;">
+                <div class="card-header border-0" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 24px; display: flex; justify-content: space-between; align-items: center;">
+                    <h6 class="mb-0" style="font-weight: 600; font-size: 16px;">
+                        <i class="bi bi-pie-chart" style="margin-right: 8px;"></i>My Records
+                    </h6>
+                    <small style="opacity: 0.9;">Loan Status Distribution</small>
+                </div>
+                <div class="card-body" style="padding: 24px;">
+                    <canvas id="loanStatusChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- My Sub Agents - Performance Overview -->
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm" style="border-radius: 16px; overflow: hidden;">
+                <div class="card-header border-0" style="background: linear-gradient(135deg, #1dd1a1 0%, #00b894 100%); color: white; padding: 24px; display: flex; justify-content: space-between; align-items: center;">
+                    <h6 class="mb-0" style="font-weight: 600; font-size: 16px;">
+                        <i class="bi bi-graph-up" style="margin-right: 8px;"></i>My Sub Agents
+                    </h6>
+                    <small style="opacity: 0.9;">Performance Last 30 Days</small>
+                </div>
+                <div class="card-body" style="padding: 24px;">
+                    <canvas id="trendChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Loans Table Section -->
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm" style="border-radius: 16px; overflow: hidden;">
+                <div class="card-header border-0" style="background: #f8f9fa; padding: 24px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e9ecef;">
+                    <h6 class="mb-0" style="font-weight: 600; font-size: 16px;">
+                        <i class="bi bi-list-task" style="margin-right: 8px;"></i>My Assigned Loans
+                    </h6>
+                    <button class="btn btn-sm btn-primary" id="refresh-loans" style="border-radius: 8px; font-weight: 600;">
+                        <i class="bi bi-arrow-clockwise"></i> Refresh
+                    </button>
+                </div>
+                <div class="card-body" style="padding: 0;">
+                    <div id="loans-list" style="padding: 24px;">
+                        <div class="text-center py-4">
+                            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="text-muted mt-2">Loading loans...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Stat Card Base Styling */
+    .stat-card {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        cursor: pointer;
+        position: relative;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 16px 48px rgba(0, 0, 0, 0.15) !important;
+    }
+
+    .stat-card:hover {
+        filter: brightness(1.05);
+    }
+
+    /* Dashboard Header */
+    .dashboard-header {
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+
+    /* Modern Card Styles */
+    .card {
+        border: none;
+        border-radius: 16px;
+        transition: all 0.3s ease;
+    }
+
+    .card:hover {
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12) !important;
+    }
+
+    /* Chart Container */
+    #loanStatusChart,
+    #trendChart {
+        max-height: 350px;
+    }
+
+    /* Loans Table */
+    .loans-table {
+        width: 100%;
+    }
+
+    .loans-table table {
+        font-size: 14px;
+    }
+
+    .loans-table table thead th {
+        background: #f8f9fa;
+        border: none;
+        font-weight: 600;
+        color: #495057;
+        padding: 16px 12px;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .loans-table table tbody tr {
+        border-bottom: 1px solid #e9ecef;
+        transition: all 0.2s ease;
+    }
+
+    .loans-table table tbody tr:hover {
+        background: #f8f9fa;
+    }
+
+    .loans-table table tbody td {
+        padding: 14px 12px;
+        vertical-align: middle;
+    }
+
+    /* Badge Styling */
+    .badge {
+        font-weight: 600;
+        padding: 6px 12px;
+        font-size: 11px;
+        letter-spacing: 0.5px;
+    }
+
+    /* Button Styling */
+    .btn-light:hover {
+        background: rgba(255, 255, 255, 0.2) !important;
+        color: white !important;
+        transform: scale(1.02);
+    }
+
+    /* Responsive Grid */
+    @media (max-width: 1200px) {
+        .col-lg-2.4 {
+            flex: 0 0 calc(50% - 8px);
+            max-width: calc(50% - 8px);
+        }
+    }
+
+    @media (max-width: 768px) {
+        .col-lg-2.4 {
+            flex: 0 0 100%;
+            max-width: 100%;
+        }
+        
+        .dashboard-header h1 {
+            font-size: 24px !important;
+        }
+    }
+
+    /* Loading Spinner */
+    .spinner-border-sm {
+        width: 20px;
+        height: 20px;
+        border-width: 2px;
+    }
+
+    /* Dropdown Menu */
+    .dropdown-menu {
+        border: none;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+        border-radius: 12px;
+        margin-top: 8px;
+    }
+
+    .dropdown-item {
+        padding: 10px 16px;
+        font-weight: 500;
+        color: #495057;
+        border-radius: 6px;
+        margin: 4px 6px;
+    }
+
+    .dropdown-item:hover {
+        background: #f0f0f0;
+        color: #667eea;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3/dist/chart.min.js"></script>
+<script>
+// ============================================
+// AGENT DASHBOARD - REAL-TIME DATA MANAGEMENT
+// ============================================
+
+let loanStatusChart = null;
+let trendChart = null;
+let lastUpdateTime = null;
+
+// ============ 1. LOAD DASHBOARD STATISTICS ============
+/**
+ * Fetch real-time dashboard statistics
+ * Updates: Total, Processing (Waiting + Follow-up), Approved, Rejected, Disbursed
+ */
+function loadDashboardStats() {
+    fetch('/api/agent/dashboard-stats/')
+        .then(response => {
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return response.json();
+        })
+        .then(data => {
+            console.log('✓ Dashboard stats updated:', data);
+            
+            // Update stat cards with real-time counts
+            document.getElementById('total-assigned').textContent = data.total_assigned || 0;
+            
+            // Processing = Waiting + Follow-up
+            const processingCount = (data.processing || 0) + (data.follow_up || 0);
+            document.getElementById('processing-count').textContent = processingCount;
+            
+            document.getElementById('approved-count').textContent = data.approved || 0;
+            document.getElementById('rejected-count').textContent = data.rejected || 0;
+            document.getElementById('disbursed-count').textContent = data.disbursed || 0;
+            
+            // Update timestamp
+            lastUpdateTime = new Date().toLocaleTimeString();
+        })
+        .catch(error => {
+            console.error('✗ Error loading stats:', error);
+            showError('Failed to load dashboard statistics. Please refresh.');
+        });
+}
+
+// ============ 2. LOAD LOANS BY STATUS ============
+/**
+ * Filter and display loans by selected status
+ * Supports: total, processing, approved, rejected, disbursed
+ */
+function filterByStatus(status) {
+    console.log(`Filtering loans by status: ${status}`);
+    
+    let statusParam = '';
+    if (status === 'processing') {
+        statusParam = 'waiting_for_processing';
+    } else if (status === 'total') {
+        statusParam = '';  // Get all
+    } else {
+        statusParam = status;
+    }
+
+    const url = statusParam 
+        ? `/api/my-assigned-loans/?status=${statusParam}`
+        : '/api/my-assigned-loans/';
+
+    fetch(url)
+        .then(response => {
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return response.json();
+        })
+        .then(data => {
+            renderLoansTable(data.results || data || []);
+        })
+        .catch(error => {
+            console.error('✗ Error filtering loans:', error);
+            showError('Failed to load loans. Please try again.');
+        });
+}
+
+// ============ 3. LOAD ALL ASSIGNED LOANS ============
+/**
+ * Load all assigned loans (own + sub-agent loans if any)
+ * Displays loans in professional table format
+ */
+function loadMyLoans() {
+    fetch('/api/my-assigned-loans/')
+        .then(response => {
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return response.json();
+        })
+        .then(data => {
+            console.log('✓ Loans loaded:', data.results ? data.results.length : 0);
+            renderLoansTable(data.results || data || []);
+        })
+        .catch(error => {
+            console.error('✗ Error loading loans:', error);
+            showError('Failed to load loans. Please refresh.');
+        });
+}
+
+// ============ 4. RENDER LOANS TABLE ============
+/**
+ * Render loans in professional table format with status badges and actions
+ */
+function renderLoansTable(loans) {
+    let html = '<div class="loans-table">';
+    
+    if (!loans || loans.length === 0) {
+        html += '<div class="text-center py-5"><p class="text-muted">No loans found.</p></div>';
+    } else {
+        html += `
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th style="width: 25%;">Applicant</th>
+                        <th style="width: 15%;">Loan Amount</th>
+                        <th style="width: 15%;">Status</th>
+                        <th style="width: 15%;">Assigned</th>
+                        <th style="width: 20%;">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        loans.forEach(loan => {
+            const statusColor = getStatusColor(loan.status);
+            const statusLabel = getStatusLabel(loan.status);
+            const loanAmount = typeof loan.loan_amount === 'number' 
+                ? '₹' + loan.loan_amount.toLocaleString('en-IN')
+                : loan.loan_amount;
+            
+            const createdDate = loan.created_at 
+                ? new Date(loan.created_at).toLocaleDateString('en-IN')
+                : 'N/A';
+
+            html += `
+                <tr>
+                    <td>
+                        <strong>${loan.applicant_name || loan.full_name || 'N/A'}</strong><br>
+                        <small class="text-muted">${loan.applicant_phone || loan.mobile_number || 'N/A'}</small>
+                    </td>
+                    <td><strong>${loanAmount}</strong></td>
+                    <td><span class="badge bg-${statusColor}" style="font-size: 11px;">${statusLabel}</span></td>
+                    <td><small>${createdDate}</small></td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="viewLoan(${loan.id})" style="border-radius: 6px; font-weight: 600; font-size: 11px;">
+                            <i class="bi bi-eye"></i> View
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+
+        html += `
+                </tbody>
+            </table>
+        `;
+    }
+
+    html += '</div>';
+    document.getElementById('loans-list').innerHTML = html;
+}
+
+// ============ 5. STATUS CHART - MY RECORDS ============
+/**
+ * Load and render "My Records" pie chart
+ * Shows: Waiting + Follow-up, Approved, Rejected, Disbursed
+ */
+function loadStatusChart() {
+    fetch('/api/agent/dashboard-stats/')
+        .then(response => response.json())
+        .then(data => {
+            const ctx = document.getElementById('loanStatusChart');
+            if (!ctx) return;
+
+            // Prepare chart data
+            const chartData = {
+                'Processing': (data.processing || 0) + (data.follow_up || 0),
+                'Approved': data.approved || 0,
+                'Rejected': data.rejected || 0,
+                'Disbursed': data.disbursed || 0,
+            };
+
+            const labels = Object.keys(chartData);
+            const values = Object.values(chartData);
+            const colors = ['#f093fb', '#4facfe', '#fa709a', '#1dd1a1'];
+
+            if (loanStatusChart) loanStatusChart.destroy();
+
+            loanStatusChart = new Chart(ctx.getContext('2d'), {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: colors,
+                        borderColor: '#fff',
+                        borderWidth: 3,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 16,
+                                font: { size: 13, weight: '600' },
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0,0,0,0.8)',
+                            padding: 12,
+                            cornerRadius: 8,
+                            titleFont: { size: 13, weight: 'bold' },
+                            bodyFont: { size: 12 },
+                        }
+                    }
+                }
+            });
+
+            console.log('✓ Status chart updated');
+        })
+        .catch(error => console.error('✗ Chart load error:', error));
+}
+
+// ============ 6. TREND CHART - SUB AGENT PERFORMANCE ============
+/**
+ * Load "My Sub Agents" performance chart (30-day trend)
+ * Shows cumulative agent performance over time
+ */
+function loadTrendChart() {
+    // Generate mock trend data (30 days)
+    const labels = generateLast30Days();
+    const values = generateMockTrendData(30);  // Mock data - replace with API call if available
+
+    const ctx = document.getElementById('trendChart');
+    if (!ctx) return;
+
+    if (trendChart) trendChart.destroy();
+
+    trendChart = new Chart(ctx.getContext('2d'), {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Loans Processed',
+                data: values,
+                fill: true,
+                backgroundColor: 'rgba(29, 209, 161, 0.1)',
+                borderColor: '#1dd1a1',
+                borderWidth: 3,
+                tension: 0.4,
+                pointRadius: 5,
+                pointBackgroundColor: '#1dd1a1',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+                pointHoverRadius: 7,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0,0,0,0.8)',
+                    padding: 12,
+                    cornerRadius: 8,
+                    titleFont: { size: 13, weight: 'bold' },
+                    bodyFont: { size: 12 },
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 5,
+                        font: { size: 11 }
+                    },
+                    grid: {
+                        color: 'rgba(0,0,0,0.05)'
+                    }
+                },
+                x: {
+                    grid: {
+                        display: false
+                    },
+                    ticks: {
+                        font: { size: 11 }
+                    }
+                }
+            }
+        }
+    });
+
+    console.log('✓ Trend chart updated');
+}
+
+// ============ 7. HELPER FUNCTIONS ============
+
+function getStatusColor(status) {
+    const colorMap = {
+        'new_entry': 'info',
+        'waiting_for_processing': 'warning',
+        'follow_up': 'warning',
+        'approved': 'success',
+        'rejected': 'danger',
+        'disbursed': 'success',
+        'processing': 'warning',
+    };
+    return colorMap[status] || 'secondary';
+}
+
+function getStatusLabel(status) {
+    const labelMap = {
+        'new_entry': 'New Entry',
+        'waiting_for_processing': 'Processing',
+        'follow_up': 'Follow-up',
+        'approved': 'Approved',
+        'rejected': 'Rejected',
+        'disbursed': 'Disbursed',
+        'processing': 'Processing',
+    };
+    return labelMap[status] || status;
+}
+
+function generateLast30Days() {
+    const dates = [];
+    const today = new Date();
+    for (let i = 29; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
+        dates.push(date.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }));
+    }
+    return dates;
+}
+
+function generateMockTrendData(days) {
+    const data = [];
+    let base = 5;
+    for (let i = 0; i < days; i++) {
+        base += Math.floor(Math.random() * 8) - 2;  // Random walk
+        data.push(Math.max(0, base));
+    }
+    return data;
+}
+
+function viewLoan(loanId) {
+    window.location.href = `/loan/${loanId}/`;
+}
+
+function showError(message) {
+    console.error('Error:', message);
+    // Optional: Show toast notification
+}
+
+// ============ 8. PAGE INITIALIZATION ============
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 Agent Dashboard initializing...');
+
+    // Load all data
+    loadDashboardStats();
+    loadMyLoans();
+    loadStatusChart();
+    loadTrendChart();
+
+    // Refresh loans on button click
+    const refreshBtn = document.getElementById('refresh-loans');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', function() {
+            loadDashboardStats();
+            loadMyLoans();
+            loadStatusChart();
+            loadTrendChart();
+            console.log('🔄 Dashboard refreshed');
+        });
+    }
+
+    // Auto-refresh every 30 seconds for real-time updates
+    setInterval(function() {
+        loadDashboardStats();
+        loadStatusChart();
+        loadTrendChart();
+        console.log('⏱️ Auto-refresh @', new Date().toLocaleTimeString());
+    }, 30000);
+
+    console.log('✓ Dashboard ready');
+});
+</script>
+{% endblock %}

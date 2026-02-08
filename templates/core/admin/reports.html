@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+{% extends 'core/admin/admin_base.html' %}
+{% load static %}
+
+{% block title %}Reports & Analytics - DSA Admin{% endblock %}
+{% block page_title %}Reports & Analytics{% endblock %}
+
+{% block content %}
+<style>
+    .page-header {
+        margin-bottom: 30px;
+        padding-bottom: 20px;
+        border-bottom: 2px solid #e5e7eb;
+    }
+
+    .page-header h2 {
+        margin: 0;
+        font-size: 24px;
+        font-weight: 600;
+        color: #1f2937;
+    }
+
+    .report-tabs {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 30px;
+        border-bottom: 2px solid #e5e7eb;
+    }
+
+    .report-tab {
+        padding: 12px 20px;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: 500;
+        color: #6b7280;
+        border-bottom: 3px solid transparent;
+        transition: all 0.3s ease;
+    }
+
+    .report-tab:hover {
+        color: #4f46e5;
+    }
+
+    .report-tab.active {
+        color: #4f46e5;
+        border-bottom-color: #4f46e5;
+    }
+
+    .report-section {
+        display: none;
+    }
+
+    .report-section.active {
+        display: block;
+    }
+
+    .report-header {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .report-actions {
+        display: flex;
+        gap: 10px;
+    }
+
+    .btn-export {
+        padding: 8px 16px;
+        border: 1px solid transparent;
+        border-radius: 6px;
+        font-size: 13px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .btn-excel {
+        background: #10b981;
+        color: white;
+    }
+
+    .btn-excel:hover {
+        background: #059669;
+        box-shadow: 0 4px 6px rgba(16, 185, 129, 0.3);
+    }
+
+    .btn-pdf {
+        background: #ef4444;
+        color: white;
+    }
+
+    .btn-pdf:hover {
+        background: #dc2626;
+        box-shadow: 0 4px 6px rgba(239, 68, 68, 0.3);
+    }
+
+    .btn-csv {
+        background: #3b82f6;
+        color: white;
+    }
+
+    .btn-csv:hover {
+        background: #2563eb;
+        box-shadow: 0 4px 6px rgba(59, 130, 246, 0.3);
+    }
+
+    .report-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+
+    .stat-box {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        border-left: 4px solid #4f46e5;
+    }
+
+    .stat-label {
+        font-size: 12px;
+        color: #6b7280;
+        text-transform: uppercase;
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+
+    .stat-value {
+        font-size: 24px;
+        font-weight: 700;
+        color: #1f2937;
+    }
+
+    .table-container {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+    }
+
+    .table-responsive {
+        overflow-x: auto;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    table thead {
+        background: #f9fafb;
+        border-bottom: 2px solid #e5e7eb;
+    }
+
+    table th {
+        padding: 12px 16px;
+        text-align: left;
+        font-weight: 600;
+        color: #374151;
+        font-size: 13px;
+        text-transform: uppercase;
+    }
+
+    table td {
+        padding: 12px 16px;
+        border-bottom: 1px solid #f3f4f6;
+    }
+
+    table tbody tr:hover {
+        background: #f9fafb;
+    }
+
+    .loading {
+        text-align: center;
+        padding: 40px;
+        color: #6b7280;
+    }
+
+    .spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 3px solid #e5e7eb;
+        border-top-color: #4f46e5;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #6b7280;
+    }
+
+    .empty-state-icon {
+        font-size: 48px;
+        margin-bottom: 15px;
+        opacity: 0.5;
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .badge-active {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .badge-inactive {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .badge-approved {
+        background: #d1e7dd;
+        color: #0f5132;
+    }
+
+    .badge-rejected {
+        background: #f8d7da;
+        color: #842029;
+    }
+
+    .badge-waiting {
+        background: #fff3cd;
+        color: #664d03;
+    }
+</style>
+
+<div class="page-header">
+    <h2><i class="bi bi-file-earmark-bar-graph"></i> Reports & Analytics</h2>
+</div>
+
+<!-- Report Tabs -->
+<div class="report-tabs">
+    <button class="report-tab active" onclick="switchTab('employees')">
+        <i class="bi bi-people"></i> Employees
+    </button>
+    <button class="report-tab" onclick="switchTab('agents')">
+        <i class="bi bi-person-check"></i> Agents
+    </button>
+    <button class="report-tab" onclick="switchTab('loans')">
+        <i class="bi bi-file-earmark-text"></i> Loans
+    </button>
+</div>
+
+<!-- EMPLOYEES REPORT -->
+<div class="report-section active" id="employees-section">
+    <div class="report-header">
+        <h5 style="margin: 0;">Employee Performance Report</h5>
+        <div class="report-actions">
+            <button class="btn-export btn-excel" onclick="exportEmployeesExcel()">
+                <i class="bi bi-file-earmark-excel"></i> Excel
+            </button>
+            <button class="btn-export btn-pdf" onclick="exportEmployeesPDF()">
+                <i class="bi bi-file-earmark-pdf"></i> PDF
+            </button>
+            <button class="btn-export btn-csv" onclick="exportEmployeesCSV()">
+                <i class="bi bi-file-earmark-csv"></i> CSV
+            </button>
+        </div>
+    </div>
+
+    <div class="report-stats" id="employees-stats">
+        <div class="stat-box">
+            <div class="stat-label">Total Employees</div>
+            <div class="stat-value" id="total-employees">0</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Active Employees</div>
+            <div class="stat-value" id="active-employees">0</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Total Leads Processed</div>
+            <div class="stat-value" id="total-leads">0</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Total Approvals</div>
+            <div class="stat-value" id="total-approvals">0</div>
+        </div>
+    </div>
+
+    <div class="table-container">
+        <div id="employees-loading" class="loading" style="display: none;">
+            <div class="spinner"></div> Loading employee data...
+        </div>
+        <div class="table-responsive" id="employees-table-wrapper">
+            <table id="employees-table">
+                <thead>
+                    <tr>
+                        <th>Employee ID</th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Total Leads</th>
+                        <th>Approved Loans</th>
+                        <th>Disbursed Amount</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="employees-tbody">
+                    <tr>
+                        <td colspan="8" class="text-center text-muted" style="padding: 40px;">
+                            <div class="empty-state">
+                                <div class="empty-state-icon">👥</div>
+                                <p>No employee data available</p>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- AGENTS REPORT -->
+<div class="report-section" id="agents-section">
+    <div class="report-header">
+        <h5 style="margin: 0;">Agent Performance Report</h5>
+        <div class="report-actions">
+            <button class="btn-export btn-excel" onclick="exportAgentsExcel()">
+                <i class="bi bi-file-earmark-excel"></i> Excel
+            </button>
+            <button class="btn-export btn-pdf" onclick="exportAgentsPDF()">
+                <i class="bi bi-file-earmark-pdf"></i> PDF
+            </button>
+            <button class="btn-export btn-csv" onclick="exportAgentsCSV()">
+                <i class="bi bi-file-earmark-csv"></i> CSV
+            </button>
+        </div>
+    </div>
+
+    <div class="report-stats" id="agents-stats">
+        <div class="stat-box">
+            <div class="stat-label">Total Agents</div>
+            <div class="stat-value" id="total-agents">0</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Active Agents</div>
+            <div class="stat-value" id="active-agents">0</div>
+        </div>
+        <div class="stat-label">Total Submissions</div>
+            <div class="stat-value" id="total-submissions">0</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Approval Rate</div>
+            <div class="stat-value" id="agents-approval-rate">0%</div>
+        </div>
+    </div>
+
+    <div class="table-container">
+        <div id="agents-loading" class="loading" style="display: none;">
+            <div class="spinner"></div> Loading agent data...
+        </div>
+        <div class="table-responsive" id="agents-table-wrapper">
+            <table id="agents-table">
+                <thead>
+                    <tr>
+                        <th>Agent ID</th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Total Submissions</th>
+                        <th>Approved Count</th>
+                        <th>Approval Rate</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="agents-tbody">
+                    <tr>
+                        <td colspan="8" class="text-center text-muted" style="padding: 40px;">
+                            <div class="empty-state">
+                                <div class="empty-state-icon">👤</div>
+                                <p>No agent data available</p>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- LOANS REPORT -->
+<div class="report-section" id="loans-section">
+    <div class="report-header">
+        <h5 style="margin: 0;">Loan Application Report</h5>
+        <div class="report-actions">
+            <button class="btn-export btn-excel" onclick="exportLoansExcel()">
+                <i class="bi bi-file-earmark-excel"></i> Excel
+            </button>
+            <button class="btn-export btn-pdf" onclick="exportLoansPDF()">
+                <i class="bi bi-file-earmark-pdf"></i> PDF
+            </button>
+            <button class="btn-export btn-csv" onclick="exportLoansCSV()">
+                <i class="bi bi-file-earmark-csv"></i> CSV
+            </button>
+        </div>
+    </div>
+
+    <div class="report-stats" id="loans-stats">
+        <div class="stat-box">
+            <div class="stat-label">Total Applications</div>
+            <div class="stat-value" id="total-loans">0</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Total Amount (₹)</div>
+            <div class="stat-value" id="total-loan-amount">0</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Approved Count</div>
+            <div class="stat-value" id="approved-loans">0</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Disbursed Amount (₹)</div>
+            <div class="stat-value" id="disbursed-amount">0</div>
+        </div>
+    </div>
+
+    <div class="table-container">
+        <div id="loans-loading" class="loading" style="display: none;">
+            <div class="spinner"></div> Loading loan data...
+        </div>
+        <div class="table-responsive" id="loans-table-wrapper">
+            <table id="loans-table">
+                <thead>
+                    <tr>
+                        <th>Application ID</th>
+                        <th>Applicant Name</th>
+                        <th>Loan Type</th>
+                        <th>Amount (₹)</th>
+                        <th>Employee</th>
+                        <th>Agent</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody id="loans-tbody">
+                    <tr>
+                        <td colspan="8" class="text-center text-muted" style="padding: 40px;">
+                            <div class="empty-state">
+                                <div class="empty-state-icon">📋</div>
+                                <p>No loan data available</p>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function switchTab(tab) {
+        // Hide all sections
+        document.querySelectorAll('.report-section').forEach(section => {
+            section.classList.remove('active');
+        });
+        document.querySelectorAll('.report-tab').forEach(btn => {
+            btn.classList.remove('active');
+        });
+
+        // Show selected section
+        document.getElementById(tab + '-section').classList.add('active');
+        event.target.classList.add('active');
+
+        // Load data
+        if (tab === 'employees') loadEmployeesReport();
+        else if (tab === 'agents') loadAgentsReport();
+        else if (tab === 'loans') loadLoansReport();
+    }
+
+    // ====== EMPLOYEES REPORT ======
+    async function loadEmployeesReport() {
+        document.getElementById('employees-loading').style.display = 'block';
+        try {
+            const response = await fetch('/api/employees/?per_page=1000', {
+                headers: { 'X-CSRFToken': getCookie('csrftoken') }
+            });
+            const data = await response.json();
+            
+            const employees = data.results || data.employees || data || [];
+            
+            // Update stats
+            document.getElementById('total-employees').textContent = employees.length;
+            document.getElementById('active-employees').textContent = employees.filter(e => e.is_active).length;
+            document.getElementById('total-leads').textContent = employees.reduce((sum, e) => sum + (e.total_leads || 0), 0);
+            document.getElementById('total-approvals').textContent = employees.reduce((sum, e) => sum + (e.approved_loans || 0), 0);
+
+            // Populate table
+            const tbody = document.getElementById('employees-tbody');
+            tbody.innerHTML = employees.map(emp => `
+                <tr>
+                    <td>${emp.employee_id || emp.id}</td>
+                    <td>${emp.first_name || emp.name} ${emp.last_name || ''}</td>
+                    <td>${emp.email || 'N/A'}</td>
+                    <td>${emp.phone || 'N/A'}</td>
+                    <td>${emp.total_leads || 0}</td>
+                    <td>${emp.approved_loans || 0}</td>
+                    <td>₹${(emp.disbursed_amount || emp.total_disbursed || 0).toLocaleString()}</td>
+                    <td><span class="badge ${emp.is_active ? 'badge-active' : 'badge-inactive'}">${emp.status || (emp.is_active ? 'Active' : 'Inactive')}</span></td>
+                </tr>
+            `).join('');
+
+            if (employees.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted" style="padding: 40px;">No employee data</td></tr>';
+            }
+        } catch (error) {
+            console.error('Error loading employees:', error);
+            document.getElementById('employees-tbody').innerHTML = '<tr><td colspan="8" class="text-center text-danger">Error loading data</td></tr>';
+        }
+        document.getElementById('employees-loading').style.display = 'none';
+    }
+
+    // ====== AGENTS REPORT ======
+    async function loadAgentsReport() {
+        document.getElementById('agents-loading').style.display = 'block';
+        try {
+            const response = await fetch('/api/agents/?per_page=1000', {
+                headers: { 'X-CSRFToken': getCookie('csrftoken') }
+            });
+            const data = await response.json();
+            
+            const agents = data.results || data.agents || data || [];
+            
+            // Update stats
+            document.getElementById('total-agents').textContent = agents.length;
+            document.getElementById('active-agents').textContent = agents.filter(a => a.status === 'active' || a.is_active).length;
+            document.getElementById('total-submissions').textContent = agents.reduce((sum, a) => sum + (a.total_submissions || 0), 0);
+            
+            const approvalRate = agents.length > 0 
+                ? Math.round((agents.reduce((sum, a) => sum + (a.approved_count || 0), 0) / agents.reduce((sum, a) => sum + (a.total_submissions || 1), 1)) * 100)
+                : 0;
+            document.getElementById('agents-approval-rate').textContent = approvalRate + '%';
+
+            // Populate table
+            const tbody = document.getElementById('agents-tbody');
+            tbody.innerHTML = agents.map(agent => {
+                const approvalRate = agent.total_submissions > 0 
+                    ? Math.round((agent.approved_count || 0) / agent.total_submissions * 100)
+                    : 0;
+                return `
+                    <tr>
+                        <td>${agent.id}</td>
+                        <td>${agent.first_name || agent.name} ${agent.last_name || ''}</td>
+                        <td>${agent.email || 'N/A'}</td>
+                        <td>${agent.phone || 'N/A'}</td>
+                        <td>${agent.total_submissions || 0}</td>
+                        <td>${agent.approved_count || 0}</td>
+                        <td>${approvalRate}%</td>
+                        <td><span class="badge ${(agent.status === 'active' || agent.is_active) ? 'badge-active' : 'badge-inactive'}">${agent.status || (agent.is_active ? 'Active' : 'Inactive')}</span></td>
+                    </tr>
+                `;
+            }).join('');
+
+            if (agents.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted" style="padding: 40px;">No agent data</td></tr>';
+            }
+        } catch (error) {
+            console.error('Error loading agents:', error);
+            document.getElementById('agents-tbody').innerHTML = '<tr><td colspan="8" class="text-center text-danger">Error loading data</td></tr>';
+        }
+        document.getElementById('agents-loading').style.display = 'none';
+    }
+
+    // ====== LOANS REPORT ======
+    async function loadLoansReport() {
+        document.getElementById('loans-loading').style.display = 'block';
+        try {
+            const response = await fetch('/api/loan-list/?per_page=1000', {
+                headers: { 'X-CSRFToken': getCookie('csrftoken') }
+            });
+            const data = await response.json();
+            
+            const loans = data.results || data.loans || data || [];
+            
+            // Update stats
+            document.getElementById('total-loans').textContent = loans.length;
+            document.getElementById('total-loan-amount').textContent = '₹' + loans.reduce((sum, l) => sum + (parseFloat(l.loan_amount) || 0), 0).toLocaleString();
+            document.getElementById('approved-loans').textContent = loans.filter(l => l.status === 'Approved').length;
+            document.getElementById('disbursed-amount').textContent = '₹' + loans.reduce((sum, l) => sum + (l.status === 'Disbursed' ? parseFloat(l.loan_amount) || 0 : 0), 0).toLocaleString();
+
+            // Populate table
+            const tbody = document.getElementById('loans-tbody');
+            tbody.innerHTML = loans.map(loan => `
+                <tr>
+                    <td>#${loan.id}</td>
+                    <td>${loan.applicant_name || loan.name || 'N/A'}</td>
+                    <td>${loan.loan_type || loan.type || 'N/A'}</td>
+                    <td>₹${parseFloat(loan.loan_amount || 0).toLocaleString()}</td>
+                    <td>${loan.assigned_employee || loan.employee || 'Unassigned'}</td>
+                    <td>${loan.assigned_agent || loan.agent || 'N/A'}</td>
+                    <td><span class="badge badge-${(loan.status || 'pending').toLowerCase().replace(/\s+/g, '-')}">${loan.status || 'Pending'}</span></td>
+                    <td>${new Date(loan.created_at || loan.date).toLocaleDateString()}</td>
+                </tr>
+            `).join('');
+
+            if (loans.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted" style="padding: 40px;">No loan data</td></tr>';
+            }
+        } catch (error) {
+            console.error('Error loading loans:', error);
+            document.getElementById('loans-tbody').innerHTML = '<tr><td colspan="8" class="text-center text-danger">Error loading data</td></tr>';
+        }
+        document.getElementById('loans-loading').style.display = 'none';
+    }
+
+    // Export functions
+    function exportEmployeesExcel() {
+        exportTableToExcel('employees-table', 'Employees-Report.xlsx');
+    }
+
+    function exportEmployeesPDF() {
+        exportTableToPDF('employees-table', 'Employees-Report.pdf');
+    }
+
+    function exportEmployeesCSV() {
+        exportTableToCSV('employees-table', 'Employees-Report.csv');
+    }
+
+    function exportAgentsExcel() {
+        exportTableToExcel('agents-table', 'Agents-Report.xlsx');
+    }
+
+    function exportAgentsPDF() {
+        exportTableToPDF('agents-table', 'Agents-Report.pdf');
+    }
+
+    function exportAgentsCSV() {
+        exportTableToCSV('agents-table', 'Agents-Report.csv');
+    }
+
+    function exportLoansExcel() {
+        exportTableToExcel('loans-table', 'Loans-Report.xlsx');
+    }
+
+    function exportLoansPDF() {
+        exportTableToPDF('loans-table', 'Loans-Report.pdf');
+    }
+
+    function exportLoansCSV() {
+        exportTableToCSV('loans-table', 'Loans-Report.csv');
+    }
+
+    // Generic export functions
+    function exportTableToCSV(tableId, filename) {
+        const table = document.getElementById(tableId);
+        let csv = [];
+        const rows = table.querySelectorAll('tr');
+
+        rows.forEach(row => {
+            let csvRow = [];
+            row.querySelectorAll('th, td').forEach(cell => {
+                csvRow.push('"' + cell.textContent.trim().replace(/"/g, '""') + '"');
+            });
+            csv.push(csvRow.join(','));
+        });
+
+        downloadFile(csv.join('\n'), filename, 'text/csv');
+    }
+
+    function exportTableToExcel(tableId, filename) {
+        const table = document.getElementById(tableId);
+        const html = table.outerHTML;
+        const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+        downloadFile(URL.createObjectURL(blob), filename, 'application/vnd.ms-excel');
+    }
+
+    function exportTableToPDF(tableId, filename) {
+        const table = document.getElementById(tableId);
+        const html = table.outerHTML;
+        const blob = new Blob(['<html><body>' + html + '</body></html>'], { type: 'text/html' });
+        downloadFile(URL.createObjectURL(blob), filename, 'application/pdf');
+    }
+
+    function downloadFile(data, filename, type) {
+        const a = document.createElement('a');
+        a.href = typeof data === 'string' && !data.startsWith('blob') ? 'data:' + type + ';charset=utf-8,' + encodeURIComponent(data) : data;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    // Load initial data
+    window.addEventListener('load', function() {
+        loadEmployeesReport();
+    });
+</script>
+{% endblock %}

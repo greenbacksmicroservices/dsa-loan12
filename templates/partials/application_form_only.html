@@ -1,0 +1,797 @@
+{% comment %}
+ISOLATED APPLICATION FORM PARTIAL
+=====================================
+Purpose: Form is ONLY rendered through this partial in New Entry section
+Status: RESTRICTED - Only for Admin → New Entry view
+Access: application_detail_router.py → new_entry_form_view()
+
+Security: Forms are NOT included in:
+- All list pages (table-based)
+- Detail pages for Waiting/Follow-up/Approved/Rejected/Disbursed
+- Base templates
+- Dashboard layouts
+
+Form submission targets: /api/loans/ endpoint
+{% endcomment %}
+
+<form id="applicationForm" method="POST" action="/api/loans/" class="application-form-container">
+    {% csrf_token %}
+    
+    <!-- Applicant Information Section -->
+    <div class="form-section">
+        <h5 class="section-title">
+            <i class="bi bi-person-fill"></i> Applicant Information
+        </h5>
+        
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label for="full_name" class="form-label">Full Name</label>
+                <input 
+                    type="text" 
+                    class="form-control" 
+                    id="full_name" 
+                    name="full_name" 
+                    placeholder="Enter applicant's full name">
+                <small class="text-muted">First and last name</small>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label for="email" class="form-label">Email</label>
+                <input 
+                    type="email" 
+                    class="form-control" 
+                    id="email" 
+                    name="email" 
+                    placeholder="applicant@example.com">
+                <small class="text-muted">Valid email address</small>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label for="phone" class="form-label">Phone Number</label>
+                <input 
+                    type="tel" 
+                    class="form-control" 
+                    id="phone" 
+                    name="phone" 
+                    pattern="[0-9]{10,15}"
+                    placeholder="10-15 digit phone number">
+                <small class="text-muted">10-15 digits (no spaces)</small>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label for="alternate_phone" class="form-label">Alternate Phone</label>
+                <input 
+                    type="tel" 
+                    class="form-control" 
+                    id="alternate_phone" 
+                    name="alternate_phone" 
+                    pattern="[0-9]{10,15}"
+                    placeholder="Optional alternate number">
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label for="date_of_birth" class="form-label">Date of Birth</label>
+                <input 
+                    type="date" 
+                    class="form-control" 
+                    id="date_of_birth" 
+                    name="date_of_birth">
+            </div>
+            <div class="col-md-6 mb-3">
+                <label for="gender" class="form-label">Gender</label>
+                <select class="form-select" id="gender" name="gender">
+                    <option value="">Select Gender</option>
+                    <option value="M">Male</option>
+                    <option value="F">Female</option>
+                    <option value="O">Other</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Address Information Section -->
+    <div class="form-section">
+        <h5 class="section-title">
+            <i class="bi bi-geo-alt-fill"></i> Address Information
+        </h5>
+
+        <div class="mb-3">
+            <label for="permanent_address" class="form-label">Permanent Address</label>
+            <textarea 
+                class="form-control" 
+                id="permanent_address" 
+                name="permanent_address" 
+                rows="2"
+                placeholder="Street, City, State, PIN Code"></textarea>
+        </div>
+
+        <div class="mb-3">
+            <label for="current_address" class="form-label">Current Address (if different)</label>
+            <textarea 
+                class="form-control" 
+                id="current_address" 
+                name="current_address" 
+                rows="2"
+                placeholder="Leave blank if same as permanent address"></textarea>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label for="city" class="form-label">City</label>
+                <input 
+                    type="text" 
+                    class="form-control" 
+                    id="city" 
+                    name="city" 
+                    placeholder="City name">
+            </div>
+            <div class="col-md-6 mb-3">
+                <label for="state" class="form-label">State</label>
+                <input 
+                    type="text" 
+                    class="form-control" 
+                    id="state" 
+                    name="state" 
+                    placeholder="State/Province">
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label for="pincode" class="form-label">PIN Code</label>
+                <input 
+                    type="text" 
+                    class="form-control" 
+                    id="pincode" 
+                    name="pincode" 
+                    pattern="[0-9]{6}"
+                    placeholder="6-digit PIN">
+            </div>
+            <div class="col-md-6 mb-3">
+                <label for="country" class="form-label">Country</label>
+                <input 
+                    type="text" 
+                    class="form-control" 
+                    id="country" 
+                    name="country" 
+                    value="India" 
+                    placeholder="Country">
+            </div>
+        </div>
+    </div>
+
+    <!-- Loan Details Section -->
+    <div class="form-section">
+        <h5 class="section-title">
+            <i class="bi bi-cash-coin"></i> Loan Details
+        </h5>
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label for="loan_amount" class="form-label">Loan Amount (₹)</label>
+                <input 
+                    type="number" 
+                    class="form-control" 
+                    id="loan_amount" 
+                    name="loan_amount" 
+                    step="100" 
+                    min="10000"
+                    placeholder="e.g., 500000">
+                <small class="text-muted">Minimum ₹10,000</small>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label for="loan_type" class="form-label">Loan Type</label>
+                <select class="form-select" id="loan_type" name="loan_type">
+                    <option value="">Select Loan Type</option>
+                    <option value="personal">Personal Loan</option>
+                    <option value="home">Home Loan</option>
+                    <option value="auto">Auto Loan</option>
+                    <option value="business">Business Loan</option>
+                    <option value="education">Education Loan</option>
+                    <option value="gold">Gold Loan</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label for="loan_tenure" class="form-label">Loan Tenure (Months)</label>
+                <input 
+                    type="number" 
+                    class="form-control" 
+                    id="loan_tenure" 
+                    name="loan_tenure" 
+                    step="1" 
+                    min="6" 
+                    max="360"
+                    placeholder="e.g., 60">
+                <small class="text-muted">6 to 360 months</small>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label for="annual_income" class="form-label">Annual Income (₹)</label>
+                <input 
+                    type="number" 
+                    class="form-control" 
+                    id="annual_income" 
+                    name="annual_income" 
+                    step="1000" 
+                    min="0"
+                    placeholder="e.g., 1000000">
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label for="employment_type" class="form-label">Employment Type</label>
+                <select class="form-select" id="employment_type" name="employment_type">
+                    <option value="">Select Employment Type</option>
+                    <option value="salaried">Salaried</option>
+                    <option value="self_employed">Self-Employed</option>
+                    <option value="business">Business Owner</option>
+                    <option value="professional">Professional</option>
+                    <option value="retired">Retired</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label for="employer_name" class="form-label">Employer/Business Name</label>
+                <input 
+                    type="text" 
+                    class="form-control" 
+                    id="employer_name" 
+                    name="employer_name" 
+                    placeholder="Company or business name">
+            </div>
+        </div>
+    </div>
+
+    <!-- Bank & Collateral Section -->
+    <div class="form-section">
+        <h5 class="section-title">
+            <i class="bi bi-building"></i> Bank & Collateral Details
+        </h5>
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label for="bank_name" class="form-label">Bank Name</label>
+                <select class="form-select" id="bank_name" name="bank_name">
+                    <option value="">Select Bank</option>
+                    <option value="sbi">State Bank of India (SBI)</option>
+                    <option value="hdfc">HDFC Bank</option>
+                    <option value="icici">ICICI Bank</option>
+                    <option value="axis">Axis Bank</option>
+                    <option value="kotak">Kotak Mahindra Bank</option>
+                    <option value="yes">YES Bank</option>
+                    <option value="indusind">IndusInd Bank</option>
+                    <option value="federal">Federal Bank</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label for="account_type" class="form-label">Account Type</label>
+                <select class="form-select" id="account_type" name="account_type">
+                    <option value="">Select Account Type</option>
+                    <option value="savings">Savings</option>
+                    <option value="current">Current</option>
+                    <option value="salary">Salary</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label for="collateral_description" class="form-label">Collateral Details (if applicable)</label>
+            <textarea 
+                class="form-control" 
+                id="collateral_description" 
+                name="collateral_description" 
+                rows="2"
+                placeholder="e.g., Property, Vehicle, Jewelry, etc."></textarea>
+        </div>
+
+        <div class="mb-3">
+            <label for="collateral_value" class="form-label">Collateral Value (₹)</label>
+            <input 
+                type="number" 
+                class="form-control" 
+                id="collateral_value" 
+                name="collateral_value" 
+                step="100" 
+                min="0"
+                placeholder="Estimated value">
+        </div>
+    </div>
+
+    <!-- Additional Information Section -->
+    <div class="form-section">
+        <h5 class="section-title">
+            <i class="bi bi-info-circle"></i> Additional Information
+        </h5>
+
+        <div class="mb-3">
+            <label for="purpose_of_loan" class="form-label">Purpose of Loan</label>
+            <textarea 
+                class="form-control" 
+                id="purpose_of_loan" 
+                name="purpose_of_loan" 
+                rows="2"
+                placeholder="Detailed purpose of the loan"></textarea>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label for="existing_loans" class="form-label">Existing Loans/EMIs</label>
+                <input 
+                    type="number" 
+                    class="form-control" 
+                    id="existing_loans" 
+                    name="existing_loans" 
+                    step="100" 
+                    min="0"
+                    placeholder="Total monthly EMI burden">
+            </div>
+            <div class="col-md-6 mb-3">
+                <label for="credit_score" class="form-label">Credit Score (if available)</label>
+                <input 
+                    type="number" 
+                    class="form-control" 
+                    id="credit_score" 
+                    name="credit_score" 
+                    min="300" 
+                    max="900"
+                    placeholder="e.g., 750">
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label for="extra_income" class="form-label">Extra Income if any (₹)</label>
+            <input 
+                type="number" 
+                class="form-control" 
+                id="extra_income" 
+                name="extra_income" 
+                step="100" 
+                min="0"
+                placeholder="Additional monthly income if applicable">
+        </div>
+
+        <div class="mb-3">
+            <label for="remarks" class="form-label">Internal Remarks</label>
+            <textarea 
+                class="form-control" 
+                id="remarks" 
+                name="remarks" 
+                rows="3"
+                placeholder="Notes for admin/processing team"></textarea>
+        </div>
+
+        <div class="form-check mb-3">
+            <input 
+                class="form-check-input" 
+                type="checkbox" 
+                id="declaration" 
+                name="declaration">
+            <label class="form-check-label" for="declaration">
+                I declare that the information provided is true and correct
+            </label>
+        </div>
+    </div>
+
+    <!-- Loan History Section -->
+    <div class="form-section">
+        <h5 class="section-title">
+            <i class="bi bi-clock-history"></i> Loan History
+        </h5>
+        
+        <p class="text-muted mb-3">Enter details of any existing or previous loans</p>
+
+        <div id="loan_history_container">
+            <!-- Loan entries will be added here -->
+        </div>
+
+        <button type="button" class="btn btn-outline-primary mt-3" onclick="addLoanEntry()">
+            <i class="bi bi-plus-circle"></i> Add Loan
+        </button>
+    </div>
+
+    <!-- Assigned Agent Section (Admin Only) -->
+    <div class="form-section">
+        <h5 class="section-title">
+            <i class="bi bi-person-badge"></i> Assignment
+        </h5>
+
+        <div class="mb-3">
+            <label for="assigned_agent" class="form-label">Assign to Agent/CP</label>
+            <select class="form-select" id="assigned_agent" name="assigned_agent">
+                <option value="">-- Unassigned (will assign later) --</option>
+                {% for agent in agents %}
+                    <option value="{{ agent.id }}">{{ agent.name }} - {{ agent.phone }}</option>
+                {% endfor %}
+            </select>
+            <small class="text-muted">Optional - can be assigned later</small>
+        </div>
+
+        <div class="mb-3">
+            <label for="assigned_employee" class="form-label">Assign to Employee</label>
+            <select class="form-select" id="assigned_employee" name="assigned_employee">
+                <option value="">-- Unassigned --</option>
+                {% for employee in employees %}
+                    <option value="{{ employee.id }}">{{ employee.full_name }} - {{ employee.email }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
+    <!-- Form Actions -->
+    <div class="form-actions">
+        <button type="submit" class="btn btn-primary btn-lg">
+            <i class="bi bi-check-circle"></i> Submit Application
+        </button>
+        <button type="reset" class="btn btn-outline-secondary btn-lg">
+            <i class="bi bi-arrow-clockwise"></i> Clear Form
+        </button>
+        <a href="{% url 'admin_all_loans' %}" class="btn btn-outline-danger btn-lg">
+            <i class="bi bi-x-circle"></i> Cancel
+        </a>
+    </div>
+</form>
+
+<style>
+.application-form-container {
+    max-width: 900px;
+    margin: 0 auto;
+    background: white;
+    padding: 40px;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+}
+
+.form-section {
+    margin-bottom: 40px;
+    padding-bottom: 40px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.form-section:last-of-type {
+    border-bottom: none;
+}
+
+.section-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 25px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #4f46e5;
+}
+
+.section-title i {
+    font-size: 18px;
+    color: #4f46e5;
+}
+
+.form-label {
+    font-weight: 600;
+    color: #334155;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.form-control, .form-select {
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+.form-control::placeholder {
+    color: #94a3b8;
+}
+
+.text-danger {
+    color: #ef4444;
+}
+
+.text-muted {
+    color: #64748b;
+    font-size: 12px;
+}
+
+.form-check-input {
+    width: 20px;
+    height: 20px;
+    margin-top: 4px;
+    border: 1px solid #cbd5e1;
+    cursor: pointer;
+}
+
+.form-check-input:checked {
+    background-color: #4f46e5;
+    border-color: #4f46e5;
+}
+
+.form-actions {
+    display: flex;
+    gap: 15px;
+    margin-top: 40px;
+    padding-top: 30px;
+    border-top: 2px solid #e2e8f0;
+    justify-content: center;
+}
+
+.btn {
+    padding: 12px 28px;
+    border-radius: 6px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 15px;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+    color: white;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(79, 70, 229, 0.3);
+}
+
+.btn-outline-secondary {
+    border: 2px solid #cbd5e1;
+    color: #334155;
+    background: white;
+}
+
+.btn-outline-secondary:hover {
+    background-color: #f1f5f9;
+    border-color: #94a3b8;
+}
+
+.btn-outline-danger {
+    border: 2px solid #ef4444;
+    color: #ef4444;
+    background: white;
+}
+
+.btn-outline-danger:hover {
+    background-color: #fff5f5;
+    border-color: #dc2626;
+    color: #dc2626;
+}
+
+.btn-lg {
+    padding: 12px 30px;
+    font-size: 15px;
+}
+
+@media (max-width: 768px) {
+    .application-form-container {
+        padding: 25px;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    .btn {
+        width: 100%;
+    }
+}
+
+.loan-entry {
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 15px;
+}
+
+.loan-entry-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.btn-outline-primary {
+    border: 2px solid #4f46e5;
+    color: #4f46e5;
+    background: white;
+}
+
+.btn-outline-primary:hover {
+    background-color: #f0f4ff;
+    border-color: #3730a3;
+}
+
+.btn-danger {
+    background: #ef4444;
+    color: white;
+}
+
+.btn-danger:hover {
+    background: #dc2626;
+    transform: translateY(-2px);
+}
+
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 12px;
+}
+</style>
+
+<script>
+let loanEntryCount = 0;
+
+// Handle form submission
+document.addEventListener('DOMContentLoaded', function() {
+    const applicationForm = document.getElementById('applicationForm');
+    if (applicationForm) {
+        applicationForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            // Collect form data
+            const formData = new FormData(this);
+            
+            try {
+                // Submit form to API
+                const response = await fetch('/api/loans/', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    }
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    console.log('Application submitted successfully:', result);
+                    
+                    // Show success message
+                    alert('Application submitted successfully! Redirecting to dashboard...');
+                    
+                    // Redirect to admin dashboard
+                    window.location.href = '/admin/dashboard/';
+                } else {
+                    const error = await response.json();
+                    console.error('Submission error:', error);
+                    alert('Error submitting application: ' + (error.message || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Network error:', error);
+                alert('Network error: ' + error.message);
+            }
+        });
+    }
+});
+
+function addLoanEntry() {
+    const container = document.getElementById('loan_history_container');
+    const entryId = loanEntryCount++;
+    
+    const loanEntry = document.createElement('div');
+    loanEntry.className = 'loan-entry';
+    loanEntry.id = `loan_entry_${entryId}`;
+    loanEntry.innerHTML = `
+        <div class="loan-entry-header">
+            <h6 class="mb-0" style="color: #1e293b; font-weight: 600;">Loan #${entryId + 1}</h6>
+            <button type="button" class="btn btn-danger btn-sm" onclick="removeLoanEntry(${entryId})">
+                <i class="bi bi-trash"></i> Delete
+            </button>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label for="loan_amount_${entryId}" class="form-label">Amount Taken (₹)</label>
+                <input 
+                    type="number" 
+                    class="form-control" 
+                    id="loan_amount_${entryId}" 
+                    name="loan_history_amount_${entryId}" 
+                    step="1000"
+                    min="0"
+                    placeholder="e.g., 100000">
+            </div>
+            <div class="col-md-6 mb-3">
+                <label for="loan_tenure_${entryId}" class="form-label">Year/Months Tenure</label>
+                <input 
+                    type="text" 
+                    class="form-control" 
+                    id="loan_tenure_${entryId}" 
+                    name="loan_history_tenure_${entryId}" 
+                    placeholder="e.g., 3 years or 36 months">
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label for="loan_emi_${entryId}" class="form-label">Monthly EMI (₹)</label>
+                <input 
+                    type="number" 
+                    class="form-control" 
+                    id="loan_emi_${entryId}" 
+                    name="loan_history_emi_${entryId}" 
+                    step="100"
+                    min="0"
+                    placeholder="e.g., 5000">
+            </div>
+            <div class="col-md-6 mb-3">
+                <label for="loan_balance_${entryId}" class="form-label">Amount Left (₹)</label>
+                <input 
+                    type="number" 
+                    class="form-control" 
+                    id="loan_balance_${entryId}" 
+                    name="loan_history_balance_${entryId}" 
+                    step="1000"
+                    min="0"
+                    placeholder="e.g., 250000">
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Any Bounce/Default?</label>
+                <div class="d-flex gap-3">
+                    <div class="form-check">
+                        <input 
+                            class="form-check-input" 
+                            type="radio" 
+                            id="bounce_yes_${entryId}" 
+                            name="loan_history_bounce_${entryId}" 
+                            value="yes">
+                        <label class="form-check-label" for="bounce_yes_${entryId}">Yes</label>
+                    </div>
+                    <div class="form-check">
+                        <input 
+                            class="form-check-input" 
+                            type="radio" 
+                            id="bounce_no_${entryId}" 
+                            name="loan_history_bounce_${entryId}" 
+                            value="no">
+                        <label class="form-check-label" for="bounce_no_${entryId}">No</label>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Loan Status</label>
+                <div class="form-check">
+                    <input 
+                        class="form-check-input" 
+                        type="checkbox" 
+                        id="loan_created_${entryId}" 
+                        name="loan_history_created_${entryId}">
+                    <label class="form-check-label" for="loan_created_${entryId}">
+                        Created/Active
+                    </label>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    container.appendChild(loanEntry);
+}
+
+function removeLoanEntry(entryId) {
+    const entry = document.getElementById(`loan_entry_${entryId}`);
+    if (entry) {
+        entry.remove();
+    }
+}
+</script>

@@ -1,0 +1,559 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}All Loan Details - Admin Panel{% endblock %}
+
+{% block extra_css %}
+<style>
+    .loan-details-container {
+        padding: 20px;
+        background-color: #f5f6fa;
+        min-height: calc(100vh - 80px);
+    }
+
+    .page-header {
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 25px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+
+    .header-title h2 {
+        margin: 0;
+        color: #1e293b;
+        font-weight: 700;
+    }
+
+    .header-stats {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .stat-badge {
+        background: #667eea;
+        color: white;
+        padding: 8px 15px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .stat-badge.overdue {
+        background: #ef4444;
+    }
+
+    .filter-section {
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 25px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .filter-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-bottom: 15px;
+    }
+
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .filter-group label {
+        font-size: 12px;
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .filter-group select, .filter-group input {
+        padding: 10px 12px;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        font-size: 13px;
+        transition: all 0.2s;
+    }
+
+    .filter-group select:focus, .filter-group input:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .filter-buttons {
+        display: flex;
+        gap: 10px;
+    }
+
+    .btn {
+        padding: 10px 20px;
+        border-radius: 6px;
+        border: none;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 13px;
+        transition: all 0.2s;
+        text-decoration: none;
+        display: inline-block;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        color: white;
+    }
+
+    .btn-secondary {
+        background: #6b7280;
+        color: white;
+    }
+
+    .btn-secondary:hover {
+        background: #4b5563;
+        color: white;
+    }
+
+    .btn-outline {
+        background: white;
+        color: #667eea;
+        border: 1px solid #667eea;
+    }
+
+    .btn-outline:hover {
+        background: #f0f7ff;
+    }
+
+    .table-wrapper {
+        background: white;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        margin-bottom: 25px;
+    }
+
+    .loans-table {
+        width: 100%;
+        margin: 0;
+    }
+
+    .loans-table thead {
+        background: #f8f9fa;
+        border-bottom: 2px solid #dee2e6;
+    }
+
+    .loans-table th {
+        padding: 15px;
+        font-weight: 600;
+        color: #495057;
+        text-align: left;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .loans-table td {
+        padding: 15px;
+        border-bottom: 1px solid #dee2e6;
+        color: #495057;
+    }
+
+    .loans-table tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .status-new-entry {
+        background: #e8f4f8;
+        color: #0284c7;
+    }
+
+    .status-waiting {
+        background: #fef3c7;
+        color: #d97706;
+    }
+
+    .status-followup {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .status-approved {
+        background: #dcfce7;
+        color: #15803d;
+    }
+
+    .status-rejected {
+        background: #f3e8ff;
+        color: #7c3aed;
+    }
+
+    .status-disbursed {
+        background: #dbeafe;
+        color: #0369a1;
+    }
+
+    .applicant-cell {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+    }
+
+    .applicant-name {
+        font-weight: 600;
+        color: #1e293b;
+    }
+
+    .applicant-contact {
+        font-size: 11px;
+        color: #7f8c8d;
+    }
+
+    .loan-amount {
+        font-weight: 700;
+        color: #667eea;
+        font-size: 14px;
+    }
+
+    .assigned-badge {
+        background: #e0f2fe;
+        color: #0369a1;
+        padding: 6px 10px;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+
+    .unassigned-badge {
+        background: #f3f4f6;
+        color: #6b7280;
+        padding: 6px 10px;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+
+    .hours-badge {
+        background: #fef3c7;
+        color: #d97706;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+
+    .hours-overdue {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 5px;
+    }
+
+    .action-buttons a {
+        padding: 6px 12px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 600;
+        text-decoration: none;
+        background: #667eea;
+        color: white;
+        cursor: pointer;
+        border: none;
+        transition: all 0.2s;
+    }
+
+    .action-buttons a:hover {
+        background: #764ba2;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 40px;
+        color: #7f8c8d;
+    }
+
+    .empty-state-icon {
+        font-size: 48px;
+        margin-bottom: 15px;
+        opacity: 0.5;
+    }
+
+    .pagination-wrapper {
+        background: white;
+        padding: 15px;
+        border-radius: 0 0 10px 10px;
+        display: flex;
+        justify-content: center;
+        gap: 5px;
+        flex-wrap: wrap;
+    }
+
+    .pagination-wrapper a, .pagination-wrapper span {
+        padding: 8px 12px;
+        border-radius: 6px;
+        border: 1px solid #dee2e6;
+        text-decoration: none;
+        color: #495057;
+        transition: all 0.2s;
+        cursor: pointer;
+    }
+
+    .pagination-wrapper a:hover {
+        background: #667eea;
+        color: white;
+        border-color: #667eea;
+    }
+
+    .pagination-wrapper .page-item.active span {
+        background: #667eea;
+        color: white;
+        border-color: #667eea;
+    }
+
+    .info-box {
+        background: #e3f2fd;
+        border-left: 4px solid #2196f3;
+        padding: 15px;
+        border-radius: 6px;
+        margin-bottom: 20px;
+        font-size: 13px;
+        color: #1565c0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="loan-details-container">
+    <!-- Page Header -->
+    <div class="page-header">
+        <div>
+            <h2><i class="bi bi-list-check"></i> All Loan Details</h2>
+            <p style="margin: 5px 0 0 0; color: #7f8c8d; font-size: 13px;">
+                Track and manage all loan applications across all statuses
+            </p>
+        </div>
+        <div class="header-stats">
+            <div class="stat-badge">
+                <i class="bi bi-file-earmark"></i> New: {{ status_counts.new_entry }}
+            </div>
+            <div class="stat-badge">
+                <i class="bi bi-hourglass-split"></i> Waiting: {{ status_counts.waiting }}
+            </div>
+            <div class="stat-badge">
+                <i class="bi bi-phone"></i> Follow-up: {{ status_counts.followup }}
+            </div>
+            <div class="stat-badge">
+                <i class="bi bi-check-circle"></i> Approved: {{ status_counts.approved }}
+            </div>
+            {% if overdue_count > 0 %}
+            <div class="stat-badge overdue">
+                <i class="bi bi-exclamation-triangle"></i> Overdue: {{ overdue_count }}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Info Box -->
+    <div class="info-box">
+        <i class="bi bi-lightbulb"></i> <strong>Real-time Data:</strong>
+        This page shows live data across all loan applications. Filter by status, search by applicant name, and track hours since assignment for waiting applications.
+    </div>
+
+    <!-- Filter Section -->
+    <div class="filter-section">
+        <form method="get" id="filterForm">
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label>Filter by Status</label>
+                    <select name="status">
+                        <option value="">All Statuses</option>
+                        <option value="New Entry" {% if status_filter == 'New Entry' %}selected{% endif %}>New Entry</option>
+                        <option value="Waiting for Processing" {% if status_filter == 'Waiting for Processing' %}selected{% endif %}>Waiting for Processing</option>
+                        <option value="Required Follow-up" {% if status_filter == 'Required Follow-up' %}selected{% endif %}>Required Follow-up</option>
+                        <option value="Approved" {% if status_filter == 'Approved' %}selected{% endif %}>Approved</option>
+                        <option value="Rejected" {% if status_filter == 'Rejected' %}selected{% endif %}>Rejected</option>
+                        <option value="Disbursed" {% if status_filter == 'Disbursed' %}selected{% endif %}>Disbursed</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label>Search Applicant</label>
+                    <input type="text" name="search" placeholder="Name, email, phone..." value="{{ search }}">
+                </div>
+
+                <div class="filter-group">
+                    <label>Sort By</label>
+                    <select name="sort">
+                        <option value="-created_at" {% if sort_by == '-created_at' %}selected{% endif %}>Newest First</option>
+                        <option value="created_at" {% if sort_by == 'created_at' %}selected{% endif %}>Oldest First</option>
+                        <option value="applicant__full_name" {% if sort_by == 'applicant__full_name' %}selected{% endif %}>Name (A-Z)</option>
+                        <option value="-loan_amount" {% if sort_by == '-loan_amount' %}selected{% endif %}>Amount (High)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="filter-buttons">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-search"></i> Apply Filters
+                </button>
+                <a href="{% url 'admin_loan_details_all' %}" class="btn btn-outline">
+                    <i class="bi bi-x-circle"></i> Clear All
+                </a>
+                {% if not only_overdue %}
+                <a href="?overdue=1{% if status_filter %}&status={{ status_filter }}{% endif %}" class="btn btn-secondary">
+                    <i class="bi bi-exclamation-triangle"></i> Show Overdue Only
+                </a>
+                {% else %}
+                <a href="?{% if status_filter %}status={{ status_filter }}{% endif %}" class="btn btn-secondary">
+                    <i class="bi bi-list"></i> Show All
+                </a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <!-- Loans Table -->
+    <div class="table-wrapper">
+        {% if loan_list %}
+        <table class="loans-table">
+            <thead>
+                <tr>
+                    <th style="width: 20%;">Applicant Info</th>
+                    <th style="width: 12%;">Loan Details</th>
+                    <th style="width: 15%;">Status</th>
+                    <th style="width: 18%;">Assignment</th>
+                    <th style="width: 15%;">Tracking</th>
+                    <th style="width: 10%;">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in loan_list %}
+                <tr>
+                    <td>
+                        <div class="applicant-cell">
+                            <span class="applicant-name">{{ item.loan.applicant.full_name }}</span>
+                            <span class="applicant-contact">{{ item.loan.applicant.city }}, {{ item.loan.applicant.state }}</span>
+                            <span class="applicant-contact" style="font-size: 10px;">{{ item.loan.applicant.mobile }}</span>
+                        </div>
+                    </td>
+                    <td>
+                        <div style="margin-bottom: 5px;">
+                            <span style="background: #e8f4f8; color: #0284c7; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">
+                                {{ item.loan.loan_type }}
+                            </span>
+                        </div>
+                        <div class="loan-amount">₹{{ item.loan.loan_amount|floatformat:0 }}</div>
+                        {% if item.loan.tenure_months %}
+                        <div style="font-size: 11px; color: #7f8c8d;">{{ item.loan.tenure_months }}M</div>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="status-badge status-{{ item.status_css_class }}">
+                            {{ item.loan.status }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if item.loan.assigned_employee %}
+                        <div class="assigned-badge">
+                            <i class="bi bi-person-check"></i> {{ item.loan.assigned_employee.first_name }}
+                        </div>
+                        <div style="font-size: 11px; color: #7f8c8d; margin-top: 5px;">
+                            {{ item.loan.assigned_at|date:"d M Y" }}
+                        </div>
+                        {% else %}
+                        <div class="unassigned-badge">
+                            <i class="bi bi-person-x"></i> Unassigned
+                        </div>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if item.hours_since_assignment is not None %}
+                        <div class="hours-badge {% if item.is_overdue %}hours-overdue{% endif %}">
+                            <i class="bi bi-clock"></i> {{ item.hours_since_assignment }}h
+                        </div>
+                        {% if item.is_overdue %}
+                        <div style="font-size: 10px; color: #dc2626; margin-top: 5px; font-weight: 600;">
+                            ⚠️ OVERDUE
+                        </div>
+                        {% elif item.follow_up_due %}
+                        <div style="font-size: 10px; color: #7f8c8d; margin-top: 5px;">
+                            Due: {{ item.follow_up_due|time:"H:i" }}
+                        </div>
+                        {% endif %}
+                        {% else %}
+                        <span style="color: #a0aec0; font-size: 11px;">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="action-buttons">
+                            <a href="{% url 'admin_loan_detail' item.loan.applicant.id %}">
+                                <i class="bi bi-eye"></i> View
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- Pagination -->
+        {% if page_obj.has_other_pages %}
+        <div class="pagination-wrapper">
+            {% if page_obj.has_previous %}
+            <a href="?page=1{% if search %}&search={{ search }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">First</a>
+            <a href="?page={{ page_obj.previous_page_number }}{% if search %}&search={{ search }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">Previous</a>
+            {% endif %}
+
+            {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                <span class="page-item active">{{ num }}</span>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                <a href="?page={{ num }}{% if search %}&search={{ search }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">{{ num }}</a>
+                {% endif %}
+            {% endfor %}
+
+            {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}{% if search %}&search={{ search }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">Next</a>
+            <a href="?page={{ page_obj.paginator.num_pages }}{% if search %}&search={{ search }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">Last</a>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-state-icon">
+                <i class="bi bi-inbox"></i>
+            </div>
+            <h5>No Loans Found</h5>
+            <p>Try adjusting your filters or search criteria.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,907 @@
+{% extends 'core/admin/admin_base.html' %}
+
+{% block title %}Loan Details{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Override container styling to work with flex layout */
+    .loan-detail-container {
+        width: 100%;
+        padding: 0;
+        background-color: transparent;
+        min-height: auto;
+    }
+
+    .detail-header {
+        background: white;
+        padding: 25px;
+        border-radius: 10px;
+        margin-bottom: 25px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .header-title {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .header-title h2 {
+        margin: 0;
+        color: #1e293b;
+        font-weight: 700;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .status-new-entry {
+        background: #e8f4f8;
+        color: #0284c7;
+    }
+
+    .status-waiting {
+        background: #fef3c7;
+        color: #d97706;
+    }
+
+    .status-followup {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .status-approved {
+        background: #dcfce7;
+        color: #15803d;
+    }
+
+    .status-rejected {
+        background: #f3e8ff;
+        color: #2d8cb5;
+    }
+
+    .status-disbursed {
+        background: #dbeafe;
+        color: #0369a1;
+    }
+
+    .tabs-container {
+        background: white;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .nav-tabs {
+        background: #f8f9fa;
+        border: none;
+        padding: 0 20px;
+        display: flex;
+        gap: 20px;
+        border-bottom: 1px solid #dee2e6;
+    }
+
+    .nav-tabs .nav-link {
+        color: #7f8c8d;
+        border: none;
+        padding: 15px 0;
+        border-bottom: 3px solid transparent;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+
+    .nav-tabs .nav-link:hover {
+        color: #667eea;
+        border-bottom-color: #667eea;
+    }
+
+    .nav-tabs .nav-link.active {
+        color: #667eea;
+        border-bottom-color: #667eea;
+        background: transparent;
+    }
+
+    .tab-content {
+        padding: 25px;
+    }
+
+    .form-section {
+        margin-bottom: 30px;
+    }
+
+    .form-section-title {
+        font-size: 16px;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #e2e8f0;
+    }
+
+    .detail-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+        margin-bottom: 20px;
+    }
+
+    .detail-field {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .field-label {
+        font-size: 12px;
+        font-weight: 600;
+        color: #7f8c8d;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 5px;
+    }
+
+    .field-value {
+        font-size: 15px;
+        color: #1e293b;
+        font-weight: 500;
+    }
+
+    .amount-value {
+        font-size: 18px;
+        font-weight: 700;
+        color: #667eea;
+    }
+
+    .documents-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 15px;
+    }
+
+    .document-card {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+        text-align: center;
+        border: 2px solid #e2e8f0;
+        transition: all 0.3s;
+    }
+
+    .document-card:hover {
+        border-color: #667eea;
+        background: #f0f7ff;
+    }
+
+    .document-icon {
+        font-size: 32px;
+        margin-bottom: 10px;
+        color: #667eea;
+    }
+
+    .document-type {
+        font-size: 12px;
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 8px;
+    }
+
+    .document-actions {
+        display: flex;
+        gap: 5px;
+        justify-content: center;
+    }
+
+    .document-actions a, .document-actions button {
+        padding: 6px 10px;
+        font-size: 11px;
+        border-radius: 4px;
+        text-decoration: none;
+        border: 1px solid #dee2e6;
+        background: white;
+        color: #667eea;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .document-actions a:hover, .document-actions button:hover {
+        background: #667eea;
+        color: white;
+        border-color: #667eea;
+    }
+
+    .assignment-panel {
+        background: #f0f7ff;
+        padding: 20px;
+        border-radius: 8px;
+        border: 2px solid #bfdbfe;
+        margin-top: 25px;
+    }
+
+    .assignment-title {
+        font-size: 15px;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 15px;
+    }
+
+    .form-group {
+        margin-bottom: 15px;
+    }
+
+    .form-group label {
+        display: block;
+        font-size: 13px;
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 8px;
+    }
+
+    .form-group select, .form-group input {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        font-size: 14px;
+        transition: all 0.2s;
+    }
+
+    .form-group select:focus, .form-group input:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 20px;
+    }
+
+    .btn {
+        padding: 10px 20px;
+        border-radius: 6px;
+        font-weight: 600;
+        border: none;
+        cursor: pointer;
+        text-decoration: none;
+        transition: all 0.2s;
+        font-size: 13px;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #2d8cb5 100%);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        color: white;
+    }
+
+    .btn-success {
+        background: #10b981;
+        color: white;
+    }
+
+    .btn-success:hover {
+        background: #059669;
+        color: white;
+    }
+
+    .btn-danger {
+        background: #ef4444;
+        color: white;
+    }
+
+    .btn-danger:hover {
+        background: #dc2626;
+        color: white;
+    }
+
+    .btn-secondary {
+        background: #6b7280;
+        color: white;
+    }
+
+    .btn-secondary:hover {
+        background: #4b5563;
+        color: white;
+    }
+
+    .info-box {
+        background: #e3f2fd;
+        border-left: 4px solid #2196f3;
+        padding: 15px;
+        border-radius: 6px;
+        margin-bottom: 20px;
+        font-size: 13px;
+        color: #1565c0;
+    }
+
+    .warning-box {
+        background: #fff3cd;
+        border-left: 4px solid #ffc107;
+        padding: 15px;
+        border-radius: 6px;
+        margin-bottom: 20px;
+        font-size: 13px;
+        color: #856404;
+    }
+
+    .success-box {
+        background: #d4edda;
+        border-left: 4px solid #28a745;
+        padding: 15px;
+        border-radius: 6px;
+        margin-bottom: 20px;
+        font-size: 13px;
+        color: #155724;
+    }
+
+    .timeline {
+        position: relative;
+        padding: 20px 0;
+    }
+
+    .timeline-item {
+        padding-left: 40px;
+        margin-bottom: 20px;
+        position: relative;
+    }
+
+    .timeline-item:before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 12px;
+        height: 12px;
+        background: #667eea;
+        border-radius: 50%;
+        border: 3px solid white;
+        box-shadow: 0 0 0 2px #667eea;
+    }
+
+    .timeline-item:not(:last-child):after {
+        content: '';
+        position: absolute;
+        left: 5px;
+        top: 12px;
+        width: 2px;
+        height: calc(100% + 8px);
+        background: #e2e8f0;
+    }
+
+    .timeline-date {
+        font-size: 12px;
+        color: #7f8c8d;
+        font-weight: 600;
+    }
+
+    .timeline-text {
+        color: #495057;
+        margin-top: 3px;
+    }
+
+    .upload-area {
+        border: 2px dashed #dee2e6;
+        padding: 25px;
+        border-radius: 8px;
+        text-align: center;
+        transition: all 0.3s;
+        cursor: pointer;
+    }
+
+    .upload-area:hover {
+        border-color: #667eea;
+        background: #f0f7ff;
+    }
+
+    .upload-area input[type="file"] {
+        display: none;
+    }
+
+    .upload-icon {
+        font-size: 32px;
+        color: #667eea;
+        margin-bottom: 10px;
+    }
+
+    .hours-tracker {
+        background: linear-gradient(135deg, #667eea 0%, #2d8cb5 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 8px;
+        margin-top: 20px;
+    }
+
+    .hours-value {
+        font-size: 32px;
+        font-weight: 700;
+    }
+
+    .hours-label {
+        font-size: 13px;
+        opacity: 0.9;
+    }
+
+    .overdue-warning {
+        background: #fee2e2;
+        border: 2px solid #fca5a5;
+        color: #991b1b;
+        padding: 15px;
+        border-radius: 8px;
+        margin-top: 15px;
+        font-weight: 600;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="loan-detail-container">
+    <!-- Detail Header -->
+    <div class="detail-header">
+        <div class="header-title">
+            <div>
+                <h2><i class="bi bi-file-earmark-text"></i> {{ applicant.full_name }}</h2>
+                <p style="margin: 5px 0 0 0; color: #7f8c8d; font-size: 13px;">
+                    <i class="bi bi-id-card"></i> Applicant ID: {{ applicant.id }}
+                </p>
+            </div>
+        </div>
+        <div style="text-align: right;">
+            <div class="status-badge status-{{ status_css_class }}">
+                {{ loan_app.status }}
+            </div>
+            {% if hours_since_assignment is not None %}
+            <div style="margin-top: 15px; font-size: 13px; color: #7f8c8d;">
+                <strong>Assigned since:</strong> {{ hours_since_assignment }}h ago
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <!-- Overdue Warning -->
+    {% if is_overdue %}
+    <div class="warning-box">
+        <i class="bi bi-exclamation-triangle"></i> <strong>OVERDUE!</strong>
+        This application is awaiting processing for more than 24 hours. Please take action or move to follow-up status.
+    </div>
+    {% endif %}
+
+    <!-- Tabs -->
+    <div class="tabs-container">
+        <div class="nav-tabs" role="tablist">
+            <button class="nav-link active" id="app-details-tab" data-bs-toggle="tab" data-bs-target="#app-details">
+                <i class="bi bi-info-circle"></i> Application Details
+            </button>
+            <button class="nav-link" id="documents-tab" data-bs-toggle="tab" data-bs-target="#documents">
+                <i class="bi bi-file-earmark-pdf"></i> Documents
+                <span class="badge bg-secondary" style="margin-left: 8px;">{{ documents.count }}</span>
+            </button>
+            <button class="nav-link" id="assignment-tab" data-bs-toggle="tab" data-bs-target="#assignment">
+                <i class="bi bi-person-check"></i> Assignment
+            </button>
+            {% if status_history %}
+            <button class="nav-link" id="history-tab" data-bs-toggle="tab" data-bs-target="#history">
+                <i class="bi bi-clock-history"></i> Timeline
+            </button>
+            {% endif %}
+        </div>
+
+        <div class="tab-content">
+            <!-- Tab: Application Details -->
+            <div class="tab-pane fade show active" id="app-details">
+                <!-- Applicant Details Section -->
+                <div class="form-section">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <div class="form-section-title">
+                            <i class="bi bi-person-circle"></i> Applicant Information
+                        </div>
+                        <button type="button" class="btn btn-sm btn-primary" onclick="toggleEditMode()">
+                            <i class="bi bi-pencil"></i> Edit
+                        </button>
+                    </div>
+                    
+                    <!-- View Mode -->
+                    <div id="viewMode">
+                        <div class="detail-row">
+                            <div class="detail-field">
+                                <span class="field-label">Full Name</span>
+                                <span class="field-value">{{ applicant.full_name }}</span>
+                            </div>
+                            <div class="detail-field">
+                                <span class="field-label">Mobile Number</span>
+                                <span class="field-value">{{ applicant.mobile }}</span>
+                            </div>
+                            <div class="detail-field">
+                                <span class="field-label">Email Address</span>
+                                <span class="field-value">{{ applicant.email }}</span>
+                            </div>
+                            <div class="detail-field">
+                                <span class="field-label">Gender</span>
+                                <span class="field-value">{{ applicant.gender|default:"Not specified" }}</span>
+                            </div>
+                        </div>
+
+                        <div class="detail-row">
+                            <div class="detail-field">
+                                <span class="field-label">City</span>
+                                <span class="field-value">{{ applicant.city }}</span>
+                            </div>
+                            <div class="detail-field">
+                                <span class="field-label">State</span>
+                                <span class="field-value">{{ applicant.state }}</span>
+                            </div>
+                            <div class="detail-field">
+                                <span class="field-label">Pin Code</span>
+                                <span class="field-value">{{ applicant.pin_code }}</span>
+                            </div>
+                            <div class="detail-field">
+                                <span class="field-label">Applicant Role</span>
+                                <span class="field-value" style="text-transform: capitalize;">{{ applicant.role }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Edit Mode -->
+                    <div id="editMode" style="display: none;">
+                        <form id="applicantForm" method="post" action="{% url 'admin_update_application' applicant.id %}">
+                            {% csrf_token %}
+                            <div class="detail-row">
+                                <div class="form-group">
+                                    <label>Full Name *</label>
+                                    <input type="text" name="full_name" class="form-control" value="{{ applicant.full_name }}" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Mobile Number *</label>
+                                    <input type="text" name="mobile" class="form-control" value="{{ applicant.mobile }}" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Email Address *</label>
+                                    <input type="email" name="email" class="form-control" value="{{ applicant.email }}" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Gender</label>
+                                    <select name="gender" class="form-control">
+                                        <option value="">Select Gender</option>
+                                        <option value="male" {% if applicant.gender == 'male' %}selected{% endif %}>Male</option>
+                                        <option value="female" {% if applicant.gender == 'female' %}selected{% endif %}>Female</option>
+                                        <option value="other" {% if applicant.gender == 'other' %}selected{% endif %}>Other</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="detail-row">
+                                <div class="form-group">
+                                    <label>City</label>
+                                    <input type="text" name="city" class="form-control" value="{{ applicant.city }}">
+                                </div>
+                                <div class="form-group">
+                                    <label>State</label>
+                                    <input type="text" name="state" class="form-control" value="{{ applicant.state }}">
+                                </div>
+                                <div class="form-group">
+                                    <label>Pin Code</label>
+                                    <input type="text" name="pin_code" class="form-control" value="{{ applicant.pin_code }}">
+                                </div>
+                                <div class="form-group">
+                                    <label>Role</label>
+                                    <input type="text" name="role" class="form-control" value="{{ applicant.role }}" disabled>
+                                </div>
+                            </div>
+
+                            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                                <button type="submit" class="btn btn-success">
+                                    <i class="bi bi-check-circle"></i> Save Changes
+                                </button>
+                                <button type="button" class="btn btn-secondary" onclick="toggleEditMode()">
+                                    <i class="bi bi-x-circle"></i> Cancel
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Loan Details Section -->
+                <div class="form-section">
+                    <div class="form-section-title">
+                        <i class="bi bi-cash-coin"></i> Loan Information
+                    </div>
+                    <!-- Loan View Mode -->
+                    <div id="loanViewMode">
+                        <div class="detail-row">
+                            <div class="detail-field">
+                                <span class="field-label">Loan Type</span>
+                                <span class="field-value" style="text-transform: capitalize;">{{ loan_app.loan_type|default:"Not specified" }}</span>
+                            </div>
+                            <div class="detail-field">
+                                <span class="field-label">Loan Amount</span>
+                                <span class="amount-value">₹{{ applicant.loan_amount|floatformat:0|default:"N/A" }}</span>
+                            </div>
+                            <div class="detail-field">
+                                <span class="field-label">Tenure</span>
+                                <span class="field-value">{{ applicant.tenure_months|default:"Not specified" }} months</span>
+                            </div>
+                            <div class="detail-field">
+                                <span class="field-label">Interest Rate</span>
+                                <span class="field-value">{{ applicant.interest_rate|default:"Not specified" }}% p.a.</span>
+                            </div>
+                        </div>
+
+                        <div class="detail-row">
+                            <div class="detail-field">
+                                <span class="field-label">Monthly EMI</span>
+                                <span class="amount-value">₹{{ applicant.emi|floatformat:2|default:"N/A" }}</span>
+                            </div>
+                            <div class="detail-field">
+                                <span class="field-label">Loan Purpose</span>
+                                <span class="field-value">{{ applicant.loan_purpose|default:"Not specified" }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bank Details Section -->
+                <div class="form-section">
+                    <div class="form-section-title">
+                        <i class="bi bi-bank"></i> Bank & Account Information
+                    </div>
+                    <!-- Bank View Mode -->
+                    <div id="bankViewMode">
+                        <div class="detail-row">
+                            <div class="detail-field">
+                                <span class="field-label">Bank Name</span>
+                                <span class="field-value">{{ applicant.bank_name|default:"Not provided" }}</span>
+                            </div>
+                            <div class="detail-field">
+                                <span class="field-label">Bank Type</span>
+                                <span class="field-value" style="text-transform: capitalize;">{{ applicant.get_bank_type_display|default:"Not provided" }}</span>
+                            </div>
+                            <div class="detail-field">
+                                <span class="field-label">Account Number</span>
+                                <span class="field-value">{{ applicant.account_number|default:"Not provided" }}</span>
+                            </div>
+                            <div class="detail-field">
+                                <span class="field-label">IFSC Code</span>
+                                <span class="field-value">{{ applicant.ifsc_code|default:"Not provided" }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Submission & Source Info -->
+                <div class="form-section">
+                    <div class="form-section-title">
+                        <i class="bi bi-info-circle"></i> Submission Information
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-field">
+                            <span class="field-label">Submitted By (Agent)</span>
+                            <span class="field-value">
+                                {% if loan_app.assigned_agent %}
+                                    {{ loan_app.assigned_agent.name }}
+                                {% else %}
+                                    <span style="color: #7f8c8d;">Manual Entry (No Agent)</span>
+                                {% endif %}
+                            </span>
+                        </div>
+                        <div class="detail-field">
+                            <span class="field-label">Application Date</span>
+                            <span class="field-value">{{ loan_app.created_at|date:"d M Y, H:i" }}</span>
+                        </div>
+                        <div class="detail-field">
+                            <span class="field-label">Current Status</span>
+                            <span class="field-value" style="color: #667eea; font-weight: 700;">{{ loan_app.status }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="action-buttons" style="margin-top: 30px;">
+                    {% if can_edit %}
+                    <a href="{% url 'admin_edit_application' applicant.id %}" class="btn btn-primary">
+                        <i class="bi bi-pencil"></i> Edit Application
+                    </a>
+                    {% endif %}
+                    
+                    {% if loan_app.status == 'Waiting for Processing' %}
+                    <button class="btn btn-danger" onclick="if(confirm('Move to follow-up?')) document.getElementById('followupForm').submit();">
+                        <i class="bi bi-phone"></i> Trigger Follow-up
+                    </button>
+                    <form id="followupForm" method="post" action="{% url 'admin_trigger_followup' applicant.id %}" style="display:none;">
+                        {% csrf_token %}
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Tab: Documents -->
+            <div class="tab-pane fade" id="documents">
+                {% if documents %}
+                <div class="documents-grid">
+                    {% for doc in documents %}
+                    <div class="document-card">
+                        <div class="document-icon">
+                            <i class="bi bi-file-earmark-pdf"></i>
+                        </div>
+                        <div class="document-type">{{ doc.get_document_type_display }}</div>
+                        <div class="document-actions">
+                            <a href="{{ doc.file.url }}" target="_blank" title="View Document">
+                                <i class="bi bi-eye"></i> View
+                            </a>
+                            <a href="{{ doc.file.url }}" download title="Download Document">
+                                <i class="bi bi-download"></i> Download
+                            </a>
+                        </div>
+                        <div style="font-size: 11px; color: #7f8c8d; margin-top: 8px;">
+                            {{ doc.uploaded_at|date:"d M Y" }}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="info-box">
+                    <i class="bi bi-info-circle"></i> No documents uploaded yet.
+                </div>
+                {% endif %}
+
+                <!-- Document Upload Section -->
+                {% if can_upload_docs %}
+                <div style="margin-top: 30px;">
+                    <div class="form-section-title">
+                        <i class="bi bi-cloud-upload"></i> Upload Documents
+                    </div>
+                    <form method="post" enctype="multipart/form-data" action="{% url 'admin_upload_document' applicant.id %}">
+                        {% csrf_token %}
+                        <div class="detail-row">
+                            <div class="form-group" style="flex: 1;">
+                                <label>Document Type *</label>
+                                <select name="document_type" required>
+                                    <option value="">Select Document Type</option>
+                                    <option value="pan_card">PAN Card</option>
+                                    <option value="aadhaar_card">Aadhaar Card</option>
+                                    <option value="applicant_photo">Applicant Photo</option>
+                                    <option value="permanent_address_proof">Permanent Address Proof</option>
+                                    <option value="current_address_proof">Current Address Proof</option>
+                                    <option value="salary_slip">Salary Slip</option>
+                                    <option value="bank_statement">Bank Statement</option>
+                                    <option value="form_16">Form 16</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                            <div class="form-group" style="flex: 1;">
+                                <label>Select File *</label>
+                                <input type="file" name="file" required accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
+                            </div>
+                            <div style="flex: 1; display: flex; align-items: flex-end;">
+                                <button type="submit" class="btn btn-success" style="width: 100%;">
+                                    <i class="bi bi-upload"></i> Upload Document
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Tab: Assignment -->
+            <div class="tab-pane fade" id="assignment">
+                {% if can_assign %}
+                <div class="assignment-panel">
+                    <div class="assignment-title">
+                        <i class="bi bi-person-check"></i> Assign to Employee
+                    </div>
+                    <p style="color: #495057; margin-bottom: 15px;">
+                        Assign this application to an employee for processing. Status will change to "Waiting for Processing" with a 24-hour follow-up timer.
+                    </p>
+                    
+                    <form method="post" action="{% url 'admin_assign_employee' applicant.id %}">
+                        {% csrf_token %}
+                        <div class="form-group">
+                            <label>Select Employee *</label>
+                            <select name="employee_id" required>
+                                <option value="">-- Select an Employee --</option>
+                                {% for emp in employees %}
+                                <option value="{{ emp.id }}">
+                                    {{ emp.get_full_name|default:emp.username }}
+                                    (ID: {{ emp.employee_id|default:emp.id }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-success" onclick="return confirm('Assign this application to selected employee?');">
+                            <i class="bi bi-check-circle"></i> Assign Now
+                        </button>
+                    </form>
+                </div>
+                {% elif loan_app.assigned_employee %}
+                <div class="success-box">
+                    <i class="bi bi-check-circle"></i> <strong>Assigned</strong><br>
+                    <strong>Employee:</strong> {{ loan_app.assigned_employee.get_full_name|default:loan_app.assigned_employee.username }}<br>
+                    <strong>Assigned At:</strong> {{ loan_app.assigned_at|date:"d M Y, H:i" }}<br>
+                    <strong>Assigned By:</strong> {{ loan_app.assigned_by.get_full_name|default:loan_app.assigned_by.username }}
+                </div>
+
+                {% if hours_since_assignment is not None %}
+                <div class="hours-tracker">
+                    <div class="hours-label">Hours Since Assignment:</div>
+                    <div class="hours-value">{{ hours_since_assignment }}h</div>
+                    {% if is_overdue %}
+                    <div class="overdue-warning" style="margin-top: 15px;">
+                        ⚠️ OVERDUE - Action needed!
+                    </div>
+                    {% else %}
+                    <div style="margin-top: 15px; font-size: 13px;">
+                        Follow-up due: {{ follow_up_due|date:"d M Y, H:i" }}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+                {% else %}
+                <div class="info-box">
+                    <i class="bi bi-info-circle"></i> Application is not yet assigned to any employee.
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Tab: Timeline -->
+            {% if status_history %}
+            <div class="tab-pane fade" id="history">
+                <div class="timeline">
+                    {% for entry in status_history %}
+                    <div class="timeline-item">
+                        <div class="timeline-date">{{ entry.created_at|date:"d M Y, H:i" }}</div>
+                        <div class="timeline-text">
+                            <strong>Status changed to:</strong> {{ entry.status }}
+                            {% if entry.notes %}
+                            <br><em>{{ entry.notes }}</em>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    function toggleEditMode() {
+        const viewMode = document.getElementById('viewMode');
+        const editMode = document.getElementById('editMode');
+        
+        if (editMode.style.display === 'none') {
+            viewMode.style.display = 'none';
+            editMode.style.display = 'block';
+        } else {
+            viewMode.style.display = 'block';
+            editMode.style.display = 'none';
+        }
+    }
+</script>
+{% endblock %}

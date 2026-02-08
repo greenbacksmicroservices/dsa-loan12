@@ -1,0 +1,372 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}SubAdmin Panel{% endblock %}</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .pulse-icon {
+            animation: pulse 2s infinite;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        .main-container {
+            display: flex;
+            height: 100vh;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 256px;
+            flex-shrink: 0;
+            background: linear-gradient(to bottom, #0f172a, #1e293b, #0f172a);
+            color: white;
+            overflow-y: auto;
+            border-right: 4px solid #2563eb;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4);
+        }
+
+        .sidebar-header {
+            padding: 24px;
+            border-bottom: 2px solid #2563eb;
+            background: linear-gradient(to right, #1e293b, #1e3a8a);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .sidebar-nav {
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .sidebar-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            color: #cbd5e1;
+            text-decoration: none;
+            border-radius: 8px;
+            margin: 4px 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .sidebar-link:hover {
+            background-color: #1e3a8a;
+            color: white;
+        }
+
+        .sidebar-link.active {
+            background: linear-gradient(to right, #2563eb, #06b6d4);
+            color: white;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            border-left: 4px solid #fbbf24;
+            padding-left: 12px;
+        }
+
+        .sidebar-footer {
+            padding: 16px;
+            border-top: 1px solid #4c1d95;
+            margin-top: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background-color: #f9fafb;
+        }
+
+        .header {
+            background-color: white;
+            border-bottom: 1px solid #e5e7eb;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .page-content {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 24px;
+        }
+
+        .logout-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            background: linear-gradient(to right, #ef4444, #dc2626);
+            color: white;
+            font-weight: 600;
+            padding: 8px 16px;
+            border-radius: 8px;
+            text-decoration: none;
+            border: none;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .logout-btn:hover {
+            background: linear-gradient(to right, #dc2626, #b91c1c);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+        }
+
+        .notification-btn {
+            position: relative;
+            padding: 8px;
+            color: #4b5563;
+            background-color: transparent;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .notification-btn:hover {
+            background-color: #f3f4f6;
+        }
+
+        .profile-btn {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px;
+            background-color: transparent;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            font-size: 14px;
+            font-weight: 500;
+            color: #111827;
+        }
+
+        .profile-btn:hover {
+            background-color: #f3f4f6;
+        }
+
+        .dropdown-menu {
+            position: absolute;
+            right: 0;
+            margin-top: 8px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            z-index: 50;
+            overflow: hidden;
+            min-width: 192px;
+        }
+
+        .dropdown-menu a {
+            display: block;
+            padding: 8px 16px;
+            font-size: 14px;
+            color: #111827;
+            text-decoration: none;
+            border-bottom: 1px solid #e5e7eb;
+            transition: background-color 0.2s;
+        }
+
+        .dropdown-menu a:hover {
+            background-color: #f3f4f6;
+        }
+
+        .dropdown-menu a:last-child {
+            border-bottom: none;
+            color: #dc2626;
+        }
+
+        .dropdown-menu a:last-child:hover {
+            background-color: #fef2f2;
+        }
+    </style>
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <div class="main-container">
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <!-- Logo Section -->
+            <div class="sidebar-header">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                    <i class="fas fa-crown pulse-icon" style="font-size: 28px; color: #fbbf24;"></i>
+                    <h1 style="font-size: 24px; font-weight: bold; background: linear-gradient(to right, #60a5fa, #22d3ee); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">SubAdmin</h1>
+                </div>
+                <p style="font-size: 11px; color: #cbd5e1; font-weight: 600; letter-spacing: 2px; margin-bottom: 4px;">MANAGEMENT PANEL</p>
+                <p style="font-size: 11px; color: #94a3b8;">{{ user.email }}</p>
+            </div>
+            
+            <!-- Navigation -->
+            <nav class="sidebar-nav">
+                <!-- Dashboard -->
+                <a href="{% url 'subadmin_dashboard' %}" class="sidebar-link {% if request.resolver_match.url_name == 'subadmin_dashboard' %}active{% endif %}">
+                    <i class="fas fa-home"></i>
+                    <span>Dashboard</span>
+                </a>
+                
+                <!-- All Loans -->
+                <a href="{% url 'subadmin_all_loans' %}" class="sidebar-link {% if request.resolver_match.url_name == 'subadmin_all_loans' %}active{% endif %}">
+                    <i class="fas fa-briefcase"></i>
+                    <span>All Loans</span>
+                </a>
+                
+                <!-- My Agent -->
+                <a href="{% url 'subadmin_my_agents' %}" class="sidebar-link {% if request.resolver_match.url_name == 'subadmin_my_agents' %}active{% endif %}">
+                    <i class="fas fa-user-tie"></i>
+                    <span>My Agent</span>
+                </a>
+                
+                <!-- My Employee -->
+                <a href="{% url 'subadmin_my_employees' %}" class="sidebar-link {% if request.resolver_match.url_name == 'subadmin_my_employees' %}active{% endif %}">
+                    <i class="fas fa-users"></i>
+                    <span>My Employee</span>
+                </a>
+                
+                <!-- Reports -->
+                <a href="{% url 'subadmin_reports' %}" class="sidebar-link {% if request.resolver_match.url_name == 'subadmin_reports' %}active{% endif %}">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Reports</span>
+                </a>
+                
+                <!-- Complaints -->
+                <a href="{% url 'subadmin_complaints' %}" class="sidebar-link {% if request.resolver_match.url_name == 'subadmin_complaints' %}active{% endif %}">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <span>Complaints</span>
+                </a>
+                
+                <!-- Settings -->
+                <a href="{% url 'subadmin_settings' %}" class="sidebar-link {% if request.resolver_match.url_name == 'subadmin_settings' %}active{% endif %}">
+                    <i class="fas fa-cog"></i>
+                    <span>Settings</span>
+                </a>
+            </nav>
+            
+            <!-- Footer -->
+            <div class="sidebar-footer">
+                <a href="{% url 'admin_logout' %}" class="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </a>
+                <p style="font-size: 11px; color: #666; text-align: center;">SubAdmin v1.0</p>
+            </div>
+        </aside>
+        
+        <!-- MAIN CONTENT -->
+        <div class="main-content">
+            <!-- HEADER -->
+            <header class="header" x-data="{ notificationOpen: false, profileOpen: false }">
+                <!-- Left Section -->
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <h2 style="font-size: 20px; font-weight: bold; color: #111827;">{% block page_title %}SubAdmin Dashboard{% endblock %}</h2>
+                </div>
+                
+                <!-- Right Section -->
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <!-- Notifications -->
+                    <div style="position: relative;">
+                        <button @click="notificationOpen = !notificationOpen" class="notification-btn">
+                            <i class="fas fa-bell" style="font-size: 18px;"></i>
+                            <span style="position: absolute; top: 4px; right: 4px; width: 8px; height: 8px; background-color: #ef4444; border-radius: 50%;"></span>
+                        </button>
+                        
+                        <!-- Notification Dropdown -->
+                        <div x-show="notificationOpen" @click.outside="notificationOpen = false" class="dropdown-menu" style="width: 320px;" x-cloak>
+                            <div style="padding: 16px; border-bottom: 1px solid #e5e7eb;">
+                                <h3 style="font-weight: 600; color: #111827;">Notifications</h3>
+                            </div>
+                            <div style="padding: 16px; font-size: 14px; color: #4b5563;">
+                                <p>No new notifications</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Profile Dropdown -->
+                    <div style="position: relative;">
+                        <button @click="profileOpen = !profileOpen" class="profile-btn">
+                            <img src="{% if user.profile_photo %}{{ user.profile_photo.url }}{% else %}https://via.placeholder.com/32{% endif %}" alt="Profile" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;">
+                            <span>{{ user.get_full_name|default:user.username }}</span>
+                            <i class="fas fa-chevron-down" style="font-size: 14px; color: #4b5563;"></i>
+                        </button>
+                        
+                        <!-- Profile Menu -->
+                        <div x-show="profileOpen" @click.outside="profileOpen = false" class="dropdown-menu" x-cloak>
+                            <a href="#">
+                                <i class="fas fa-user" style="margin-right: 8px;"></i>My Profile
+                            </a>
+                            <a href="{% url 'subadmin_settings' %}">
+                                <i class="fas fa-cog" style="margin-right: 8px;"></i>Settings
+                            </a>
+                            <a href="{% url 'admin_logout' %}">
+                                <i class="fas fa-sign-out-alt" style="margin-right: 8px;"></i>Logout
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </header>
+            
+            <!-- PAGE CONTENT -->
+            <main class="page-content">
+                {% if messages %}
+                    {% for message in messages %}
+                        <div style="margin-bottom: 16px; padding: 16px; border-radius: 8px; background-color: {% if message.tags %}
+                            {% if 'error' in message.tags %}#fee2e2{% elif 'success' in message.tags %}#dcfce7{% elif 'warning' in message.tags %}#fef3c7{% else %}#dbeafe{% endif %}
+                        {% else %}#dbeafe{% endif %}; color: {% if message.tags %}
+                            {% if 'error' in message.tags %}#991b1b{% elif 'success' in message.tags %}#15803d{% elif 'warning' in message.tags %}#92400e{% else %}#1e40af{% endif %}
+                        {% else %}#1e40af{% endif %};">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+                
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    </div>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

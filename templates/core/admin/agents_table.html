@@ -1,0 +1,280 @@
+{% extends 'core/admin/admin_base.html' %}
+{% load static %}
+
+{% block title %}All Agents - Admin Panel{% endblock %}
+
+{% block content %}
+<style>
+    .page-container {
+        padding: 30px;
+    }
+
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+        padding-bottom: 20px;
+        border-bottom: 2px solid #e5e7eb;
+    }
+
+    .page-title {
+        font-size: 28px;
+        font-weight: 700;
+        color: #1f2937;
+    }
+
+    .page-count {
+        font-size: 14px;
+        color: #6b7280;
+        font-weight: 500;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #1abc9c 0%, #16a085 100%);
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(26, 188, 156, 0.3);
+    }
+
+    .search-container {
+        margin-bottom: 25px;
+        display: flex;
+        gap: 10px;
+    }
+
+    .search-input {
+        flex: 1;
+        padding: 12px 16px;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        font-size: 14px;
+    }
+
+    .search-input:focus {
+        outline: none;
+        border-color: #1abc9c;
+        box-shadow: 0 0 0 3px rgba(26, 188, 156, 0.1);
+    }
+
+    .table-wrapper {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    thead {
+        background: #f9fafb;
+        border-bottom: 2px solid #e5e7eb;
+    }
+
+    th {
+        padding: 15px;
+        text-align: left;
+        font-weight: 600;
+        color: #374151;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    td {
+        padding: 15px;
+        border-bottom: 1px solid #f3f4f6;
+        font-size: 14px;
+        color: #374151;
+    }
+
+    tbody tr:hover {
+        background: #f9fafb;
+    }
+
+    tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .badge-active {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .badge-inactive {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 8px;
+    }
+
+    .btn-sm {
+        padding: 6px 12px;
+        border: none;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .btn-view {
+        background: #1abc9c;
+        color: white;
+    }
+
+    .btn-view:hover {
+        background: #16a085;
+    }
+
+    .btn-edit {
+        background: #3b82f6;
+        color: white;
+    }
+
+    .btn-edit:hover {
+        background: #2563eb;
+    }
+
+    .btn-delete {
+        background: #ef4444;
+        color: white;
+    }
+
+    .btn-delete:hover {
+        background: #dc2626;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #6b7280;
+    }
+
+    .empty-icon {
+        font-size: 48px;
+        margin-bottom: 15px;
+        opacity: 0.5;
+    }
+</style>
+
+<div class="page-container">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">🤝 All Agents</h1>
+            <p class="page-count">Total: {{ agents|length }} Agent{{ agents|length|pluralize }}</p>
+        </div>
+        <button onclick="openAddAgentModal()" class="btn-primary">
+            ➕ Add New Agent
+        </button>
+    </div>
+
+    <div class="search-container">
+        <input type="text" class="search-input" id="searchInput" placeholder="Search by name, email, or city..." onkeyup="filterTable()">
+    </div>
+
+    {% if agents %}
+    <div class="table-wrapper">
+        <table id="agentsTable">
+            <thead>
+                <tr>
+                    <th>Agent Name</th>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>City</th>
+                    <th>Status</th>
+                    <th>Total Leads</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for agent in agents %}
+                <tr data-searchtext="{{ agent.name|lower }} {{ agent.email|lower }} {{ agent.city|lower }}">
+                    <td><strong>{{ agent.name|default:agent.user.username }}</strong></td>
+                    <td>@{{ agent.user.username }}</td>
+                    <td>{{ agent.email|truncatechars:30|default:"N/A" }}</td>
+                    <td>{{ agent.phone|default:"N/A" }}</td>
+                    <td>{{ agent.city|default:"N/A" }}</td>
+                    <td>
+                        <span class="status-badge {% if agent.status == 'active' %}badge-active{% else %}badge-inactive{% endif %}">
+                            {% if agent.status == 'active' %}✓ Active{% else %}✗ Inactive{% endif %}
+                        </span>
+                    </td>
+                    <td><strong>{{ agent.total_leads|default:0 }}</strong></td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn-sm btn-view" onclick="viewAgent({{ agent.id }})">👁️ View</button>
+                            <button class="btn-sm btn-edit" onclick="editAgent({{ agent.id }})">✏️ Edit</button>
+                            <button class="btn-sm btn-delete" onclick="deleteAgent({{ agent.id }})">🗑️ Delete</button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-icon">🤝</div>
+        <h3 style="color: #1f2937; margin-bottom: 10px;">No Agents Found</h3>
+        <p>No agents have been added yet.</p>
+        <button onclick="openAddAgentModal()" class="btn-primary" style="margin-top: 20px;">➕ Add First Agent</button>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function openAddAgentModal() {
+    alert('Add Agent - Coming soon');
+}
+
+function filterTable() {
+    const input = document.getElementById('searchInput').value.toLowerCase();
+    const rows = document.querySelectorAll('#agentsTable tbody tr');
+    
+    rows.forEach(row => {
+        const text = row.getAttribute('data-searchtext');
+        row.style.display = text.includes(input) ? '' : 'none';
+    });
+}
+
+function viewAgent(id) {
+    alert('View Agent #' + id + ' - Coming soon');
+}
+
+function editAgent(id) {
+    alert('Edit Agent #' + id + ' - Coming soon');
+}
+
+function deleteAgent(id) {
+    if (confirm('Are you sure you want to delete this agent?')) {
+        alert('Agent deleted - Coming soon');
+    }
+}
+</script>
+
+{% endblock %}

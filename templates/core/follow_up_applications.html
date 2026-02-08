@@ -1,0 +1,277 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Required Follow-up Applications{% endblock %}
+
+{% block extra_css %}
+<style>
+    .followup-container {
+        margin: 20px;
+        padding: 20px;
+    }
+    
+    .page-header {
+        background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 8px;
+        margin-bottom: 30px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .page-header h1 {
+        margin: 0;
+        font-size: 28px;
+        font-weight: 700;
+    }
+    
+    .app-count {
+        background: rgba(255, 255, 255, 0.3);
+        padding: 10px 20px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 18px;
+    }
+    
+    .alert-banner {
+        background-color: #fff3cd;
+        border: 1px solid #ffc107;
+        color: #664d03;
+        padding: 15px 20px;
+        border-radius: 8px;
+        margin-bottom: 30px;
+        display: flex;
+        gap: 15px;
+        align-items: flex-start;
+    }
+    
+    .alert-banner i {
+        font-size: 20px;
+        flex-shrink: 0;
+    }
+    
+    .table-responsive {
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    .table {
+        margin: 0;
+    }
+    
+    .table thead {
+        background-color: #f8f9fa;
+        border-bottom: 2px solid #dee2e6;
+    }
+    
+    .table-hover tbody tr:hover {
+        background-color: #f5f6fa;
+    }
+    
+    .critical-badge {
+        background-color: #f8d7da;
+        color: #842029;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+    
+    .followup-count-badge {
+        background-color: #dc3545;
+        color: white;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+    
+    .action-buttons {
+        display: flex;
+        gap: 5px;
+        flex-wrap: wrap;
+    }
+    
+    .action-buttons .btn {
+        padding: 6px 12px;
+        font-size: 12px;
+        white-space: nowrap;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #999;
+    }
+    
+    .empty-state i {
+        font-size: 48px;
+        margin-bottom: 20px;
+        opacity: 0.5;
+    }
+    
+    .back-link {
+        display: inline-block;
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="followup-container">
+    <a href="{% url 'workflow_dashboard' %}" class="back-link">
+        <i class="fas fa-arrow-left"></i> Back to Workflow Dashboard
+    </a>
+    
+    <div class="page-header">
+        <h1><i class="fas fa-bell"></i> Required Follow-up</h1>
+        <span class="app-count">{{ count }} Applications</span>
+    </div>
+    
+    {% if applications %}
+    <div class="alert-banner">
+        <i class="fas fa-exclamation-triangle"></i>
+        <div>
+            <strong>Action Required!</strong> These applications have been waiting for more than 24 hours with no action. 
+            Please prioritize these cases and take immediate action.
+        </div>
+    </div>
+    
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Applicant Name</th>
+                    <th>Loan Type</th>
+                    <th>Amount (₹)</th>
+                    <th>Assigned To</th>
+                    <th>Follow-up Triggered</th>
+                    <th>Age (Hours)</th>
+                    <th>Count</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in applications %}
+                <tr>
+                    <td>
+                        <strong>{{ item.app.applicant.full_name }}</strong><br>
+                        <small class="text-muted">{{ item.app.applicant.email }}</small>
+                    </td>
+                    <td>
+                        <span class="badge bg-info">{{ item.app.applicant.get_loan_type_display }}</span>
+                    </td>
+                    <td>
+                        <strong>₹{{ item.app.applicant.loan_amount|floatformat:0 }}</strong>
+                    </td>
+                    <td>
+                        {% if item.app.assigned_employee %}
+                            <strong>{{ item.app.assigned_employee.first_name }} {{ item.app.assigned_employee.last_name }}</strong><br>
+                            <small class="badge bg-primary">Employee</small>
+                        {% elif item.app.assigned_agent %}
+                            <strong>{{ item.app.assigned_agent.name }}</strong><br>
+                            <small class="badge bg-info">Agent</small>
+                        {% else %}
+                            <span class="text-muted">Unassigned</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ item.app.follow_up_scheduled_at|date:"M d, Y H:i" }}</td>
+                    <td>
+                        <span class="critical-badge">
+                            {{ item.follow_up_age|floatformat:0 }}h ago
+                        </span>
+                    </td>
+                    <td>
+                        <span class="followup-count-badge">
+                            {{ item.follow_up_count }}x
+                        </span>
+                    </td>
+                    <td>
+                        <div class="action-buttons">
+                            <a href="{% url 'follow_up_details' item.app.applicant.id %}" class="btn btn-sm btn-warning">
+                                <i class="fas fa-file-alt"></i> Details
+                            </a>
+                            <button class="btn btn-sm btn-success" onclick="approveApp({{ item.app.applicant.id }})">
+                                <i class="fas fa-check"></i> Approve
+                            </button>
+                            <button class="btn btn-sm btn-danger" onclick="rejectApp({{ item.app.applicant.id }})">
+                                <i class="fas fa-times"></i> Reject
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div style="font-size: 48px; margin-bottom: 20px; opacity: 0.5;">
+            <i class="fas fa-check-circle"></i>
+        </div>
+        <h3>No Follow-ups Required</h3>
+        <p>All applications are being processed within the 24-hour SLA!</p>
+        <a href="{% url 'workflow_dashboard' %}" class="btn btn-primary mt-3">
+            Go to Dashboard
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function approveApp(applicantId) {
+    const notes = prompt('Enter approval notes (optional):');
+    if (notes === null) return; // User cancelled
+    
+    fetch(`/api/approve/${applicantId}/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken(),
+        },
+        body: JSON.stringify({ approval_notes: notes || '' })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    });
+}
+
+function rejectApp(applicantId) {
+    const reason = prompt('Enter rejection reason:');
+    if (!reason) return;
+    
+    fetch(`/api/reject/${applicantId}/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken(),
+        },
+        body: JSON.stringify({ rejection_reason: reason })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    });
+}
+
+function getCSRFToken() {
+    return document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
+           document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1] || '';
+}
+</script>
+{% endblock %}

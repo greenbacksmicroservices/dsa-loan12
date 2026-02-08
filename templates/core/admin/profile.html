@@ -1,0 +1,262 @@
+{% extends "core/admin/admin_base.html" %}
+{% load static %}
+
+{% block title %}My Profile - DSA Admin{% endblock %}
+
+{% block page_title %}
+    <div>
+        <h2 class="text-2xl font-bold text-gray-900">My Profile</h2>
+        <p class="text-sm text-gray-600 mt-1">Manage your account settings and profile information</p>
+    </div>
+{% endblock %}
+
+{% block content %}
+<div x-data="profileManager()" class="space-y-6">
+    <!-- Profile Card -->
+    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+        <div class="h-32 bg-gradient-to-r from-blue-600 to-blue-800"></div>
+        
+        <div class="px-6 py-6 -mt-16 relative">
+            <div class="flex items-end gap-6">
+                <!-- Profile Photo -->
+                <div class="relative">
+                    <img :src="profile.photo_url" :alt="profile.full_name" class="w-32 h-32 rounded-lg object-cover border-4 border-white shadow-md">
+                    <button @click="openPhotoUpload()" class="absolute bottom-2 right-2 bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 transition-colors">
+                        <i class="fas fa-camera w-4"></i>
+                    </button>
+                </div>
+                
+                <!-- Basic Info -->
+                <div class="flex-1 pb-2">
+                    <h1 class="text-3xl font-bold text-gray-900" x-text="profile.full_name"></h1>
+                    <p class="text-gray-600 mt-1" x-text="profile.role"></p>
+                    <div class="flex items-center gap-4 mt-4">
+                        <span class="inline-flex items-center px-4 py-1 rounded-full text-sm font-semibold bg-blue-100 text-blue-800" x-text="profile.email"></span>
+                        <span class="inline-flex items-center px-4 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-800" x-text="profile.phone"></span>
+                    </div>
+                </div>
+                
+                <!-- Edit Button -->
+                <button @click="toggleEditMode()" :class="editMode ? 'bg-gray-600 hover:bg-gray-700' : 'bg-blue-600 hover:bg-blue-700'" class="px-6 py-2 text-white rounded-lg transition-colors">
+                    <i :class="editMode ? 'fas fa-times' : 'fas fa-edit'" class="w-4 mr-2"></i>
+                    <span x-text="editMode ? 'Cancel' : 'Edit Profile'"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Profile Information -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Personal Information -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h3 class="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
+                <i class="fas fa-user text-blue-600 w-5"></i>
+                Personal Information
+            </h3>
+            
+            <div class="space-y-4">
+                <!-- First Name -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                    <input 
+                        type="text" 
+                        x-model="profile.first_name"
+                        :disabled="!editMode"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-600"
+                    >
+                </div>
+                
+                <!-- Last Name -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                    <input 
+                        type="text" 
+                        x-model="profile.last_name"
+                        :disabled="!editMode"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-600"
+                    >
+                </div>
+                
+                <!-- Email -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                    <input 
+                        type="email" 
+                        x-model="profile.email"
+                        disabled
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600"
+                    >
+                </div>
+                
+                <!-- Phone -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                    <input 
+                        type="tel" 
+                        x-model="profile.phone"
+                        :disabled="!editMode"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-600"
+                    >
+                </div>
+            </div>
+        </div>
+        
+        <!-- Address Information -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h3 class="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
+                <i class="fas fa-map-marker-alt text-blue-600 w-5"></i>
+                Address Information
+            </h3>
+            
+            <div class="space-y-4">
+                <!-- Address -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Full Address</label>
+                    <textarea 
+                        x-model="profile.address"
+                        :disabled="!editMode"
+                        rows="4"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-600"
+                    ></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Account Settings -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <h3 class="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
+            <i class="fas fa-lock text-blue-600 w-5"></i>
+            Account Security
+        </h3>
+        
+        <div class="space-y-4">
+            <!-- Change Password Section -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-3">Change Password</label>
+                <div class="space-y-3">
+                    <input 
+                        type="password" 
+                        x-model="passwordForm.current_password"
+                        placeholder="Current Password"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    >
+                    <input 
+                        type="password" 
+                        x-model="passwordForm.new_password"
+                        placeholder="New Password"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    >
+                    <input 
+                        type="password" 
+                        x-model="passwordForm.confirm_password"
+                        placeholder="Confirm Password"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    >
+                    <button @click="changePassword()" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                        <i class="fas fa-key w-4 mr-2"></i>
+                        Update Password
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Save Changes Button -->
+    <div x-show="editMode" class="flex items-center gap-4">
+        <button @click="saveProfile()" class="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center gap-2">
+            <i class="fas fa-save w-4"></i>
+            Save Changes
+        </button>
+        <button @click="editMode = false" class="px-8 py-3 bg-gray-300 text-gray-900 rounded-lg hover:bg-gray-400 transition-colors font-medium">
+            Cancel
+        </button>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function profileManager() {
+    return {
+        editMode: false,
+        profile: {
+            id: {{ user.id }},
+            full_name: '{{ user.get_full_name|escapejs }}',
+            first_name: '{{ user.first_name|escapejs }}',
+            last_name: '{{ user.last_name|escapejs }}',
+            email: '{{ user.email|escapejs }}',
+            phone: '{{ user.phone|escapejs }}',
+            role: '{{ user.get_role_display|escapejs }}',
+            photo_url: '{% if user.profile_photo %}{{ user.profile_photo.url }}{% else %}{% static 'images/default-avatar.svg' %}{% endif %}',
+            address: '{{ user.address|escapejs }}',
+        },
+        passwordForm: {
+            current_password: '',
+            new_password: '',
+            confirm_password: ''
+        },
+        
+        toggleEditMode() {
+            this.editMode = !this.editMode;
+        },
+        
+        openPhotoUpload() {
+            alert('Photo upload - to be implemented');
+        },
+        
+        async saveProfile() {
+            try {
+                const response = await fetch('{% url "api_update_admin_profile" %}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken'),
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(this.profile)
+                });
+                
+                if (response.ok) {
+                    alert('Profile updated successfully!');
+                    this.editMode = false;
+                } else {
+                    alert('Error updating profile');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error saving profile: ' + error.message);
+            }
+        },
+        
+        async changePassword() {
+            if (this.passwordForm.new_password !== this.passwordForm.confirm_password) {
+                alert('Passwords do not match');
+                return;
+            }
+            
+            try {
+                const response = await fetch('{% url "api_change_password" %}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken'),
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(this.passwordForm)
+                });
+                
+                if (response.ok) {
+                    alert('Password changed successfully!');
+                    this.passwordForm = { current_password: '', new_password: '', confirm_password: '' };
+                } else {
+                    alert('Error changing password');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error changing password: ' + error.message);
+            }
+        }
+    }
+}
+</script>
+{% endblock %}

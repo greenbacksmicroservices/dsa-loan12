@@ -1,0 +1,183 @@
+{% extends "core/subadmin/base.html" %}
+
+{% block page_title %}Reports & Analytics{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Key Metrics -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="bg-white p-6 rounded-lg shadow-sm border-l-4 border-blue-500">
+            <p class="text-sm text-gray-600 mb-2">Total Applications</p>
+            <p class="text-3xl font-bold text-blue-600">{{ report_stats.total_applications }}</p>
+        </div>
+        <div class="bg-white p-6 rounded-lg shadow-sm border-l-4 border-green-500">
+            <p class="text-sm text-gray-600 mb-2">Total Approved</p>
+            <p class="text-3xl font-bold text-green-600">{{ report_stats.total_approved }}</p>
+        </div>
+        <div class="bg-white p-6 rounded-lg shadow-sm border-l-4 border-purple-500">
+            <p class="text-sm text-gray-600 mb-2">Total Disbursed</p>
+            <p class="text-3xl font-bold text-purple-600">₹{{ report_stats.disbursed_value|floatformat:0 }}</p>
+        </div>
+        <div class="bg-white p-6 rounded-lg shadow-sm border-l-4 border-orange-500">
+            <p class="text-sm text-gray-600 mb-2">Approval Rate</p>
+            <p class="text-3xl font-bold text-orange-600">{{ report_stats.approval_rate }}%</p>
+        </div>
+    </div>
+    
+    <!-- Employee Performance -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                <i class="fas fa-user-tie text-emerald-600"></i>
+                Top Performing Employees
+            </h2>
+        </div>
+        <div class="card-body table-responsive">
+            {% if employee_performance %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>Employee Name</th>
+                        <th>Total Applications</th>
+                        <th>Approved</th>
+                        <th>Approval Rate</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for emp in employee_performance %}
+                    <tr>
+                        <td>
+                            {% if forloop.counter <= 3 %}
+                            <span class="text-lg">
+                                {% if forloop.counter == 1 %}🥇{% elif forloop.counter == 2 %}🥈{% elif forloop.counter == 3 %}🥉{% endif %}
+                            </span>
+                            {% else %}
+                            <span class="text-gray-600 font-medium">#{{ forloop.counter }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="font-medium">{{ emp.name }}</td>
+                        <td><span class="badge badge-primary">{{ emp.total }}</span></td>
+                        <td><span class="badge badge-success">{{ emp.approved }}</span></td>
+                        <td>
+                            <div class="flex items-center gap-2">
+                                <div class="w-24 bg-gray-200 rounded-full h-2">
+                                    <div class="bg-green-600 h-2 rounded-full" style="width: {{ emp.rate }}%"></div>
+                                </div>
+                                <span class="text-sm font-semibold text-green-700">{{ emp.rate }}%</span>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="text-gray-500 text-center py-8">No employee data available</p>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Agent Performance -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                <i class="fas fa-handshake text-emerald-600"></i>
+                Top Performing Agents
+            </h2>
+        </div>
+        <div class="card-body table-responsive">
+            {% if agent_performance %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>Agent Name</th>
+                        <th>Total Loans</th>
+                        <th>Approved</th>
+                        <th>Approval Rate</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for agent in agent_performance %}
+                    <tr>
+                        <td>
+                            {% if forloop.counter <= 3 %}
+                            <span class="text-lg">
+                                {% if forloop.counter == 1 %}🥇{% elif forloop.counter == 2 %}🥈{% elif forloop.counter == 3 %}🥉{% endif %}
+                            </span>
+                            {% else %}
+                            <span class="text-gray-600 font-medium">#{{ forloop.counter }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="font-medium">{{ agent.name }}</td>
+                        <td><span class="badge badge-primary">{{ agent.total }}</span></td>
+                        <td><span class="badge badge-success">{{ agent.approved }}</span></td>
+                        <td>
+                            <div class="flex items-center gap-2">
+                                <div class="w-24 bg-gray-200 rounded-full h-2">
+                                    <div class="bg-blue-600 h-2 rounded-full" style="width: {{ agent.rate }}%"></div>
+                                </div>
+                                <span class="text-sm font-semibold text-blue-700">{{ agent.rate }}%</span>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="text-gray-500 text-center py-8">No agent data available</p>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Monthly Trend -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                <i class="fas fa-chart-line text-emerald-600"></i>
+                Monthly Trend (Last 12 Months)
+            </h2>
+        </div>
+        <div class="card-body overflow-x-auto">
+            {% if monthly_trend %}
+            <table class="min-w-full text-sm">
+                <thead>
+                    <tr>
+                        <th>Month</th>
+                        <th>Applications</th>
+                        <th>Approved</th>
+                        <th>Disbursed</th>
+                        <th>Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for month in monthly_trend %}
+                    <tr>
+                        <td class="font-medium">{{ month.month }}</td>
+                        <td>
+                            <span class="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
+                                {{ month.applications }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="px-2 py-1 bg-green-100 text-green-800 rounded text-xs">
+                                {{ month.approved }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs">
+                                {{ month.disbursed }}
+                            </span>
+                        </td>
+                        <td class="text-right">₹{{ month.value|floatformat:0 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="text-gray-500 text-center py-8">No monthly data available</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,352 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Waiting for Processing - {{ loan.full_name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="page-header mb-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <h2><i class="bi bi-hourglass-split"></i> Waiting for Processing</h2>
+            <a href="{% url 'waiting_list' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back to List
+            </a>
+        </div>
+    </div>
+
+    {% comment %}
+    CRITICAL: This is a READ-ONLY detail page
+    NO form includes here - forms are ONLY in New Entry section
+    {% endcomment %}
+
+    <div class="row g-4">
+        <!-- Loan Details Card -->
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-info-circle"></i> Loan Details</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-borderless">
+                            <tbody>
+                                <tr>
+                                    <th class="w-30">Applicant Name:</th>
+                                    <td class="fw-bold">{{ loan.full_name }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Email:</th>
+                                    <td>{{ loan.email }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Mobile Number:</th>
+                                    <td>{{ loan.mobile_number }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Alternate Phone:</th>
+                                    <td>{{ loan.alternate_phone|default:"N/A" }}</td>
+                                </tr>
+                                <tr class="table-divider">
+                                    <th colspan="2"><strong>Loan Information</strong></th>
+                                </tr>
+                                <tr>
+                                    <th>Loan Type:</th>
+                                    <td>
+                                        <span class="badge bg-info">{{ loan.loan_type }}</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>Loan Amount:</th>
+                                    <td>
+                                        <span class="h6">₹ {{ loan.loan_amount|floatformat:"2g" }}</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>Status:</th>
+                                    <td>
+                                        <span class="badge bg-warning text-dark">{{ loan.get_status_display }}</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>Bank Name:</th>
+                                    <td>{{ loan.bank_name|default:"N/A" }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Created Date:</th>
+                                    <td>{{ loan.created_at|date:"d M Y, H:i" }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status & Actions Card -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="bi bi-gear"></i> Actions</h5>
+                </div>
+                <div class="card-body">
+                    {% if show_actions %}
+                        <div class="alert alert-info mb-3">
+                            <i class="bi bi-lightbulb"></i> <strong>Decision Required</strong><br>
+                            Please review the loan details above and make a decision.
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <!-- Approve Button -->
+                            <button class="btn btn-success btn-lg" onclick="approveApplication({{ loan.id }})">
+                                <i class="bi bi-check-circle"></i> Approve
+                            </button>
+
+                            <!-- Reject Button -->
+                            <button class="btn btn-danger btn-lg" onclick="rejectApplicationPrompt({{ loan.id }})">
+                                <i class="bi bi-x-circle"></i> Reject
+                            </button>
+
+                            <!-- Follow-up Button -->
+                            <button class="btn btn-warning btn-lg" onclick="requestFollowUp({{ loan.id }})">
+                                <i class="bi bi-arrow-repeat"></i> Request Follow-up
+                            </button>
+                        </div>
+
+                        <hr>
+
+                        <!-- Notes Section -->
+                        <div class="mb-3">
+                            <label for="decision_notes" class="form-label"><strong>Decision Notes (Optional)</strong></label>
+                            <textarea 
+                                class="form-control" 
+                                id="decision_notes" 
+                                rows="4"
+                                placeholder="Add any notes about this decision..."
+                            ></textarea>
+                        </div>
+
+                        <!-- Applicant Type Badge -->
+                        <div class="alert alert-light border">
+                            <strong>Assigned To:</strong><br>
+                            {% if loan.assigned_employee %}
+                                <i class="bi bi-person"></i> {{ loan.assigned_employee.get_full_name }}
+                                <span class="badge bg-secondary">Employee</span>
+                            {% elif loan.assigned_agent %}
+                                <i class="bi bi-person-check"></i> {{ loan.assigned_agent.name }}
+                                <span class="badge bg-secondary">Agent</span>
+                            {% else %}
+                                <span class="badge bg-warning">Unassigned</span>
+                            {% endif %}
+                        </div>
+
+                    {% else %}
+                        <div class="alert alert-warning">
+                            <i class="bi bi-shield-exclamation"></i> You don't have permission to take action on this loan.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Timeline Card -->
+            <div class="card shadow-sm mt-3">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0"><i class="bi bi-clock-history"></i> Timeline</h5>
+                </div>
+                <div class="card-body">
+                    <div class="timeline">
+                        <div class="timeline-item">
+                            <div class="timeline-marker bg-success"></div>
+                            <div class="timeline-content">
+                                <strong>Created</strong><br>
+                                <small class="text-muted">{{ loan.created_at|date:"d M Y" }}</small>
+                            </div>
+                        </div>
+                        {% if loan.updated_at != loan.created_at %}
+                            <div class="timeline-item">
+                                <div class="timeline-marker bg-info"></div>
+                                <div class="timeline-content">
+                                    <strong>Last Updated</strong><br>
+                                    <small class="text-muted">{{ loan.updated_at|date:"d M Y" }}</small>
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Additional Information Section -->
+    {% if loan.pan or loan.aadhar %}
+        <div class="row g-4 mt-2">
+            <div class="col-lg-8">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-secondary text-white">
+                        <h5 class="mb-0"><i class="bi bi-file-text"></i> KYC Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-borderless">
+                                <tbody>
+                                    {% if loan.pan %}
+                                        <tr>
+                                            <th class="w-30">PAN:</th>
+                                            <td class="font-monospace">{{ loan.pan }}</td>
+                                        </tr>
+                                    {% endif %}
+                                    {% if loan.aadhar %}
+                                        <tr>
+                                            <th>Aadhar:</th>
+                                            <td class="font-monospace">{{ loan.aadhar|default:"Not provided" }}</td>
+                                        </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Styles -->
+<style>
+    .table-divider {
+        border-top: 2px solid #dee2e6 !important;
+    }
+
+    .timeline {
+        position: relative;
+        padding-left: 30px;
+    }
+
+    .timeline-item {
+        position: relative;
+        padding: 10px 0;
+        margin-bottom: 15px;
+    }
+
+    .timeline-marker {
+        position: absolute;
+        left: -40px;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        border: 3px solid #fff;
+    }
+
+    .timeline-content {
+        padding-left: 10px;
+    }
+</style>
+
+<!-- JavaScript -->
+<script>
+    function approveApplication(loanId) {
+        const notes = document.getElementById('decision_notes').value;
+        const formData = {
+            action: 'approve',
+            notes: notes,
+        };
+
+        fetch(`/api/loans/${loanId}/`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+            body: JSON.stringify(formData)
+        })
+        .then(response => {
+            if (response.ok) {
+                alert('✓ Application approved successfully!');
+                window.location.href = '{% url "waiting_list" %}';
+            } else {
+                alert('Error approving application. Please try again.');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error: ' + error);
+        });
+    }
+
+    function rejectApplicationPrompt(loanId) {
+        const reason = prompt('Please provide reason for rejection:');
+        if (reason === null) return; // User cancelled
+
+        const notes = document.getElementById('decision_notes').value || reason;
+        const formData = {
+            action: 'reject',
+            notes: notes,
+        };
+
+        fetch(`/api/loans/${loanId}/`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+            body: JSON.stringify(formData)
+        })
+        .then(response => {
+            if (response.ok) {
+                alert('✓ Application rejected.');
+                window.location.href = '{% url "waiting_list" %}';
+            } else {
+                alert('Error rejecting application. Please try again.');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error: ' + error);
+        });
+    }
+
+    function requestFollowUp(loanId) {
+        const notes = document.getElementById('decision_notes').value;
+        const formData = {
+            action: 'followup',
+            notes: notes,
+        };
+
+        fetch(`/api/loans/${loanId}/`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+            body: JSON.stringify(formData)
+        })
+        .then(response => {
+            if (response.ok) {
+                alert('✓ Follow-up requested.');
+                window.location.href = '{% url "waiting_list" %}';
+            } else {
+                alert('Error requesting follow-up. Please try again.');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error: ' + error);
+        });
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+</script>
+
+{% endblock %}

@@ -1,0 +1,400 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Loan Detail - DSA Loan Management{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="dashboard-header bg-white p-4 mb-4 border-bottom">
+    <div class="container-fluid d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="fw-bold fs-3 mb-1">
+                <i class="bi bi-file-earmark-text me-2"></i>Loan Details
+            </h1>
+            <p class="text-muted mb-0" id="applicant-name">Loading...</p>
+        </div>
+        <button class="btn btn-outline-secondary fw-semibold rounded-3" onclick="history.back()">
+            <i class="bi bi-arrow-left"></i> Back
+        </button>
+    </div>
+</div>
+
+<!-- Main Content -->
+<div class="container-fluid">
+    <div class="row g-3">
+        <!-- Left Column: Application Details -->
+        <div class="col-lg-8">
+            <!-- Applicant Information -->
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-header bg-light d-flex align-items-center justify-content-between">
+                    <strong><i class="bi bi-person-vcard"></i> Applicant Information</strong>
+                    <span id="status-badge" class="badge"></span>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">Full Name</label>
+                            <p class="fw-bold" id="full-name">-</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">Email</label>
+                            <p class="fw-bold" id="email">-</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">Mobile Number</label>
+                            <p class="fw-bold" id="mobile">-</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">City / State</label>
+                            <p class="fw-bold" id="city-state">-</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loan Details -->
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-header bg-light">
+                    <strong><i class="bi bi-credit-card"></i> Loan Details</strong>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">Loan Type</label>
+                            <p class="fw-bold" id="loan-type">-</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">Loan Amount</label>
+                            <p class="fw-bold h5 text-success" id="loan-amount">-</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">Tenure (Months)</label>
+                            <p class="fw-bold" id="tenure">-</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">Interest Rate</label>
+                            <p class="fw-bold" id="rate">-</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">EMI</label>
+                            <p class="fw-bold" id="emi">-</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">Purpose</label>
+                            <p class="fw-bold" id="purpose">-</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bank Details -->
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-header bg-light">
+                    <strong><i class="bi bi-bank"></i> Bank Details</strong>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">Bank Name</label>
+                            <p class="fw-bold" id="bank-name">-</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">Account Number</label>
+                            <p class="fw-bold" id="account-number">-</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">IFSC Code</label>
+                            <p class="fw-bold" id="ifsc-code">-</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">Bank Type</label>
+                            <p class="fw-bold" id="bank-type">-</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Documents -->
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-header bg-light">
+                    <strong><i class="bi bi-file-earmark-pdf"></i> Documents</strong>
+                </div>
+                <div class="card-body" id="documents-container">
+                    <p class="text-muted text-center py-3">Loading documents...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Status & Actions -->
+        <div class="col-lg-4">
+            <!-- Status Card -->
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-header bg-light">
+                    <strong><i class="bi bi-info-circle"></i> Status</strong>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="text-muted small">Current Status</label>
+                        <h4 id="current-status" class="mb-0">Loading...</h4>
+                    </div>
+                    <div class="mb-3">
+                        <label class="text-muted small">Assigned Date & Time</label>
+                        <p class="fw-bold small mb-0" id="assigned-date">-</p>
+                    </div>
+                    <div>
+                        <label class="text-muted small">Hours Pending</label>
+                        <p class="fw-bold small mb-0" id="hours-pending">-</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reference Information -->
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-header bg-light">
+                    <strong><i class="bi bi-link"></i> Reference</strong>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="text-muted small">Submitted By</label>
+                        <p class="fw-bold small" id="submitted-by">-</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div id="action-buttons" class="card border-0 shadow-sm">
+                <div class="card-header bg-light">
+                    <strong><i class="bi bi-hand-thumbs-up"></i> Actions</strong>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2" id="actions-container">
+                        <button type="button" class="btn btn-success btn-lg" id="approve-btn" style="display: none;">
+                            <i class="bi bi-check-circle"></i> Approve
+                        </button>
+                        <button type="button" class="btn btn-danger btn-lg" id="reject-btn" style="display: none;">
+                            <i class="bi bi-x-circle"></i> Reject
+                        </button>
+                        <button type="button" class="btn btn-info btn-lg" id="disburse-btn" style="display: none;">
+                            <i class="bi bi-cash-coin"></i> Mark Disbursed
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modals -->
+<!-- Rejection Reason Modal -->
+<div class="modal fade" id="rejectModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Reject Loan</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <label class="form-label">Rejection Reason (Optional)</label>
+                <textarea class="form-control" id="rejection-reason" rows="4" 
+                          placeholder="Please enter the reason for rejection..."></textarea>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirm-reject">Confirm Rejection</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const loanId = {{ loan_id }};
+    let loanData = null;
+    
+    async function loadLoanDetails() {
+        try {
+            const response = await fetch(`/api/employee/loan/${loanId}/detail/`, {
+                headers: {'X-Requested-With': 'XMLHttpRequest'}
+            });
+            
+            if (!response.ok) throw new Error('Failed to load loan details');
+            const data = await response.json();
+            
+            if (data.success) {
+                loanData = data.loan;
+                populateDetails(data.loan);
+                setupActionButtons(data.loan);
+            } else {
+                showError(data.error);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showError('Failed to load loan details');
+        }
+    }
+    
+    function populateDetails(loan) {
+        // Applicant info
+        document.getElementById('applicant-name').textContent = `${loan.applicant.full_name} (${loan.loan_id})`;
+        document.getElementById('full-name').textContent = loan.applicant.full_name;
+        document.getElementById('email').textContent = loan.applicant.email || '-';
+        document.getElementById('mobile').textContent = loan.applicant.mobile_number || '-';
+        document.getElementById('city-state').textContent = `${loan.applicant.city || '-'}, ${loan.applicant.state || '-'}`;
+        
+        // Loan details
+        document.getElementById('loan-type').textContent = loan.loan_details.type;
+        document.getElementById('loan-amount').textContent = `₹${loan.loan_details.amount.toLocaleString()}`;
+        document.getElementById('tenure').textContent = `${loan.loan_details.tenure_months} months`;
+        document.getElementById('rate').textContent = `${loan.loan_details.interest_rate}%`;
+        document.getElementById('emi').textContent = `₹${loan.loan_details.emi.toLocaleString()}`;
+        document.getElementById('purpose').textContent = loan.loan_details.purpose || '-';
+        
+        // Bank details
+        document.getElementById('bank-name').textContent = loan.bank_details.bank_name || '-';
+        document.getElementById('account-number').textContent = loan.bank_details.account_number || '-';
+        document.getElementById('ifsc-code').textContent = loan.bank_details.ifsc_code || '-';
+        document.getElementById('bank-type').textContent = loan.bank_details.type || '-';
+        
+        // Status
+        const statusBadgeMap = {
+            'waiting': 'bg-warning',
+            'follow_up': 'bg-danger',
+            'approved': 'bg-success',
+            'rejected': 'bg-secondary',
+            'disbursed': 'bg-info'
+        };
+        
+        document.getElementById('status-badge').textContent = loan.status_display;
+        document.getElementById('status-badge').className = `badge ${statusBadgeMap[loan.status] || 'bg-secondary'}`;
+        document.getElementById('current-status').textContent = loan.status_display;
+        document.getElementById('assigned-date').textContent = loan.assigned_date;
+        document.getElementById('hours-pending').textContent = `${loan.hours_pending} hours`;
+        document.getElementById('submitted-by').textContent = loan.agent_name;
+        
+        // Documents
+        if (loan.documents && loan.documents.length > 0) {
+            const docsHtml = loan.documents.map(doc => `
+                <div class="mb-2">
+                    <a href="${doc.file_url}" target="_blank" class="btn btn-sm btn-outline-primary w-100">
+                        <i class="bi bi-download"></i> ${doc.type} - ${doc.uploaded_at}
+                    </a>
+                </div>
+            `).join('');
+            document.getElementById('documents-container').innerHTML = docsHtml;
+        } else {
+            document.getElementById('documents-container').innerHTML = `
+                <p class="text-muted text-center">No documents uploaded</p>
+            `;
+        }
+    }
+    
+    function setupActionButtons(loan) {
+        const actionsContainer = document.getElementById('actions-container');
+        
+        if (loan.available_actions.includes('approve')) {
+            document.getElementById('approve-btn').style.display = 'block';
+            document.getElementById('approve-btn').addEventListener('click', approveAction);
+        }
+        
+        if (loan.available_actions.includes('reject')) {
+            document.getElementById('reject-btn').style.display = 'block';
+            document.getElementById('reject-btn').addEventListener('click', () => {
+                new bootstrap.Modal(document.getElementById('rejectModal')).show();
+            });
+        }
+        
+        if (loan.available_actions.includes('disburse')) {
+            document.getElementById('disburse-btn').style.display = 'block';
+            document.getElementById('disburse-btn').addEventListener('click', disburseAction);
+        }
+        
+        if (loan.available_actions.length === 0) {
+            actionsContainer.innerHTML = `
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> No actions available for this loan's current status.
+                </div>
+            `;
+        }
+    }
+    
+    async function approveAction() {
+        if (confirm('Are you sure you want to approve this loan?')) {
+            try {
+                const response = await fetch(`/api/employee/loan/${loanId}/approve/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    alert('Loan approved successfully!');
+                    loadLoanDetails();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+    }
+    
+    document.getElementById('confirm-reject').addEventListener('click', async () => {
+        const reason = document.getElementById('rejection-reason').value;
+        
+        try {
+            const response = await fetch(`/api/employee/loan/${loanId}/reject/`, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ reason: reason })
+            });
+            
+            const data = await response.json();
+            if (data.success) {
+                alert('Loan rejected successfully!');
+                bootstrap.Modal.getInstance(document.getElementById('rejectModal')).hide();
+                loadLoanDetails();
+            } else {
+                alert('Error: ' + data.error);
+            }
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    });
+    
+    async function disburseAction() {
+        if (confirm('Are you sure you want to mark this loan as disbursed?')) {
+            try {
+                const response = await fetch(`/api/employee/loan/${loanId}/disburse/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    alert('Loan marked as disbursed successfully!');
+                    loadLoanDetails();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+    }
+    
+    function showError(message) {
+        document.getElementById('applicant-name').textContent = 'Error: ' + message;
+    }
+    
+    // Load on page load
+    document.addEventListener('DOMContentLoaded', loadLoanDetails);
+</script>
+{% endblock %}

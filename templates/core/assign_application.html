@@ -1,0 +1,412 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Assign Loan Application - Admin{% endblock %}
+
+{% block extra_css %}
+<style>
+    body {
+        background-color: #f5f6fa;
+    }
+    .assign-container {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        padding: 40px;
+        max-width: 1000px;
+        margin: 40px auto;
+    }
+    .assign-header {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 8px;
+        margin-bottom: 30px;
+        text-align: center;
+    }
+    .assign-header h2 {
+        margin: 0;
+        font-size: 28px;
+        font-weight: 700;
+    }
+    .assign-header p {
+        margin: 10px 0 0 0;
+        opacity: 0.9;
+        font-size: 14px;
+    }
+    .applicant-card {
+        background: #f8f9fa;
+        border-left: 5px solid #10b981;
+        padding: 20px;
+        border-radius: 6px;
+        margin-bottom: 30px;
+    }
+    .applicant-card h5 {
+        margin-top: 0;
+        color: #333;
+        font-weight: 700;
+    }
+    .applicant-detail {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 15px;
+    }
+    .detail-item {
+        line-height: 1.6;
+    }
+    .detail-label {
+        font-weight: 600;
+        color: #666;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .detail-value {
+        color: #333;
+        font-size: 14px;
+        margin-top: 4px;
+    }
+    .assign-section {
+        margin-bottom: 30px;
+    }
+    .assign-section h5 {
+        color: #333;
+        font-weight: 700;
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #10b981;
+    }
+    .employees-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 15px;
+    }
+    .employee-card {
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 15px;
+        cursor: pointer;
+        transition: all 0.3s;
+        position: relative;
+    }
+    .employee-card:hover {
+        border-color: #10b981;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+        background-color: #f0f9f6;
+    }
+    .employee-card.selected {
+        border-color: #10b981;
+        background-color: #d1fae5;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+    .employee-card input[type="radio"] {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+    }
+    .employee-photo {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        border: 2px solid #10b981;
+        margin-bottom: 10px;
+        object-fit: cover;
+        background: #f0f0f0;
+    }
+    .employee-name {
+        font-weight: 700;
+        color: #333;
+        font-size: 15px;
+        margin-bottom: 5px;
+    }
+    .employee-role {
+        font-size: 12px;
+        color: #666;
+        background: #f0f0f0;
+        padding: 4px 8px;
+        border-radius: 4px;
+        display: inline-block;
+        margin-bottom: 8px;
+    }
+    .employee-email {
+        font-size: 12px;
+        color: #999;
+        word-break: break-all;
+    }
+    .form-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 30px;
+        padding-top: 20px;
+        border-top: 1px solid #e0e0e0;
+    }
+    .btn-assign-confirm {
+        flex: 1;
+        padding: 12px 24px;
+        background: #10b981;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.3s;
+    }
+    .btn-assign-confirm:hover:not(:disabled) {
+        background: #059669;
+    }
+    .btn-assign-confirm:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+    }
+    .btn-cancel {
+        padding: 12px 24px;
+        background: #e0e0e0;
+        color: #666;
+        border: none;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.3s;
+    }
+    .btn-cancel:hover {
+        background: #d0d0d0;
+    }
+    .no-employees {
+        text-align: center;
+        padding: 40px 20px;
+        color: #999;
+        background: #f8f9fa;
+        border-radius: 6px;
+    }
+    .loading {
+        text-align: center;
+        padding: 40px 20px;
+        color: #10b981;
+    }
+    .spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #10b981;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    .alert {
+        padding: 15px 20px;
+        border-radius: 6px;
+        margin-bottom: 20px;
+    }
+    .alert-danger {
+        background: #fee;
+        border-left: 4px solid #c62828;
+        color: #c62828;
+    }
+    @media (max-width: 768px) {
+        .assign-container {
+            padding: 20px;
+            margin: 20px auto;
+        }
+        .employees-grid {
+            grid-template-columns: 1fr;
+        }
+        .applicant-detail {
+            grid-template-columns: 1fr;
+        }
+        .form-actions {
+            flex-direction: column;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="assign-container">
+    <!-- Header -->
+    <div class="assign-header">
+        <h2><i class="bi bi-person-plus"></i> Assign Loan Application</h2>
+        <p>Select an employee to assign this loan application. The assignment will be active for 24 hours.</p>
+    </div>
+
+    <!-- Applicant Details -->
+    <div class="applicant-card" id="applicantCard" style="display: none;">
+        <h5>Applicant Information</h5>
+        <div class="applicant-detail">
+            <div class="detail-item">
+                <div class="detail-label">Name</div>
+                <div class="detail-value" id="applicantName">-</div>
+            </div>
+            <div class="detail-item">
+                <div class="detail-label">Phone</div>
+                <div class="detail-value" id="applicantPhone">-</div>
+            </div>
+            <div class="detail-item">
+                <div class="detail-label">Loan Amount</div>
+                <div class="detail-value" id="applicantAmount">-</div>
+            </div>
+            <div class="detail-item">
+                <div class="detail-label">Loan Type</div>
+                <div class="detail-value" id="applicantType">-</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Select Employee -->
+    <form id="assignForm" method="POST">
+        {% csrf_token %}
+        <div class="assign-section">
+            <h5>Select Employee to Assign</h5>
+            <div class="employees-grid" id="employeesList">
+                <div class="loading">
+                    <div class="spinner"></div><br>Loading employees...
+                </div>
+            </div>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="form-actions">
+            <button type="button" class="btn-cancel" onclick="history.back()">Cancel</button>
+            <button type="submit" class="btn-assign-confirm" id="submitBtn" disabled>
+                <i class="bi bi-check-circle"></i> Confirm Assignment
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+    let applicantData = null;
+    let selectedEmployeeId = null;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        loadApplicantDetails();
+        loadEmployees();
+        document.getElementById('assignForm').addEventListener('submit', submitAssignment);
+    });
+
+    function loadApplicantDetails() {
+        const loanId = getQueryParam('id') || {{ applicant_id }};
+        if (!loanId) return;
+
+        fetch(`/api/admin/new-entries/`)
+            .then(r => r.json())
+            .then(data => {
+                const entries = data.new_entries || [];
+                applicantData = entries.find(e => e.id == loanId);
+                if (applicantData) {
+                    displayApplicantDetails();
+                }
+            })
+            .catch(e => console.error('Error loading applicant:', e));
+    }
+
+    function displayApplicantDetails() {
+        if (!applicantData) return;
+        
+        const applicant = applicantData.applicant || {};
+        document.getElementById('applicantName').textContent = applicant.full_name || '-';
+        document.getElementById('applicantPhone').textContent = applicant.mobile || '-';
+        document.getElementById('applicantAmount').textContent = '₹' + (applicantData.loan_amount || 0).toLocaleString('en-IN');
+        document.getElementById('applicantType').textContent = applicantData.loan_type ? 
+            applicantData.loan_type.charAt(0).toUpperCase() + applicantData.loan_type.slice(1) : '-';
+        document.getElementById('applicantCard').style.display = 'block';
+    }
+
+    function loadEmployees() {
+        fetch('/api/get-employees/')
+            .then(r => r.json())
+            .then(data => {
+                const employees = Array.isArray(data) ? data : (data.results || []);
+                if (employees.length === 0) {
+                    document.getElementById('employeesList').innerHTML = 
+                        '<div class="no-employees">No employees available for assignment.</div>';
+                    return;
+                }
+                displayEmployees(employees);
+            })
+            .catch(e => {
+                console.error('Error loading employees:', e);
+                document.getElementById('employeesList').innerHTML = 
+                    '<div class="alert alert-danger">Error loading employees. Please refresh the page.</div>';
+            });
+    }
+
+    function displayEmployees(employees) {
+        const html = employees.map(emp => {
+            const photo = emp.profile_photo || '{% static 'images/default-avatar.svg' %}';
+            const name = (emp.first_name || '') + ' ' + (emp.last_name || '');
+            const email = emp.email || '';
+            const role = emp.role || 'Employee';
+            
+            return `
+                <label class="employee-card" onclick="selectEmployee(this, ${emp.id})">
+                    <input type="radio" name="assign_to" value="${emp.id}" style="display: none;">
+                    <img src="${photo}" alt="${name}" class="employee-photo" onerror="this.src='{% static 'images/default-avatar.svg' %}'">
+                    <div class="employee-name">${name.trim()}</div>
+                    <div class="employee-role">${role}</div>
+                    <div class="employee-email">${email}</div>
+                </label>
+            `;
+        }).join('');
+        
+        document.getElementById('employeesList').innerHTML = html;
+    }
+
+    function selectEmployee(card, employeeId) {
+        // Remove previous selection
+        document.querySelectorAll('.employee-card').forEach(c => c.classList.remove('selected'));
+        
+        // Add selection to clicked card
+        card.classList.add('selected');
+        card.querySelector('input[type="radio"]').checked = true;
+        
+        selectedEmployeeId = employeeId;
+        document.getElementById('submitBtn').disabled = false;
+    }
+
+    function submitAssignment(e) {
+        e.preventDefault();
+        
+        if (!selectedEmployeeId) {
+            alert('Please select an employee to assign the loan.');
+            return;
+        }
+
+        const loanId = getQueryParam('id') || {{ applicant_id }};
+        const submitBtn = document.getElementById('submitBtn');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<div class="spinner" style="display: inline-block; margin-right: 8px;"></div>Assigning...';
+
+        // Use simple form submission instead of fetch
+        const formData = new FormData();
+        formData.append('assign_to', selectedEmployeeId);
+        formData.append('assign_type', 'employee');
+        formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+
+        fetch(window.location.href, {
+            method: 'POST',
+            body: formData
+        })
+        .then(r => r.text())
+        .then(html => {
+            // If response contains a redirect or success message
+            alert('✓ Loan assigned successfully!\n\nStatus: Waiting for Processing\nAssigned for: 24 hours\n\nIf not checked within 24 hours, it will return to New Loan Applications.');
+            window.location.href = '/admin/new-entries/';
+        })
+        .catch(error => {
+            alert('Error assigning loan: ' + error);
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="bi bi-check-circle"></i> Confirm Assignment';
+        });
+    }
+
+    function getQueryParam(param) {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get(param);
+    }
+</script>
+
+{% endblock %}

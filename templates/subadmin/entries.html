@@ -1,0 +1,117 @@
+{% extends "subadmin/base_subadmin.html" %}
+{% load static %}
+
+{% block title %}My Entries - SubAdmin{% endblock %}
+{% block page_title %}My Entries{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex justify-between items-center">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">📋 All My Entries</h1>
+            <p class="text-gray-600 mt-1">Manage all your loan entries</p>
+        </div>
+        <a href="{% url 'subadmin_dashboard' %}" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </a>
+    </div>
+
+    <!-- Entries Table -->
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead>
+                    <tr class="bg-gradient-to-r from-purple-600 to-indigo-600 text-white">
+                        <th class="px-6 py-4 text-left font-semibold">#ID</th>
+                        <th class="px-6 py-4 text-left font-semibold">Applicant Name</th>
+                        <th class="px-6 py-4 text-left font-semibold">Phone</th>
+                        <th class="px-6 py-4 text-left font-semibold">Email</th>
+                        <th class="px-6 py-4 text-left font-semibold">Loan Type</th>
+                        <th class="px-6 py-4 text-left font-semibold">Amount</th>
+                        <th class="px-6 py-4 text-left font-semibold">Tenure</th>
+                        <th class="px-6 py-4 text-left font-semibold">Interest Rate</th>
+                        <th class="px-6 py-4 text-left font-semibold">Status</th>
+                        <th class="px-6 py-4 text-left font-semibold">Created</th>
+                        <th class="px-6 py-4 text-left font-semibold">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    {% if entries %}
+                        {% for entry in entries %}
+                        <tr class="hover:bg-gray-50 transition">
+                            <td class="px-6 py-4 font-semibold text-gray-900">#{{ entry.id }}</td>
+                            <td class="px-6 py-4 text-gray-700">{{ entry.applicant_name }}</td>
+                            <td class="px-6 py-4 text-gray-700">{{ entry.applicant_phone }}</td>
+                            <td class="px-6 py-4 text-gray-700">{{ entry.applicant_email }}</td>
+                            <td class="px-6 py-4">
+                                <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-semibold">
+                                    {{ entry.loan_type }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 font-semibold text-green-600">₹{{ entry.loan_amount|floatformat:0 }}</td>
+                            <td class="px-6 py-4 text-gray-700">{{ entry.loan_tenure }} months</td>
+                            <td class="px-6 py-4 text-gray-700">{% if entry.interest_rate %}{{ entry.interest_rate }}%{% else %}N/A{% endif %}</td>
+                            <td class="px-6 py-4">
+                                {% if entry.status == "New Entry" %}
+                                    <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-semibold">New Entry</span>
+                                {% elif entry.status == "Approved" %}
+                                    <span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-semibold">Approved</span>
+                                {% elif entry.status == "Rejected" %}
+                                    <span class="px-3 py-1 bg-red-100 text-red-800 rounded-full text-xs font-semibold">Rejected</span>
+                                {% elif entry.status == "Disbursed" %}
+                                    <span class="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-xs font-semibold">Disbursed</span>
+                                {% else %}
+                                    <span class="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-semibold">{{ entry.status }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 text-gray-700 text-sm">{{ entry.created_at|date:"d M, Y h:i A" }}</td>
+                            <td class="px-6 py-4">
+                                <div class="flex gap-2">
+                                    <button class="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-xs font-semibold">
+                                        <i class="fas fa-eye"></i> View
+                                    </button>
+                                    <button class="px-3 py-1 bg-orange-500 text-white rounded hover:bg-orange-600 text-xs font-semibold">
+                                        <i class="fas fa-edit"></i> Edit
+                                    </button>
+                                    <button class="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-xs font-semibold">
+                                        <i class="fas fa-trash"></i> Delete
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="11" class="px-6 py-8 text-center text-gray-500">
+                                <i class="fas fa-inbox text-4xl mb-3 block"></i>
+                                <p class="text-lg font-semibold">No entries found</p>
+                                <p class="text-sm mt-1">Create your first entry from the dashboard</p>
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    {% if entries.has_other_pages %}
+    <div class="flex justify-center gap-2">
+        {% if entries.has_previous %}
+            <a href="?page=1" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300">First</a>
+            <a href="?page={{ entries.previous_page_number }}" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300">Previous</a>
+        {% endif %}
+
+        <span class="px-3 py-1 bg-purple-600 text-white rounded">
+            Page {{ entries.number }} of {{ entries.paginator.num_pages }}
+        </span>
+
+        {% if entries.has_next %}
+            <a href="?page={{ entries.next_page_number }}" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300">Next</a>
+            <a href="?page={{ entries.paginator.num_pages }}" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300">Last</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

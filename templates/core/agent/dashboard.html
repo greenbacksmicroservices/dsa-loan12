@@ -1,0 +1,766 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Agent Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Professional Header -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm sticky-top">
+        <div class="container-fluid px-4">
+            <div class="d-flex align-items-center flex-grow-1">
+                <h1 class="h4 mb-0 text-dark fw-bold">
+                    <i class="bi bi-speedometer2" style="color: #007bff;"></i> Agent Dashboard
+                </h1>
+            </div>
+            
+            <div class="d-flex align-items-center gap-3">
+                <!-- Notifications Bell -->
+                <div class="dropdown">
+                    <button class="btn btn-light border-0 position-relative p-2" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Notifications">
+                        <i class="bi bi-bell" style="font-size: 1.3rem; color: #ff9800;"></i>
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notification-badge" style="display: none;">
+                            0
+                        </span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end notification-dropdown" style="min-width: 380px; max-height: 500px; overflow-y: auto;">
+                        <li><h6 class="dropdown-header"><i class="bi bi-bell"></i> Notifications</h6></li>
+                        <li><hr class="dropdown-divider m-0"></li>
+                        <li id="notifications-list" style="max-height: 350px; overflow-y: auto;">
+                            <a class="dropdown-item text-muted text-center py-4" href="#">No new notifications</a>
+                        </li>
+                        <li><hr class="dropdown-divider m-0"></li>
+                        <li class="p-2">
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-sm btn-outline-primary flex-grow-1" onclick="markAllAsRead()">
+                                    <i class="bi bi-check-all"></i> Read All
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger flex-grow-1" onclick="clearNotifications()">
+                                    <i class="bi bi-trash"></i> Clear
+                                </button>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Profile Dropdown -->
+                <div class="dropdown">
+                    <button class="btn btn-light border rounded-circle p-2" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Profile">
+                        <i class="bi bi-person-circle" style="font-size: 1.5rem; color: #007bff;"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><h6 class="dropdown-header">{{ user.get_full_name|default:user.username }}</h6></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="#"><i class="bi bi-person"></i> Profile</a></li>
+                        <li><a class="dropdown-item" href="#"><i class="bi bi-gear"></i> Settings</a></li>
+                        <li><a class="dropdown-item" href="#"><i class="bi bi-clock-history"></i> Activity</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-danger" href="{% url 'logout' %}"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container-fluid mt-4">
+
+    <!-- Statistics Cards with Enhanced Design -->
+    <div class="row mb-4 g-3">
+        <!-- Total Loans Card -->
+        <div class="col-lg-2.4 col-md-4">
+            <div class="stat-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <div class="stat-icon">
+                    <i class="bi bi-briefcase"></i>
+                </div>
+                <div class="stat-content">
+                    <h3 id="stat-total">0</h3>
+                    <p>Total Loans</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Processing Card -->
+        <div class="col-lg-2.4 col-md-4">
+            <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                <div class="stat-icon">
+                    <i class="bi bi-hourglass-split"></i>
+                </div>
+                <div class="stat-content">
+                    <h3 id="stat-processing">0</h3>
+                    <p>Processing</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Approved Card -->
+        <div class="col-lg-2.4 col-md-4">
+            <div class="stat-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                <div class="stat-icon">
+                    <i class="bi bi-check-circle"></i>
+                </div>
+                <div class="stat-content">
+                    <h3 id="stat-approved">0</h3>
+                    <p>Approved</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rejected Card -->
+        <div class="col-lg-2.4 col-md-4">
+            <div class="stat-card" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+                <div class="stat-icon">
+                    <i class="bi bi-x-circle"></i>
+                </div>
+                <div class="stat-content">
+                    <h3 id="stat-rejected">0</h3>
+                    <p>Rejected</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Disbursed Card -->
+        <div class="col-lg-2.4 col-md-4">
+            <div class="stat-card" style="background: linear-gradient(135deg, #30cfd0 0%, #330867 100%);">
+                <div class="stat-icon">
+                    <i class="bi bi-cash-coin"></i>
+                </div>
+                <div class="stat-content">
+                    <h3 id="stat-disbursed">0</h3>
+                    <p>Disbursed</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Section -->
+    <div class="row mb-4">
+        <!-- My Record - Bar Chart -->
+        <div class="col-lg-6">
+            <div class="card shadow">
+                <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                    <h5 class="mb-0"><i class="bi bi-bar-chart"></i> My Record</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="recordChart" height="80"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status Distribution - Pie Chart -->
+        <div class="col-lg-6">
+            <div class="card shadow">
+                <div class="card-header" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;">
+                    <h5 class="mb-0"><i class="bi bi-pie-chart"></i> Status Distribution</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="statusChart" height="80"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    </div>
+
+    <!-- Recent Entries Section (All Records Created by Agent) -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="bi bi-list-check"></i> My Recent Entries History
+                        </h5>
+                        <div class="d-flex gap-2">
+                            <input type="text" class="form-control form-control-sm" id="searchRecent" placeholder="Search..." style="max-width: 200px;">
+                            <select class="form-select form-select-sm" id="filterRecent" style="max-width: 150px;">
+                                <option value="">All Status</option>
+                                <option value="draft">Draft</option>
+                                <option value="new_entry">New Entry</option>
+                                <option value="waiting_for_processing">Processing</option>
+                                <option value="approved">Approved</option>
+                                <option value="rejected">Rejected</option>
+                                <option value="disbursed">Disbursed</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th style="width: 60px;">Photo</th>
+                                    <th>Applicant</th>
+                                    <th>Mobile</th>
+                                    <th>Loan Type</th>
+                                    <th>Amount</th>
+                                    <th>Assigned Date</th>
+                                    <th>Status</th>
+                                    <th style="width: 120px;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recent-entries-body">
+                                <tr>
+                                    <td colspan="8" class="text-center text-muted py-4">
+                                        <i class="bi bi-hourglass-split"></i> Loading recent entries...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="card-footer bg-light">
+                    <small class="text-muted">
+                        <i class="bi bi-info-circle"></i> 
+                        This table shows all loan applications created by you. <strong>New entries</strong> go to admin for employee assignment before they appear in processing.
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Real-time dashboard stats
+function loadDashboardStats() {
+    fetch("{% url 'api_agent_dashboard_stats' %}")
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('stat-total').textContent = data.total_assigned || '0';
+            document.getElementById('stat-processing').textContent = data.processing || '0';
+            document.getElementById('stat-approved').textContent = data.approved || '0';
+            document.getElementById('stat-rejected').textContent = data.rejected || '0';
+            document.getElementById('stat-disbursed').textContent = data.disbursed || '0';
+            
+            // Initialize charts with data
+            initializeCharts(data);
+            loadRecentLoans(data.recent_loans || []);
+        })
+        .catch(error => {
+            console.error('Error loading stats:', error);
+            document.getElementById('stat-total').textContent = 'Error';
+        });
+}
+
+// Initialize Chart.js charts
+function initializeCharts(data) {
+    const ctx1 = document.getElementById('recordChart');
+    const ctx2 = document.getElementById('statusChart');
+    
+    if (!ctx1 || !ctx2) return;
+    
+    // Bar Chart - My Record
+    if (window.recordChartInstance) {
+        window.recordChartInstance.destroy();
+    }
+    window.recordChartInstance = new Chart(ctx1, {
+        type: 'bar',
+        data: {
+            labels: ['Total', 'Processing', 'Approved', 'Rejected', 'Disbursed'],
+            datasets: [{
+                label: 'Loan Count',
+                data: [
+                    data.total_assigned || 0,
+                    data.processing || 0,
+                    data.approved || 0,
+                    data.rejected || 0,
+                    data.disbursed || 0
+                ],
+                backgroundColor: [
+                    '#007bff',
+                    '#ffc107',
+                    '#28a745',
+                    '#dc3545',
+                    '#17a2b8'
+                ],
+                borderColor: [
+                    '#0056b3',
+                    '#e0a800',
+                    '#1e7e34',
+                    '#c82333',
+                    '#117a8b'
+                ],
+                borderWidth: 1,
+                borderRadius: 5
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            }
+        }
+    });
+    
+    // Pie Chart - Status Distribution
+    if (window.statusChartInstance) {
+        window.statusChartInstance.destroy();
+    }
+    window.statusChartInstance = new Chart(ctx2, {
+        type: 'doughnut',
+        data: {
+            labels: ['Processing', 'Approved', 'Rejected', 'Disbursed'],
+            datasets: [{
+                data: [
+                    data.processing || 0,
+                    data.approved || 0,
+                    data.rejected || 0,
+                    data.disbursed || 0
+                ],
+                backgroundColor: [
+                    '#ffc107',
+                    '#28a745',
+                    '#dc3545',
+                    '#17a2b8'
+                ],
+                borderColor: [
+                    '#e0a800',
+                    '#1e7e34',
+                    '#c82333',
+                    '#117a8b'
+                ],
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+}
+
+function loadRecentLoans(loans) {
+    const tbody = document.getElementById('loans-table-body');
+    if (loans.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">No loans found</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = loans.map(loan => `
+        <tr>
+            <td class="fw-500">${loan.applicant_name}</td>
+            <td>${loan.applicant_phone}</td>
+            <td class="fw-bold">₹${Number(loan.loan_amount).toLocaleString('en-IN')}</td>
+            <td>
+                <span class="badge bg-${getStatusColor(loan.status)}">
+                    ${getStatusLabel(loan.status)}
+                </span>
+            </td>
+            <td>${new Date(loan.created_at).toLocaleDateString('en-IN')}</td>
+            <td>
+                <a href="{% url 'agent_my_applications' %}?status=${loan.status}" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-eye"></i> View
+                </a>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function getStatusColor(status) {
+    const colors = {
+        'new_entry': 'info',
+        'waiting_for_processing': 'warning',
+        'approved': 'success',
+        'rejected': 'danger',
+        'disbursed': 'info',
+        'follow_up': 'secondary'
+    };
+    return colors[status] || 'secondary';
+}
+
+function getStatusLabel(status) {
+    const labels = {
+        'new_entry': 'New Entry',
+        'waiting_for_processing': 'Processing',
+        'approved': 'Approved',
+        'rejected': 'Rejected',
+        'disbursed': 'Disbursed',
+        'follow_up': 'Follow Up'
+    };
+    return labels[status] || status;
+}
+
+// Real-time notifications from admin panel
+function loadNotifications() {
+    fetch('/api/agent/notifications/')
+        .then(response => response.json())
+        .then(data => {
+            const notificationsList = document.getElementById('notifications-list');
+            const badge = document.getElementById('notification-badge');
+            
+            if (data.notifications && data.notifications.length > 0) {
+                notificationsList.innerHTML = data.notifications.map(notif => `
+                    <a class="dropdown-item" href="#">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div style="flex: 1;">
+                                <strong class="d-block">${notif.title}</strong>
+                                <small class="text-muted">${notif.message}</small>
+                            </div>
+                            <small class="text-muted ms-2">${timeAgo(notif.created_at)}</small>
+                        </div>
+                    </a>
+                    <li><hr class="dropdown-divider"></li>
+                `).join('');
+                
+                badge.textContent = data.notifications.length;
+                badge.style.display = 'inline-block';
+            } else {
+                notificationsList.innerHTML = '<a class="dropdown-item text-muted" href="#">No new notifications</a>';
+                badge.style.display = 'none';
+            }
+        })
+        .catch(error => console.log('Notifications unavailable'));
+}
+
+function timeAgo(dateString) {
+    const date = new Date(dateString);
+    const seconds = Math.floor((new Date() - date) / 1000);
+    
+    if (seconds < 60) return 'just now';
+    if (seconds < 3600) return Math.floor(seconds / 60) + 'm ago';
+    if (seconds < 86400) return Math.floor(seconds / 3600) + 'h ago';
+    return Math.floor(seconds / 86400) + 'd ago';
+}
+
+// Notification functions
+function markAllAsRead() {
+    const items = document.querySelectorAll('#notifications-list .dropdown-item');
+    items.forEach(item => item.style.opacity = '0.6');
+    alert('All notifications marked as read');
+}
+
+function clearNotifications() {
+    const notificationsList = document.getElementById('notifications-list');
+    const badge = document.getElementById('notification-badge');
+    notificationsList.innerHTML = '<a class="dropdown-item text-muted text-center py-4" href="#">No new notifications</a>';
+    badge.style.display = 'none';
+}
+
+// Load stats on page load and refresh every 30 seconds
+document.addEventListener('DOMContentLoaded', function() {
+    loadDashboardStats();
+    loadNotifications();
+    loadRecentEntries();  // Load recent entries history
+    
+    setInterval(loadDashboardStats, 30000);
+    setInterval(loadNotifications, 60000); // Refresh notifications every 60 seconds
+    setInterval(loadRecentEntries, 20000); // Refresh recent entries every 20 seconds (real-time)
+});
+
+// Load recent entries created by agent
+function loadRecentEntries() {
+    fetch('/api/agent/recent-entries/?limit=50')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayRecentEntries(data.recent_entries);
+            } else {
+                console.error('Error loading recent entries:', data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching recent entries:', error);
+        });
+}
+
+function displayRecentEntries(entries) {
+    const tbody = document.getElementById('recent-entries-body');
+    
+    if (!entries || entries.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4"><i class="bi bi-inbox"></i> No entries created yet</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = entries.map((entry, index) => {
+        const statusColor = getStatusColor(entry.status);
+        const statusLabel = getStatusLabel(entry.status);
+        const photoUrl = entry.applicant_photo || 'https://via.placeholder.com/40/667eea/ffffff?text=' + entry.applicant_name.charAt(0).toUpperCase();
+        
+        return `
+            <tr class="align-middle">
+                <td>
+                    <img src="${photoUrl}" alt="${entry.applicant_name}" 
+                         class="rounded-circle" style="width: 40px; height: 40px; object-fit: cover; border: 2px solid #667eea;">
+                </td>
+                <td>
+                    <div class="fw-600">${entry.applicant_name}</div>
+                    <small class="text-muted">ID: #${entry.id}</small>
+                </td>
+                <td>
+                    <a href="tel:${entry.mobile_number}" class="text-decoration-none">
+                        ${entry.mobile_number}
+                    </a>
+                </td>
+                <td>
+                    <span class="badge bg-info">${entry.loan_type}</span>
+                </td>
+                <td class="fw-bold">
+                    ₹${Number(entry.loan_amount).toLocaleString('en-IN')}
+                </td>
+                <td>
+                    <small>${entry.assigned_date}</small>
+                </td>
+                <td>
+                    <span class="badge bg-${statusColor}">
+                        ${statusLabel}
+                    </span>
+                </td>
+                <td>
+                    <div class="btn-group btn-group-sm" role="group">
+                        <a href="/application/${entry.id}/detail/" class="btn btn-outline-primary" title="View Details">
+                            <i class="bi bi-eye"></i>
+                        </a>
+                        <button class="btn btn-outline-info" onclick="copyToClipboard('${entry.mobile_number}')" title="Copy Phone">
+                            <i class="bi bi-clipboard"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+    
+    // Add search and filter functionality
+    setupSearchAndFilter(entries);
+}
+
+function setupSearchAndFilter(entries) {
+    const searchInput = document.getElementById('searchRecent');
+    const filterSelect = document.getElementById('filterRecent');
+    
+    if (!searchInput || !filterSelect) return;
+    
+    function applyFilters() {
+        const searchTerm = searchInput.value.toLowerCase();
+        const statusFilter = filterSelect.value;
+        
+        const filtered = entries.filter(entry => {
+            const matchesSearch = entry.applicant_name.toLowerCase().includes(searchTerm) ||
+                                entry.mobile_number.includes(searchTerm) ||
+                                entry.id.toString().includes(searchTerm);
+            const matchesStatus = !statusFilter || entry.status === statusFilter;
+            return matchesSearch && matchesStatus;
+        });
+        
+        displayRecentEntries(filtered);
+    }
+    
+    searchInput.addEventListener('input', applyFilters);
+    filterSelect.addEventListener('change', applyFilters);
+}
+
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        alert('Phone number copied!');
+    });
+}
+</script>
+
+<style>
+.navbar {
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    border-bottom: 2px solid #007bff;
+}
+
+.navbar .h4 {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.border-left-primary { border-left: 0.25rem solid #007bff !important; }
+.border-left-success { border-left: 0.25rem solid #28a745 !important; }
+.border-left-warning { border-left: 0.25rem solid #ffc107 !important; }
+.border-left-danger { border-left: 0.25rem solid #dc3545 !important; }
+.border-left-info { border-left: 0.25rem solid #17a2b8 !important; }
+.border-left-secondary { border-left: 0.25rem solid #6c757d !important; }
+
+.card { border: none; }
+.table-hover tbody tr:hover { background-color: #f8f9fa; }
+.table-striped tbody tr:nth-child(odd) { background-color: #f9fafb; }
+
+.dropdown-menu-end {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e3e6f0;
+}
+
+.btn-light:hover {
+    background-color: #e9ecef !important;
+}
+
+/* Recent entries table styling */
+#recent-entries-body tr {
+    transition: background-color 0.2s ease;
+}
+
+#recent-entries-body tr:hover {
+    background-color: #f0f4ff !important;
+}
+
+.fw-600 {
+    font-weight: 600;
+}
+
+/* Search and filter styling */
+#searchRecent, #filterRecent {
+    border-radius: 6px;
+    border: 1px solid #dee2e6;
+    font-size: 0.9rem;
+}
+
+#searchRecent:focus, #filterRecent:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+
+/* Smooth animations */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Stat Cards Styling */
+.stat-card {
+    border: none;
+    border-radius: 15px;
+    padding: 25px 20px;
+    color: white;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    min-height: 120px;
+}
+
+.stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: -50px;
+    width: 100px;
+    height: 100px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+}
+
+.stat-card:hover::before {
+    right: -30px;
+    width: 120px;
+    height: 120px;
+}
+
+.stat-icon {
+    font-size: 3rem;
+    opacity: 0.8;
+    flex-shrink: 0;
+}
+
+.stat-content {
+    flex: 1;
+    z-index: 1;
+}
+
+.stat-content h3 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin: 0;
+    line-height: 1;
+}
+
+.stat-content p {
+    font-size: 0.95rem;
+    margin: 8px 0 0 0;
+    opacity: 0.95;
+    font-weight: 500;
+}
+
+/* Notification Dropdown Enhancement */
+.notification-dropdown {
+    border: 1px solid #e3e6f0;
+    border-radius: 10px;
+}
+
+.notification-dropdown .dropdown-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 15px;
+    border-radius: 10px 10px 0 0;
+    font-weight: 600;
+}
+
+.notification-dropdown .dropdown-item {
+    padding: 12px 15px;
+    border-left: 3px solid transparent;
+    transition: all 0.2s ease;
+}
+
+.notification-dropdown .dropdown-item:hover {
+    background-color: #f8f9fa;
+    border-left-color: #667eea;
+    padding-left: 18px;
+}
+
+.notification-dropdown .btn {
+    font-size: 0.9rem;
+    padding: 8px 12px;
+    font-weight: 500;
+}
+
+/* Responsive stat cards */
+@media (max-width: 992px) {
+    .stat-card {
+        padding: 20px 15px;
+        min-height: 100px;
+    }
+    
+    .stat-icon {
+        font-size: 2.5rem;
+    }
+    
+    .stat-content h3 {
+        font-size: 2rem;
+    }
+}
+
+tbody tr {
+    animation: fadeIn 0.3s ease-in;
+}
+
+.badge {
+    font-weight: 500;
+    padding: 0.5rem 0.75rem;
+}
+</style>
+
+<!-- Chart.js Library -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+
+{% endblock %}

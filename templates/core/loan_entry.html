@@ -1,0 +1,315 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Loan Entry - DSA Loan Management System{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2><i class="bi bi-plus-circle"></i> New Add (Loan Entry)</h2>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="table-container">
+            <form id="loanEntryForm" method="POST" action="/api/loans/">
+                {% csrf_token %}
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="customer_name" class="form-label">Customer Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="customer_name" name="customer_name" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="mobile_number" class="form-label">Mobile Number <span class="text-danger">*</span></label>
+                        <input type="tel" class="form-control" id="mobile_number" name="mobile_number" required pattern="[0-9]{10,15}">
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="loan_type" class="form-label">Loan Type <span class="text-danger">*</span></label>
+                        <select class="form-select" id="loan_type" name="loan_type" required>
+                            <option value="">Select Loan Type</option>
+                            <option value="personal">Personal Loan</option>
+                            <option value="home">Home Loan</option>
+                            <option value="car">Car Loan</option>
+                            <option value="business">Business Loan</option>
+                            <option value="education">Education Loan</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="loan_amount" class="form-label">Loan Amount <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control" id="loan_amount" name="loan_amount" step="0.01" min="0" required>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="bank_name" class="form-label">Bank Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="bank_name" name="bank_name" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="assigned_agent" class="form-label">Assigned Agent / CP</label>
+                        <select class="form-select" id="assigned_agent" name="assigned_agent">
+                            <option value="">Select Agent</option>
+                            {% for agent in agents %}
+                            <option value="{{ agent.id }}">{{ agent.name }} - {{ agent.phone }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="status" class="form-label">Status</label>
+                        <select class="form-select" id="status" name="status">
+                            <option value="new_entry" selected>New Entry</option>
+                            <option value="waiting">Waiting for Processing</option>
+                            <option value="follow_up">Required Follow-up</option>
+                            <option value="approved">Approved</option>
+                            <option value="rejected">Rejected</option>
+                            <option value="disbursed">Disbursed</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="remarks" class="form-label">Remarks</label>
+                    <textarea class="form-control" id="remarks" name="remarks" rows="3"></textarea>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle"></i> Submit
+                    </button>
+                    <button type="button" class="btn btn-secondary" onclick="saveDraft()">
+                        <i class="bi bi-save"></i> Save Draft
+                    </button>
+                    <button type="reset" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-clockwise"></i> Reset
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="activity-panel">
+            <h5 class="mb-4"><i class="bi bi-info-circle"></i> Instructions</h5>
+            <ul class="list-unstyled">
+                <li class="mb-3">
+                    <i class="bi bi-check-circle text-success"></i>
+                    <strong>Fill all required fields</strong> marked with *
+                </li>
+                <li class="mb-3">
+                    <i class="bi bi-check-circle text-success"></i>
+                    <strong>Select appropriate loan type</strong> from dropdown
+                </li>
+                <li class="mb-3">
+                    <i class="bi bi-check-circle text-success"></i>
+                    <strong>Assign agent</strong> if available
+                </li>
+                <li class="mb-3">
+                    <i class="bi bi-check-circle text-success"></i>
+                    <strong>Save draft</strong> to save progress
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Loans Table -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="table-container">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">Recent Loan Entries</h5>
+                <input type="text" class="form-control form-control-sm" id="searchLoans" placeholder="Search loans..." style="max-width: 300px;">
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover" id="loansTable">
+                    <thead>
+                        <tr>
+                            <th>Customer Name</th>
+                            <th>Mobile</th>
+                            <th>Loan Type</th>
+                            <th>Amount</th>
+                            <th>Bank</th>
+                            <th>Status</th>
+                            <th>Agent</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="loansTableBody">
+                        <tr>
+                            <td colspan="9" class="text-center text-muted py-4">Loading loans...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Load recent loans
+    async function loadRecentLoans() {
+        try {
+            const response = await fetch('/api/loans/?ordering=-created_at&page_size=10', {
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                credentials: 'same-origin'
+            });
+            const data = await response.json();
+            
+            const tbody = document.getElementById('loansTableBody');
+            
+            if (data.results && data.results.length > 0) {
+                tbody.innerHTML = data.results.map(loan => `
+                    <tr>
+                        <td>${loan.customer_name}</td>
+                        <td>${loan.mobile_number}</td>
+                        <td><span class="badge bg-info">${loan.loan_type}</span></td>
+                        <td>₹${parseFloat(loan.loan_amount).toLocaleString('en-IN')}</td>
+                        <td>${loan.bank_name}</td>
+                        <td><span class="badge bg-${getStatusColor(loan.status)}">${loan.status.replace('_', ' ')}</span></td>
+                        <td>${loan.assigned_agent_name || 'N/A'}</td>
+                        <td>${new Date(loan.created_at).toLocaleDateString()}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" onclick="editLoan(${loan.id})">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+            } else {
+                tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">No loans found</td></tr>';
+            }
+        } catch (error) {
+            console.error('Error loading loans:', error);
+        }
+    }
+
+    // Form submission
+    document.getElementById('loanEntryForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        const data = Object.fromEntries(formData);
+        
+        if (data.assigned_agent === '') {
+            delete data.assigned_agent;
+        }
+        
+        try {
+            const response = await fetch('/api/loans/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                showAlert('success', 'Loan entry created successfully!');
+                this.reset();
+                loadRecentLoans();
+            } else {
+                showAlert('danger', 'Error: ' + (result.detail || 'Failed to create loan entry'));
+            }
+        } catch (error) {
+            showAlert('danger', 'Error: ' + error.message);
+        }
+    });
+
+    // Save draft to localStorage
+    function saveDraft() {
+        const formData = {
+            customer_name: document.getElementById('customer_name').value,
+            mobile_number: document.getElementById('mobile_number').value,
+            loan_type: document.getElementById('loan_type').value,
+            loan_amount: document.getElementById('loan_amount').value,
+            bank_name: document.getElementById('bank_name').value,
+            assigned_agent: document.getElementById('assigned_agent').value,
+            status: document.getElementById('status').value,
+            remarks: document.getElementById('remarks').value
+        };
+        localStorage.setItem('loanDraft', JSON.stringify(formData));
+        showAlert('info', 'Draft saved successfully!');
+    }
+
+    // Load draft from localStorage
+    function loadDraft() {
+        const draft = localStorage.getItem('loanDraft');
+        if (draft) {
+            const formData = JSON.parse(draft);
+            document.getElementById('customer_name').value = formData.customer_name || '';
+            document.getElementById('mobile_number').value = formData.mobile_number || '';
+            document.getElementById('loan_type').value = formData.loan_type || '';
+            document.getElementById('loan_amount').value = formData.loan_amount || '';
+            document.getElementById('bank_name').value = formData.bank_name || '';
+            document.getElementById('assigned_agent').value = formData.assigned_agent || '';
+            document.getElementById('status').value = formData.status || 'new_entry';
+            document.getElementById('remarks').value = formData.remarks || '';
+        }
+    }
+
+    // Helper functions
+    function getStatusColor(status) {
+        const colors = {
+            'new_entry': 'info',
+            'waiting': 'warning',
+            'follow_up': 'danger',
+            'approved': 'success',
+            'rejected': 'danger',
+            'disbursed': 'primary'
+        };
+        return colors[status] || 'secondary';
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function showAlert(type, message) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+        alertDiv.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.querySelector('.main-content').insertBefore(alertDiv, document.querySelector('.main-content').firstChild);
+        setTimeout(() => alertDiv.remove(), 5000);
+    }
+
+    // Search functionality
+    document.getElementById('searchLoans').addEventListener('input', function(e) {
+        const searchTerm = e.target.value.toLowerCase();
+        const rows = document.querySelectorAll('#loansTableBody tr');
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(searchTerm) ? '' : 'none';
+        });
+    });
+
+    // Load on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        loadRecentLoans();
+        loadDraft();
+    });
+</script>
+{% endblock %}
+
+

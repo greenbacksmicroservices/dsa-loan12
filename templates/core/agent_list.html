@@ -1,0 +1,663 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Agent / CP List - DSA Loan Management System{% endblock %}
+
+{% block content %}
+<style>
+    .compact-page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #e2e8f0;
+    }
+
+    .compact-page-header h2 {
+        margin: 0;
+        font-size: 20px;
+        color: #1e293b;
+        font-weight: 600;
+    }
+
+    .compact-table-wrapper {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        overflow: hidden;
+    }
+
+    .compact-filters {
+        display: flex;
+        gap: 12px;
+        padding: 15px;
+        background: #f8fafc;
+        border-bottom: 1px solid #e2e8f0;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .compact-filters input,
+    .compact-filters select {
+        padding: 8px 12px;
+        border-radius: 8px;
+        border: 1px solid #cbd5e1;
+        font-size: 13px;
+        max-width: 250px;
+    }
+
+    .compact-table {
+        font-size: 13px;
+    }
+
+    .compact-table thead {
+        background: #f8fafc;
+    }
+
+    .compact-table thead th {
+        padding: 10px 12px;
+        font-weight: 600;
+        color: #475569;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 2px solid #e2e8f0;
+    }
+
+    .compact-table tbody td {
+        padding: 9px 12px;
+        border-bottom: 1px solid #e2e8f0;
+        vertical-align: middle;
+    }
+
+    .compact-table tbody tr:hover {
+        background: #f8fafc;
+    }
+
+    .compact-badge {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 10px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+
+    .compact-actions {
+        display: flex;
+        gap: 4px;
+        flex-wrap: nowrap;
+    }
+
+    .compact-actions button {
+        padding: 5px 8px;
+        font-size: 12px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .btn-view {
+        background: #dbeafe;
+        color: #0369a1;
+    }
+
+    .btn-view:hover {
+        background: #bfdbfe;
+    }
+
+    .btn-edit {
+        background: #fef3c7;
+        color: #b45309;
+    }
+
+    .btn-edit:hover {
+        background: #fde68a;
+    }
+
+    .btn-perf {
+        background: #d1fae5;
+        color: #047857;
+    }
+
+    .btn-perf:hover {
+        background: #a7f3d0;
+    }
+
+    .btn-status {
+        background: #fee2e2;
+        color: #b91c1c;
+    }
+
+    .btn-status:hover {
+        background: #fecaca;
+    }
+
+    .photo-sm {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid #e2e8f0;
+    }
+</style>
+
+<div class="compact-page-header">
+    <h2><i class="bi bi-person-badge"></i> Agent / CP List</h2>
+    <div style="display: flex; gap: 10px;">
+        <a href="/loan-application-form/" class="btn btn-success btn-sm">
+            <i class="bi bi-file-earmark-plus"></i> New Loan Application
+        </a>
+        <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addAgentModal">
+            <i class="bi bi-plus-circle"></i> Add Agent
+        </button>
+    </div>
+</div>
+
+<div class="compact-table-wrapper">
+    <div class="compact-filters">
+        <input type="text" class="form-control" id="searchAgents" placeholder="Search agents..." />
+        <select class="form-select" id="filterStatus">
+            <option value="">All Status</option>
+            <option value="active">Active</option>
+            <option value="blocked">Blocked</option>
+        </select>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover compact-table mb-0">
+            <thead>
+                <tr>
+                    <th>Photo</th>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Phone</th>
+                    <th>Email</th>
+                    <th>Assigned Employee</th>
+                    <th>Leads</th>
+                    <th>Approved</th>
+                    <th>Total Disbursed</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="agentsTableBody">
+                <tr>
+                    <td colspan="10" class="text-center text-muted" style="padding: 20px;">Loading agents...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Add Agent Modal -->
+<div class="modal fade" id="addAgentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Agent / CP</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="addAgentForm" enctype="multipart/form-data">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="agent_photo" class="form-label">Photo <span class="text-danger">*</span></label>
+                        <input type="file" class="form-control" id="agent_photo" accept="image/*" required>
+                        <small class="text-muted">Upload agent profile photo</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="agent_id" class="form-label">Agent ID (Manual) <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="agent_id" placeholder="e.g., AGT001" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="agent_name" class="form-label">Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="agent_name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="agent_password" class="form-label">Password <span class="text-danger">*</span></label>
+                        <input type="password" class="form-control" id="agent_password" required>
+                        <small class="text-muted">Minimum 8 characters</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="agent_phone" class="form-label">Phone <span class="text-danger">*</span></label>
+                        <input type="tel" class="form-control" id="agent_phone" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="agent_email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="agent_email">
+                    </div>
+                    <div class="mb-3">
+                        <label for="agent_address" class="form-label">Address</label>
+                        <textarea class="form-control" id="agent_address" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">Add Agent</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Agent Modal -->
+<div class="modal fade" id="editAgentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Agent / CP</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="editAgentForm" enctype="multipart/form-data">
+                <div class="modal-body">
+                    <input type="hidden" id="edit_agent_id">
+                    <div class="mb-3">
+                        <label for="edit_agent_photo" class="form-label">Photo</label>
+                        <input type="file" class="form-control" id="edit_agent_photo" accept="image/*">
+                        <small class="text-muted">Leave empty to keep current photo</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_agent_id_field" class="form-label">Agent ID (Manual) <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="edit_agent_id_field" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_agent_name" class="form-label">Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="edit_agent_name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_agent_phone" class="form-label">Phone <span class="text-danger">*</span></label>
+                        <input type="tel" class="form-control" id="edit_agent_phone" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_agent_email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="edit_agent_email">
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_agent_address" class="form-label">Address</label>
+                        <textarea class="form-control" id="edit_agent_address" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update Agent</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Load agents via API
+    async function loadAgents() {
+        try {
+            const response = await fetch('/api/agents/', {
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                credentials: 'same-origin'
+            });
+            const data = await response.json();
+            
+            const tbody = document.getElementById('agentsTableBody');
+            
+            if (data.results && data.results.length > 0) {
+                tbody.innerHTML = data.results.map(agent => `
+                    <tr>
+                        <td>
+                            ${agent.profile_photo ? `<img src="${agent.profile_photo}" alt="Photo" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">` : '<div style="width: 40px; height: 40px; border-radius: 50%; background: #ccc; display: flex; align-items: center; justify-content: center;"><i class="bi bi-person"></i></div>'}
+                        </td>
+                        <td>${agent.agent_id || 'N/A'}</td>
+                        <td>${agent.name}</td>
+                        <td>${agent.phone}</td>
+                        <td>${agent.email || 'N/A'}</td>
+                        <td>${agent.created_by_name ? `<span class="badge bg-primary">${agent.created_by_name}</span>` : '<span class="text-muted">Unassigned</span>'}</td>
+                        <td><span class="badge bg-info">${agent.total_leads}</span></td>
+                        <td><span class="badge bg-success">${agent.approved_loans_count}</span></td>
+                        <td>₹${parseFloat(agent.total_disbursed_amount || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                        <td>
+                            <span class="badge bg-${agent.status === 'active' ? 'success' : 'danger'}">${agent.status}</span>
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" onclick="viewAgent(${agent.id})">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-warning" onclick="editAgent(${agent.id})" data-bs-toggle="modal" data-bs-target="#editAgentModal">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-info" onclick="viewPerformance(${agent.id})">
+                                <i class="bi bi-graph-up"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteAgent(${agent.id})">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-dark" onclick="toggleAgentStatus(${agent.id}, '${agent.status}')">
+                                <i class="bi bi-${agent.status === 'active' ? 'ban' : 'check'}"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+            } else {
+                tbody.innerHTML = '<tr><td colspan="11" class="text-center text-muted py-4">No agents found</td></tr>';
+            }
+        } catch (error) {
+            console.error('Error loading agents:', error);
+        }
+    }
+
+    // Add Agent Form
+    document.getElementById('addAgentForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const data = {
+            name: document.getElementById('agent_name').value,
+            phone: document.getElementById('agent_phone').value,
+            email: document.getElementById('agent_email').value,
+            address: document.getElementById('agent_address').value,
+            status: 'active'
+        };
+        
+        try {
+            const response = await fetch('/api/agents/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify(data)
+            });
+            
+            if (response.ok) {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('addAgentModal'));
+                modal.hide();
+                loadAgents();
+            } else {
+                const result = await response.json();
+                alert('Error: ' + (result.detail || 'Failed to add agent'));
+            }
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    });
+
+    // View Agent Details
+    async function viewAgent(agentId) {
+        try {
+            const response = await fetch(`/api/agents/${agentId}/`, {
+                headers: {'X-CSRFToken': getCookie('csrftoken')},
+                credentials: 'same-origin'
+            });
+            
+            if (response.ok) {
+                const agent = await response.json();
+                
+                const modalHTML = `
+                    <div class="modal fade" id="viewAgentModal" tabindex="-1">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Agent Details</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="mb-3">
+                                        <label class="form-label">Name</label>
+                                        <p class="form-control-plaintext"><strong>${agent.name}</strong></p>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Phone</label>
+                                        <p class="form-control-plaintext"><strong>${agent.phone}</strong></p>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Email</label>
+                                        <p class="form-control-plaintext"><strong>${agent.email || 'N/A'}</strong></p>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Address</label>
+                                        <p class="form-control-plaintext"><strong>${agent.address || 'N/A'}</strong></p>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Total Leads</label>
+                                        <p class="form-control-plaintext"><span class="badge bg-info">${agent.total_leads}</span></p>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Approved Loans</label>
+                                        <p class="form-control-plaintext"><span class="badge bg-success">${agent.approved_loans_count}</span></p>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Total Disbursed</label>
+                                        <p class="form-control-plaintext"><strong>₹${parseFloat(agent.total_disbursed_amount || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong></p>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Commission</label>
+                                        <p class="form-control-plaintext"><strong>₹${parseFloat(agent.commission || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong></p>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Status</label>
+                                        <p class="form-control-plaintext"><span class="badge ${agent.status === 'active' ? 'bg-success' : 'bg-danger'}">${agent.status}</span></p>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                const existingModal = document.getElementById('viewAgentModal');
+                if (existingModal) existingModal.remove();
+                
+                document.body.insertAdjacentHTML('beforeend', modalHTML);
+                const modal = new bootstrap.Modal(document.getElementById('viewAgentModal'));
+                modal.show();
+            }
+        } catch (error) {
+            alert('Error loading agent details: ' + error.message);
+        }
+    }
+
+    // View Agent Performance
+    async function viewPerformance(agentId) {
+        try {
+            const response = await fetch(`/api/agents/${agentId}/`, {
+                headers: {'X-CSRFToken': getCookie('csrftoken')},
+                credentials: 'same-origin'
+            });
+            
+            if (response.ok) {
+                const agent = await response.json();
+                
+                const conversionRate = agent.approved_loans_count > 0 && agent.total_leads > 0 
+                    ? ((agent.approved_loans_count / agent.total_leads) * 100).toFixed(2)
+                    : 0;
+                
+                const avgLoanValue = agent.approved_loans_count > 0 
+                    ? (agent.total_disbursed_amount / agent.approved_loans_count).toFixed(0)
+                    : 0;
+                
+                const modalHTML = `
+                    <div class="modal fade" id="performanceModal" tabindex="-1">
+                        <div class="modal-dialog modal-lg">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Performance Metrics - ${agent.name}</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="card mb-3">
+                                                <div class="card-body">
+                                                    <h6 class="card-title">Total Leads</h6>
+                                                    <h3 class="text-primary">${agent.total_leads}</h3>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="card mb-3">
+                                                <div class="card-body">
+                                                    <h6 class="card-title">Approved Loans</h6>
+                                                    <h3 class="text-success">${agent.approved_loans_count}</h3>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="card mb-3">
+                                                <div class="card-body">
+                                                    <h6 class="card-title">Conversion Rate</h6>
+                                                    <h3 class="text-info">${conversionRate}%</h3>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="card mb-3">
+                                                <div class="card-body">
+                                                    <h6 class="card-title">Total Disbursed</h6>
+                                                    <h3 class="text-success">₹${parseFloat(agent.total_disbursed_amount || 0).toLocaleString('en-IN', {minimumFractionDigits: 0})}</h3>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="card mb-3">
+                                                <div class="card-body">
+                                                    <h6 class="card-title">Commission Earned</h6>
+                                                    <h3 class="text-warning">₹${parseFloat(agent.commission || 0).toLocaleString('en-IN', {minimumFractionDigits: 0})}</h3>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="card mb-3">
+                                                <div class="card-body">
+                                                    <h6 class="card-title">Average Loan Value</h6>
+                                                    <h3 class="text-primary">₹${parseFloat(avgLoanValue).toLocaleString('en-IN', {minimumFractionDigits: 0})}</h3>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                const existingModal = document.getElementById('performanceModal');
+                if (existingModal) existingModal.remove();
+                
+                document.body.insertAdjacentHTML('beforeend', modalHTML);
+                const modal = new bootstrap.Modal(document.getElementById('performanceModal'));
+                modal.show();
+            }
+        } catch (error) {
+            alert('Error loading performance data: ' + error.message);
+        }
+    }
+    
+    // Delete Agent
+    async function deleteAgent(agentId) {
+        if (!confirm('Are you sure you want to delete this agent? This action cannot be undone.')) {
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/api/agents/${agentId}/`, {
+                method: 'DELETE',
+                headers: {'X-CSRFToken': getCookie('csrftoken')},
+                credentials: 'same-origin'
+            });
+            
+            if (response.ok) {
+                alert('Agent deleted successfully!');
+                loadAgents();
+            } else {
+                const error = await response.json();
+                alert('Error: ' + (error.detail || 'Failed to delete agent'));
+            }
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    }
+
+    // Toggle Agent Status
+    async function toggleAgentStatus(agentId, currentStatus) {
+        const newStatus = currentStatus === 'active' ? 'blocked' : 'active';
+        
+        if (!confirm(`Are you sure you want to ${newStatus === 'active' ? 'unblock' : 'block'} this agent?`)) {
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/api/agents/${agentId}/`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({ status: newStatus })
+            });
+            
+            if (response.ok) {
+                loadAgents();
+            } else {
+                alert('Error updating agent status');
+            }
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    }
+
+    // Search functionality
+    document.getElementById('searchAgents').addEventListener('input', function(e) {
+        const searchTerm = e.target.value.toLowerCase();
+        const rows = document.querySelectorAll('#agentsTableBody tr');
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(searchTerm) ? '' : 'none';
+        });
+    });
+
+    // Filter by status
+    document.getElementById('filterStatus').addEventListener('change', function(e) {
+        const filterValue = e.target.value;
+        const rows = document.querySelectorAll('#agentsTableBody tr');
+        rows.forEach(row => {
+            if (filterValue === '') {
+                row.style.display = '';
+            } else {
+                const statusBadge = row.querySelector('.badge');
+                const status = statusBadge ? statusBadge.textContent.trim().toLowerCase() : '';
+                row.style.display = status === filterValue ? '' : 'none';
+            }
+        });
+    });
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    // Load on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        loadAgents();
+    });
+</script>
+{% endblock %}
+
+

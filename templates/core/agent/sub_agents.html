@@ -1,0 +1,284 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}My Sub Agents - Agent{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="h3 text-gray-800 mb-0">
+                <i class="bi bi-people"></i> My Sub Agents
+            </h1>
+            <p class="text-muted mt-2 mb-0">Manage agents under your hierarchy</p>
+        </div>
+    </div>
+
+    <!-- Action Button -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <a href="{% url 'create_sub_agent' %}" class="btn btn-success btn-lg">
+                <i class="bi bi-plus-circle"></i> Add New Sub Agent
+            </a>
+        </div>
+    </div>
+
+    <!-- Sub Agents Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-list-ul"></i> Sub Agents List
+                        <span class="badge bg-light text-dark ms-2">{{ sub_agents|length }} agents</span>
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    {% if sub_agents %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th>Agent Name</th>
+                                    <th>Email</th>
+                                    <th>Loans Assigned</th>
+                                    <th>Status</th>
+                                    <th>Created Date</th>
+                                    <th style="width: 180px;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for agent in sub_agents %}
+                                <tr>
+                                    <td class="fw-bold">
+                                        {{ agent.user.get_full_name|default:agent.user.username }}
+                                    </td>
+                                    <td>
+                                        <a href="mailto:{{ agent.user.email }}">{{ agent.user.email }}</a>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-info">{{ agent.loan_count|default:'0' }} loans</span>
+                                    </td>
+                                    <td>
+                                        {% if agent.user.is_active %}
+                                        <span class="badge bg-success">Active</span>
+                                        {% else %}
+                                        <span class="badge bg-danger">Inactive</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">
+                                            {{ agent.created_at|date:"d M, Y"|default:"N/A" }}
+                                        </small>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#viewModal{{ agent.id }}" title="View Details">
+                                                <i class="bi bi-eye"></i> View
+                                            </button>
+                                            <button type="button" class="btn btn-outline-warning" data-bs-toggle="modal" data-bs-target="#editModal{{ agent.id }}" title="Edit Agent">
+                                                <i class="bi bi-pencil"></i> Edit
+                                            </button>
+                                            <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ agent.id }}" title="Delete Agent">
+                                                <i class="bi bi-trash"></i> Delete
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                <!-- VIEW MODAL -->
+                                <div class="modal fade" id="viewModal{{ agent.id }}" tabindex="-1">
+                                    <div class="modal-dialog modal-lg">
+                                        <div class="modal-content">
+                                            <div class="modal-header bg-primary text-white">
+                                                <h5 class="modal-title">Agent Details - {{ agent.user.get_full_name }}</h5>
+                                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <div class="row mb-3">
+                                                    <div class="col-md-6">
+                                                        <label class="text-muted fw-bold">Full Name</label>
+                                                        <p>{{ agent.user.get_full_name|default:agent.user.username }}</p>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label class="text-muted fw-bold">Username</label>
+                                                        <p>{{ agent.user.username }}</p>
+                                                    </div>
+                                                </div>
+                                                <div class="row mb-3">
+                                                    <div class="col-md-6">
+                                                        <label class="text-muted fw-bold">Email</label>
+                                                        <p><a href="mailto:{{ agent.user.email }}">{{ agent.user.email }}</a></p>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label class="text-muted fw-bold">Phone</label>
+                                                        <p>{{ agent.phone|default:"N/A" }}</p>
+                                                    </div>
+                                                </div>
+                                                <div class="row mb-3">
+                                                    <div class="col-md-6">
+                                                        <label class="text-muted fw-bold">Address</label>
+                                                        <p>{{ agent.address|default:"N/A" }}</p>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label class="text-muted fw-bold">Status</label>
+                                                        <p>
+                                                            {% if agent.user.is_active %}
+                                                            <span class="badge bg-success">Active</span>
+                                                            {% else %}
+                                                            <span class="badge bg-danger">Inactive</span>
+                                                            {% endif %}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <label class="text-muted fw-bold">Created Date</label>
+                                                        <p>{{ agent.created_at|date:"d M, Y H:i" }}</p>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label class="text-muted fw-bold">Loans Assigned</label>
+                                                        <p><span class="badge bg-info">{{ agent.loan_count|default:'0' }} loans</span></p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- EDIT MODAL -->
+                                <div class="modal fade" id="editModal{{ agent.id }}" tabindex="-1">
+                                    <div class="modal-dialog modal-lg">
+                                        <div class="modal-content">
+                                            <div class="modal-header bg-warning text-dark">
+                                                <h5 class="modal-title">Edit Agent - {{ agent.user.get_full_name }}</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <form method="POST" action="{% url 'create_sub_agent' %}">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="edit_id" value="{{ agent.id }}">
+                                                <input type="hidden" name="action" value="edit">
+                                                
+                                                <div class="modal-body">
+                                                    <div class="row mb-3">
+                                                        <div class="col-md-6">
+                                                            <label class="form-label">First Name *</label>
+                                                            <input type="text" name="first_name" class="form-control" value="{{ agent.user.first_name }}" required>
+                                                        </div>
+                                                        <div class="col-md-6">
+                                                            <label class="form-label">Last Name</label>
+                                                            <input type="text" name="last_name" class="form-control" value="{{ agent.user.last_name }}">
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="row mb-3">
+                                                        <div class="col-md-6">
+                                                            <label class="form-label">Email *</label>
+                                                            <input type="email" name="email" class="form-control" value="{{ agent.user.email }}" required>
+                                                        </div>
+                                                        <div class="col-md-6">
+                                                            <label class="form-label">Phone</label>
+                                                            <input type="text" name="phone" class="form-control" value="{{ agent.phone }}">
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Address</label>
+                                                        <textarea name="address" class="form-control" rows="2">{{ agent.address }}</textarea>
+                                                    </div>
+
+                                                    <div class="form-check">
+                                                        <input class="form-check-input" type="checkbox" name="is_active" id="isactive{{ agent.id }}" 
+                                                            {% if agent.user.is_active %}checked{% endif %}>
+                                                        <label class="form-check-label" for="isactive{{ agent.id }}">
+                                                            Active
+                                                        </label>
+                                                    </div>
+                                                </div>
+
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                    <button type="submit" class="btn btn-warning">Save Changes</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- DELETE MODAL -->
+                                <div class="modal fade" id="deleteModal{{ agent.id }}" tabindex="-1">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content border-danger">
+                                            <div class="modal-header bg-danger text-white">
+                                                <h5 class="modal-title">Delete Agent</h5>
+                                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <div class="alert alert-warning">
+                                                    <strong>⚠️ Warning!</strong> Are you sure you want to delete 
+                                                    <strong>{{ agent.user.get_full_name }}</strong>?
+                                                </div>
+                                                <p>This action cannot be undone. All associated data will be deleted.</p>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                <form method="POST" action="{% url 'create_sub_agent' %}" style="display:inline;">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="delete_id" value="{{ agent.id }}">
+                                                    <input type="hidden" name="action" value="delete">
+                                                    <button type="submit" class="btn btn-danger">Delete Agent</button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-people display-1 text-muted"></i>
+                        <h5 class="mt-3 text-muted">No Sub Agents Yet</h5>
+                        <p class="text-muted mb-3">You haven't created any sub agents yet.</p>
+                        <a href="{% url 'create_sub_agent' %}" class="btn btn-success">
+                            <i class="bi bi-plus-circle"></i> Create First Sub Agent
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .table-responsive {
+        max-height: 600px;
+        overflow-y: auto;
+    }
+
+    .badge {
+        font-size: 0.85rem;
+        padding: 0.35rem 0.65rem;
+    }
+
+    .btn-group-sm .btn {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+    }
+
+    .table tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+
+    .modal-body label {
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+</style>
+{% endblock %}

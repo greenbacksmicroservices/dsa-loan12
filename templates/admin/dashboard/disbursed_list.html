@@ -1,0 +1,66 @@
+{% extends "core/admin/admin_base.html" %}
+{% load static %}
+
+{% block title %}Disbursed Loans - Admin Dashboard{% endblock %}
+
+{% block page_title %}Disbursed Loans{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex justify-between items-center">
+        <h1 class="text-3xl font-bold text-gray-800">Disbursed Loans</h1>
+    </div>
+
+    <!-- Loans Table -->
+    <div class="card">
+        <div class="card-header flex justify-between items-center">
+            <h2 class="text-lg font-semibold text-gray-800">Disbursed Loan Applications</h2>
+            <span class="text-sm text-gray-600">{{ loans|length }} disbursed</span>
+        </div>
+        <div class="card-body table-responsive">
+            {% if loans %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Loan ID</th>
+                        <th>Applicant</th>
+                        <th>Phone</th>
+                        <th>Loan Amount</th>
+                        <th>Disbursement Date</th>
+                        <th>Bank</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for loan in loans %}
+                    <tr>
+                        <td class="font-mono text-sm"><strong>{{ loan.loan_id }}</strong></td>
+                        <td class="font-medium">{{ loan.applicant_name }}</td>
+                        <td class="text-sm">{{ loan.phone_number }}</td>
+                        <td class="font-semibold text-blue-600">₹{{ loan.loan_amount }}</td>
+                        <td class="text-sm">{{ loan.disbursed_date|date:"M d, Y"|default:"-" }}</td>
+                        <td class="text-sm">
+                            <span class="badge badge-primary">{{ loan.bank_name|default:"N/A" }}</span>
+                        </td>
+                        <td class="text-center">
+                            <div class="flex items-center justify-center gap-2">
+                                <a href="{% url 'admin:core_loanapplication_change' loan.id %}" class="text-blue-600 hover:text-blue-800 font-medium text-sm" title="View Details">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="text-center py-12">
+                <i class="fas fa-money-bill-wave text-gray-300 text-5xl mb-4"></i>
+                <p class="text-gray-500">No disbursed loans found</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

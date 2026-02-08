@@ -1,0 +1,311 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Edit Loan Application - {{ applicant.full_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .edit-container {
+        padding: 20px;
+        background-color: #f5f6fa;
+        min-height: calc(100vh - 80px);
+    }
+
+    .edit-form-wrapper {
+        background: white;
+        border-radius: 10px;
+        padding: 30px;
+        max-width: 900px;
+        margin: 0 auto;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .form-header {
+        margin-bottom: 30px;
+        border-bottom: 2px solid #e2e8f0;
+        padding-bottom: 20px;
+    }
+
+    .form-header h2 {
+        color: #1e293b;
+        font-weight: 700;
+        margin: 0 0 5px 0;
+    }
+
+    .form-header p {
+        color: #7f8c8d;
+        font-size: 13px;
+        margin: 0;
+    }
+
+    .form-section {
+        margin-bottom: 30px;
+    }
+
+    .form-section-title {
+        font-size: 15px;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #e2e8f0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .form-section-title i {
+        color: #667eea;
+        font-size: 18px;
+    }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .form-group label {
+        font-size: 13px;
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .form-group input, .form-group select, .form-group textarea {
+        padding: 10px 12px;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        font-size: 14px;
+        transition: all 0.2s;
+        font-family: inherit;
+    }
+
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .form-group textarea {
+        resize: vertical;
+        min-height: 80px;
+    }
+
+    .form-actions {
+        display: flex;
+        gap: 15px;
+        justify-content: flex-end;
+        margin-top: 30px;
+        padding-top: 20px;
+        border-top: 1px solid #e2e8f0;
+    }
+
+    .btn {
+        padding: 10px 25px;
+        border-radius: 6px;
+        border: none;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 13px;
+        transition: all 0.2s;
+        text-decoration: none;
+    }
+
+    .btn-save {
+        background: linear-gradient(135deg, #667eea 0%, #2d8cb5 100%);
+        color: white;
+    }
+
+    .btn-save:hover {
+        transform: translateY(-2px);
+        color: white;
+    }
+
+    .btn-cancel {
+        background: #6b7280;
+        color: white;
+    }
+
+    .btn-cancel:hover {
+        background: #4b5563;
+        color: white;
+    }
+
+    .info-box {
+        background: #e3f2fd;
+        border-left: 4px solid #2196f3;
+        padding: 15px;
+        border-radius: 6px;
+        margin-bottom: 20px;
+        font-size: 13px;
+        color: #1565c0;
+    }
+
+    .readonly-value {
+        background: #f8f9fa;
+        padding: 10px 12px;
+        border-radius: 6px;
+        border: 1px solid #e2e8f0;
+        color: #495057;
+    }
+
+    .required-marker {
+        color: #ef4444;
+        margin-left: 4px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="edit-container">
+    <div class="edit-form-wrapper">
+        <!-- Form Header -->
+        <div class="form-header">
+            <h2><i class="bi bi-pencil-square"></i> Edit Loan Application</h2>
+            <p>Update applicant and loan details. Changes will be saved immediately.</p>
+        </div>
+
+        <!-- Info Box -->
+        <div class="info-box">
+            <i class="bi bi-info-circle"></i>
+            Only New Entry applications can be edited. Once assigned to an employee, the application becomes read-only.
+        </div>
+
+        <form method="post" action="{% url 'admin_edit_application' applicant.id %}">
+            {% csrf_token %}
+
+            <!-- Applicant Information Section -->
+            <div class="form-section">
+                <div class="form-section-title">
+                    <i class="bi bi-person-circle"></i> Applicant Information
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="full_name">Full Name <span class="required-marker">*</span></label>
+                        <input type="text" id="full_name" name="full_name" value="{{ applicant.full_name }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="mobile">Mobile Number <span class="required-marker">*</span></label>
+                        <input type="tel" id="mobile" name="mobile" value="{{ applicant.mobile }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="email">Email Address</label>
+                        <input type="email" id="email" name="email" value="{{ applicant.email }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="city">City</label>
+                        <input type="text" id="city" name="city" value="{{ applicant.city }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="state">State</label>
+                        <input type="text" id="state" name="state" value="{{ applicant.state }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="pin_code">Pin Code</label>
+                        <input type="text" id="pin_code" name="pin_code" value="{{ applicant.pin_code }}">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loan Information Section -->
+            <div class="form-section">
+                <div class="form-section-title">
+                    <i class="bi bi-cash-coin"></i> Loan Information
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="loan_type">Loan Type <span class="required-marker">*</span></label>
+                        <select id="loan_type" name="loan_type" required>
+                            <option value="">Select Loan Type</option>
+                            <option value="personal" {% if loan_app.loan_type == 'personal' %}selected{% endif %}>Personal Loan</option>
+                            <option value="home" {% if loan_app.loan_type == 'home' %}selected{% endif %}>Home Loan</option>
+                            <option value="car" {% if loan_app.loan_type == 'car' %}selected{% endif %}>Car Loan</option>
+                            <option value="business" {% if loan_app.loan_type == 'business' %}selected{% endif %}>Business Loan</option>
+                            <option value="education" {% if loan_app.loan_type == 'education' %}selected{% endif %}>Education Loan</option>
+                            <option value="lap" {% if loan_app.loan_type == 'lap' %}selected{% endif %}>LAP (Loan Against Property)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="loan_amount">Loan Amount (₹) <span class="required-marker">*</span></label>
+                        <input type="number" id="loan_amount" name="loan_amount" value="{{ loan_app.loan_amount }}" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="tenure_months">Tenure (Months)</label>
+                        <input type="number" id="tenure_months" name="tenure_months" value="{{ loan_app.tenure_months }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="interest_rate">Interest Rate (% p.a.)</label>
+                        <input type="number" id="interest_rate" name="interest_rate" value="{{ loan_app.interest_rate }}" step="0.01">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bank Details Section -->
+            <div class="form-section">
+                <div class="form-section-title">
+                    <i class="bi bi-bank"></i> Bank Details
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="bank_name">Bank Name</label>
+                        <input type="text" id="bank_name" name="bank_name" value="{{ loan_app.bank_name }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="account_number">Account Number</label>
+                        <input type="text" id="account_number" name="account_number" value="{{ loan_app.account_number }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="ifsc_code">IFSC Code</label>
+                        <input type="text" id="ifsc_code" name="ifsc_code" value="{{ loan_app.ifsc_code }}">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Read-only Information -->
+            <div class="form-section">
+                <div class="form-section-title">
+                    <i class="bi bi-info-circle"></i> Application Information (Read-only)
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Application ID</label>
+                        <div class="readonly-value">{{ applicant.id }}</div>
+                    </div>
+                    <div class="form-group">
+                        <label>Status</label>
+                        <div class="readonly-value">{{ loan_app.status }}</div>
+                    </div>
+                    <div class="form-group">
+                        <label>Created Date</label>
+                        <div class="readonly-value">{{ loan_app.created_at|date:"d M Y, H:i" }}</div>
+                    </div>
+                    {% if loan_app.assigned_agent %}
+                    <div class="form-group">
+                        <label>Submitted By (Agent)</label>
+                        <div class="readonly-value">{{ loan_app.assigned_agent.name }}</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Form Actions -->
+            <div class="form-actions">
+                <a href="{% url 'admin_loan_detail' applicant.id %}" class="btn btn-cancel">
+                    <i class="bi bi-x-circle"></i> Cancel
+                </a>
+                <button type="submit" class="btn btn-save">
+                    <i class="bi bi-check-circle"></i> Save Changes
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

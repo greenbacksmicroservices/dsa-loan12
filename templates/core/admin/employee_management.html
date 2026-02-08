@@ -1,0 +1,1245 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Employee Management - DSA Admin Panel{% endblock %}
+
+{% block content %}
+<style>
+    /* ============== VARIABLES ============== */
+    :root {
+        --primary: #4f46e5;
+        --primary-dark: #4338ca;
+        --primary-light: #eef2ff;
+        --success: #10b981;
+        --danger: #ef4444;
+        --warning: #f59e0b;
+        --gray-50: #f9fafb;
+        --gray-100: #f3f4f6;
+        --gray-200: #e5e7eb;
+        --gray-300: #d1d5db;
+        --gray-400: #9ca3af;
+        --gray-600: #4b5563;
+        --gray-900: #111827;
+        --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    }
+
+    /* ============== PAGE HEADER ============== */
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+        padding-bottom: 20px;
+        border-bottom: 2px solid var(--gray-200);
+    }
+
+    .page-header h2 {
+        color: var(--gray-900);
+        font-weight: 600;
+        margin: 0;
+        font-size: 24px;
+    }
+
+    .page-header-subtitle {
+        color: var(--gray-600);
+        font-size: 14px;
+        margin-top: 4px;
+    }
+
+    .header-actions {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+    }
+
+    /* ============== BUTTONS ============== */
+    .btn {
+        padding: 10px 16px;
+        border: none;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        text-decoration: none;
+    }
+
+    .btn-primary {
+        background: var(--primary);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: var(--primary-dark);
+        box-shadow: var(--shadow-md);
+    }
+
+    .btn-secondary {
+        background: var(--gray-100);
+        color: var(--gray-900);
+        border: 1px solid var(--gray-300);
+    }
+
+    .btn-secondary:hover {
+        background: var(--gray-200);
+    }
+
+    .btn-danger {
+        background: #fee2e2;
+        color: var(--danger);
+        border: 1px solid #fecaca;
+    }
+
+    .btn-danger:hover {
+        background: #fecaca;
+    }
+
+    .btn-small {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+
+    /* ============== MODAL ============== */
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    }
+
+    .modal.active {
+        display: flex;
+    }
+
+    .modal-content {
+        background: white;
+        border-radius: 12px;
+        box-shadow: var(--shadow-lg);
+        max-width: 500px;
+        width: 100%;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    .modal-header {
+        padding: 24px;
+        border-bottom: 1px solid var(--gray-200);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-header h3 {
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--gray-900);
+        margin: 0;
+    }
+
+    .modal-close {
+        background: none;
+        border: none;
+        font-size: 24px;
+        color: var(--gray-600);
+        cursor: pointer;
+        padding: 0;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-close:hover {
+        color: var(--gray-900);
+    }
+
+    .modal-body {
+        padding: 24px;
+    }
+
+    .modal-footer {
+        padding: 16px 24px;
+        border-top: 1px solid var(--gray-200);
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+    }
+
+    /* ============== FORM ELEMENTS ============== */
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--gray-900);
+        margin-bottom: 6px;
+    }
+
+    .form-group label .required {
+        color: var(--danger);
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid var(--gray-300);
+        border-radius: 8px;
+        font-size: 14px;
+        transition: all 0.3s ease;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px var(--primary-light);
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+    }
+
+    .form-row.full {
+        grid-template-columns: 1fr;
+    }
+
+    /* ============== SEARCH & FILTER ============== */
+    .search-box {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+
+    .search-box input {
+        flex: 1;
+        padding: 10px 14px;
+        border: 1px solid var(--gray-300);
+        border-radius: 8px;
+        font-size: 14px;
+    }
+
+    .search-box input:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px var(--primary-light);
+    }
+
+    /* ============== TABLE ============== */
+    .table-container {
+        background: white;
+        border-radius: 12px;
+        box-shadow: var(--shadow-md);
+        overflow: hidden;
+    }
+
+    .table-wrapper {
+        overflow-x: auto;
+    }
+
+    .employees-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .employees-table thead {
+        background: var(--gray-50);
+        border-bottom: 2px solid var(--gray-200);
+    }
+
+    .employees-table th {
+        padding: 16px;
+        text-align: left;
+        font-weight: 600;
+        font-size: 12px;
+        color: var(--gray-900);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .employees-table td {
+        padding: 14px 16px;
+        border-bottom: 1px solid var(--gray-200);
+        font-size: 14px;
+        color: var(--gray-900);
+    }
+
+    .employees-table tbody tr:hover {
+        background: var(--gray-50);
+    }
+
+    .actions-cell {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+
+    .btn-action {
+        padding: 6px 10px;
+        font-size: 11px;
+        border-radius: 4px;
+        border: 1px solid transparent;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+
+    .btn-view {
+        background: #dbeafe;
+        color: #0369a1;
+        border: 1px solid #0284c7;
+    }
+
+    .btn-view:hover {
+        background: #0284c7;
+        color: white;
+    }
+
+    .btn-edit {
+        background: #fef3c7;
+        color: #92400e;
+        border: 1px solid #f59e0b;
+    }
+
+    .btn-edit:hover {
+        background: #f59e0b;
+        color: white;
+    }
+
+    .btn-delete {
+        background: #fee2e2;
+        color: #991b1b;
+        border: 1px solid #dc2626;
+    }
+
+    .btn-delete:hover {
+        background: #dc2626;
+        color: white;
+    }
+
+    .employee-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid var(--gray-200);
+    }
+
+    .employee-name {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-weight: 600;
+    }
+
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .status-active {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .status-inactive {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .actions-cell {
+        display: flex;
+        gap: 6px;
+    }
+
+    .btn-action {
+        padding: 6px 12px;
+        font-size: 12px;
+        border-radius: 6px;
+        border: 1px solid transparent;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-weight: 500;
+    }
+
+    .btn-view {
+        background: #dbeafe;
+        color: #0369a1;
+        border: 1px solid #0284c7;
+    }
+
+    .btn-view:hover {
+        background: #0284c7;
+        color: white;
+    }
+
+    .btn-edit {
+        background: #fef3c7;
+        color: #92400e;
+        border: 1px solid #f59e0b;
+    }
+
+    .btn-edit:hover {
+        background: #f59e0b;
+        color: white;
+    }
+
+    .btn-delete {
+        background: #fee2e2;
+        color: #991b1b;
+        border: 1px solid #dc2626;
+    }
+
+    .btn-delete:hover {
+        background: #dc2626;
+        color: white;
+    }
+
+    .btn-icon {
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+        background: var(--gray-100);
+        color: var(--gray-600);
+        font-size: 16px;
+        transition: all 0.3s ease;
+    }
+
+    .btn-icon:hover {
+        background: var(--primary);
+        color: white;
+    }
+
+    .btn-icon.danger:hover {
+        background: var(--danger);
+    }
+
+    /* ============== EMPTY STATE ============== */
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: var(--gray-600);
+    }
+
+    .empty-state-icon {
+        font-size: 64px;
+        margin-bottom: 16px;
+        opacity: 0.5;
+    }
+
+    .empty-state h3 {
+        font-size: 18px;
+        font-weight: 600;
+        color: var(--gray-900);
+        margin-bottom: 8px;
+    }
+
+    /* ============== DETAIL GRID ============== */
+    .detail-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    .detail-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 12px;
+        background: var(--gray-50);
+        border-radius: 6px;
+        border: 1px solid var(--gray-200);
+    }
+
+    .detail-row label {
+        font-weight: 600;
+        color: var(--gray-600);
+        min-width: 150px;
+    }
+
+    .detail-row span {
+        color: var(--gray-900);
+        text-align: right;
+    }
+
+    /* ============== PAGINATION ============== */
+    .pagination {
+        display: flex;
+        justify-content: center;
+        gap: 8px;
+        margin-top: 24px;
+        padding: 0 16px 16px;
+    }
+
+    .pagination button {
+        padding: 8px 12px;
+        border: 1px solid var(--gray-300);
+        background: white;
+        color: var(--gray-900);
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.3s ease;
+    }
+
+    .pagination button:hover {
+        background: var(--gray-100);
+    }
+
+    .pagination button.active {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+
+    /* ============== NOTIFICATIONS ============== */
+    .notification {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: white;
+        padding: 16px 20px;
+        border-radius: 8px;
+        box-shadow: var(--shadow-lg);
+        border-left: 4px solid var(--primary);
+        z-index: 2000;
+        animation: slideIn 0.3s ease;
+    }
+
+    .notification.success {
+        border-left-color: var(--success);
+    }
+
+    .notification.error {
+        border-left-color: var(--danger);
+    }
+
+    .notification.warning {
+        border-left-color: var(--warning);
+    }
+
+    @keyframes slideIn {
+        from {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    /* ============== LOADING ============== */
+    .spinner {
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        border: 2px solid var(--gray-300);
+        border-top-color: var(--primary);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    /* ============== RESPONSIVE ============== */
+    @media (max-width: 768px) {
+        .page-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .header-actions {
+            width: 100%;
+            margin-top: 16px;
+        }
+
+        .form-row {
+            grid-template-columns: 1fr;
+        }
+
+        .modal-content {
+            max-width: 95%;
+        }
+
+        .employees-table {
+            font-size: 12px;
+        }
+
+        .employees-table th,
+        .employees-table td {
+            padding: 12px 8px;
+        }
+
+        .actions-cell {
+            flex-direction: column;
+        }
+
+        .btn-icon {
+            width: 28px;
+            height: 28px;
+            font-size: 14px;
+        }
+    }
+</style>
+
+<!-- Page Header -->
+<div class="page-header">
+    <div>
+        <h2><i class="bi bi-people"></i> {{ page_title }}</h2>
+        <p class="page-header-subtitle">{{ page_subtitle }}</p>
+    </div>
+    <div class="header-actions">
+        <button class="btn btn-primary" onclick="openAddEmployeeModal()">
+            <i class="bi bi-plus-circle"></i> Add New Employee
+        </button>
+    </div>
+</div>
+
+<!-- Search Box -->
+<div class="search-box">
+    <input 
+        type="text" 
+        id="searchInput" 
+        placeholder="Search by name, email, or employee ID..." 
+        onkeyup="debounceSearch()"
+    >
+</div>
+
+<!-- Table Container -->
+<div class="table-container">
+    <div class="table-wrapper">
+        <table class="employees-table" id="employeesTable">
+            <thead>
+                <tr>
+                    <th>Photo</th>
+                    <th>Employee ID</th>
+                    <th>Name</th>
+                    <th>Phone</th>
+                    <th>Email</th>
+                    <th>Total Leads</th>
+                    <th>Approved Loans</th>
+                    <th>Disbursed Amount</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="employeesTableBody">
+                <tr>
+                    <td colspan="10" style="text-align: center; padding: 40px;">
+                        <div class="spinner"></div> Loading employees...
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <div id="emptyState" class="empty-state" style="display: none;">
+        <div class="empty-state-icon">👥</div>
+        <h3>No Employees Found</h3>
+        <p>Start by adding your first employee.</p>
+    </div>
+    <div class="pagination" id="pagination"></div>
+</div>
+
+<!-- Add/Edit Employee Modal -->
+<div class="modal" id="employeeModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="modalTitle">Add New Employee</h3>
+            <button class="modal-close" onclick="closeEmployeeModal()">×</button>
+        </div>
+        
+        <div class="modal-body">
+            <form id="employeeForm" onsubmit="submitEmployeeForm(event)">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>First Name <span class="required">*</span></label>
+                        <input type="text" name="first_name" required placeholder="Enter first name">
+                    </div>
+                    <div class="form-group">
+                        <label>Last Name</label>
+                        <input type="text" name="last_name" placeholder="Enter last name">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Email <span class="required">*</span></label>
+                    <input type="email" name="email" required placeholder="employee@example.com">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Phone <span class="required">*</span></label>
+                        <input type="tel" name="phone" required placeholder="Enter phone number">
+                    </div>
+                    <div class="form-group">
+                        <label>Gender</label>
+                        <select name="gender">
+                            <option value="Other">Other</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Password <span class="required">*</span></label>
+                    <input type="password" name="password" required placeholder="Enter password">
+                    <small style="color: var(--gray-600); margin-top: 4px;">At least 8 characters recommended</small>
+                </div>
+
+                <div class="form-group">
+                    <label>Address</label>
+                    <textarea name="address" placeholder="Enter address" rows="3"></textarea>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select name="status">
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Notes</label>
+                    <textarea name="notes" placeholder="Additional notes" rows="2"></textarea>
+                </div>
+            </form>
+        </div>
+
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeEmployeeModal()">Cancel</button>
+            <button class="btn btn-primary" id="submitBtn" onclick="submitEmployeeForm(event)">
+                <span id="submitBtnText">Add Employee</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Confirm Delete Modal -->
+<div class="modal" id="deleteConfirmModal">
+    <div class="modal-content" style="max-width: 400px;">
+        <div class="modal-header">
+            <h3>Confirm Delete</h3>
+            <button class="modal-close" onclick="closeDeleteConfirmModal()">×</button>
+        </div>
+        <div class="modal-body">
+            <p>Are you sure you want to delete this employee? This action cannot be undone.</p>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeDeleteConfirmModal()">Cancel</button>
+            <button class="btn btn-danger" onclick="confirmDelete()">Delete</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ============== STATE & CONFIG ==============
+    let currentPage = 1;
+    let perPage = 10;
+    let searchTimeout;
+    let employeeToDelete = null;
+    let editingEmployeeId = null;
+
+    const API_ENDPOINTS = {
+        getEmployees: '/api/employees/',
+        addEmployee: '/api/employees/add/',
+        updateEmployee: (id) => `/api/employees/${id}/update/`,
+        deleteEmployee: (id) => `/api/employees/${id}/delete/`,
+        toggleStatus: (id) => `/api/employees/${id}/toggle-status/`,
+        getStats: '/api/employees/stats/',
+    };
+
+    // ============== INITIALIZATION ==============
+    document.addEventListener('DOMContentLoaded', function() {
+        loadEmployees();
+        loadStats();
+    });
+
+    // ============== LOAD EMPLOYEES ==============
+    async function loadEmployees() {
+        try {
+            const searchQuery = document.getElementById('searchInput').value;
+            const url = new URL(API_ENDPOINTS.getEmployees, window.location.origin);
+            url.searchParams.append('search', searchQuery);
+            url.searchParams.append('page', currentPage);
+            url.searchParams.append('per_page', perPage);
+
+            const response = await fetch(url.toString(), {
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            });
+
+            if (!response.ok) throw new Error('Failed to load employees');
+
+            const data = await response.json();
+
+            if (data.employees.length === 0) {
+                document.getElementById('employeesTableBody').innerHTML = '';
+                document.getElementById('emptyState').style.display = 'block';
+                document.getElementById('pagination').innerHTML = '';
+                return;
+            }
+
+            document.getElementById('emptyState').style.display = 'none';
+            populateTable(data.employees);
+            populatePagination(data.current_page, data.total_pages);
+
+        } catch (error) {
+            console.error('Error loading employees:', error);
+            showNotification('Error loading employees', 'error');
+        }
+    }
+
+    // ============== POPULATE TABLE ==============
+    function populateTable(employees) {
+        const tbody = document.getElementById('employeesTableBody');
+        tbody.innerHTML = employees.map(emp => `
+            <tr>
+                <td>
+                    <div class="employee-avatar" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 16px;">
+                        ${emp.name.charAt(0).toUpperCase()}
+                    </div>
+                </td>
+                <td><strong>${emp.employee_id}</strong></td>
+                <td>
+                    <div class="employee-name">
+                        <span>${emp.name}</span>
+                    </div>
+                </td>
+                <td>${emp.phone}</td>
+                <td>${emp.email}</td>
+                <td><strong>${emp.total_leads}</strong></td>
+                <td><strong class="text-success">${emp.approved_loans}</strong></td>
+                <td>₹${emp.total_disbursed.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</td>
+                <td>
+                    <span class="status-badge status-${emp.is_active ? 'active' : 'inactive'}">
+                        <i class="bi bi-circle-fill"></i>
+                        ${emp.status}
+                    </span>
+                </td>
+                <td>
+                    <div class="actions-cell">
+                        <button class="btn-action btn-view" onclick="viewEmployee(${emp.id})" title="View Details">
+                            <i class="bi bi-eye"></i> View
+                        </button>
+                        <button class="btn-action btn-edit" onclick="editEmployee(${emp.id})" title="Edit">
+                            <i class="bi bi-pencil"></i> Edit
+                        </button>
+                        <button class="btn-action btn-delete" onclick="openDeleteConfirm(${emp.id}, '${emp.name}')" title="Delete">
+                            <i class="bi bi-trash"></i> Delete
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    // ============== PAGINATION ==============
+    function populatePagination(currentPage, totalPages) {
+        const pagination = document.getElementById('pagination');
+        let html = '';
+
+        if (currentPage > 1) {
+            html += `<button onclick="goToPage(${currentPage - 1})">← Previous</button>`;
+        }
+
+        for (let i = 1; i <= totalPages; i++) {
+            if (i === currentPage) {
+                html += `<button class="active">${i}</button>`;
+            } else {
+                html += `<button onclick="goToPage(${i})">${i}</button>`;
+            }
+        }
+
+        if (currentPage < totalPages) {
+            html += `<button onclick="goToPage(${currentPage + 1})">Next →</button>`;
+        }
+
+        pagination.innerHTML = html;
+    }
+
+    function goToPage(page) {
+        currentPage = page;
+        loadEmployees();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // ============== SEARCH ==============
+    function debounceSearch() {
+        clearTimeout(searchTimeout);
+        currentPage = 1;
+        searchTimeout = setTimeout(() => {
+            loadEmployees();
+        }, 300);
+    }
+
+    // ============== MODAL OPERATIONS ==============
+    function openAddEmployeeModal() {
+        editingEmployeeId = null;
+        document.getElementById('modalTitle').textContent = 'Add New Employee';
+        document.getElementById('submitBtnText').textContent = 'Add Employee';
+        document.getElementById('employeeForm').reset();
+        const modal = document.getElementById('employeeModal');
+        if (modal) {
+            modal.classList.add('active');
+            modal.style.display = 'block';
+        }
+    }
+
+    function closeEmployeeModal() {
+        const modal = document.getElementById('employeeModal');
+        if (modal) {
+            modal.classList.remove('active');
+            modal.style.display = 'none';
+        }
+        editingEmployeeId = null;
+    }
+    async function viewEmployee(employeeId) {
+        try {
+            const response = await fetch(`/api/employees/${employeeId}/`, {
+                headers: { 'X-CSRFToken': getCookie('csrftoken') }
+            });
+
+            if (!response.ok) throw new Error('Failed to load employee');
+
+            const data = await response.json();
+            const emp = data.employee;
+
+            // Create view modal
+            let viewHTML = `
+                <div class="modal" id="viewEmployeeModal">
+                    <div class="modal-content" style="max-width: 600px;">
+                        <div class="modal-header">
+                            <h3>Employee Details - ${emp.first_name} ${emp.last_name}</h3>
+                            <button class="modal-close" onclick="closeViewModal()">×</button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="detail-grid">
+                                <div class="detail-row">
+                                    <label>Name</label>
+                                    <span>${emp.first_name} ${emp.last_name}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <label>Email</label>
+                                    <span>${emp.email}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <label>Phone</label>
+                                    <span>${emp.phone}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <label>Employee ID</label>
+                                    <span>${emp.employee_id || emp.id}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <label>Total Leads</label>
+                                    <span>${emp.total_leads || 0}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <label>Approved Loans</label>
+                                    <span>${emp.approved_loans || 0}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <label>Disbursed Amount</label>
+                                    <span>₹${emp.disbursed_amount || 0}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <label>Status</label>
+                                    <span class="status-badge status-${emp.is_active ? 'active' : 'inactive'}">
+                                        ${emp.status}
+                                    </span>
+                                </div>
+                                <div class="detail-row">
+                                    <label>Address</label>
+                                    <span>${emp.address || 'N/A'}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <label>Gender</label>
+                                    <span>${emp.gender || 'N/A'}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" onclick="closeViewModal()">Close</button>
+                            <button class="btn btn-primary" onclick="editEmployee(${emp.id})">Edit</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Remove existing modal if present
+            const existingModal = document.getElementById('viewEmployeeModal');
+            if (existingModal) existingModal.remove();
+
+            // Add and show modal
+            document.body.insertAdjacentHTML('beforeend', viewHTML);
+            document.getElementById('viewEmployeeModal').classList.add('active');
+
+        } catch (error) {
+            console.error('Error loading employee:', error);
+            showNotification('Error loading employee details', 'error');
+        }
+    }
+
+    function closeViewModal() {
+        const modal = document.getElementById('viewEmployeeModal');
+        if (modal) {
+            modal.classList.remove('active');
+            setTimeout(() => modal.remove(), 300);
+        }
+    }
+
+    async function editEmployee(employeeId) {
+        try {
+            const response = await fetch(`/api/employees/${employeeId}/`, {
+                headers: { 'X-CSRFToken': getCookie('csrftoken') }
+            });
+
+            if (!response.ok) throw new Error('Failed to load employee');
+
+            const data = await response.json();
+            const emp = data.employee;
+
+            // Fill form
+            document.querySelector('input[name="first_name"]').value = emp.first_name || '';
+            document.querySelector('input[name="last_name"]').value = emp.last_name || '';
+            document.querySelector('input[name="email"]').value = emp.email || '';
+            document.querySelector('input[name="phone"]').value = emp.phone || '';
+            document.querySelector('select[name="gender"]').value = emp.gender || 'Other';
+            document.querySelector('textarea[name="address"]').value = emp.address || '';
+            document.querySelector('select[name="status"]').value = emp.status || 'active';
+            document.querySelector('textarea[name="notes"]').value = emp.notes || '';
+
+            editingEmployeeId = employeeId;
+            document.getElementById('modalTitle').textContent = 'Edit Employee';
+            document.getElementById('submitBtnText').textContent = 'Update Employee';
+            const modal = document.getElementById('employeeModal');
+            if (modal) {
+                modal.classList.add('active');
+                modal.style.display = 'block';
+            }
+
+        } catch (error) {
+            console.error('Error loading employee:', error);
+            showNotification('Error loading employee details', 'error');
+        }
+    }
+
+    // ============== FORM SUBMISSION ==============
+    async function submitEmployeeForm(event) {
+        event.preventDefault();
+
+        const formData = new FormData(document.getElementById('employeeForm'));
+        const data = {
+            full_name: `${formData.get('first_name')} ${formData.get('last_name')}`.trim(),
+            email: formData.get('email'),
+            phone: formData.get('phone'),
+            gender: formData.get('gender'),
+            address: formData.get('address'),
+            role: formData.get('role'),
+            status: formData.get('status'),
+            notes: formData.get('notes'),
+        };
+
+        if (!editingEmployeeId) {
+            data.password = formData.get('password');
+        } else if (formData.get('password')) {
+            data.password = formData.get('password');
+        }
+
+        try {
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner"></span> Processing...';
+
+            const url = editingEmployeeId 
+                ? API_ENDPOINTS.updateEmployee(editingEmployeeId)
+                : API_ENDPOINTS.addEmployee;
+
+            const method = editingEmployeeId ? 'POST' : 'POST';
+
+            const response = await fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || 'Failed to save employee');
+            }
+
+            showNotification(result.message, 'success');
+            closeEmployeeModal();
+            loadEmployees();
+
+        } catch (error) {
+            console.error('Error saving employee:', error);
+            showNotification(error.message || 'Error saving employee', 'error');
+        } finally {
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = editingEmployeeId ? 'Update Employee' : 'Add Employee';
+        }
+    }
+
+    // ============== EMPLOYEE ACTIONS ==============
+    async function toggleEmployeeStatus(employeeId, currentStatus) {
+        try {
+            const response = await fetch(API_ENDPOINTS.toggleStatus(employeeId), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ is_active: !currentStatus })
+            });
+
+            if (!response.ok) throw new Error('Failed to update status');
+
+            const result = await response.json();
+            showNotification(result.message, 'success');
+            loadEmployees();
+
+        } catch (error) {
+            console.error('Error toggling status:', error);
+            showNotification('Error updating employee status', 'error');
+        }
+    }
+
+    function openDeleteConfirm(employeeId, employeeName) {
+        employeeToDelete = employeeId;
+        const modal = document.getElementById('deleteConfirmModal');
+        if (modal) {
+            modal.classList.add('active');
+            modal.style.display = 'block';
+        }
+    }
+
+    function closeDeleteConfirmModal() {
+        const modal = document.getElementById('deleteConfirmModal');
+        if (modal) {
+            modal.classList.remove('active');
+            modal.style.display = 'none';
+        }
+        employeeToDelete = null;
+    }
+
+    async function confirmDelete() {
+        if (!employeeToDelete) {
+            showNotification('No employee selected', 'error');
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/employees/${employeeToDelete}/delete/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': getCookie('csrftoken') }
+            });
+
+            if (!response.ok) throw new Error('Failed to delete employee');
+
+            const result = await response.json();
+            showNotification(result.message || 'Employee deleted successfully', 'success');
+            closeDeleteConfirmModal();
+            loadEmployees();
+
+        } catch (error) {
+            console.error('Error deleting employee:', error);
+            showNotification('Error deleting employee', 'error');
+        }
+    }
+
+    // ============== STATISTICS ==============
+    async function loadStats() {
+        try {
+            const response = await fetch(API_ENDPOINTS.getStats, {
+                headers: { 'X-CSRFToken': getCookie('csrftoken') }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                // You can display stats in a card above the table if needed
+            }
+        } catch (error) {
+            console.error('Error loading stats:', error);
+        }
+    }
+
+    // ============== UTILITIES ==============
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function showNotification(message, type = 'success') {
+        const notification = document.createElement('div');
+        notification.className = `notification ${type}`;
+        notification.innerHTML = message;
+        document.body.appendChild(notification);
+
+        setTimeout(() => {
+            notification.style.animation = 'slideOut 0.3s ease';
+            setTimeout(() => notification.remove(), 300);
+        }, 3000);
+    }
+</script>
+
+{% endblock %}

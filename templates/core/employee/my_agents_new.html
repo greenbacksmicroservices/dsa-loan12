@@ -1,0 +1,258 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}My Agents - DSA Loan Management{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="dashboard-header bg-white p-4 mb-4 border-bottom">
+    <div class="container-fluid d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="fw-bold fs-3 mb-1">
+                <i class="bi bi-people-fill me-2"></i>My Agents
+            </h1>
+            <p class="text-muted mb-0">Manage agents working under your team</p>
+        </div>
+        <button class="btn btn-success fw-semibold rounded-3" data-bs-toggle="modal" data-bs-target="#addAgentModal">
+            <i class="bi bi-person-plus"></i> Add New Agent
+        </button>
+    </div>
+</div>
+
+<!-- Quick Stats -->
+<div class="container-fluid mb-4">
+    <div class="row g-3">
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="mb-1 text-muted">Total Agents</p>
+                            <h4 class="mb-0" id="total-agents">0</h4>
+                        </div>
+                        <i class="bi bi-people" style="font-size: 2.5rem; color: #10b981; opacity: 0.3;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="mb-1 text-muted">Active Agents</p>
+                            <h4 class="mb-0" id="active-agents">0</h4>
+                        </div>
+                        <i class="bi bi-check-circle" style="font-size: 2.5rem; color: #10b981; opacity: 0.3;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="mb-1 text-muted">Total Loans Submitted</p>
+                            <h4 class="mb-0" id="total-loans">0</h4>
+                        </div>
+                        <i class="bi bi-briefcase" style="font-size: 2.5rem; color: #3b82f6; opacity: 0.3;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Agents Table -->
+<div class="container-fluid">
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+            <strong><i class="bi bi-list"></i> Agent List</strong>
+            <span id="agent-count" class="badge bg-primary">0</span>
+        </div>
+        <div class="card-body p-0">
+            <div id="agents-container" class="text-center py-5">
+                <div class="spinner-border spinner-border-sm" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="text-muted mt-2">Loading agents...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Agent Modal -->
+<div class="modal fade" id="addAgentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add New Agent</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addAgentForm">
+                    <div class="mb-3">
+                        <label class="form-label">Full Name *</label>
+                        <input type="text" class="form-control" id="agent-name" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Email *</label>
+                        <input type="email" class="form-control" id="agent-email" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Phone Number *</label>
+                        <input type="tel" class="form-control" id="agent-phone" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">City</label>
+                        <input type="text" class="form-control" id="agent-city" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">State</label>
+                        <input type="text" class="form-control" id="agent-state" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Password *</label>
+                        <input type="password" class="form-control" id="agent-password" required />
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="submit-agent-btn">Add Agent</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .agent-status-badge {
+        padding: 0.35rem 0.65rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+    .status-active { background-color: #dcfce7; color: #166534; }
+    .status-blocked { background-color: #fee2e2; color: #991b1b; }
+</style>
+
+<script>
+    async function loadAgents() {
+        try {
+            const response = await fetch('/api/employee/agents/', {
+                headers: {'X-Requested-With': 'XMLHttpRequest'}
+            });
+            
+            if (!response.ok) throw new Error('Failed to load agents');
+            const data = await response.json();
+            
+            if (data.success) {
+                document.getElementById('total-agents').textContent = data.total;
+                document.getElementById('active-agents').textContent = data.agents.filter(a => a.status === 'active').length;
+                document.getElementById('total-loans').textContent = data.agents.reduce((sum, a) => sum + a.total_loans, 0);
+                document.getElementById('agent-count').textContent = data.total;
+                
+                buildAgentsTable(data.agents);
+            }
+        } catch (error) {
+            console.error('Error loading agents:', error);
+            document.getElementById('agents-container').innerHTML = `
+                <div class="alert alert-danger m-3">
+                    <i class="bi bi-exclamation-triangle"></i> Error loading agents
+                </div>
+            `;
+        }
+    }
+    
+    function buildAgentsTable(agents) {
+        if (agents.length === 0) {
+            document.getElementById('agents-container').innerHTML = `
+                <div class="alert alert-info m-3">
+                    <i class="bi bi-info-circle"></i> No agents added yet. Click "Add New Agent" to get started.
+                </div>
+            `;
+            return;
+        }
+        
+        const html = `
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>City</th>
+                        <th>Created By</th>
+                        <th>Status</th>
+                        <th>Total Loans</th>
+                        <th>Created Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${agents.map(agent => `
+                        <tr>
+                            <td><strong>${agent.name}</strong></td>
+                            <td>${agent.email}</td>
+                            <td>${agent.phone}</td>
+                            <td>${agent.city || '-'}</td>
+                            <td><span class="badge bg-info">${agent.created_by}</span></td>
+                            <td>
+                                <span class="agent-status-badge status-${agent.status}">
+                                    ${agent.status.charAt(0).toUpperCase() + agent.status.slice(1)}
+                                </span>
+                            </td>
+                            <td><strong>${agent.total_loans}</strong></td>
+                            <td><small>${agent.created_at}</small></td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+        
+        document.getElementById('agents-container').innerHTML = html;
+    }
+    
+    document.getElementById('submit-agent-btn').addEventListener('click', async () => {
+        const name = document.getElementById('agent-name').value.trim();
+        const email = document.getElementById('agent-email').value.trim();
+        const phone = document.getElementById('agent-phone').value.trim();
+        const city = document.getElementById('agent-city').value.trim();
+        const state = document.getElementById('agent-state').value.trim();
+        const password = document.getElementById('agent-password').value.trim();
+        
+        if (!name || !email || !phone || !password) {
+            alert('Please fill in all required fields');
+            return;
+        }
+        
+        try {
+            const response = await fetch('/api/employee/agent/add/', {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    name, email, phone, city, state, password
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                alert('Agent added successfully!');
+                document.getElementById('addAgentForm').reset();
+                bootstrap.Modal.getInstance(document.getElementById('addAgentModal')).hide();
+                loadAgents();
+            } else {
+                alert('Error: ' + data.error);
+            }
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    });
+    
+    document.addEventListener('DOMContentLoaded', loadAgents);
+</script>
+{% endblock %}

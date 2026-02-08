@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+{% extends 'core/admin/admin_base.html' %}
+{% load static %}
+
+{% block title %}Complaints Management - DSA Admin{% endblock %}
+{% block page_title %}Complaints Management{% endblock %}
+
+{% block content %}
+<style>
+    .page-header {
+        margin-bottom: 30px;
+        padding-bottom: 20px;
+        border-bottom: 2px solid #e5e7eb;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .page-header h2 {
+        margin: 0;
+        font-size: 24px;
+        font-weight: 600;
+        color: #1f2937;
+    }
+
+    .filter-section {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .filter-group {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        align-items: end;
+    }
+
+    .form-label {
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 8px;
+    }
+
+    .complaint-tabs {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+        border-bottom: 2px solid #e5e7eb;
+    }
+
+    .complaint-tab {
+        padding: 12px 20px;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: 500;
+        color: #6b7280;
+        border-bottom: 3px solid transparent;
+        transition: all 0.3s ease;
+    }
+
+    .complaint-tab:hover {
+        color: #4f46e5;
+    }
+
+    .complaint-tab.active {
+        color: #4f46e5;
+        border-bottom-color: #4f46e5;
+    }
+
+    .complaint-section {
+        display: none;
+    }
+
+    .complaint-section.active {
+        display: block;
+    }
+
+    .table-container {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+    }
+
+    .table-responsive {
+        overflow-x: auto;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    table thead {
+        background: #f9fafb;
+        border-bottom: 2px solid #e5e7eb;
+    }
+
+    table th {
+        padding: 12px 16px;
+        text-align: left;
+        font-weight: 600;
+        color: #374151;
+        font-size: 13px;
+        text-transform: uppercase;
+    }
+
+    table td {
+        padding: 12px 16px;
+        border-bottom: 1px solid #f3f4f6;
+    }
+
+    table tbody tr:hover {
+        background: #f9fafb;
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .badge-open {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .badge-in-progress {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .badge-resolved {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .badge-closed {
+        background: #f3f4f6;
+        color: #374151;
+    }
+
+    .badge-low {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .badge-medium {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .badge-high {
+        background: #fed7aa;
+        color: #92400e;
+    }
+
+    .badge-urgent {
+        background: #fecaca;
+        color: #991b1b;
+    }
+
+    .badge-agent {
+        background: #f3e8ff;
+        color: #6b21a8;
+    }
+
+    .badge-employee {
+        background: #d1e7dd;
+        color: #0f5132;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 8px;
+    }
+
+    .btn-action {
+        padding: 6px 12px;
+        border: 1px solid #d1d5db;
+        border-radius: 4px;
+        background: white;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .btn-view {
+        color: #2563eb;
+        border-color: #2563eb;
+    }
+
+    .btn-view:hover {
+        background: #2563eb;
+        color: white;
+    }
+
+    .btn-update {
+        color: #f59e0b;
+        border-color: #f59e0b;
+    }
+
+    .btn-update:hover {
+        background: #f59e0b;
+        color: white;
+    }
+
+    .btn-resolve {
+        color: #10b981;
+        border-color: #10b981;
+    }
+
+    .btn-resolve:hover {
+        background: #10b981;
+        color: white;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #6b7280;
+    }
+
+    .empty-state-icon {
+        font-size: 48px;
+        margin-bottom: 15px;
+        opacity: 0.5;
+    }
+
+    .loading {
+        text-align: center;
+        padding: 40px;
+        color: #6b7280;
+    }
+
+    .spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 3px solid #e5e7eb;
+        border-top-color: #4f46e5;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    .modal-header {
+        background: #f9fafb;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .complaint-detail-section {
+        margin-bottom: 20px;
+        padding: 15px;
+        background: #f9fafb;
+        border-radius: 6px;
+    }
+
+    .complaint-detail-label {
+        font-size: 12px;
+        color: #6b7280;
+        text-transform: uppercase;
+        font-weight: 600;
+        margin-bottom: 5px;
+    }
+
+    .complaint-detail-value {
+        font-size: 14px;
+        color: #1f2937;
+        font-weight: 500;
+    }
+
+    .stats-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+
+    .stat-box {
+        background: white;
+        padding: 15px;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        border-left: 4px solid #4f46e5;
+        text-align: center;
+    }
+
+    .stat-value {
+        font-size: 24px;
+        font-weight: 700;
+        color: #1f2937;
+        margin: 5px 0;
+    }
+
+    .stat-label {
+        font-size: 12px;
+        color: #6b7280;
+        text-transform: uppercase;
+    }
+</style>
+
+<div class="page-header">
+    <h2><i class="bi bi-exclamation-circle"></i> Complaints & Issues</h2>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addComplaintModal">
+        <i class="bi bi-plus-circle"></i> Add Complaint
+    </button>
+</div>
+
+<!-- Filter Section -->
+<div class="filter-section">
+    <div class="filter-group">
+        <div>
+            <label for="filter_type" class="form-label">Complainant Type</label>
+            <select class="form-select" id="filter_type" onchange="filterComplaints()">
+                <option value="">All Types</option>
+                <option value="agent">Agent Complaints</option>
+                <option value="employee">Employee Complaints</option>
+            </select>
+        </div>
+        <div>
+            <label for="filter_status" class="form-label">Status</label>
+            <select class="form-select" id="filter_status" onchange="filterComplaints()">
+                <option value="">All Status</option>
+                <option value="open">Open</option>
+                <option value="in_progress">In Progress</option>
+                <option value="resolved">Resolved</option>
+                <option value="closed">Closed</option>
+            </select>
+        </div>
+        <div>
+            <label for="filter_priority" class="form-label">Priority</label>
+            <select class="form-select" id="filter_priority" onchange="filterComplaints()">
+                <option value="">All Priority</option>
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="urgent">Urgent</option>
+            </select>
+        </div>
+        <div>
+            <label for="filter_search" class="form-label">Search</label>
+            <input type="text" class="form-control" id="filter_search" placeholder="Search complaints..." onkeyup="filterComplaints()">
+        </div>
+    </div>
+</div>
+
+<!-- Stats -->
+<div class="stats-container">
+    <div class="stat-box">
+        <div class="stat-label">Total Complaints</div>
+        <div class="stat-value" id="total-complaints">0</div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-label">Open</div>
+        <div class="stat-value" id="open-complaints">0</div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-label">In Progress</div>
+        <div class="stat-value" id="inprogress-complaints">0</div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-label">Resolved</div>
+        <div class="stat-value" id="resolved-complaints">0</div>
+    </div>
+</div>
+
+<!-- Complaint Tabs -->
+<div class="complaint-tabs">
+    <button class="complaint-tab active" onclick="switchComplaintTab('all')">
+        <i class="bi bi-list"></i> All Complaints
+    </button>
+    <button class="complaint-tab" onclick="switchComplaintTab('agent')">
+        <i class="bi bi-person-check"></i> Agent Complaints
+    </button>
+    <button class="complaint-tab" onclick="switchComplaintTab('employee')">
+        <i class="bi bi-people"></i> Employee Complaints
+    </button>
+</div>
+
+<!-- All Complaints Section -->
+<div class="complaint-section active" id="all-section">
+    <div class="table-container">
+        <div id="all-loading" class="loading" style="display: none;">
+            <div class="spinner"></div> Loading complaints...
+        </div>
+        <div class="table-responsive" id="all-table-wrapper">
+            <table id="all-complaints-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Complainant</th>
+                        <th>Type</th>
+                        <th>Issue</th>
+                        <th>Priority</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="all-tbody">
+                    <tr>
+                        <td colspan="8" class="text-center text-muted" style="padding: 40px;">
+                            <div class="empty-state">
+                                <div class="empty-state-icon">📋</div>
+                                <p>No complaints found</p>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Agent Complaints Section -->
+<div class="complaint-section" id="agent-section">
+    <div class="table-container">
+        <div id="agent-loading" class="loading" style="display: none;">
+            <div class="spinner"></div> Loading agent complaints...
+        </div>
+        <div class="table-responsive" id="agent-table-wrapper">
+            <table id="agent-complaints-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Agent Name</th>
+                        <th>Issue Type</th>
+                        <th>Description</th>
+                        <th>Priority</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="agent-tbody">
+                    <tr>
+                        <td colspan="8" class="text-center text-muted" style="padding: 40px;">
+                            <div class="empty-state">
+                                <div class="empty-state-icon">👤</div>
+                                <p>No agent complaints found</p>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Employee Complaints Section -->
+<div class="complaint-section" id="employee-section">
+    <div class="table-container">
+        <div id="employee-loading" class="loading" style="display: none;">
+            <div class="spinner"></div> Loading employee complaints...
+        </div>
+        <div class="table-responsive" id="employee-table-wrapper">
+            <table id="employee-complaints-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Employee Name</th>
+                        <th>Issue Type</th>
+                        <th>Description</th>
+                        <th>Priority</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="employee-tbody">
+                    <tr>
+                        <td colspan="8" class="text-center text-muted" style="padding: 40px;">
+                            <div class="empty-state">
+                                <div class="empty-state-icon">👥</div>
+                                <p>No employee complaints found</p>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Add Complaint Modal -->
+<div class="modal fade" id="addComplaintModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add New Complaint</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="addComplaintForm">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="comp_type" class="form-label">Complainant Type <span class="text-danger">*</span></label>
+                            <select class="form-select" id="comp_type" required onchange="updateComplainantField()">
+                                <option value="">Select Type</option>
+                                <option value="agent">Agent</option>
+                                <option value="employee">Employee</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="comp_complainant" class="form-label">Complainant Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="comp_complainant" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="comp_issue_type" class="form-label">Issue Type <span class="text-danger">*</span></label>
+                            <select class="form-select" id="comp_issue_type" required>
+                                <option value="">Select Issue Type</option>
+                                <option value="service">Service Issue</option>
+                                <option value="payment">Payment Issue</option>
+                                <option value="documentation">Documentation Issue</option>
+                                <option value="technical">Technical Issue</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="comp_priority" class="form-label">Priority <span class="text-danger">*</span></label>
+                            <select class="form-select" id="comp_priority" required>
+                                <option value="medium" selected>Medium</option>
+                                <option value="low">Low</option>
+                                <option value="high">High</option>
+                                <option value="urgent">Urgent</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="comp_description" class="form-label">Description <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="comp_description" rows="4" placeholder="Describe the issue..." required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">Submit Complaint</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- View Complaint Modal -->
+<div class="modal fade" id="viewComplaintModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Complaint Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="complaint-detail-content">
+                <!-- Details loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Update Status Modal -->
+<div class="modal fade" id="updateStatusModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Update Complaint Status</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="updateStatusForm">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="new_status" class="form-label">New Status</label>
+                        <select class="form-select" id="new_status" required>
+                            <option value="open">Open</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="resolved">Resolved</option>
+                            <option value="closed">Closed</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="resolution_notes" class="form-label">Resolution Notes</label>
+                        <textarea class="form-control" id="resolution_notes" rows="3" placeholder="Add notes about the resolution..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">Update Status</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let currentEditingComplaintId = null;
+    let allComplaints = [];
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function getPriorityClass(priority) {
+        return 'badge-' + (priority || 'medium').toLowerCase();
+    }
+
+    function getStatusClass(status) {
+        return 'badge-' + (status || 'open').toLowerCase().replace('_', '-');
+    }
+
+    function switchComplaintTab(tab) {
+        document.querySelectorAll('.complaint-section').forEach(s => s.classList.remove('active'));
+        document.querySelectorAll('.complaint-tab').forEach(t => t.classList.remove('active'));
+        
+        document.getElementById(tab + '-section').classList.add('active');
+        event.target.classList.add('active');
+        
+        if (tab === 'all') loadComplaints();
+        else if (tab === 'agent') loadAgentComplaints();
+        else if (tab === 'employee') loadEmployeeComplaints();
+    }
+
+    async function loadComplaints() {
+        document.getElementById('all-loading').style.display = 'block';
+        try {
+            const response = await fetch('/api/complaints/', {
+                headers: { 'X-CSRFToken': getCookie('csrftoken') }
+            });
+            const data = await response.json();
+            allComplaints = data.results || data || [];
+            updateStats();
+            displayAllComplaints(allComplaints);
+        } catch (error) {
+            console.error('Error loading complaints:', error);
+        }
+        document.getElementById('all-loading').style.display = 'none';
+    }
+
+    async function loadAgentComplaints() {
+        document.getElementById('agent-loading').style.display = 'block';
+        try {
+            const response = await fetch('/api/complaints/?type=agent', {
+                headers: { 'X-CSRFToken': getCookie('csrftoken') }
+            });
+            const data = await response.json();
+            const complaints = data.results || data || [];
+            displayAgentComplaints(complaints);
+        } catch (error) {
+            console.error('Error loading agent complaints:', error);
+        }
+        document.getElementById('agent-loading').style.display = 'none';
+    }
+
+    async function loadEmployeeComplaints() {
+        document.getElementById('employee-loading').style.display = 'block';
+        try {
+            const response = await fetch('/api/complaints/?type=employee', {
+                headers: { 'X-CSRFToken': getCookie('csrftoken') }
+            });
+            const data = await response.json();
+            const complaints = data.results || data || [];
+            displayEmployeeComplaints(complaints);
+        } catch (error) {
+            console.error('Error loading employee complaints:', error);
+        }
+        document.getElementById('employee-loading').style.display = 'none';
+    }
+
+    function displayAllComplaints(complaints) {
+        const tbody = document.getElementById('all-tbody');
+        if (complaints.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted" style="padding: 40px;"><div class="empty-state"><div class="empty-state-icon">📋</div><p>No complaints found</p></div></td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = complaints.map(c => `
+            <tr>
+                <td>#${c.id}</td>
+                <td>${c.complainant_name} <span class="badge badge-${c.complainant_type || 'agent'}">${c.complainant_type || 'Agent'}</span></td>
+                <td>${c.issue_type}</td>
+                <td>${c.description.substring(0, 40)}...</td>
+                <td><span class="badge ${getPriorityClass(c.priority)}">${c.priority}</span></td>
+                <td><span class="badge ${getStatusClass(c.status)}">${c.status}</span></td>
+                <td>${new Date(c.created_at).toLocaleDateString()}</td>
+                <td>
+                    <div class="action-buttons">
+                        <button class="btn-action btn-view" onclick="viewComplaint(${c.id})" title="View">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                        <button class="btn-action btn-update" onclick="openUpdateModal(${c.id})" title="Update">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function displayAgentComplaints(complaints) {
+        const tbody = document.getElementById('agent-tbody');
+        if (complaints.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted" style="padding: 40px;"><div class="empty-state"><div class="empty-state-icon">👤</div><p>No agent complaints found</p></div></td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = complaints.map(c => `
+            <tr>
+                <td>#${c.id}</td>
+                <td>${c.complainant_name}</td>
+                <td>${c.issue_type}</td>
+                <td>${c.description.substring(0, 40)}...</td>
+                <td><span class="badge ${getPriorityClass(c.priority)}">${c.priority}</span></td>
+                <td><span class="badge ${getStatusClass(c.status)}">${c.status}</span></td>
+                <td>${new Date(c.created_at).toLocaleDateString()}</td>
+                <td>
+                    <div class="action-buttons">
+                        <button class="btn-action btn-view" onclick="viewComplaint(${c.id})"><i class="bi bi-eye"></i></button>
+                        <button class="btn-action btn-update" onclick="openUpdateModal(${c.id})"><i class="bi bi-pencil"></i></button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function displayEmployeeComplaints(complaints) {
+        const tbody = document.getElementById('employee-tbody');
+        if (complaints.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted" style="padding: 40px;"><div class="empty-state"><div class="empty-state-icon">👥</div><p>No employee complaints found</p></div></td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = complaints.map(c => `
+            <tr>
+                <td>#${c.id}</td>
+                <td>${c.complainant_name}</td>
+                <td>${c.issue_type}</td>
+                <td>${c.description.substring(0, 40)}...</td>
+                <td><span class="badge ${getPriorityClass(c.priority)}">${c.priority}</span></td>
+                <td><span class="badge ${getStatusClass(c.status)}">${c.status}</span></td>
+                <td>${new Date(c.created_at).toLocaleDateString()}</td>
+                <td>
+                    <div class="action-buttons">
+                        <button class="btn-action btn-view" onclick="viewComplaint(${c.id})"><i class="bi bi-eye"></i></button>
+                        <button class="btn-action btn-update" onclick="openUpdateModal(${c.id})"><i class="bi bi-pencil"></i></button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    async function viewComplaint(id) {
+        try {
+            const response = await fetch(`/api/complaints/${id}/`, {
+                headers: { 'X-CSRFToken': getCookie('csrftoken') }
+            });
+            const complaint = await response.json();
+            
+            const content = `
+                <div class="complaint-detail-section">
+                    <div class="complaint-detail-label">Complaint ID</div>
+                    <div class="complaint-detail-value">#${complaint.id}</div>
+                </div>
+                <div class="complaint-detail-section">
+                    <div class="complaint-detail-label">Complainant</div>
+                    <div class="complaint-detail-value">${complaint.complainant_name} (${complaint.complainant_type})</div>
+                </div>
+                <div class="complaint-detail-section">
+                    <div class="complaint-detail-label">Issue Type</div>
+                    <div class="complaint-detail-value">${complaint.issue_type}</div>
+                </div>
+                <div class="complaint-detail-section">
+                    <div class="complaint-detail-label">Priority</div>
+                    <div class="complaint-detail-value"><span class="badge ${getPriorityClass(complaint.priority)}">${complaint.priority}</span></div>
+                </div>
+                <div class="complaint-detail-section">
+                    <div class="complaint-detail-label">Status</div>
+                    <div class="complaint-detail-value"><span class="badge ${getStatusClass(complaint.status)}">${complaint.status}</span></div>
+                </div>
+                <div class="complaint-detail-section">
+                    <div class="complaint-detail-label">Description</div>
+                    <div class="complaint-detail-value">${complaint.description}</div>
+                </div>
+                <div class="complaint-detail-section">
+                    <div class="complaint-detail-label">Date Created</div>
+                    <div class="complaint-detail-value">${new Date(complaint.created_at).toLocaleString()}</div>
+                </div>
+                ${complaint.resolution_notes ? `
+                    <div class="complaint-detail-section">
+                        <div class="complaint-detail-label">Resolution Notes</div>
+                        <div class="complaint-detail-value">${complaint.resolution_notes}</div>
+                    </div>
+                ` : ''}
+            `;
+            
+            document.getElementById('complaint-detail-content').innerHTML = content;
+            new bootstrap.Modal(document.getElementById('viewComplaintModal')).show();
+        } catch (error) {
+            console.error('Error loading complaint:', error);
+        }
+    }
+
+    function openUpdateModal(id) {
+        currentEditingComplaintId = id;
+        document.getElementById('new_status').value = '';
+        document.getElementById('resolution_notes').value = '';
+        new bootstrap.Modal(document.getElementById('updateStatusModal')).show();
+    }
+
+    document.getElementById('updateStatusForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const status = document.getElementById('new_status').value;
+        const notes = document.getElementById('resolution_notes').value;
+        
+        try {
+            const response = await fetch(`/api/complaints/${currentEditingComplaintId}/update-status/`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ status, resolution_notes: notes })
+            });
+            
+            if (response.ok) {
+                bootstrap.Modal.getInstance(document.getElementById('updateStatusModal')).hide();
+                loadComplaints();
+                alert('Status updated successfully!');
+            }
+        } catch (error) {
+            console.error('Error updating status:', error);
+        }
+    });
+
+    function filterComplaints() {
+        const type = document.getElementById('filter_type').value;
+        const status = document.getElementById('filter_status').value;
+        const priority = document.getElementById('filter_priority').value;
+        const search = document.getElementById('filter_search').value.toLowerCase();
+
+        let filtered = allComplaints;
+
+        if (type) filtered = filtered.filter(c => c.complainant_type === type);
+        if (status) filtered = filtered.filter(c => c.status === status);
+        if (priority) filtered = filtered.filter(c => c.priority === priority);
+        if (search) filtered = filtered.filter(c => 
+            c.complainant_name.toLowerCase().includes(search) ||
+            c.description.toLowerCase().includes(search) ||
+            c.issue_type.toLowerCase().includes(search)
+        );
+
+        displayAllComplaints(filtered);
+        updateStats(filtered);
+    }
+
+    function updateStats(complaints = allComplaints) {
+        document.getElementById('total-complaints').textContent = complaints.length;
+        document.getElementById('open-complaints').textContent = complaints.filter(c => c.status === 'open').length;
+        document.getElementById('inprogress-complaints').textContent = complaints.filter(c => c.status === 'in_progress').length;
+        document.getElementById('resolved-complaints').textContent = complaints.filter(c => c.status === 'resolved').length;
+    }
+
+    document.getElementById('addComplaintForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const data = {
+            complainant_type: document.getElementById('comp_type').value,
+            complainant_name: document.getElementById('comp_complainant').value,
+            issue_type: document.getElementById('comp_issue_type').value,
+            priority: document.getElementById('comp_priority').value,
+            description: document.getElementById('comp_description').value,
+            status: 'open'
+        };
+
+        try {
+            const response = await fetch('/api/complaints/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify(data)
+            });
+
+            if (response.ok) {
+                bootstrap.Modal.getInstance(document.getElementById('addComplaintModal')).hide();
+                this.reset();
+                loadComplaints();
+                alert('Complaint submitted successfully!');
+            }
+        } catch (error) {
+            console.error('Error submitting complaint:', error);
+        }
+    });
+
+    function updateComplainantField() {
+        const type = document.getElementById('comp_type').value;
+        document.getElementById('comp_complainant').placeholder = type === 'agent' ? 'Enter agent name' : 'Enter employee name';
+    }
+
+    // Load complaints on page load
+    window.addEventListener('load', loadComplaints);
+</script>
+{% endblock %}

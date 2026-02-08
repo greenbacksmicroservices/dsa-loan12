@@ -1,0 +1,28 @@
+{% extends "base/base.html" %}
+
+{% block navbar_title %}Agent Dashboard{% endblock %}
+
+{% block sidebar %}
+    <div class="sidebar" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding-top: 70px;">
+        <div class="p-3">
+            <h5 class="text-white mb-3">Agent Menu</h5>
+            <nav class="nav flex-column">
+                <a href="{% url 'agent_dashboard' %}" class="nav-link text-light {% if request.resolver_match.url_name == 'agent_dashboard' %}active bg-white text-dark{% endif %}">
+                    <i class="fas fa-chart-line"></i> Dashboard
+                </a>
+                <a href="{% url 'agent_my_loans' %}" class="nav-link text-light {% if request.resolver_match.url_name == 'agent_my_loans' %}active bg-white text-dark{% endif %}">
+                    <i class="fas fa-file-alt"></i> My Loans
+                </a>
+                <a href="{% url 'agent_profile' %}" class="nav-link text-light">
+                    <i class="fas fa-user-circle"></i> Profile
+                </a>
+                <hr class="border-light">
+                <a href="{% url 'logout' %}" class="nav-link text-light">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            </nav>
+        </div>
+    </div>
+{% endblock %}
+
+{% block page_title %}Agent Panel - {% block agent_page_title %}Dashboard{% endblock %}{% endblock %}

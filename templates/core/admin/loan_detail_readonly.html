@@ -1,0 +1,347 @@
+{% extends "core/admin/admin_base.html" %}
+{% load static %}
+
+{% block title %}Loan Application Details - {{ applicant.full_name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-1">
+                        <i class="fas fa-file-alt text-primary"></i> Loan Application Details
+                    </h2>
+                    <p class="text-muted small mb-0">Applicant: <strong>{{ applicant.full_name }}</strong></p>
+                </div>
+                <a href="{% url 'admin_new_entries' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to List
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Application Details Column -->
+        <div class="col-lg-8">
+            <!-- Applicant Information - Section 1 -->
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-header bg-light border-0">
+                    <h5 class="mb-0">
+                        <i class="fas fa-user text-info"></i> Applicant Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <small class="text-muted d-block">Full Name</small>
+                            <p class="font-weight-bold mb-0">{{ applicant.full_name }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <small class="text-muted d-block">Email</small>
+                            <p class="font-weight-bold mb-0">{{ applicant.email }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <small class="text-muted d-block">Mobile Number</small>
+                            <p class="font-weight-bold mb-0">{{ applicant.mobile }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <small class="text-muted d-block">Gender</small>
+                            <p class="font-weight-bold mb-0">{{ applicant.gender|default:"N/A" }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <small class="text-muted d-block">City</small>
+                            <p class="font-weight-bold mb-0">{{ applicant.city }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <small class="text-muted d-block">State</small>
+                            <p class="font-weight-bold mb-0">{{ applicant.state }}</p>
+                        </div>
+                        <div class="col-md-6 mb-0">
+                            <small class="text-muted d-block">PIN Code</small>
+                            <p class="font-weight-bold mb-0">{{ applicant.pin_code }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loan Request Details - Section 2 -->
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-header bg-light border-0">
+                    <h5 class="mb-0">
+                        <i class="fas fa-money-bill-wave text-success"></i> Loan Request Details
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <small class="text-muted d-block">Loan Type</small>
+                            <p class="font-weight-bold mb-0">{{ applicant.loan_type|default:"N/A" }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <small class="text-muted d-block">Loan Amount</small>
+                            <p class="font-weight-bold mb-0">₹ {{ applicant.loan_amount|floatformat:2 }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <small class="text-muted d-block">Tenure (Months)</small>
+                            <p class="font-weight-bold mb-0">{{ applicant.tenure_months|default:"N/A" }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <small class="text-muted d-block">Loan Purpose</small>
+                            <p class="font-weight-bold mb-0">{{ applicant.loan_purpose|default:"N/A" }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <small class="text-muted d-block">Interest Rate (%)</small>
+                            <p class="font-weight-bold mb-0">{{ applicant.interest_rate|default:"N/A" }}%</p>
+                        </div>
+                        <div class="col-md-6 mb-0">
+                            <small class="text-muted d-block">Expected EMI</small>
+                            <p class="font-weight-bold mb-0">₹ {{ applicant.emi|default:"Calculated"|floatformat:2 }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bank Details - Section 3 -->
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-header bg-light border-0">
+                    <h5 class="mb-0">
+                        <i class="fas fa-university text-warning"></i> Bank Details
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <small class="text-muted d-block">Bank Name</small>
+                            <p class="font-weight-bold mb-0">{{ applicant.bank_name|default:"N/A" }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <small class="text-muted d-block">Account Type</small>
+                            <p class="font-weight-bold mb-0">{{ applicant.bank_type|default:"N/A" }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <small class="text-muted d-block">Account Number</small>
+                            <p class="font-weight-bold mb-0 text-monospace">{{ applicant.account_number|default:"N/A" }}</p>
+                        </div>
+                        <div class="col-md-6 mb-0">
+                            <small class="text-muted d-block">IFSC Code</small>
+                            <p class="font-weight-bold mb-0 text-monospace">{{ applicant.ifsc_code|default:"N/A" }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Documents Section - Section 4 -->
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-header bg-light border-0">
+                    <h5 class="mb-0">
+                        <i class="fas fa-file-pdf text-danger"></i> Documents ({{ documents.count }})
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if documents %}
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Document Type</th>
+                                    <th>File Name</th>
+                                    <th>Uploaded Date</th>
+                                    <th width="120" class="text-center">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for doc in documents %}
+                                <tr>
+                                    <td>
+                                        <span class="badge badge-secondary">
+                                            {{ doc.get_document_type_display|default:doc.document_type }}
+                                        </span>
+                                    </td>
+                                    <td>{{ doc.file.name|cut:"/"|last }}</td>
+                                    <td>
+                                        <small class="text-muted">
+                                            {{ doc.uploaded_at|date:"d M Y, h:i A" }}
+                                        </small>
+                                    </td>
+                                    <td class="text-center">
+                                        {% if doc.file %}
+                                        <a href="{{ doc.file.url }}" class="btn btn-sm btn-outline-primary" 
+                                           target="_blank" title="View Document">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <a href="{{ doc.file.url }}" download class="btn btn-sm btn-outline-secondary" 
+                                           title="Download Document">
+                                            <i class="fas fa-download"></i>
+                                        </a>
+                                        {% else %}
+                                        <span class="text-muted small">N/A</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info mb-0">
+                        <i class="fas fa-info-circle"></i> No documents uploaded yet
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Application Metadata -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-body small">
+                    <div class="row text-muted">
+                        <div class="col-6">
+                            <strong>Status:</strong> 
+                            <span class="badge badge-warning">{{ loan_app.status }}</span>
+                        </div>
+                        <div class="col-6 text-right">
+                            <strong>Submitted:</strong> {{ loan_app.created_at|date:"d M Y, h:i A" }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Assignment Panel Column -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm sticky-top" style="top: 20px;">
+                <div class="card-header bg-primary text-white border-0">
+                    <h5 class="mb-0">
+                        <i class="fas fa-user-tie"></i> Assignment
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <!-- Current Status -->
+                    <div class="mb-4">
+                        <label class="form-label text-muted small">
+                            <strong>Application Status</strong>
+                        </label>
+                        <div class="alert alert-warning mb-0">
+                            <strong>{{ loan_app.status }}</strong>
+                            <small class="d-block mt-1">Waiting to be assigned to an employee</small>
+                        </div>
+                    </div>
+
+                    <!-- Assignment Form -->
+                    <form id="assignmentForm">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label class="form-label" for="employeeSelect">
+                                <strong>Assign To Employee</strong>
+                            </label>
+                            <select class="form-control" id="employeeSelect" required>
+                                <option value="">-- Select Employee --</option>
+                                {% for employee in employees %}
+                                <option value="{{ employee.id }}">
+                                    {{ employee.first_name }} {{ employee.last_name }} ({{ employee.email }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <small class="text-muted d-block mt-1">
+                                Select the employee to process this application
+                            </small>
+                        </div>
+
+                        <button type="button" class="btn btn-primary w-100" onclick="assignApplication()">
+                            <i class="fas fa-check-circle"></i> Assign to Employee
+                        </button>
+                    </form>
+
+                    <hr class="my-3">
+
+                    <!-- Assignment Info -->
+                    <div class="text-muted small">
+                        <p class="mb-2">
+                            <strong>What happens next:</strong>
+                        </p>
+                        <ul class="pl-3 mb-0">
+                            <li>Application status → "Waiting for Processing"</li>
+                            <li>Employee will receive the assignment</li>
+                            <li>Employee has 24 hours to take action</li>
+                            <li>Follow-up triggers if no action after 24h</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .text-monospace {
+        font-family: 'Courier New', monospace;
+        letter-spacing: 0.5px;
+    }
+
+    @media (max-width: 992px) {
+        .sticky-top {
+            position: static !important;
+            top: auto !important;
+        }
+    }
+</style>
+
+<script>
+function assignApplication() {
+    const employeeId = document.getElementById('employeeSelect').value;
+    
+    if (!employeeId) {
+        alert('Please select an employee');
+        return;
+    }
+
+    // Show loading state
+    const btn = event.target;
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Assigning...';
+
+    // Send assignment request
+    fetch('{% url "api_admin_assign_new_entry" applicant.id %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify({
+            'employee_id': parseInt(employeeId)
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Show success message
+            const alert = document.createElement('div');
+            alert.className = 'alert alert-success alert-dismissible fade show mt-3';
+            alert.innerHTML = `
+                <strong>Success!</strong> ${data.message}
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+            `;
+            document.querySelector('.card-body').insertBefore(alert, document.querySelector('form'));
+            
+            // Redirect after 2 seconds
+            setTimeout(() => {
+                window.location.href = '{% url "admin_new_entries" %}';
+            }, 2000);
+        } else {
+            alert('Error: ' + (data.error || 'Assignment failed'));
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error: ' + error);
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,236 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}All Loans - DSA Loan Management System{% endblock %}
+
+{% block content %}
+<!-- Header with Back Button -->
+<div class="dashboard-header bg-white p-3 mb-4 border-bottom shadow-sm" style="background: linear-gradient(135deg, #667eea 0%, #250b66 100%); border: none; border-radius: 0 0 16px 16px;">
+    <div class="container-fluid d-flex justify-content-between align-items-center">
+        <div>
+            <h2 class="fw-bold mb-0 text-white" style="font-size: 28px; letter-spacing: 0.5px;">
+                <i class="bi bi-list-task me-2" style="font-size: 24px;"></i>All Loans
+            </h2>
+            <p class="text-white-50 mb-0 mt-1" style="font-size: 13px;">View and manage all your assigned loans</p>
+        </div>
+        <a href="/employee/dashboard/" class="btn btn-light fw-semibold rounded-pill shadow-sm" style="padding: 8px 18px; font-size: 13px;">
+            <i class="bi bi-arrow-left"></i> Back
+        </a>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="container-fluid mb-3">
+    <div class="row g-2">
+        <div class="col-md-4">
+            <input id="search-input" class="form-control bg-light border-0 rounded-3"
+                   placeholder="🔍 Search by name or ID" style="font-size: 14px;">
+        </div>
+        <div class="col-md-3">
+            <select id="status-filter" class="form-select bg-light border-0 rounded-3" style="font-size: 14px;">
+                <option value="">📊All Status</option>
+                <option value="waiting">⏳ Waiting</option>
+                <option value="approved">✅ Approved</option>
+                <option value="rejected">❌ Rejected</option>
+                <option value="disbursed">💰 Disbursed</option>
+            </select>
+        </div>
+        <div class="col-md-5 text-end">
+            <button id="reset-filters" class="btn btn-outline-secondary btn-sm fw-semibold rounded-3">
+                <i class="bi bi-arrow-clockwise"></i> Reset
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Grid Table -->
+<div class="container-fluid">
+    <div id="loans-container" class="text-center py-5">
+        <div class="spinner-border spinner-border-sm"></div>
+        <p class="text-muted mt-2">Loading loans...</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let ALL_LOANS = [];
+
+function getCookie(name) {
+    return document.cookie.split('; ')
+        .find(row => row.startsWith(name + '='))
+        ?.split('=')[1];
+}
+
+function confirmDelete(loanId) {
+    if (confirm('Are you sure you want to delete this loan?')) {
+        deleteLoan(loanId);
+    }
+}
+
+async function deleteLoan(loanId) {
+    try {
+        const res = await fetch(`/api/employee/loan/${loanId}/delete/`, {
+            method: 'DELETE',
+            headers: { 
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include'
+        });
+        
+        if (res.ok) {
+            alert('Loan deleted successfully');
+            loadLoans(); // Reload the table
+        } else {
+            const data = await res.json();
+            alert('Error: ' + (data.error || 'Failed to delete loan'));
+        }
+    } catch (error) {
+        console.error('Delete error:', error);
+        alert('Error deleting loan: ' + error.message);
+    }
+}
+
+async function loadLoans() {
+    try {
+        console.log('Fetching loans from /api/employee/all-loans/');
+        const res = await fetch('/api/employee/all-loans/', {
+            method: 'GET',
+            headers: { 
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include'
+        });
+
+        console.log('Response status:', res.status);
+        if (!res.ok) {
+            const errorData = await res.json().catch(() => ({}));
+            throw new Error(`HTTP ${res.status}: ${errorData.error || res.statusText}`);
+        }
+        
+        const data = await res.json();
+        console.log('Data received:', data);
+        
+        ALL_LOANS = data.loans || [];
+        
+        renderLoansTable(ALL_LOANS);
+    } catch (error) {
+        console.error('Error loading loans:', error);
+        document.getElementById('loans-container').innerHTML = `
+            <div class="alert alert-danger" role="alert">
+                <strong>❌ Error loading loans!</strong><br/>
+                ${error.message}<br/>
+                <small>Check browser console (F12) for details</small>
+            </div>
+        `;
+    }
+}
+
+function renderLoansTable(loans) {
+    const container = document.getElementById('loans-container');
+
+    if (!loans.length) {
+        container.innerHTML = `
+            <div class="text-center py-5">
+                <i class="bi bi-inbox" style="font-size: 48px; color: #d1d5db;"></i>
+                <p class="text-muted mt-3">No loans assigned yet</p>
+            </div>
+        `;
+        return;
+    }
+
+    const statusMap = {
+        'new_entry': 'primary',
+        'waiting': 'warning',
+        'follow_up': 'info',
+        'approved': 'success',
+        'rejected': 'danger',
+        'disbursed': 'success'
+    };
+    
+    const statusLabels = {
+        'new_entry': 'New Entry',
+        'waiting': 'Waiting',
+        'follow_up': 'Follow-up',
+        'approved': 'Approved',
+        'rejected': 'Rejected',
+        'disbursed': 'Disbursed'
+    };
+
+    container.innerHTML = `
+    <div class="table-responsive">
+        <table class="table table-striped table-hover align-middle mb-0" style="border-collapse: collapse;">
+            <thead>
+                <tr style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none;">
+                    <th style="padding: 12px; border: none; font-weight: 600;">Loan ID</th>
+                    <th style="padding: 12px; border: none; font-weight: 600;">Applicant</th>
+                    <th style="padding: 12px; border: none; font-weight: 600;">Type</th>
+                    <th style="padding: 12px; border: none; font-weight: 600;">Amount</th>
+                    <th style="padding: 12px; border: none; font-weight: 600;">Status</th>
+                    <th style="padding: 12px; border: none; font-weight: 600;">Date</th>
+                    <th style="padding: 12px; border: none; font-weight: 600;">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${loans.map((l, idx) => `
+                    <tr style="border-bottom: 1px solid #e0e0e0; background: ${idx % 2 === 0 ? '#f8f9ff' : 'white'};">
+                        <td style="padding: 12px; border: none;"><strong>${l.loan_id || '#' + l.id}</strong></td>
+                        <td style="padding: 12px; border: none;">${l.applicant_name || 'N/A'}</td>
+                        <td style="padding: 12px; border: none;"><span style="background: #e3f2fd; color: #1976d2; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 500;">${l.loan_type || 'N/A'}</span></td>
+                        <td style="padding: 12px; border: none; font-weight: 600;">₹ ${new Intl.NumberFormat('en-IN').format(l.loan_amount || 0)}</td>
+                        <td style="padding: 12px; border: none;">
+                            <span class="badge" style="background: ${statusMap[l.status] === 'warning' ? '#ffc107' : statusMap[l.status] === 'success' ? '#28a745' : statusMap[l.status] === 'danger' ? '#dc3545' : statusMap[l.status] === 'info' ? '#17a2b8' : '#6c757d'}; font-size: 11px; padding: 5px 10px; border-radius: 12px;">
+                                ${statusLabels[l.status] || l.status || 'Unknown'}
+                            </span>
+                        </td>
+                        <td style="padding: 12px; border: none; font-size: 13px;">${l.assigned_date || 'N/A'}</td>
+                        <td style="padding: 12px; border: none;">
+                            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                                <a href="/employee/loan/${l.id}/detail/" class="btn btn-sm" title="View details" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 6px; font-size: 11px; padding: 6px 10px; display: flex; align-items: center; gap: 4px;">
+                                    <i class="bi bi-eye"></i> View
+                                </a>
+                                <a href="/employee/loan/${l.id}/edit/" class="btn btn-sm" title="Edit loan" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; border: none; border-radius: 6px; font-size: 11px; padding: 6px 10px; display: flex; align-items: center; gap: 4px;">
+                                    <i class="bi bi-pencil"></i> Edit
+                                </a>
+                                <button onclick="confirmDelete(${l.id})" class="btn btn-sm" title="Delete loan" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; border: none; border-radius: 6px; font-size: 11px; padding: 6px 10px; display: flex; align-items: center; gap: 4px; cursor: pointer;">
+                                    <i class="bi bi-trash"></i> Delete
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    </div>`;
+}
+
+function applyFilters() {
+    const search = document.getElementById('search-input').value.toLowerCase();
+    const status = document.getElementById('status-filter').value;
+
+    const filtered = ALL_LOANS.filter(l => {
+        const name = (l.applicant_name || '').toLowerCase();
+        const id = String(l.id);
+
+        return (!search || name.includes(search) || id.includes(search)) &&
+               (!status || l.status === status);
+    });
+
+    renderLoansTable(filtered);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadLoans();
+
+    document.getElementById('search-input').addEventListener('input', applyFilters);
+    document.getElementById('status-filter').addEventListener('change', applyFilters);
+    document.getElementById('reset-filters').addEventListener('click', () => {
+        document.getElementById('search-input').value = '';
+        document.getElementById('status-filter').value = '';
+        renderLoansTable(ALL_LOANS);
+    });
+});
+</script>
+{% endblock %}

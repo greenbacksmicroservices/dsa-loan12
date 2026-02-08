@@ -1,0 +1,127 @@
+{% extends "base/admin_base.html" %}
+
+{% block admin_page_title %}Dashboard{% endblock %}
+
+{% block page_content %}
+<div class="container-fluid">
+    <!-- STATS CARDS - DASHBOARD ONLY -->
+    <div class="row mb-4">
+        <div class="col-md-2 mb-3">
+            <div class="card text-center bg-primary text-white">
+                <div class="card-body">
+                    <h6 class="card-title text-light">Total Loans</h6>
+                    <h2 id="total-loans">{{ stats.total_loans }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2 mb-3">
+            <div class="card text-center bg-info text-white">
+                <div class="card-body">
+                    <h6 class="card-title text-light">New Entry</h6>
+                    <h2 id="new-entry">{{ stats.new_entry }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2 mb-3">
+            <div class="card text-center bg-warning text-dark">
+                <div class="card-body">
+                    <h6 class="card-title">Processing</h6>
+                    <h2 id="processing">{{ stats.processing }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2 mb-3">
+            <div class="card text-center bg-success text-white">
+                <div class="card-body">
+                    <h6 class="card-title text-light">Approved</h6>
+                    <h2 id="approved">{{ stats.approved }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2 mb-3">
+            <div class="card text-center bg-danger text-white">
+                <div class="card-body">
+                    <h6 class="card-title text-light">Rejected</h6>
+                    <h2 id="rejected">{{ stats.rejected }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2 mb-3">
+            <div class="card text-center bg-secondary text-white">
+                <div class="card-body">
+                    <h6 class="card-title text-light">Disbursed</h6>
+                    <h2 id="disbursed">{{ stats.disbursed }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- QUICK STATS SUMMARY -->
+    <div class="row mb-4">
+        <div class="col-lg-12">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="card-title">Loan Status Summary</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-4">
+                            <p class="text-muted">Total Value</p>
+                            <h4>${{ stats.total_value }}</h4>
+                        </div>
+                        <div class="col-md-4">
+                            <p class="text-muted">Disbursed Value</p>
+                            <h4>${{ stats.disbursed_value }}</h4>
+                        </div>
+                        <div class="col-md-4">
+                            <p class="text-muted">Pending Value</p>
+                            <h4>${{ stats.pending_value }}</h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- RECENT ACTIVITIES -->
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="card-title">Recent Activities</h5>
+                </div>
+                <div class="card-body">
+                    <div class="activity-list">
+                        {% for activity in recent_activities %}
+                            <div class="activity-item mb-3">
+                                <span class="badge bg-{{ activity.badge_color }}">{{ activity.status }}</span>
+                                <span class="ms-2">{{ activity.description }}</span>
+                                <small class="text-muted float-end">{{ activity.timestamp }}</small>
+                            </div>
+                        {% empty %}
+                            <p class="text-muted">No recent activities</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Load dashboard stats dynamically
+    document.addEventListener('DOMContentLoaded', function() {
+        fetch('{% url "api_admin_dashboard_stats" %}')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('total-loans').textContent = data.total_loans;
+                document.getElementById('new-entry').textContent = data.new_entry;
+                document.getElementById('processing').textContent = data.processing;
+                document.getElementById('approved').textContent = data.approved;
+                document.getElementById('rejected').textContent = data.rejected;
+                document.getElementById('disbursed').textContent = data.disbursed;
+            })
+            .catch(error => console.error('Error loading stats:', error));
+    });
+</script>
+{% endblock %}

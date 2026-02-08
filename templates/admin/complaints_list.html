@@ -1,0 +1,102 @@
+{% extends "core/admin/admin_base.html" %}
+{% load static %}
+
+{% block title %}Complaints - Admin{% endblock %}
+{% block page_title %}Complaints Management{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Page Header -->
+    <div class="flex justify-between items-center">
+        <h1 class="text-3xl font-bold text-gray-800">Complaints</h1>
+        <span class="text-sm text-gray-500">
+            Total: {{ complaints|length }}
+        </span>
+    </div>
+
+    <!-- Complaints Card -->
+    <div class="bg-white rounded-xl shadow">
+
+        <!-- Card Header -->
+        <div class="flex justify-between items-center px-6 py-4 border-b">
+            <h2 class="text-lg font-semibold text-gray-800">
+                User Complaints
+            </h2>
+        </div>
+
+        <!-- Card Body -->
+        <div class="p-6 overflow-x-auto">
+
+            {% if complaints %}
+            <table class="min-w-full border-collapse">
+                <thead>
+                    <tr class="bg-gray-100 text-left text-sm text-gray-700">
+                        <th class="px-4 py-3">ID</th>
+                        <th class="px-4 py-3">User</th>
+                        <th class="px-4 py-3">Subject</th>
+                        <th class="px-4 py-3">Status</th>
+                        <th class="px-4 py-3">Date</th>
+                        <th class="px-4 py-3 text-center">Action</th>
+                    </tr>
+                </thead>
+
+                <tbody class="divide-y">
+                    {% for complaint in complaints %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-3 font-mono text-sm">
+                            #{{ complaint.id }}
+                        </td>
+
+                        <td class="px-4 py-3 font-medium text-gray-800">
+                            {{ complaint.user.get_full_name|default:complaint.user.username }}
+                        </td>
+
+                        <td class="px-4 py-3 text-sm text-gray-700">
+                            {{ complaint.subject }}
+                        </td>
+
+                        <td class="px-4 py-3">
+                            {% if complaint.status == "Resolved" %}
+                                <span class="px-3 py-1 text-xs rounded-full bg-green-100 text-green-700 font-semibold">
+                                    Resolved
+                                </span>
+                            {% elif complaint.status == "In Progress" %}
+                                <span class="px-3 py-1 text-xs rounded-full bg-yellow-100 text-yellow-700 font-semibold">
+                                    In Progress
+                                </span>
+                            {% else %}
+                                <span class="px-3 py-1 text-xs rounded-full bg-red-100 text-red-700 font-semibold">
+                                    Pending
+                                </span>
+                            {% endif %}
+                        </td>
+
+                        <td class="px-4 py-3 text-sm text-gray-600">
+                            {{ complaint.created_at|date:"d M Y" }}
+                        </td>
+
+                        <td class="px-4 py-3 text-center">
+                            <a href="{% url 'admin:core_complaint_change' complaint.id %}"
+                               class="text-blue-600 hover:text-blue-800"
+                               title="View Complaint">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            {% else %}
+            <!-- Empty State -->
+            <div class="flex flex-col items-center justify-center py-16">
+                <i class="fas fa-flag text-gray-300 text-5xl mb-4"></i>
+                <p class="text-gray-500 text-lg">No complaints found</p>
+            </div>
+            {% endif %}
+
+        </div>
+    </div>
+</div>
+{% endblock %}

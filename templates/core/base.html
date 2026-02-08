@@ -1,0 +1,1143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}DSA Loan Management System{% endblock %}</title>
+    <link rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75' font-weight='bold' fill='%234f46e5'>DSA</text></svg>">
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <!-- Font Awesome 6 Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    
+    <!-- Custom CSS -->
+    <style>
+        :root {
+            --sidebar-width: 260px;
+            --primary-color: #4f46e5;
+            --secondary-color: #64748b;
+            --success-color: #10b981;
+            --danger-color: #ef4444;
+            --warning-color: #f59e0b;
+            --info-color: #3b82f6;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
+        }
+
+        /* Sidebar Styles */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            width: var(--sidebar-width);
+            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+            color: white;
+            padding: 20px 0;
+            z-index: 1000;
+            overflow-y: auto;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .sidebar-header {
+            padding: 0 20px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .sidebar-header h4 {
+            color: white;
+            font-weight: 600;
+            margin: 0;
+            font-size: 24px;
+            letter-spacing: 2px;
+        }
+
+        /* Profile Section Styles */
+        .sidebar-profile-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .profile-photo {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            overflow: hidden;
+            flex-shrink: 0;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .profile-photo img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* Large Profile Photo for Agent Sidebar */
+        .profile-photo-large {
+            width: 90px;
+            height: 90px;
+            border-radius: 50%;
+            overflow: hidden;
+            flex-shrink: 0;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .profile-photo-large img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* Agent Profile ID Number in Sidebar */
+        .profile-id-number {
+            color: rgba(255, 255, 255, 0.8);
+            margin: 2px 0 0;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+
+        .profile-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .profile-name {
+            color: white;
+            font-weight: 600;
+            margin: 0;
+            font-size: 14px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .profile-role {
+            color: rgba(255, 255, 255, 0.7);
+            margin: 4px 0 0;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .sidebar-menu {
+            list-style: none;
+            padding: 10px 0;
+        }
+
+        .sidebar-menu li {
+            margin: 0;
+        }
+
+        .sidebar-menu li.sidebar-divider {
+            height: 1px;
+            background: rgba(255, 255, 255, 0.1);
+            margin: 10px 0;
+            padding: 0;
+        }
+
+        .sidebar-menu a {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            transition: all 0.3s ease;
+            border-left: 3px solid transparent;
+            font-size: 14px;
+        }
+
+        .sidebar-menu a:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: white;
+            border-left-color: var(--primary-color);
+        }
+
+        .sidebar-menu a.active {
+            background-color: rgba(79, 70, 229, 0.2);
+            color: white;
+            border-left-color: var(--primary-color);
+        }
+
+        .sidebar-menu a i {
+            margin-right: 12px;
+            font-size: 18px;
+            width: 24px;
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: var(--sidebar-width);
+            padding: 30px;
+            min-height: 100vh;
+            padding-top: 0;
+        }
+        }
+
+        /* Header */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .page-header h2 {
+            color: #1e293b;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        /* Modern Summary Cards - Colorful Design */
+        .summary-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            transition: all 0.3s ease;
+            border: none;
+            border-top: 4px solid #4f46e5;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            min-height: 200px;
+            justify-content: space-between;
+            cursor: pointer;
+        }
+
+        .summary-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.5) 100%);
+            pointer-events: none;
+        }
+
+        .summary-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+        }
+
+        .card-icon {
+            font-size: 40px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 60px;
+            height: 60px;
+            border-radius: 10px;
+            color: white;
+        }
+
+        .summary-card-new-entry {
+            border-top-color: #3b82f6;
+            background: linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%);
+        }
+
+        .summary-card-new-entry .card-icon {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        }
+
+        .summary-card-waiting {
+            border-top-color: #f59e0b;
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        }
+
+        .summary-card-waiting .card-icon {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        }
+
+        .summary-card-followup {
+            border-top-color: #ef4444;
+            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+        }
+
+        .summary-card-followup .card-icon {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        }
+
+        .summary-card-approved {
+            border-top-color: #10b981;
+            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+        }
+
+        .summary-card-approved .card-icon {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+
+        .summary-card-rejected {
+            border-top-color: #8b5cf6;
+            background: linear-gradient(135deg, #ede9fe 0%, #ddd6fe 100%);
+        }
+
+        .summary-card-rejected .card-icon {
+            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+        }
+
+        .summary-card-disbursed {
+            border-top-color: #06b6d4;
+            background: linear-gradient(135deg, #cffafe 0%, #a5f3fc 100%);
+        }
+
+        .summary-card-disbursed .card-icon {
+            background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+        }
+
+        .card-label {
+            font-size: 13px;
+            color: #64748b;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+            z-index: 1;
+        }
+
+        .card-count {
+            font-size: 36px;
+            font-weight: 800;
+            color: #1e293b;
+            margin-bottom: 12px;
+            z-index: 1;
+        }
+
+        .card-view-btn {
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            color: #4f46e5;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 6px 12px;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+            z-index: 1;
+            white-space: nowrap;
+        }
+
+        .card-view-btn:hover {
+            background: white;
+            color: #4f46e5;
+            box-shadow: 0 4px 8px rgba(79, 70, 229, 0.2);
+            transform: scale(1.05);
+        }
+
+        .card-view-btn i {
+            margin-right: 4px;
+        }
+
+        @media (max-width: 1200px) {
+            .summary-card {
+                min-height: 180px;
+                padding: 15px;
+            }
+            .card-icon {
+                font-size: 32px;
+                width: 50px;
+                height: 50px;
+            }
+            .card-count {
+                font-size: 28px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .summary-card {
+                min-height: 160px;
+                padding: 12px;
+            }
+            .card-icon {
+                font-size: 28px;
+                width: 45px;
+                height: 45px;
+            }
+            .card-count {
+                font-size: 24px;
+            }
+            .card-label {
+                font-size: 11px;
+            }
+            .card-view-btn {
+                font-size: 10px;
+                padding: 5px 10px;
+            }
+        }
+
+        /* Stat Cards - Single Line Compact Format (Keep for backward compatibility) */
+        .stat-cards-single-line {
+            display: none;
+        }
+
+        .stat-item {
+            display: none;
+        }
+
+        .stat-item:hover {
+            background: rgba(79, 70, 229, 0.1);
+            transform: translateX(5px);
+        }
+
+        .stat-label {
+            font-size: 13px;
+            color: #64748b;
+            font-weight: 600;
+            min-width: 120px;
+            text-transform: capitalize;
+        }
+
+        .stat-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1e293b;
+            min-width: 35px;
+            text-align: center;
+        }
+
+        @media (max-width: 768px) {
+            .stat-cards-single-line {
+                display: none;
+            }
+
+                font-size: 18px;
+            }
+        }
+
+        /* Stat Cards - Legacy Grid (kept for backward compatibility) */
+        .stat-card {
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.3s ease;
+            border-left: 4px solid;
+            margin-bottom: 20px;
+            min-height: 140px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            height: 100%;
+            color: white;
+            font-weight: 500;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2);
+        }
+
+        .stat-card.new-entry { 
+            background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+            border-left-color: #0284c7;
+            box-shadow: 0 4px 15px rgba(14, 165, 233, 0.3);
+        }
+        
+        .stat-card.new-entry:hover {
+            box-shadow: 0 8px 25px rgba(14, 165, 233, 0.4);
+        }
+
+        .stat-card.waiting { 
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            border-left-color: #d97706;
+            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+        }
+        
+        .stat-card.waiting:hover {
+            box-shadow: 0 8px 25px rgba(245, 158, 11, 0.4);
+        }
+
+        .stat-card.follow-up { 
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+            border-left-color: #ea580c;
+            box-shadow: 0 4px 15px rgba(249, 115, 22, 0.3);
+        }
+        
+        .stat-card.follow-up:hover {
+            box-shadow: 0 8px 25px rgba(249, 115, 22, 0.4);
+        }
+
+        .stat-card.approved { 
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            border-left-color: #059669;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+        
+        .stat-card.approved:hover {
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+        }
+
+        .stat-card.rejected { 
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            border-left-color: #dc2626;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+        }
+        
+        .stat-card.rejected:hover {
+            box-shadow: 0 8px 25px rgba(239, 68, 68, 0.4);
+        }
+
+        .stat-card.disbursed { 
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            border-left-color: #2563eb;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+        }
+        
+        .stat-card.disbursed:hover {
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+        }
+
+        .stat-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .stat-card-title {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.95);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            flex: 1;
+            padding-right: 8px;
+            line-height: 1.3;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-card-icon {
+            font-size: 28px;
+            opacity: 1;
+            flex-shrink: 0;
+            color: rgba(255, 255, 255, 0.95) !important;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+        }
+
+        .stat-card-value {
+            font-size: 36px;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 12px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+        }
+
+        .stat-card-footer {
+            margin-top: 10px;
+        }
+        
+        /* Responsive Grid for Stat Cards */
+        @media (max-width: 1400px) {
+            [class*='col-md'] {
+                margin-bottom: 15px !important;
+            }
+        }
+        
+        @media (max-width: 992px) {
+            .stat-card-value {
+                font-size: 28px;
+            }
+            
+            .stat-card {
+                min-height: 130px;
+                padding: 18px;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .stat-card-value {
+                font-size: 24px;
+            }
+            
+            .stat-card-title {
+                font-size: 11px;
+            }
+            
+            .stat-card {
+                min-height: 120px;
+                padding: 15px;
+            }
+            
+            .stat-card-icon {
+                font-size: 20px;
+            }
+        }
+        
+        /* Chart Container Styling */
+        .chart-container {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            min-height: 300px;
+            display: flex;
+            flex-direction: column;
+            border-top: 4px solid #0ea5e9;
+            transition: all 0.3s ease;
+        }
+        
+        .chart-container:nth-child(2) {
+            border-top-color: #3b82f6;
+        }
+        
+        .chart-container:hover {
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+            transform: translateY(-2px);
+        }
+        
+        .chart-title {
+            color: #1e293b;
+            font-weight: 700;
+            margin: 0 0 15px 0;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Chart Container */
+        .chart-container {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            height: 400px;
+            display: flex;
+            flex-direction: column;
+            border-top: 4px solid #0ea5e9;
+            transition: all 0.3s ease;
+        }
+
+        .chart-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 15px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .chart-container canvas {
+            max-height: 320px !important;
+        }
+
+        /* Table Styles */
+        .table-container {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        .table {
+            margin-bottom: 0;
+        }
+
+        .table thead th {
+            background-color: #f8fafc;
+            color: #475569;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        /* Badge Styles */
+        .badge {
+            padding: 6px 12px;
+            font-weight: 600;
+            font-size: 12px;
+            border-radius: 20px;
+            letter-spacing: 0.3px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .badge.bg-secondary {
+            background: linear-gradient(135deg, #64748b 0%, #475569 100%) !important;
+        }
+        
+        .badge.bg-warning {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+        }
+        
+        .badge.bg-success {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+        }
+        
+        .badge.bg-danger {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+        }
+        
+        .badge.bg-primary {
+            background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%) !important;
+        }
+
+        /* Button Styles */
+        .btn {
+            border-radius: 8px;
+            padding: 8px 16px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .btn-sm {
+            padding: 4px 8px;
+            font-size: 11px;
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+            }
+
+            .sidebar.show {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+                padding: 20px;
+            }
+
+            .mobile-toggle {
+                display: block;
+                position: fixed;
+                top: 15px;
+                left: 15px;
+                z-index: 1001;
+                background: var(--primary-color);
+                color: white;
+                border: none;
+                padding: 10px;
+                border-radius: 8px;
+            }
+        }
+
+        .mobile-toggle {
+            display: none;
+        }
+
+        /* Activity Panel */
+        .activity-panel {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            border-left: 4px solid #f59e0b;
+        }
+        
+        .activity-panel:nth-child(2) {
+            border-left-color: #ef4444;
+        }
+        
+        .activity-panel:hover {
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+            transform: translateY(-2px);
+        }
+
+        .activity-item {
+            padding: 15px 0;
+            border-bottom: 1px solid #e2e8f0;
+            transition: all 0.3s ease;
+        }
+        
+        .activity-item:hover {
+            background: #f8fafc;
+            padding: 15px 12px;
+            margin: 0 -12px;
+            border-radius: 8px;
+        }
+
+        .activity-item:last-child {
+            border-bottom: none;
+        }
+
+        .activity-time {
+            font-size: 12px;
+            color: #64748b;
+            margin-top: 4px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+    </style>
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Mobile Toggle Button -->
+    <button class="mobile-toggle" onclick="toggleSidebar()">
+        <i class="bi bi-list"></i>
+    </button>
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <!-- Branding Section -->
+        <div class="sidebar-header">
+            <h4 style="margin: 0; font-weight: 700;">DSA</h4>
+        </div>
+
+        <!-- Profile Section -->
+        <div class="sidebar-profile-section">
+            {% if user.role == 'agent' and agent_profile %}
+                <!-- Agent Profile with Photo -->
+                <div class="text-center">
+                    <div class="profile-photo-large mx-auto mb-2">
+                        {% if agent_profile.profile_photo %}
+                            <img src="{{ agent_profile.profile_photo.url }}" alt="{{ agent_profile.name }}" 
+                                 class="rounded-circle" style="width: 100%; height: 100%; object-fit: cover;">
+                        {% else %}
+                            <div class="d-flex align-items-center justify-content-center" 
+                                 style="width: 100%; height: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%;">
+                                <i class="fas fa-user" style="font-size: 32px; color: white;"></i>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <a href="{% url 'agent_profile' %}" class="text-decoration-none">
+                        <p class="profile-name mb-1">{{ agent_profile.name }}</p>
+                        <p class="profile-id-number">ID: {{ agent_profile.agent_id|default:"N/A" }}</p>
+                    </a>
+                    <p class="profile-role text-muted">{{ user.get_role_display }}</p>
+                </div>
+            {% elif user.role == 'employee' %}
+                <!-- Employee Profile with Photo -->
+                <div class="text-center">
+                    <div class="profile-photo-large mx-auto mb-2">
+                        {% if user.profile_photo %}
+                            <img src="{{ user.profile_photo.url }}" alt="{{ user.get_full_name }}" 
+                                 class="rounded-circle" style="width: 100%; height: 100%; object-fit: cover;">
+                        {% else %}
+                            <div class="d-flex align-items-center justify-content-center" 
+                                 style="width: 100%; height: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%;">
+                                <i class="fas fa-user" style="font-size: 32px; color: white;"></i>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <a href="/employee/profile/" class="text-decoration-none">
+                        <p class="profile-name mb-1">{{ user.get_full_name|default:user.username }}</p>
+                    </a>
+                    <p class="profile-role text-muted">{{ user.get_role_display }}</p>
+                </div>
+            {% else %}
+                <!-- Default Profile -->
+                <div class="profile-photo">
+                    <img src="https://via.placeholder.com/60?text={{ user.username|first|upper }}" alt="{{ user.username }}" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2260%22 height=%2260%22%3E%3Crect fill=%22%234f46e5%22 width=%2260%22 height=%2260%22/%3E%3Ctext x=%2230%22 y=%2240%22 font-size=%2228%22 font-weight=%22bold%22 fill=%22white%22 text-anchor=%22middle%22%3E{{ user.username|first|upper }}%3C/text%3E%3C/svg%3E'">
+                </div>
+                <div class="profile-info">
+                    <p class="profile-name">{{ user.first_name|default:user.username }}</p>
+                    <p class="profile-role">{{ user.get_role_display }}</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Menu -->
+        <ul class="sidebar-menu">
+            <!-- ADMIN MENU -->
+            {% if user.role == 'admin' %}
+            <li>
+                <a href="{% url 'admin_all_loans' %}" class="{% if request.resolver_match.url_name == 'admin_all_loans' %}active{% endif %}">
+                    <i class="bi bi-speedometer2"></i>
+                    <span>Dashboard</span>
+                </a>
+            </li>
+            <li>
+                <a href="{% url 'comprehensive_loan_form' %}" class="{% if request.resolver_match.url_name == 'comprehensive_loan_form' %}active{% endif %}">
+                    <i class="bi bi-plus-circle"></i>
+                    <span>Add New Loan</span>
+                </a>
+            </li>
+            <li>
+                <a href="{% url 'agent_list_legacy' %}" class="{% if request.resolver_match.url_name == 'agent_list_legacy' %}active{% endif %}">
+                    <i class="bi bi-person-badge"></i>
+                    <span>Agents</span>
+                </a>
+            </li>
+            <li>
+                <a href="/employee/dashboard/" class="{% if request.resolver_match.url_name == 'employee_management' %}active{% endif %}">
+                    <i class="bi bi-people"></i>
+                    <span>Employees</span>
+                </a>
+            </li>
+            <li>
+                <a href="{% url 'subadmin_dashboard' %}" class="{% if request.resolver_match.url_name == 'subadmin_dashboard' %}active{% endif %}">
+                    <i class="bi bi-crown"></i>
+                    <span>SubAdmin</span>
+                </a>
+            </li>
+            <li>
+                <a href="{% url 'reports_legacy' %}" class="{% if request.resolver_match.url_name == 'reports_legacy' %}active{% endif %}">">
+                    <i class="bi bi-file-earmark-bar-graph"></i>
+                    <span>Reports</span>
+                </a>
+            </li>
+            <li>
+                <a href="{% url 'complaints_legacy' %}" class="{% if request.resolver_match.url_name == 'complaints_legacy' %}active{% endif %}">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <span>Complaints</span>
+                </a>
+            </li>
+            <li class="sidebar-divider"></li>
+            <li>
+                <a href="{% url 'logout' %}" style="color: #ef4444;">
+                    <i class="bi bi-box-arrow-right"></i>
+                    <span>Logout</span>
+                </a>
+            </li>
+            {% endif %}
+
+            <!-- AGENT MENU -->
+            {% if user.role == 'agent' %}
+            <li>
+                <a href="{% url 'agent_dashboard' %}" class="{% if request.resolver_match.url_name == 'agent_dashboard' %}active{% endif %}">
+                    <i class="bi bi-speedometer2"></i>
+                    <span>Dashboard</span>
+                </a>
+            </li>
+            <li class="sidebar-divider"></li>
+            <li>
+                <a href="{% url 'agent_add_loan' %}" class="{% if request.resolver_match.url_name == 'agent_add_loan' %}active{% endif %}">
+                    <i class="bi bi-plus-circle"></i>
+                    <span>Add New Loan</span>
+                </a>
+            </li>
+            <li>
+                <a href="{% url 'agent_my_applications' %}" class="{% if request.resolver_match.url_name == 'agent_my_applications' %}active{% endif %}">
+                    <i class="bi bi-file-earmark"></i>
+                    <span>My Records</span>
+                </a>
+            </li>
+            <li>
+                <a href="{% url 'agent_sub_agents' %}" class="{% if request.resolver_match.url_name == 'agent_sub_agents' %}active{% endif %}">
+                    <i class="bi bi-people"></i>
+                    <span>My Sub Agents</span>
+                </a>
+            </li>
+            <li>
+                <a href="{% url 'agent_my_applications' %}" class="{% if request.resolver_match.url_name == 'agent_my_applications' %}active{% endif %}">
+                    <i class="bi bi-briefcase"></i>
+                    <span>My Applications</span>
+                </a>
+            </li>
+            <li class="sidebar-divider"></li>
+            <li>
+                <a href="{% url 'agent_reports' %}" class="{% if request.resolver_match.url_name == 'agent_reports' %}active{% endif %}">
+                    <i class="bi bi-file-earmark-bar-graph"></i>
+                    <span>Reports</span>
+                </a>
+            </li>
+            <li>
+                <a href="{% url 'agent_complaints' %}" class="{% if request.resolver_match.url_name == 'agent_complaints' %}active{% endif %}">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <span>Complaints</span>
+                </a>
+            </li>
+            <li class="sidebar-divider"></li>
+            <li>
+                <a href="{% url 'agent_profile' %}" class="{% if request.resolver_match.url_name == 'agent_profile' %}active{% endif %}">
+                    <i class="bi bi-person-circle"></i>
+                    <span>My Profile</span>
+                </a>
+            </li>
+            <li>
+                <a href="{% url 'agent_settings' %}" class="{% if request.resolver_match.url_name == 'agent_settings' %}active{% endif %}">
+                    <i class="bi bi-gear"></i>
+                    <span>Settings</span>
+                </a>
+            </li>
+            <li class="sidebar-divider"></li>
+            <li>
+                <a href="{% url 'logout' %}" style="color: #ef4444;">
+                    <i class="bi bi-box-arrow-right"></i>
+                    <span>Logout</span>
+                </a>
+            </li>
+            {% endif %}
+
+            <!-- EMPLOYEE MENU -->
+            {% if user.role == 'employee' %}
+            <li>
+                <a href="/employee/dashboard/" class="{% if request.resolver_match.url_name == 'employee_dashboard' %}active{% endif %}">
+                    <i class="bi bi-speedometer2"></i>
+                    <span>Dashboard</span>
+                </a>
+            </li>
+            <li class="sidebar-divider"></li>
+            <li>
+                <a href="{% url 'comprehensive_loan_form' %}" class="{% if request.resolver_match.url_name == 'comprehensive_loan_form' %}active{% endif %}">
+                    <i class="bi bi-plus-circle"></i>
+                    <span>Add New Loan</span>
+                </a>
+            </li>
+            <li>
+                <a href="/employee/all-loans/" class="{% if request.resolver_match.url_name == 'employee_all_loans' %}active{% endif %}">
+                    <i class="bi bi-list-check"></i>
+                    <span>All Loans</span>
+                </a>
+            </li>
+            <li class="sidebar-divider"></li>
+            <li>
+                <a href="/employee/new-entry-request/" class="{% if request.resolver_match.url_name == 'employee_new_entry_request' %}active{% endif %}">
+                    <i class="bi bi-inbox"></i>
+                    <span>New Entry Request</span>
+                </a>
+            </li>
+            <li>
+                <a href="/employee/my-agents/" class="{% if request.resolver_match.url_name == 'employee_my_agents_page' %}active{% endif %}">
+                    <i class="bi bi-people"></i>
+                    <span>My Agents</span>
+                </a>
+            </li>
+            <li class="sidebar-divider"></li>
+            <li>
+                <a href="/employee/profile/" class="{% if request.resolver_match.url_name == 'employee_profile' %}active{% endif %}">
+                    <i class="bi bi-person-circle"></i>
+                    <span>My Profile</span>
+                </a>
+            </li>
+            <li>
+                <a href="/employee/settings/" class="{% if request.resolver_match.url_name == 'employee_settings' %}active{% endif %}">
+                    <i class="bi bi-gear"></i>
+                    <span>Settings</span>
+                </a>
+            </li>
+            <li class="sidebar-divider"></li>
+            <li>
+                <a href="{% url 'logout' %}" style="color: #ef4444;">
+                    <i class="bi bi-box-arrow-right"></i>
+                    <span>Logout</span>
+                </a>
+            </li>
+            {% endif %}
+
+            <li class="sidebar-divider"></li>
+        </ul>
+    </aside>
+
+    <!-- Top Navigation Bar -->
+    <nav style="margin-left: var(--sidebar-width); background: white; padding: 12px 30px; border-bottom: 1px solid #e2e8f0; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);">
+        <div style="display: flex; justify-content: flex-end; align-items: center;">
+            <div class="dropdown">
+                <button class="btn btn-sm btn-outline-secondary dropdown-toggle rounded-pill" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="padding: 6px 16px; font-size: 13px; border-radius: 20px !important; display: flex; align-items: center; gap: 8px;">
+                    <i class="bi bi-person-circle"></i>
+                    <span>{{ user.name|default:user.get_full_name }}</span>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end rounded" style="border-radius: 12px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1); border: none; min-width: 200px;">
+                    <li><h6 class="dropdown-header" style="font-size: 12px; font-weight: 600; color: #64748b;">{{ user.get_role_display|default:user.role }}</h6></li>
+                    <li><hr class="dropdown-divider" style="margin: 6px 0;"></li>
+                    {% if user.role == 'employee' %}
+                        <li><a class="dropdown-item" href="/employee/profile/" style="font-size: 13px; padding: 8px 16px;"><i class="bi bi-person"></i> My Profile</a></li>
+                        <li><a class="dropdown-item" href="/employee/settings/" style="font-size: 13px; padding: 8px 16px;"><i class="bi bi-gear"></i> Settings</a></li>
+                    {% elif user.role == 'agent' %}
+                        <li><a class="dropdown-item" href="/agent/profile/" style="font-size: 13px; padding: 8px 16px;"><i class="bi bi-person"></i> My Profile</a></li>
+                        <li><a class="dropdown-item" href="/agent/settings/" style="font-size: 13px; padding: 8px 16px;"><i class="bi bi-gear"></i> Settings</a></li>
+                    {% else %}
+                        <li><a class="dropdown-item" href="/admin/profile/" style="font-size: 13px; padding: 8px 16px;"><i class="bi bi-person"></i> My Profile</a></li>
+                    {% endif %}
+                    <li><hr class="dropdown-divider" style="margin: 6px 0;"></li>
+                    <li><a class="dropdown-item text-danger" href="{% url 'logout' %}" style="font-size: 13px; padding: 8px 16px;"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Custom JS -->
+    <script>
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('show');
+        }
+
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', function(event) {
+            const sidebar = document.getElementById('sidebar');
+            const toggle = document.querySelector('.mobile-toggle');
+            
+            if (window.innerWidth <= 768) {
+                if (!sidebar.contains(event.target) && !toggle.contains(event.target)) {
+                    sidebar.classList.remove('show');
+                }
+            }
+        });
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
+
+

@@ -1,0 +1,373 @@
+{% extends 'core/admin/admin_base.html' %}
+{% load static %}
+
+{% block title %}New Loan Applications - Admin Panel{% endblock %}
+{% block page_title %}New Loan Applications{% endblock %}
+
+{% block extra_css %}
+<style>
+    .new-entries-container {
+        padding: 20px;
+        background-color: #f5f6fa;
+        min-height: calc(100vh - 80px);
+    }
+
+    .page-title-bar {
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 25px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .page-title-bar h2 {
+        margin: 0;
+        color: #1e293b;
+        font-weight: 700;
+    }
+
+    .filter-bar {
+        background: white;
+        padding: 15px;
+        border-radius: 10px;
+        margin-bottom: 25px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .filter-controls {
+        display: flex;
+        gap: 15px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .search-input {
+        flex: 1;
+        min-width: 250px;
+    }
+
+    .table-wrapper {
+        background: white;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .new-entries-table {
+        width: 100%;
+        margin: 0;
+    }
+
+    .new-entries-table thead {
+        background: #f8f9fa;
+        border-bottom: 2px solid #dee2e6;
+    }
+
+    .new-entries-table th {
+        padding: 15px;
+        font-weight: 600;
+        color: #495057;
+        text-align: left;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .new-entries-table td {
+        padding: 15px;
+        border-bottom: 1px solid #dee2e6;
+        color: #495057;
+    }
+
+    .new-entries-table tbody tr:hover {
+        background-color: #f8f9fa;
+        transition: background-color 0.2s;
+    }
+
+    .applicant-info {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+    }
+
+    .applicant-name {
+        font-weight: 600;
+        color: #1e293b;
+    }
+
+    .applicant-contact {
+        font-size: 12px;
+        color: #7f8c8d;
+    }
+
+    .loan-badge {
+        display: inline-block;
+        background: #e8f4f8;
+        color: #0284c7;
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .agent-badge {
+        display: inline-block;
+        background: #fef3c7;
+        color: #d97706;
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+    }
+
+    .submitted-date {
+        font-size: 12px;
+        color: #7f8c8d;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 8px;
+        flex-direction: column;
+    }
+
+    .btn-view {
+        background: linear-gradient(135deg, #a7b0db 0%, #a8a2ae 100%);
+        color: white;
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        text-decoration: none;
+        cursor: pointer;
+        border: none;
+        transition: transform 0.2s;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+    }
+
+    .btn-view:hover {
+        transform: translateY(-2px);
+        color: white;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 40px;
+        color: #7f8c8d;
+    }
+
+    .empty-state-icon {
+        font-size: 48px;
+        margin-bottom: 15px;
+        opacity: 0.5;
+    }
+
+    .pagination-wrapper {
+        background: white;
+        padding: 15px;
+        border-radius: 0 0 10px 10px;
+        display: flex;
+        justify-content: center;
+        gap: 5px;
+    }
+
+    .pagination-wrapper a, .pagination-wrapper span {
+        padding: 8px 12px;
+        border-radius: 6px;
+        border: 1px solid #dee2e6;
+        text-decoration: none;
+        color: #495057;
+        transition: all 0.2s;
+    }
+
+    .pagination-wrapper a:hover {
+        background: #667eea;
+        color: white;
+        border-color: #667eea;
+    }
+
+    .pagination-wrapper .page-item.active span {
+        background: #667eea;
+        color: white;
+        border-color: #667eea;
+    }
+
+    .info-box {
+        background: #e3f2fd;
+        border-left: 4px solid #2196f3;
+        padding: 15px;
+        border-radius: 6px;
+        margin-bottom: 20px;
+        font-size: 14px;
+        color: #1565c0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="new-entries-container">
+    <!-- Page Header -->
+    <div class="page-title-bar">
+        <div>
+            <h2><i class="bi bi-file-earmark-plus"></i> New Loan Applications</h2>
+            <p style="margin: 5px 0 0 0; color: #7f8c8d; font-size: 14px;">
+                <i class="bi bi-info-circle"></i> Click "View" to see full details, documents, and assign to employee
+            </p>
+        </div>
+        <div>
+            <span class="badge" style="background: #667eea; color: white; padding: 8px 15px; border-radius: 20px; font-size: 14px;">
+                <i class="bi bi-list"></i> Total: <strong>{{ total_count }}</strong>
+            </span>
+        </div>
+    </div>
+
+    <!-- Info Box -->
+    <div class="info-box">
+        <i class="bi bi-lightbulb"></i> <strong>Workflow:</strong>
+        Applications submitted by agents appear here. Review details, upload/verify documents, then assign to an employee. Once assigned, status changes to "Waiting for Processing".
+    </div>
+
+    <!-- Filter & Search Bar -->
+    <div class="filter-bar">
+        <form method="get" class="filter-controls">
+            <div class="search-input">
+                <input type="text" name="search" class="form-control" placeholder="Search by name, email, or phone..." 
+                       value="{{ search }}" style="padding: 10px 15px;">
+            </div>
+            <select name="sort" class="form-select" style="width: auto; padding: 10px 15px;">
+                <option value="-created_at" {% if sort_by == '-created_at' %}selected{% endif %}>Newest First</option>
+                <option value="created_at" {% if sort_by == 'created_at' %}selected{% endif %}>Oldest First</option>
+                <option value="applicant__full_name" {% if sort_by == 'applicant__full_name' %}selected{% endif %}>Name (A-Z)</option>
+                <option value="loan_amount" {% if sort_by == 'loan_amount' %}selected{% endif %}>Loan Amount (Low)</option>
+                <option value="-loan_amount" {% if sort_by == '-loan_amount' %}selected{% endif %}>Loan Amount (High)</option>
+            </select>
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-search"></i> Search
+            </button>
+            {% if search or sort_by != '-created_at' %}
+            <a href="{% url 'admin_new_entries' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-x-circle"></i> Clear
+            </a>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- Applications Table -->
+    <div class="table-wrapper">
+        {% if applications %}
+        <table class="new-entries-table">
+            <thead>
+                <tr>
+                    <th style="width: 5%;">Photo</th>
+                    <th style="width: 15%;">Applicant Name</th>
+                    <th style="width: 12%;">Phone</th>
+                    <th style="width: 12%;">Loan Amount</th>
+                    <th style="width: 10%;">Loan Type</th>
+                    <th style="width: 12%;">Created Date</th>
+                    <th style="width: 15%;">Assigned Agent</th>
+                    <th style="width: 10%;">Status</th>
+                    <th style="width: 9%;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for application in applications %}
+                <tr>
+                    <td>
+                        <div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #91839f 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 16px;">
+                            {{ application.applicant.full_name|first|upper }}
+                        </div>
+                    </td>
+                    <td>
+                        <strong>{{ application.applicant.full_name }}</strong>
+                    </td>
+                    <td>
+                        <i class="bi bi-telephone"></i> {{ application.applicant.mobile }}
+                    </td>
+                    <td>
+                        <strong style="color: #667eea; font-size: 13px;">₹{{ application.applicant.loan_amount|floatformat:0 }}</strong>
+                    </td>
+                    <td>
+                        <span class="loan-badge">{{ application.applicant.loan_type }}</span>
+                    </td>
+                    <td>
+                        <div style="font-size: 12px;">{{ application.created_at|date:"d M Y" }}</div>
+                        <div style="font-size: 11px; color: #7f8c8d;">{{ application.created_at|time:"H:i" }}</div>
+                    </td>
+                    <td>
+                        {% if application.assigned_agent %}
+                        <span class="agent-badge">{{ application.assigned_agent.name }}</span>
+                        {% else %}
+                        <span style="color: #7f8c8d; font-size: 12px;">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span style="background: #dbeafe; color: #0284c7; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">
+                            NEW
+                        </span>
+                    </td>
+                    <td>
+                        <div class="action-buttons" style="flex-direction: column; gap: 4px;">
+                            <a href="{% url 'admin_loan_detail' application.applicant.id %}" class="btn-view" style="display: block; text-align: center;">
+                                <i class="bi bi-eye"></i> View
+                            </a>
+                            <a href="{% url 'admin_loan_detail' application.applicant.id %}?tab=assignment" class="btn-view" style="display: block; text-align: center; background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                                <i class="bi bi-person-check"></i> Assign
+                            </a>
+                            <a href="{% url 'admin_edit_application' application.applicant.id %}" class="btn-view" style="display: block; text-align: center; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+                                <i class="bi bi-pencil"></i> Edit
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- Pagination -->
+        {% if page_obj.has_other_pages %}
+        <div class="pagination-wrapper">
+            {% if page_obj.has_previous %}
+            <a href="?page=1{% if search %}&search={{ search }}{% endif %}">First</a>
+            <a href="?page={{ page_obj.previous_page_number }}{% if search %}&search={{ search }}{% endif %}">Previous</a>
+            {% endif %}
+
+            {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                <span class="page-item active">{{ num }}</span>
+                {% else %}
+                <a href="?page={{ num }}{% if search %}&search={{ search }}{% endif %}">{{ num }}</a>
+                {% endif %}
+            {% endfor %}
+
+            {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}{% if search %}&search={{ search }}{% endif %}">Next</a>
+            <a href="?page={{ page_obj.paginator.num_pages }}{% if search %}&search={{ search }}{% endif %}">Last</a>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-state-icon">
+                <i class="bi bi-inbox"></i>
+            </div>
+            <h5>No New Applications</h5>
+            <p>There are currently no new loan applications to review.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+    .page-item.active span {
+        background: #667eea;
+        color: white;
+        border-color: #667eea;
+    }
+</style>
+{% endblock %}

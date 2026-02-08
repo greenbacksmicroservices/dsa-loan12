@@ -1,0 +1,431 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Employee Dashboard - DSA Loan Management System{% endblock %}
+
+{% block content %}
+<!-- Clean White Header -->
+<div class="dashboard-header" style="background: white; padding: 24px 0; margin-bottom: 32px; border-bottom: 1px solid #f0f0f0;">
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 style="margin: 0; font-size: 32px; font-weight: 700; color: #1a1a1a;">
+                    <i class="bi bi-speedometer2" style="margin-right: 12px;"></i>Dashboard
+                </h1>
+            </div>
+            <div class="profile-dropdown">
+                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                    <i class="bi bi-person-circle"></i> Profile
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item" href="{% url 'employee_profile' %}">My Profile</a></li>
+                    <li><a class="dropdown-item" href="{% url 'employee_settings' %}">Settings</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="{% url 'logout' %}">Logout</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Dashboard Stats Cards - Professional Fintech Design (4 Cards in Single Row) -->
+<div class="container-fluid mb-5">
+    <div class="row g-3">
+        <!-- Total Loans Card - Blue -->
+        <div class="col-lg-3 col-md-6 col-sm-12">
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; padding: 20px; color: white; box-shadow: 0 8px 24px rgba(102, 126, 234, 0.15); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative; overflow: hidden; cursor: pointer; height: 100%;" onclick="window.location.href='{% url 'employee_new_entry_request' %}'">
+                <div style="position: absolute; top: -40%; right: -40%; width: 150px; height: 150px; background: rgba(255,255,255,0.1); border-radius: 50%; pointer-events: none;"></div>
+                <div style="position: relative; z-index: 2;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                        <div>
+                            <p style="font-size: 12px; opacity: 0.85; margin: 0; font-weight: 500; letter-spacing: 0.5px;">TOTAL LOANS</p>
+                        </div>
+                        <i class="bi bi-briefcase" style="font-size: 24px; opacity: 0.8;"></i>
+                    </div>
+                    <div style="font-size: 28px; font-weight: 700; margin-bottom: 0;" id="total-loans">0</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- In Processing Card - Orange/Red -->
+        <div class="col-lg-3 col-md-6 col-sm-12">
+            <div style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); border-radius: 12px; padding: 20px; color: white; box-shadow: 0 8px 24px rgba(249, 115, 22, 0.15); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative; overflow: hidden; cursor: pointer; height: 100%;" onclick="window.location.href='{% url 'employee_new_entry_request' %}?status=waiting'">
+                <div style="position: absolute; top: -40%; right: -40%; width: 150px; height: 150px; background: rgba(255,255,255,0.1); border-radius: 50%; pointer-events: none;"></div>
+                <div style="position: relative; z-index: 2;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                        <div>
+                            <p style="font-size: 12px; opacity: 0.85; margin: 0; font-weight: 500; letter-spacing: 0.5px;">IN PROCESSING</p>
+                        </div>
+                        <i class="bi bi-hourglass-split" style="font-size: 24px; opacity: 0.8;"></i>
+                    </div>
+                    <div style="font-size: 28px; font-weight: 700; margin-bottom: 0;" id="processing-loans">0</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Approved Card - Green -->
+        <div class="col-lg-3 col-md-6 col-sm-12">
+            <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 12px; padding: 20px; color: white; box-shadow: 0 8px 24px rgba(16, 185, 129, 0.15); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative; overflow: hidden; cursor: pointer; height: 100%;" onclick="window.location.href='{% url 'employee_new_entry_request' %}?status=approved'">
+                <div style="position: absolute; top: -40%; right: -40%; width: 150px; height: 150px; background: rgba(255,255,255,0.1); border-radius: 50%; pointer-events: none;"></div>
+                <div style="position: relative; z-index: 2;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                        <div>
+                            <p style="font-size: 12px; opacity: 0.85; margin: 0; font-weight: 500; letter-spacing: 0.5px;">APPROVED</p>
+                        </div>
+                        <i class="bi bi-check-circle" style="font-size: 24px; opacity: 0.8;"></i>
+                    </div>
+                    <div style="font-size: 28px; font-weight: 700; margin-bottom: 0;" id="approved-loans">0</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rejected Card - Red -->
+        <div class="col-lg-3 col-md-6 col-sm-12">
+            <div style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border-radius: 12px; padding: 20px; color: white; box-shadow: 0 8px 24px rgba(239, 68, 68, 0.15); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative; overflow: hidden; cursor: pointer; height: 100%;" onclick="window.location.href='{% url 'employee_new_entry_request' %}?status=rejected'">
+                <div style="position: absolute; top: -40%; right: -40%; width: 150px; height: 150px; background: rgba(255,255,255,0.1); border-radius: 50%; pointer-events: none;"></div>
+                <div style="position: relative; z-index: 2;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                        <div>
+                            <p style="font-size: 12px; opacity: 0.85; margin: 0; font-weight: 500; letter-spacing: 0.5px;">REJECTED</p>
+                        </div>
+                        <i class="bi bi-x-circle" style="font-size: 24px; opacity: 0.8;"></i>
+                    </div>
+                    <div style="font-size: 28px; font-weight: 700; margin-bottom: 0;" id="rejected-loans">0</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Analytics Charts Section -->
+<div class="container-fluid mb-5">
+    <div class="row g-4">
+        <!-- Chart 1: Loan Status Distribution -->
+        <div class="col-lg-6 col-md-12">
+            <div class="card border-0 shadow-sm" style="border-radius: 16px; overflow: hidden;">
+                <div class="card-header border-0" style="background: #f8f9fa; padding: 24px; border-bottom: 1px solid #e9ecef;">
+                    <h6 class="mb-0" style="font-weight: 600; font-size: 16px;">
+                        <i class="bi bi-pie-chart" style="margin-right: 8px; color: #667eea;"></i>Loan Status Distribution
+                    </h6>
+                </div>
+                <div class="card-body" style="padding: 24px;">
+                    <canvas id="statusChart" height="250"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chart 2: Agent Loans Monthly -->
+        <div class="col-lg-6 col-md-12">
+            <div class="card border-0 shadow-sm" style="border-radius: 16px; overflow: hidden;">
+                <div class="card-header border-0" style="background: #f8f9fa; padding: 24px; border-bottom: 1px solid #e9ecef;">
+                    <h6 class="mb-0" style="font-weight: 600; font-size: 16px;">
+                        <i class="bi bi-bar-chart" style="margin-right: 8px; color: #10b981;"></i>Loans by Month (Current Year)
+                    </h6>
+                </div>
+                <div class="card-body" style="padding: 24px;">
+                    <canvas id="monthlyChart" height="250"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_css %}
+<style>
+    /* Stat Card Base Styling */
+    .stat-card {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        cursor: pointer;
+        position: relative;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 16px 48px rgba(0, 0, 0, 0.15) !important;
+    }
+
+    .stat-card:hover {
+        filter: brightness(1.05);
+    }
+
+    /* Dashboard Header */
+    .dashboard-header {
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+
+    /* Modern Card Styles */
+    .card {
+        border: none;
+        border-radius: 16px;
+        transition: all 0.3s ease;
+    }
+
+    .card:hover {
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12) !important;
+    }
+
+    /* Loans Table */
+    .loans-table {
+        width: 100%;
+    }
+
+    .loans-table table {
+        font-size: 14px;
+    }
+
+    .loans-table table thead th {
+        background: #f8f9fa;
+        border: none;
+        font-weight: 600;
+        color: #495057;
+        padding: 16px 12px;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .loans-table table tbody tr {
+        border-bottom: 1px solid #e9ecef;
+        transition: all 0.2s ease;
+    }
+
+    .loans-table table tbody tr:hover {
+        background: #f8f9fa;
+    }
+
+    .loans-table table tbody td {
+        padding: 14px 12px;
+        vertical-align: middle;
+    }
+
+    /* Badge Styling */
+    .badge {
+        font-weight: 600;
+        padding: 6px 12px;
+        font-size: 11px;
+        letter-spacing: 0.5px;
+    }
+
+    /* Button Styling */
+    .btn-light:hover {
+        background: rgba(255, 255, 255, 0.2) !important;
+        color: white !important;
+        transform: scale(1.02);
+    }
+
+    /* Responsive Grid */
+    @media (max-width: 1200px) {
+        .col-lg-3 {
+            flex: 0 0 50%;
+            max-width: 50%;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .col-lg-3 {
+            flex: 0 0 100%;
+            max-width: 100%;
+        }
+        
+        .dashboard-header h1 {
+            font-size: 24px !important;
+        }
+    }
+
+    /* Loading Spinner */
+    .spinner-border-sm {
+        width: 20px;
+        height: 20px;
+        border-width: 2px;
+    }
+
+    /* Dropdown Menu */
+    .dropdown-menu {
+        border: none;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+        border-radius: 12px;
+    }
+
+    .dropdown-item {
+        padding: 10px 16px;
+        font-size: 14px;
+        font-weight: 500;
+    }
+
+    .dropdown-item:hover {
+        background: #f8f9fa;
+        color: #667eea;
+    }
+</style>
+{% endblock %}
+
+<script>
+    // Chart instances
+    let statusChart = null;
+    let monthlyChart = null;
+
+    // Get CSRF token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    // Load dashboard stats
+    async function loadDashboardStats() {
+        try {
+            const response = await fetch('/api/employee/dashboard-stats/', {
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                credentials: 'same-origin'
+            });
+
+            if (!response.ok) throw new Error('Failed to load stats');
+
+            const data = await response.json();
+            
+            // Update stats
+            document.getElementById('total-loans').textContent = data.total_assigned || 0;
+            document.getElementById('processing-loans').textContent = data.processing || 0;
+            document.getElementById('approved-loans').textContent = data.approved || 0;
+            document.getElementById('rejected-loans').textContent = data.rejected || 0;
+
+            // Load charts
+            loadCharts(data);
+        } catch (error) {
+            console.error('Error loading stats:', error);
+        }
+    }
+
+    // Load and render charts
+    function loadCharts(data) {
+        // Chart 1: Loan Status Distribution
+        const statusCtx = document.getElementById('statusChart');
+        if (statusCtx) {
+            if (statusChart) statusChart.destroy();
+            statusChart = new Chart(statusCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Approved', 'Rejected', 'Disbursed', 'In Processing'],
+                    datasets: [{
+                        data: [
+                            data.approved || 0,
+                            data.rejected || 0,
+                            data.disbursed || 0,
+                            data.processing || 0
+                        ],
+                        backgroundColor: [
+                            '#10b981',  // Green - Approved
+                            '#ef4444',  // Red - Rejected
+                            '#3b82f6',  // Blue - Disbursed
+                            '#f59e0b'   // Amber - Processing
+                        ],
+                        borderColor: ['#ffffff', '#ffffff', '#ffffff', '#ffffff'],
+                        borderWidth: 2,
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                font: { size: 13, weight: 600 },
+                                padding: 15,
+                                color: '#495057'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Chart 2: Monthly Loans Data
+        loadMonthlyChart();
+    }
+
+    // Load monthly chart data
+    async function loadMonthlyChart() {
+        try {
+            const response = await fetch('/api/employee/monthly-loans/', {
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                credentials: 'same-origin'
+            });
+
+            let monthData = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+            
+            if (response.ok) {
+                const data = await response.json();
+                if (data.monthly_data) {
+                    monthData = data.monthly_data;
+                }
+            }
+
+            const monthlyCtx = document.getElementById('monthlyChart');
+            if (monthlyCtx) {
+                if (monthlyChart) monthlyChart.destroy();
+                monthlyChart = new Chart(monthlyCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                        datasets: [{
+                            label: 'Loans Assigned',
+                            data: monthData,
+                            backgroundColor: '#667eea',
+                            borderColor: '#667eea',
+                            borderRadius: 8,
+                            borderSkipped: false,
+                            hoverBackgroundColor: '#764ba2'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            legend: {
+                                display: true,
+                                labels: {
+                                    font: { size: 13, weight: 600 },
+                                    color: '#495057'
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    stepSize: 1
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('Error loading monthly chart:', error);
+        }
+    }
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        loadDashboardStats();
+        // Refresh every 30 seconds
+        setInterval(loadDashboardStats, 30000);
+    });
+</script>
+
+{% endblock %}

@@ -1,0 +1,181 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}Agent Profile | DSA{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="mb-0">
+                    <i class="fas fa-user-circle"></i> My Profile
+                </h1>
+                <a href="{% url 'agent_edit_profile' %}" class="btn btn-primary">
+                    <i class="fas fa-edit"></i> Edit Profile
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Profile Card -->
+    <div class="row">
+        <div class="col-lg-8 offset-lg-2">
+            <div class="card shadow-sm border-0 rounded-lg">
+                <div class="card-header bg-gradient text-white py-4" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                    <h5 class="mb-0">Agent Information</h5>
+                </div>
+                <div class="card-body p-4">
+                    <!-- Profile Photo Section -->
+                    {% if agent.profile_photo %}
+                    <div class="text-center mb-4">
+                        <img src="{{ agent.profile_photo.url }}" alt="{{ agent.name }}" 
+                             class="rounded-circle" style="width: 150px; height: 150px; object-fit: cover; border: 4px solid #667eea;">
+                    </div>
+                    {% else %}
+                    <div class="text-center mb-4">
+                        <div class="rounded-circle d-inline-flex align-items-center justify-content-center" 
+                             style="width: 150px; height: 150px; background: #f0f0f0; border: 4px solid #667eea;">
+                            <i class="fas fa-user" style="font-size: 60px; color: #667eea;"></i>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Profile Details -->
+                    <table class="table table-borderless">
+                        <tbody>
+                            <!-- Agent ID -->
+                            <tr>
+                                <td class="fw-bold text-muted" style="width: 30%;">
+                                    <i class="fas fa-id-card text-primary"></i> Agent ID
+                                </td>
+                                <td>
+                                    <span class="badge bg-primary">{{ agent.agent_id|default:"N/A" }}</span>
+                                </td>
+                            </tr>
+                            
+                            <!-- Name -->
+                            <tr>
+                                <td class="fw-bold text-muted">
+                                    <i class="fas fa-user text-success"></i> Name
+                                </td>
+                                <td>
+                                    <strong>{{ agent.name }}</strong>
+                                </td>
+                            </tr>
+                            
+                            <!-- Email -->
+                            <tr>
+                                <td class="fw-bold text-muted">
+                                    <i class="fas fa-envelope text-info"></i> Email
+                                </td>
+                                <td>
+                                    <a href="mailto:{{ agent.email }}">{{ agent.email }}</a>
+                                </td>
+                            </tr>
+                            
+                            <!-- Phone -->
+                            <tr>
+                                <td class="fw-bold text-muted">
+                                    <i class="fas fa-phone text-warning"></i> Phone
+                                </td>
+                                <td>
+                                    <a href="tel:{{ agent.phone }}">{{ agent.phone }}</a>
+                                </td>
+                            </tr>
+                            
+                            <!-- Address -->
+                            <tr>
+                                <td class="fw-bold text-muted">
+                                    <i class="fas fa-map-marker-alt text-danger"></i> Address
+                                </td>
+                                <td>
+                                    {{ agent.address|default:"Not specified" }}
+                                </td>
+                            </tr>
+                            
+                            <!-- Status -->
+                            <tr>
+                                <td class="fw-bold text-muted">
+                                    <i class="fas fa-check-circle"></i> Status
+                                </td>
+                                <td>
+                                    {% if agent.status == 'active' %}
+                                        <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Inactive</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            
+                            <!-- Created Date -->
+                            <tr>
+                                <td class="fw-bold text-muted">
+                                    <i class="fas fa-calendar-plus"></i> Joined
+                                </td>
+                                <td>
+                                    {{ agent.created_at|date:"d M, Y" }}
+                                </td>
+                            </tr>
+                            
+                            <!-- Last Updated -->
+                            <tr>
+                                <td class="fw-bold text-muted">
+                                    <i class="fas fa-sync-alt"></i> Last Updated
+                                </td>
+                                <td>
+                                    {{ agent.updated_at|date:"d M, Y H:i" }}
+                                </td>
+                            </tr>
+                            
+                            <!-- Created By -->
+                            {% if agent.created_by %}
+                            <tr>
+                                <td class="fw-bold text-muted">
+                                    <i class="fas fa-user-tie"></i> Created By
+                                </td>
+                                <td>
+                                    {{ agent.created_by.get_full_name|default:agent.created_by.username }}
+                                </td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="d-grid gap-2 d-sm-flex justify-content-center">
+                        <a href="{% url 'agent_edit_profile' %}" class="btn btn-primary btn-lg">
+                            <i class="fas fa-edit"></i> Edit Profile
+                        </a>
+                        <a href="{% url 'agent_settings' %}" class="btn btn-outline-secondary btn-lg">
+                            <i class="fas fa-cog"></i> Settings
+                        </a>
+                        <a href="{% url 'agent_dashboard' %}" class="btn btn-outline-secondary btn-lg">
+                            <i class="fas fa-home"></i> Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .bg-gradient {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    }
+    
+    table tr {
+        border-bottom: 1px solid #eee;
+    }
+    
+    table tr:last-child {
+        border-bottom: none;
+    }
+</style>
+{% endblock %}

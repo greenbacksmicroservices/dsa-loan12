@@ -1,0 +1,381 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}New Application Entry - Edit & Assign{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-container {
+        background: white;
+        padding: 30px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .form-section {
+        margin-bottom: 30px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid #e0e0e0;
+    }
+    .form-section:last-child {
+        border-bottom: none;
+    }
+    .section-title {
+        font-size: 18px;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .form-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+        margin-bottom: 20px;
+    }
+    .form-group {
+        display: flex;
+        flex-direction: column;
+    }
+    .form-group label {
+        font-weight: 600;
+        margin-bottom: 8px;
+        color: #333;
+        font-size: 14px;
+    }
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+        font-family: inherit;
+    }
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    .form-group textarea {
+        resize: vertical;
+        min-height: 100px;
+    }
+    .required::after {
+        content: " *";
+        color: #dc3545;
+    }
+    .btn-group {
+        display: flex;
+        gap: 10px;
+        margin-top: 30px;
+    }
+    .btn {
+        padding: 12px 24px;
+        border: none;
+        border-radius: 4px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .btn-primary {
+        background: #667eea;
+        color: white;
+    }
+    .btn-primary:hover {
+        background: #5568d3;
+    }
+    .btn-secondary {
+        background: #e9ecef;
+        color: #333;
+    }
+    .btn-secondary:hover {
+        background: #dee2e6;
+    }
+    .status-badge {
+        display: inline-block;
+        padding: 6px 12px;
+        background: #e7f3ff;
+        color: #0066cc;
+        border-radius: 4px;
+        font-size: 13px;
+        font-weight: 600;
+    }
+    .alert {
+        padding: 15px;
+        margin-bottom: 20px;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .alert-info {
+        background: #d1ecf1;
+        color: #0c5460;
+        border-left: 4px solid #17a2b8;
+    }
+    .alert-warning {
+        background: #fff3cd;
+        color: #856404;
+        border-left: 4px solid #ffc107;
+    }
+    .header-section {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+        padding-bottom: 20px;
+        border-bottom: 2px solid #f0f0f0;
+    }
+    .header-left h1 {
+        margin: 0;
+        font-size: 28px;
+        color: #333;
+    }
+    .header-left .subtitle {
+        color: #999;
+        margin-top: 5px;
+        font-size: 14px;
+    }
+    @media (max-width: 768px) {
+        .header-section {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        .form-row {
+            grid-template-columns: 1fr;
+        }
+        .btn-group {
+            flex-direction: column;
+        }
+        .btn {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- Header -->
+    <div class="header-section">
+        <div class="header-left">
+            <h1>New Application Entry</h1>
+            <div class="subtitle">Applicant: {{ applicant.full_name }}</div>
+        </div>
+        <div class="status-badge">
+            <i class="bi bi-file-earmark-text"></i> New Entry
+        </div>
+    </div>
+
+    <!-- Alert -->
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i>
+        <div>
+            <strong>Complete & Assign:</strong> Fill out the form below to update applicant details and assign to an employee or agent for processing.
+        </div>
+    </div>
+
+    <!-- FORM - ONLY rendered for new entries -->
+    {% if can_edit_form %}
+    <form method="POST" id="applicationForm" class="form-container">
+        {% csrf_token %}
+
+        <!-- APPLICANT INFORMATION -->
+        <div class="form-section">
+            <div class="section-title">
+                <i class="bi bi-person"></i> Applicant Information
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="required">Full Name</label>
+                    <input type="text" name="full_name" value="{{ applicant.full_name }}" readonly style="background: #f9f9f9;">
+                </div>
+                <div class="form-group">
+                    <label class="required">Email</label>
+                    <input type="email" name="email" value="{{ applicant.email }}" readonly style="background: #f9f9f9;">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="required">Phone Number</label>
+                    <input type="tel" name="phone_number" value="{{ applicant.phone_number }}" placeholder="+91 XXXXXXXXXX">
+                </div>
+                <div class="form-group">
+                    <label>PAN Number</label>
+                    <input type="text" name="pan_number" value="{{ applicant.pan_number }}" placeholder="XXXXXXXXXXXXX">
+                </div>
+            </div>
+        </div>
+
+        <!-- LOAN INFORMATION -->
+        <div class="form-section">
+            <div class="section-title">
+                <i class="bi bi-cash-coin"></i> Loan Information
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="required">Loan Type</label>
+                    <select name="loan_type" required>
+                        <option value="">-- Select --</option>
+                        <option value="Personal Loan" {% if application.loan_type == 'Personal Loan' %}selected{% endif %}>Personal Loan</option>
+                        <option value="Home Loan" {% if application.loan_type == 'Home Loan' %}selected{% endif %}>Home Loan</option>
+                        <option value="Business Loan" {% if application.loan_type == 'Business Loan' %}selected{% endif %}>Business Loan</option>
+                        <option value="Auto Loan" {% if application.loan_type == 'Auto Loan' %}selected{% endif %}>Auto Loan</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="required">Requested Amount (₹)</label>
+                    <input type="number" name="requested_amount" value="{{ application.requested_amount }}" placeholder="0.00" step="0.01" required>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Loan Purpose</label>
+                    <input type="text" name="loan_purpose" value="{{ application.loan_purpose }}" placeholder="e.g., Home renovation">
+                </div>
+                <div class="form-group">
+                    <label class="required">Tenure (Months)</label>
+                    <input type="number" name="loan_tenure" value="{{ application.loan_tenure }}" placeholder="12-360" min="1" max="360" required>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Employment Type</label>
+                    <select name="employment_type">
+                        <option value="">-- Select --</option>
+                        <option value="Salaried" {% if application.employment_type == 'Salaried' %}selected{% endif %}>Salaried</option>
+                        <option value="Self Employed" {% if application.employment_type == 'Self Employed' %}selected{% endif %}>Self Employed</option>
+                        <option value="Business Owner" {% if application.employment_type == 'Business Owner' %}selected{% endif %}>Business Owner</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Monthly Income (₹)</label>
+                    <input type="number" name="monthly_income" value="{{ application.monthly_income }}" placeholder="0.00" step="0.01">
+                </div>
+            </div>
+        </div>
+
+        <!-- BANK INFORMATION -->
+        <div class="form-section">
+            <div class="section-title">
+                <i class="bi bi-building"></i> Bank Information
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Bank Name</label>
+                    <input type="text" name="bank_name" value="{{ application.bank_name }}" placeholder="e.g., ICICI Bank">
+                </div>
+                <div class="form-group">
+                    <label>Account Number</label>
+                    <input type="text" name="bank_account_number" value="{{ application.bank_account_number }}" placeholder="XXXXXXXXXXXXXXXX">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>IFSC Code</label>
+                    <input type="text" name="bank_ifsc_code" value="{{ application.bank_ifsc_code }}" placeholder="XXXXXX0000X">
+                </div>
+            </div>
+        </div>
+
+        <!-- ASSIGNMENT (CRITICAL - Required to save) -->
+        <div class="form-section">
+            <div class="section-title">
+                <i class="bi bi-person-check"></i> Assign to Employee/Agent
+            </div>
+
+            <div class="alert alert-warning">
+                <i class="bi bi-exclamation-triangle"></i>
+                <div><strong>Required:</strong> You must assign this application to an employee or agent to proceed.</div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="required">Assign To</label>
+                    <select name="assign_to" required>
+                        <option value="">-- Select Employee or Agent --</option>
+                        <optgroup label="EMPLOYEES">
+                            {% for emp in available_employees %}
+                            <option value="emp_{{ emp.id }}">{{ emp.first_name }} {{ emp.last_name }}</option>
+                            {% empty %}
+                            <option disabled>No employees available</option>
+                            {% endfor %}
+                        </optgroup>
+                        <optgroup label="AGENTS">
+                            {% for agent in available_agents %}
+                            <option value="agent_{{ agent.id }}">{{ agent.name }} (Agent)</option>
+                            {% empty %}
+                            <option disabled>No agents available</option>
+                            {% endfor %}
+                        </optgroup>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- NOTES -->
+        <div class="form-section">
+            <div class="section-title">
+                <i class="bi bi-chat-left-text"></i> Internal Notes
+            </div>
+
+            <div class="form-group">
+                <label>Notes (Optional)</label>
+                <textarea name="notes" placeholder="Add any internal notes...">{{ application.notes }}</textarea>
+            </div>
+        </div>
+
+        <!-- ACTION BUTTONS -->
+        <div class="btn-group">
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-check-circle"></i> Save & Assign
+            </button>
+            <button type="reset" class="btn btn-secondary">
+                <i class="bi bi-arrow-clockwise"></i> Reset
+            </button>
+            <a href="{% url 'admin_new_entry' %}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> Back
+            </a>
+        </div>
+    </form>
+
+    <!-- Form validation script -->
+    <script>
+        document.getElementById('applicationForm').addEventListener('submit', function(e) {
+            const assignTo = document.querySelector('select[name="assign_to"]').value;
+            if (!assignTo) {
+                e.preventDefault();
+                alert('You must select an employee or agent to assign this application.');
+                return false;
+            }
+        });
+    </script>
+
+    {% else %}
+    <!-- FORM PREVENTION: If not editable, show error -->
+    <div class="alert alert-warning">
+        <i class="bi bi-exclamation-triangle"></i>
+        <div>
+            <strong>Error:</strong> This application is no longer in 'New Entry' status and cannot be edited.
+            <a href="{% url 'admin_new_entry' %}">Return to New Entries</a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

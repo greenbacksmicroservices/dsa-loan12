@@ -1,0 +1,628 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Loan Detail - DSA Loan Management System{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="dashboard-header" style="background: white; padding: 24px 0; margin-bottom: 32px; border-bottom: 1px solid #f0f0f0;">
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 style="margin: 0; font-size: 32px; font-weight: 700; color: #1a1a1a;">
+                    <i class="bi bi-file-earmark" style="margin-right: 12px;"></i>Loan Details
+                </h1>
+                <p style="margin: 8px 0 0 0; color: #666; font-size: 14px;">Review and process assigned loan</p>
+            </div>
+            <a href="/employee/new-entries/" class="btn btn-outline-secondary" style="border-radius: 8px; font-weight: 600;">
+                <i class="bi bi-arrow-left"></i> Back
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Loading State -->
+<div class="container-fluid" id="loading-container" style="display: none;">
+    <div class="text-center py-5">
+        <div class="spinner-border spinner-border-lg text-primary mb-3" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="text-muted">Loading loan details...</p>
+    </div>
+</div>
+
+<!-- Error State -->
+<div class="container-fluid" id="error-container" style="display: none;">
+    <div class="row">
+        <div class="col-12">
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="bi bi-exclamation-circle"></i>
+                <span id="error-message">An error occurred while loading the loan details.</span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Content -->
+<div class="container-fluid" id="content-container" style="display: none;">
+    <div class="row g-4">
+        <!-- Left Column: Loan & Applicant Details -->
+        <div class="col-lg-8">
+            <!-- Applicant Information -->
+            <div class="card border-0 shadow-sm" style="border-radius: 16px; margin-bottom: 24px;">
+                <div class="card-header border-0" style="background: #f8f9fa; padding: 20px; border-bottom: 1px solid #e9ecef;">
+                    <h6 class="mb-0" style="font-weight: 600; font-size: 16px;">
+                        <i class="bi bi-person-circle" style="margin-right: 8px;"></i>Applicant Information
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label class="text-muted" style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Full Name</label>
+                                <p id="applicant-name" class="mb-0" style="font-size: 15px; font-weight: 500;">-</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label class="text-muted" style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Mobile</label>
+                                <p id="applicant-mobile" class="mb-0" style="font-size: 15px; font-weight: 500;">-</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label class="text-muted" style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Email</label>
+                                <p id="applicant-email" class="mb-0" style="font-size: 15px; font-weight: 500;">-</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label class="text-muted" style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">City</label>
+                                <p id="applicant-city" class="mb-0" style="font-size: 15px; font-weight: 500;">-</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label class="text-muted" style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">State</label>
+                                <p id="applicant-state" class="mb-0" style="font-size: 15px; font-weight: 500;">-</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label class="text-muted" style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Pin Code</label>
+                                <p id="applicant-pin" class="mb-0" style="font-size: 15px; font-weight: 500;">-</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row g-4 mt-2">
+                        <div class="col-12">
+                            <div class="form-group">
+                                <label class="text-muted" style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Permanent Address</label>
+                                <p id="applicant-permanent-addr" class="mb-0" style="font-size: 14px; font-weight: 400;">-</p>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="form-group">
+                                <label class="text-muted" style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Current Address</label>
+                                <p id="applicant-current-addr" class="mb-0" style="font-size: 14px; font-weight: 400;">-</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loan Information -->
+            <div class="card border-0 shadow-sm" style="border-radius: 16px; margin-bottom: 24px;">
+                <div class="card-header border-0" style="background: #f8f9fa; padding: 20px; border-bottom: 1px solid #e9ecef;">
+                    <h6 class="mb-0" style="font-weight: 600; font-size: 16px;">
+                        <i class="bi bi-cash-coin" style="margin-right: 8px;"></i>Loan Information
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label class="text-muted" style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Loan Type</label>
+                                <p id="loan-type" class="mb-0" style="font-size: 15px; font-weight: 500;">-</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label class="text-muted" style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Loan Amount</label>
+                                <p id="loan-amount" class="mb-0" style="font-size: 15px; font-weight: 500; color: #2e7d32;">-</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label class="text-muted" style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Loan Purpose</label>
+                                <p id="loan-purpose" class="mb-0" style="font-size: 15px; font-weight: 500;">-</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label class="text-muted" style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Tenure (Months)</label>
+                                <p id="loan-tenure" class="mb-0" style="font-size: 15px; font-weight: 500;">-</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label class="text-muted" style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Interest Rate (%)</label>
+                                <p id="loan-interest" class="mb-0" style="font-size: 15px; font-weight: 500;">-</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label class="text-muted" style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Monthly EMI</label>
+                                <p id="loan-emi" class="mb-0" style="font-size: 15px; font-weight: 500;">-</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bank Information -->
+            <div class="card border-0 shadow-sm" style="border-radius: 16px; margin-bottom: 24px;">
+                <div class="card-header border-0" style="background: #f8f9fa; padding: 20px; border-bottom: 1px solid #e9ecef;">
+                    <h6 class="mb-0" style="font-weight: 600; font-size: 16px;">
+                        <i class="bi bi-building" style="margin-right: 8px;"></i>Bank Information
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label class="text-muted" style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Bank Name</label>
+                                <p id="bank-name" class="mb-0" style="font-size: 15px; font-weight: 500;">-</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label class="text-muted" style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Bank Type</label>
+                                <p id="bank-type" class="mb-0" style="font-size: 15px; font-weight: 500;">-</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label class="text-muted" style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Account Number</label>
+                                <p id="bank-account" class="mb-0" style="font-size: 15px; font-weight: 500;">-</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label class="text-muted" style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">IFSC Code</label>
+                                <p id="bank-ifsc" class="mb-0" style="font-size: 15px; font-weight: 500;">-</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Status & Actions -->
+        <div class="col-lg-4">
+            <!-- Status Card -->
+            <div class="card border-0 shadow-sm" style="border-radius: 16px; margin-bottom: 24px; position: sticky; top: 24px;">
+                <div class="card-header border-0" style="background: #f8f9fa; padding: 20px; border-bottom: 1px solid #e9ecef;">
+                    <h6 class="mb-0" style="font-weight: 600; font-size: 16px;">
+                        <i class="bi bi-info-circle" style="margin-right: 8px;"></i>Loan Status
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div style="margin-bottom: 20px;">
+                        <label class="text-muted" style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Current Status</label>
+                        <div id="status-badge" style="margin-top: 8px;">
+                            <span class="badge bg-secondary" style="padding: 8px 12px; font-size: 12px;">-</span>
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 20px;">
+                        <label class="text-muted" style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Assigned By</label>
+                        <p id="assigned-by" class="mb-0" style="font-size: 14px; font-weight: 500; margin-top: 4px;">-</p>
+                    </div>
+
+                    <div style="margin-bottom: 20px;">
+                        <label class="text-muted" style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Assigned Date</label>
+                        <p id="assigned-date" class="mb-0" style="font-size: 14px; font-weight: 500; margin-top: 4px;">-</p>
+                    </div>
+
+                    <hr style="margin: 24px 0;">
+
+                    <!-- Action Buttons -->
+                    <div id="action-buttons" style="display: flex; flex-direction: column; gap: 12px;">
+                        <button id="approve-btn" class="btn btn-success" style="border-radius: 8px; font-weight: 600; padding: 12px; display: none;">
+                            <i class="bi bi-check-circle"></i> Approve
+                        </button>
+                        <button id="reject-btn" class="btn btn-danger" style="border-radius: 8px; font-weight: 600; padding: 12px; display: none;">
+                            <i class="bi bi-x-circle"></i> Reject
+                        </button>
+                        <button id="disburse-btn" class="btn btn-primary" style="border-radius: 8px; font-weight: 600; padding: 12px; display: none;">
+                            <i class="bi bi-cash-coin"></i> Mark as Disbursed
+                        </button>
+                    </div>
+
+                    <!-- Status Message -->
+                    <div id="status-message" style="display: none; margin-top: 16px; padding: 12px; border-radius: 8px; font-size: 13px; font-weight: 500;">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Approval Modal -->
+<div class="modal fade" id="approveModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content" style="border-radius: 12px; border: none;">
+            <div class="modal-header border-0" style="background: #f8f9fa; padding: 20px;">
+                <h5 class="modal-title" style="font-weight: 600;">Approve Loan</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" style="padding: 24px;">
+                <div class="form-group">
+                    <label style="font-weight: 600; margin-bottom: 8px;">Notes (Optional)</label>
+                    <textarea id="approval-notes" class="form-control" rows="3" style="border-radius: 8px;" placeholder="Add any approval notes..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer border-0" style="padding: 20px; gap: 8px;">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" id="confirm-approve">
+                    <i class="bi bi-check-circle"></i> Approve Loan
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Rejection Modal -->
+<div class="modal fade" id="rejectModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content" style="border-radius: 12px; border: none;">
+            <div class="modal-header border-0" style="background: #f8f9fa; padding: 20px;">
+                <h5 class="modal-title" style="font-weight: 600;">Reject Loan</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" style="padding: 24px;">
+                <div class="form-group">
+                    <label style="font-weight: 600; margin-bottom: 8px;">Rejection Reason <span class="text-danger">*</span></label>
+                    <textarea id="rejection-reason" class="form-control" rows="4" style="border-radius: 8px;" placeholder="Please explain why the loan is being rejected..."></textarea>
+                    <small class="text-muted" style="display: block; margin-top: 6px;">This reason will be visible to the admin and agent.</small>
+                </div>
+            </div>
+            <div class="modal-footer border-0" style="padding: 20px; gap: 8px;">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirm-reject">
+                    <i class="bi bi-x-circle"></i> Reject Loan
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Disbursal Modal -->
+<div class="modal fade" id="disburseModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content" style="border-radius: 12px; border: none;">
+            <div class="modal-header border-0" style="background: #f8f9fa; padding: 20px;">
+                <h5 class="modal-title" style="font-weight: 600;">Mark as Disbursed</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" style="padding: 24px;">
+                <p style="color: #666; margin-bottom: 16px;">Are you sure you want to mark this loan as disbursed? This action will:</p>
+                <ul style="color: #666; margin-bottom: 16px;">
+                    <li>Update the loan status to "Disbursed"</li>
+                    <li>Notify the Admin and Agent</li>
+                    <li>Complete the processing workflow</li>
+                </ul>
+            </div>
+            <div class="modal-footer border-0" style="padding: 20px; gap: 8px;">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirm-disburse">
+                    <i class="bi bi-check2-all"></i> Mark as Disbursed
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .dashboard-header {
+        animation: slideDown 0.3s ease;
+    }
+
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .form-group p {
+        word-break: break-word;
+    }
+
+    .btn-success, .btn-danger, .btn-primary {
+        transition: all 0.2s ease;
+    }
+
+    .btn-success:hover, .btn-danger:hover, .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-weight: 600;
+        font-size: 12px;
+    }
+
+    .status-waiting {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    .status-approved {
+        background: #d1e7dd;
+        color: #0f5132;
+    }
+
+    .status-rejected {
+        background: #f8d7da;
+        color: #842029;
+    }
+
+    .status-disbursed {
+        background: #d1ecf1;
+        color: #0c5460;
+    }
+
+    @media (max-width: 768px) {
+        .col-lg-4 {
+            margin-top: 24px;
+        }
+
+        #action-buttons {
+            flex-direction: column;
+        }
+    }
+</style>
+{% endblock %}
+
+<script>
+    let loanData = null;
+    let loanId = {{ loan_id }};
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    async function loadLoanDetails() {
+        try {
+            const response = await fetch(`/api/employee/loan/${loanId}/detail/`, {
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                credentials: 'same-origin'
+            });
+
+            if (!response.ok) throw new Error('Failed to load loan details');
+
+            const data = await response.json();
+            if (!data.success) throw new Error(data.error || 'Unknown error');
+
+            loanData = data.loan;
+            displayLoanDetails();
+            setupActionButtons();
+
+            document.getElementById('loading-container').style.display = 'none';
+            document.getElementById('content-container').style.display = 'block';
+        } catch (error) {
+            console.error('Error:', error);
+            document.getElementById('loading-container').style.display = 'none';
+            document.getElementById('error-container').style.display = 'block';
+            document.getElementById('error-message').textContent = error.message;
+        }
+    }
+
+    function displayLoanDetails() {
+        // Applicant Info
+        document.getElementById('applicant-name').textContent = loanData.applicant_name || '-';
+        document.getElementById('applicant-mobile').textContent = loanData.mobile || '-';
+        document.getElementById('applicant-email').textContent = loanData.email || '-';
+        document.getElementById('applicant-city').textContent = loanData.city || '-';
+        document.getElementById('applicant-state').textContent = loanData.state || '-';
+        document.getElementById('applicant-pin').textContent = loanData.pin_code || '-';
+        document.getElementById('applicant-permanent-addr').textContent = loanData.permanent_address || '-';
+        document.getElementById('applicant-current-addr').textContent = loanData.current_address || '-';
+
+        // Loan Info
+        document.getElementById('loan-type').textContent = loanData.loan_type || '-';
+        document.getElementById('loan-amount').textContent = '₹ ' + new Intl.NumberFormat('en-IN').format(loanData.loan_amount || 0);
+        document.getElementById('loan-purpose').textContent = loanData.loan_purpose || '-';
+        document.getElementById('loan-tenure').textContent = (loanData.tenure_months || 0) + ' months';
+        document.getElementById('loan-interest').textContent = (loanData.interest_rate || 0) + '%';
+        document.getElementById('loan-emi').textContent = '₹ ' + new Intl.NumberFormat('en-IN').format(loanData.emi || 0);
+
+        // Bank Info
+        document.getElementById('bank-name').textContent = loanData.bank_name || '-';
+        document.getElementById('bank-type').textContent = loanData.bank_type || '-';
+        document.getElementById('bank-account').textContent = loanData.account_number || '-';
+        document.getElementById('bank-ifsc').textContent = loanData.ifsc_code || '-';
+
+        // Status
+        document.getElementById('assigned-by').textContent = loanData.assigned_by_name || 'System';
+        document.getElementById('assigned-date').textContent = loanData.assigned_date || '-';
+
+        const statusMap = {
+            'Waiting for Processing': 'status-waiting',
+            'Required Follow-up': 'status-warning',
+            'Approved': 'status-approved',
+            'Rejected': 'status-rejected',
+            'Disbursed': 'status-disbursed'
+        };
+
+        const statusClass = statusMap[loanData.status] || 'status-waiting';
+        document.getElementById('status-badge').innerHTML = `<span class="status-badge ${statusClass}">${loanData.status}</span>`;
+    }
+
+    function setupActionButtons() {
+        const approveBtn = document.getElementById('approve-btn');
+        const rejectBtn = document.getElementById('reject-btn');
+        const disburseBtn = document.getElementById('disburse-btn');
+
+        // Show buttons based on status
+        if (loanData.status === 'Waiting for Processing') {
+            approveBtn.style.display = 'block';
+            rejectBtn.style.display = 'block';
+        } else if (loanData.status === 'Approved') {
+            disburseBtn.style.display = 'block';
+        }
+
+        // Button click handlers
+        approveBtn.addEventListener('click', () => {
+            new bootstrap.Modal(document.getElementById('approveModal')).show();
+        });
+
+        rejectBtn.addEventListener('click', () => {
+            new bootstrap.Modal(document.getElementById('rejectModal')).show();
+        });
+
+        disburseBtn.addEventListener('click', () => {
+            new bootstrap.Modal(document.getElementById('disburseModal')).show();
+        });
+
+        // Modal confirmations
+        document.getElementById('confirm-approve').addEventListener('click', approveLoan);
+        document.getElementById('confirm-reject').addEventListener('click', rejectLoan);
+        document.getElementById('confirm-disburse').addEventListener('click', disburseLoan);
+    }
+
+    async function approveLoan() {
+        try {
+            const approvalNotes = document.getElementById('approval-notes').value;
+            const response = await fetch(`/api/employee/loan/${loanId}/approve/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({ approval_notes: approvalNotes })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) throw new Error(data.error || 'Failed to approve');
+
+            showStatusMessage('success', '✓ Loan approved successfully!');
+            bootstrap.Modal.getInstance(document.getElementById('approveModal')).hide();
+
+            // Reload details
+            setTimeout(() => {
+                loadLoanDetails();
+            }, 1000);
+        } catch (error) {
+            showStatusMessage('danger', '✗ ' + error.message);
+        }
+    }
+
+    async function rejectLoan() {
+        try {
+            const rejectionReason = document.getElementById('rejection-reason').value.trim();
+            if (!rejectionReason) {
+                alert('Please enter a rejection reason');
+                return;
+            }
+
+            const response = await fetch(`/api/employee/loan/${loanId}/reject/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({ rejection_reason: rejectionReason })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) throw new Error(data.error || 'Failed to reject');
+
+            showStatusMessage('success', '✓ Loan rejected successfully!');
+            bootstrap.Modal.getInstance(document.getElementById('rejectModal')).hide();
+
+            // Reload details
+            setTimeout(() => {
+                loadLoanDetails();
+            }, 1000);
+        } catch (error) {
+            showStatusMessage('danger', '✗ ' + error.message);
+        }
+    }
+
+    async function disburseLoan() {
+        try {
+            const response = await fetch(`/api/employee/loan/${loanId}/disburse/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                credentials: 'same-origin'
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) throw new Error(data.error || 'Failed to disburse');
+
+            showStatusMessage('success', '✓ Loan marked as disbursed!');
+            bootstrap.Modal.getInstance(document.getElementById('disburseModal')).hide();
+
+            // Reload details
+            setTimeout(() => {
+                loadLoanDetails();
+            }, 1000);
+        } catch (error) {
+            showStatusMessage('danger', '✗ ' + error.message);
+        }
+    }
+
+    function showStatusMessage(type, message) {
+        const statusMsg = document.getElementById('status-message');
+        statusMsg.textContent = message;
+        statusMsg.className = `alert alert-${type}`;
+        statusMsg.style.display = 'block';
+
+        setTimeout(() => {
+            statusMsg.style.display = 'none';
+        }, 5000);
+    }
+
+    // Load on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        loadLoanDetails();
+    });
+</script>
+
+</body>
+</html>

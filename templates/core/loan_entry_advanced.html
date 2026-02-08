@@ -1,0 +1,1016 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Advanced Loan Entry - DSA Loan Management System{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2><i class="bi bi-plus-circle"></i> Advanced Loan Entry</h2>
+</div>
+
+<div class="row">
+    <div class="col-lg-12">
+        <div class="table-container">
+            <form id="advancedLoanForm" method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                
+                <!-- SECTION 1: APPLICANT DETAILS -->
+                <div class="form-section mb-4">
+                    <h5 class="section-title"><i class="bi bi-person"></i> Section 1: Applicant Details</h5>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="full_name" class="form-label">Full Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="full_name" name="full_name" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="dob" class="form-label">Date of Birth <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" id="dob" name="dob" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="mobile_number" class="form-label">Mobile Number <span class="text-danger">*</span></label>
+                            <input type="tel" class="form-control" id="mobile_number" name="mobile_number" required pattern="[0-9]{10}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="email" class="form-label">Email ID <span class="text-danger">*</span></label>
+                            <input type="email" class="form-control" id="email" name="email" required>
+                        </div>
+                    </div>
+                    
+                    <!-- Permanent Address -->
+                    <div class="row mt-3">
+                        <div class="col-md-12">
+                            <h6 style="color: #1e293b; font-weight: 600; margin-bottom: 12px;">Permanent Address</h6>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="perm_address" class="form-label">Address <span class="text-danger">*</span></label>
+                            <textarea class="form-control" id="perm_address" name="perm_address" rows="2" required></textarea>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label for="perm_landmark" class="form-label">Landmark</label>
+                            <input type="text" class="form-control" id="perm_landmark" name="perm_landmark">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label for="perm_pin_code" class="form-label">Pin Code <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="perm_pin_code" name="perm_pin_code" pattern="[0-9]{6}" required>
+                        </div>
+                    </div>
+                    
+                    <!-- Current/Present Address -->
+                    <div class="row mt-3">
+                        <div class="col-md-12">
+                            <h6 style="color: #1e293b; font-weight: 600; margin-bottom: 12px;">Current/Present Address</h6>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="same_as_permanent" name="same_as_permanent" onchange="copyPermanentToPresent()">
+                                <label class="form-check-label" for="same_as_permanent">
+                                    ✓ Same as Permanent Address
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="current_address" class="form-label">Address <span class="text-danger">*</span></label>
+                            <textarea class="form-control" id="current_address" name="current_address" rows="2" required></textarea>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label for="current_landmark" class="form-label">Landmark</label>
+                            <input type="text" class="form-control" id="current_landmark" name="current_landmark">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label for="current_pin_code" class="form-label">Pin Code <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="current_pin_code" name="current_pin_code" pattern="[0-9]{6}" required>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECTION 2: OCCUPATION & INCOME DETAILS -->
+                <div class="form-section mb-4">
+                    <h5 class="section-title"><i class="bi bi-briefcase"></i> Section 2: Occupation & Income Details</h5>
+                    
+                    <!-- Occupation Type - Mutually Exclusive -->
+                    <div class="row mb-4">
+                        <div class="col-md-12">
+                            <label class="form-label">Occupation Type <span class="text-danger">*</span> (MANDATORY – SINGLE SELECT)</label>
+                            <div class="occupation-selection">
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="occupation_type" id="occupation_business" value="business" required onchange="toggleEmploymentFields()">
+                                    <label class="form-check-label" for="occupation_business">
+                                        <i class="bi bi-briefcase-fill"></i> Business
+                                    </label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="occupation_type" id="occupation_salary" value="salary" required onchange="toggleEmploymentFields()">
+                                    <label class="form-check-label" for="occupation_salary">
+                                        <i class="bi bi-person-workspace"></i> Salary
+                                    </label>
+                                </div>
+                            </div>
+                            <small class="text-muted">⚠️ Only ONE option selectable</small>
+                        </div>
+                    </div>
+
+                    <!-- SALARY SECTION - Conditional -->
+                    <div id="salary_section" style="display: none;">
+                        <div style="padding: 15px; background: #e3f2fd; border-left: 4px solid #2196F3; margin-bottom: 20px;">
+                            <h6 style="color: #1565c0; margin-bottom: 15px;">🔸 IF SALARY SELECTED → SHOW BELOW FIELDS</h6>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="monthly_salary" class="form-label">Monthly Salary (₹) <span class="text-danger">*</span></label>
+                                    <input type="number" class="form-control" id="monthly_salary" name="monthly_salary" step="0.01" min="0">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="salary_designation" class="form-label">Designation <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="salary_designation" name="salary_designation">
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="date_of_joining" class="form-label">Date of Joining <span class="text-danger">*</span></label>
+                                    <input type="date" class="form-control" id="date_of_joining" name="date_of_joining">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="years_experience" class="form-label">Years of Experience <span class="text-danger">*</span></label>
+                                    <input type="number" class="form-control" id="years_experience" name="years_experience" min="0" step="0.1">
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="net_salary" class="form-label">Net Salary (₹) <span class="text-danger">*</span></label>
+                                    <input type="number" class="form-control" id="net_salary" name="net_salary" step="0.01" min="0">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="gross_salary" class="form-label">Gross Salary (₹) <span class="text-danger">*</span></label>
+                                    <input type="number" class="form-control" id="gross_salary" name="gross_salary" step="0.01" min="0">
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="company_name" class="form-label">Company Name <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="company_name" name="company_name">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="company_address" class="form-label">Company Address <span class="text-danger">*</span></label>
+                                    <textarea class="form-control" id="company_address" name="company_address" rows="2"></textarea>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="company_landmark" class="form-label">Landmark</label>
+                                    <input type="text" class="form-control" id="company_landmark" name="company_landmark">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="previous_company" class="form-label">Previous Company Name</label>
+                                    <input type="text" class="form-control" id="previous_company" name="previous_company">
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="form_16_available" class="form-label">Form 16 / Form 16A Available <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="form_16_available" name="form_16_available">
+                                        <option value="">-- Select --</option>
+                                        <option value="yes">Yes</option>
+                                        <option value="no">No</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- BUSINESS SECTION - Conditional -->
+                    <div id="business_section" style="display: none;">
+                        <div style="padding: 15px; background: #f3e5f5; border-left: 4px solid #9c27b0; margin-bottom: 20px;">
+                            <h6 style="color: #6a1b9a; margin-bottom: 15px;">🔸 IF BUSINESS SELECTED → SHOW BELOW FIELDS</h6>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="business_email" class="form-label">Email ID <span class="text-danger">*</span></label>
+                                    <input type="email" class="form-control" id="business_email" name="business_email">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="date_of_incorporation" class="form-label">Date of Incorporation <span class="text-danger">*</span></label>
+                                    <input type="date" class="form-control" id="date_of_incorporation" name="date_of_incorporation">
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="nature_of_business" class="form-label">Nature of Business <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="nature_of_business" name="nature_of_business">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="number_of_employees" class="form-label">Number of Employees <span class="text-danger">*</span></label>
+                                    <input type="number" class="form-control" id="number_of_employees" name="number_of_employees" min="0">
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-12 mb-3">
+                                    <label class="form-label">Documents Available <span class="text-danger">*</span> (Checkboxes)</label>
+                                    <div class="business-docs-checkbox">
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input" type="checkbox" id="doc_gst" name="business_documents" value="gst">
+                                            <label class="form-check-label" for="doc_gst">GST</label>
+                                        </div>
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input" type="checkbox" id="doc_itr" name="business_documents" value="itr">
+                                            <label class="form-check-label" for="doc_itr">ITR</label>
+                                        </div>
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input" type="checkbox" id="doc_bank_stmt" name="business_documents" value="bank_statement">
+                                            <label class="form-check-label" for="doc_bank_stmt">Bank Statement</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="itr_details" class="form-label">ITR Details <span class="text-danger">*</span></label>
+                                    <textarea class="form-control" id="itr_details" name="itr_details" rows="2"></textarea>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="stock_value" class="form-label">Stock Value (₹) <span class="text-danger">*</span></label>
+                                    <input type="number" class="form-control" id="stock_value" name="stock_value" step="0.01" min="0">
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="business_address" class="form-label">Address of Business <span class="text-danger">*</span></label>
+                                    <textarea class="form-control" id="business_address" name="business_address" rows="2"></textarea>
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <label for="business_landmark" class="form-label">Landmark</label>
+                                    <input type="text" class="form-control" id="business_landmark" name="business_landmark">
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <label for="business_pin_code" class="form-label">Pin Code <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="business_pin_code" name="business_pin_code" pattern="[0-9]{6}">
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="buyer_name" class="form-label">Buyer Name & Mobile Number <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="buyer_name" name="buyer_name" placeholder="Name (Mobile)">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="seller_name" class="form-label">Seller Name & Mobile Number <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="seller_name" name="seller_name" placeholder="Name (Mobile)">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECTION 3: LOAN REQUEST DETAILS -->
+                <div class="form-section mb-4">
+                    <h5 class="section-title"><i class="bi bi-cash-coin"></i> Section 3: Loan Request Details</h5>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="loan_type" class="form-label">Loan Type <span class="text-danger">*</span></label>
+                            <select class="form-select" id="loan_type" name="loan_type" required>
+                                <option value="">Select Loan Type</option>
+                                <option value="personal">Personal Loan</option>
+                                <option value="lap">LAP (Loan Against Property)</option>
+                                <option value="home">Home Loan</option>
+                                <option value="business">Business Loan</option>
+                                <option value="education">Education Loan</option>
+                                <option value="car">Car Loan</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="loan_amount" class="form-label">Loan Amount (₹) <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="loan_amount" name="loan_amount" step="0.01" min="0" required onchange="calculateEMI()">
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="tenure_months" class="form-label">Tenure (Months) <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="tenure_months" name="tenure_months" min="1" required onchange="calculateEMI()">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="interest_rate" class="form-label">Interest Rate (%) (if known)</label>
+                            <input type="number" class="form-control" id="interest_rate" name="interest_rate" step="0.01" min="0" onchange="calculateEMI()">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="emi" class="form-label">Estimated EMI (₹)</label>
+                            <input type="number" class="form-control" id="emi" name="emi" step="0.01" readonly>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label for="loan_purpose" class="form-label">Loan Purpose <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="loan_purpose" name="loan_purpose" required>
+                        </div>
+                    </div>
+
+                    <!-- Bank Details (NEW – ADDED) -->
+                    <div style="padding: 15px; background: #e8f5e9; border-left: 4px solid #4caf50; margin-top: 20px;">
+                        <h6 style="color: #2e7d32; margin-bottom: 15px;">🏦 Bank Details (NEW – ADDED)</h6>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="disbursement_bank_name" class="form-label">Bank Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="disbursement_bank_name" name="disbursement_bank_name" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="disbursement_account_number" class="form-label">Account Number <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="disbursement_account_number" name="disbursement_account_number" required>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECTION 4: APPLICANT TYPE & ASSIGNMENT -->
+                <div class="form-section mb-4">
+                    <h5 class="section-title"><i class="bi bi-diagram-3"></i> Section 4: Applicant Type & Assignment</h5>
+                    <div class="mb-3">
+                        <label class="form-label">Applicant Type <span class="text-danger">*</span></label>
+                        <div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="applicant_type" id="applicant_employee" value="employee" checked onchange="updateAssignmentUI()">
+                                <label class="form-check-label" for="applicant_employee">
+                                    <i class="bi bi-people"></i> Employee
+                                </label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="applicant_type" id="applicant_agent" value="agent" onchange="updateAssignmentUI()">
+                                <label class="form-check-label" for="applicant_agent">
+                                    <i class="bi bi-person-badge"></i> Agent
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="employee_assignment" class="mb-3">
+                        <label for="assigned_employee" class="form-label">Assign Employee</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="employee_search" placeholder="Search employee...">
+                            <button class="btn btn-outline-secondary" type="button" onclick="openEmployeeModal()">
+                                <i class="bi bi-search"></i> Search
+                            </button>
+                        </div>
+                        <div id="selected_employee" class="mt-2"></div>
+                    </div>
+
+                    <div id="agent_assignment" class="mb-3" style="display: none;">
+                        <label for="assigned_agent" class="form-label">Assign Agent</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="agent_search" placeholder="Search agent...">
+                            <button class="btn btn-outline-secondary" type="button" onclick="openAgentModal()">
+                                <i class="bi bi-search"></i> Search
+                            </button>
+                        </div>
+                        <div id="selected_agent" class="mt-2"></div>
+                    </div>
+                    
+                    <!-- Hidden inputs for assignment -->
+                    <input type="hidden" id="assigned_employee" name="assigned_employee">
+                    <input type="hidden" id="assigned_agent" name="assigned_agent">
+                </div>
+
+                <!-- SECTION 5: CO-APPLICANT & GUARANTOR -->
+                <div class="form-section mb-4">
+                    <h5 class="section-title"><i class="bi bi-people"></i> Section 5: Co-applicant & Guarantor Details</h5>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="has_co_applicant" name="has_co_applicant" onchange="toggleCoApplicant()">
+                            <label class="form-check-label" for="has_co_applicant">
+                                Add Co-applicant
+                            </label>
+                        </div>
+                    </div>
+
+                    <div id="co_applicant_section" style="display: none;">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="co_applicant_name" class="form-label">Co-applicant Name</label>
+                                <input type="text" class="form-control" id="co_applicant_name" name="co_applicant_name">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="co_applicant_phone" class="form-label">Co-applicant Phone</label>
+                                <input type="tel" class="form-control" id="co_applicant_phone" name="co_applicant_phone" pattern="[0-9]{10,15}">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
+                                <label for="co_applicant_email" class="form-label">Co-applicant Email</label>
+                                <input type="email" class="form-control" id="co_applicant_email" name="co_applicant_email">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Guarantor Section -->
+                    <div class="mb-4 mt-4">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="has_guarantor" name="has_guarantor" onchange="toggleGuarantor()">
+                            <label class="form-check-label" for="has_guarantor">
+                                <strong>Add Guarantor</strong>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div id="guarantor_section" style="display: none;">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="guarantor_name" class="form-label">Guarantor Name</label>
+                                <input type="text" class="form-control" id="guarantor_name" name="guarantor_name">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="guarantor_phone" class="form-label">Guarantor Phone</label>
+                                <input type="tel" class="form-control" id="guarantor_phone" name="guarantor_phone" pattern="[0-9]{10,15}">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
+                                <label for="guarantor_email" class="form-label">Guarantor Email</label>
+                                <input type="email" class="form-control" id="guarantor_email" name="guarantor_email">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECTION 6: CIBIL & CREDIT PROFILE -->
+                <div class="form-section mb-4">
+                    <h5 class="section-title"><i class="bi bi-graph-up"></i> Section 6: CIBIL & Credit Profile</h5>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="cibil_score" class="form-label">CIBIL Score <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="cibil_score" name="cibil_score" min="300" max="900" required onchange="calculateCIBILCategory()">
+                            <small class="text-muted">Range: 300-900</small>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="cibil_category" class="form-label">CIBIL Category</label>
+                            <input type="text" class="form-control" id="cibil_category" name="cibil_category" readonly style="background-color: #f0f0f0;">
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="credit_history" class="form-label">Credit History (Years)</label>
+                            <input type="number" class="form-control" id="credit_history" name="credit_history" min="0" step="0.5">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="existing_loans" class="form-label">Existing Loans Count</label>
+                            <input type="number" class="form-control" id="existing_loans" name="existing_loans" min="0">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECTION 7: DOCUMENT UPLOADS (NEW) -->
+                <div class="form-section mb-4">
+                    <h5 class="section-title"><i class="bi bi-file-earmark-pdf"></i> Section 7: Document Uploads</h5>
+                    
+                    <p class="text-muted mb-3">📎 User can upload UNLIMITED documents. Each upload must have:</p>
+                    
+                    <!-- Aadhaar Number -->
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label for="aadhar_number" class="form-label">Aadhar Number <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="aadhar_number" name="aadhar_number" pattern="[0-9]{12}" placeholder="12-digit Aadhaar number" required>
+                        </div>
+                    </div>
+
+                    <!-- PAN Number -->
+                    <div class="row mb-4">
+                        <div class="col-md-12">
+                            <label for="pan_number" class="form-label">PAN Number <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="pan_number" name="pan_number" pattern="[A-Z]{5}[0-9]{4}[A-Z]{1}" placeholder="e.g., AAAAA1234A" required>
+                        </div>
+                    </div>
+
+                    <!-- Document Upload Section -->
+                    <div style="padding: 15px; background: #fff3cd; border-left: 4px solid #ff9800; margin-bottom: 20px;">
+                        <h6 style="color: #e65100; margin-bottom: 15px;">📄 Document Upload (UNLIMITED)</h6>
+                        
+                        <div id="document_uploads_container">
+                            <!-- Documents will be added dynamically here -->
+                        </div>
+
+                        <button type="button" class="btn btn-success btn-sm" onclick="addDocumentField()">
+                            <i class="bi bi-plus-circle"></i> Add More Documents
+                        </button>
+                    </div>
+
+                    <div style="padding: 12px; background: #e3f2fd; border-radius: 6px; margin-top: 15px;">
+                        <small><strong>Supported formats:</strong> PDF, JPG, PNG | <strong>Max size:</strong> 5MB each</small>
+                    </div>
+
+                    <div style="padding: 12px; background: #f3e5f5; border-radius: 6px; margin-top: 10px;">
+                        <small><strong>Examples:</strong> PAN Card, Aadhaar Card, Salary Slip, Bank Statement, Business Proof, ITR, GST Certificate, etc.</small>
+                    </div>
+                </div>
+
+                <!-- SUBMIT BUTTONS -->
+                <div class="d-flex gap-2 mb-4">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle"></i> Submit & Continue to Documents
+                    </button>
+                    <button type="button" class="btn btn-secondary" onclick="saveDraft()">
+                        <i class="bi bi-save"></i> Save Draft
+                    </button>
+                    <button type="reset" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-clockwise"></i> Reset
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+</div>
+
+<!-- Employee Selection Modal -->
+<div class="modal fade" id="employeeModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Select Employee</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="text" class="form-control mb-3" id="employeeFilter" placeholder="Search by name or ID...">
+                <div id="employeeList" class="list-group" style="max-height: 400px; overflow-y: auto;">
+                    <p class="text-muted">Loading employees...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Agent Selection Modal -->
+<div class="modal fade" id="agentModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Select Agent</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="text" class="form-control mb-3" id="agentFilter" placeholder="Search by name or phone...">
+                <div id="agentList" class="list-group" style="max-height: 400px; overflow-y: auto;">
+                    <p class="text-muted">Loading agents...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .form-section {
+        background: #f8fafc;
+        padding: 20px;
+        border-radius: 8px;
+        border-left: 4px solid var(--primary-color);
+    }
+
+    .section-title {
+        color: #1e293b;
+        font-weight: 600;
+        margin: 0 0 15px 0;
+        font-size: 16px;
+    }
+
+    .form-check {
+        margin-bottom: 10px;
+    }
+
+    .form-check-label {
+        margin-left: 5px;
+    }
+
+    .activity-panel {
+        position: sticky;
+        top: 20px;
+    }
+</style>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Toggle Employment Type - Mutually Exclusive Selection
+    function toggleEmploymentFields() {
+        const occupationType = document.querySelector('input[name="occupation_type"]:checked')?.value;
+        const salarySection = document.getElementById('salary_section');
+        const businessSection = document.getElementById('business_section');
+        
+        if (occupationType === 'salary') {
+            salarySection.style.display = 'block';
+            businessSection.style.display = 'none';
+            // Clear business fields
+            clearBusinessFields();
+        } else if (occupationType === 'business') {
+            businessSection.style.display = 'block';
+            salarySection.style.display = 'none';
+            // Clear salary fields
+            clearSalaryFields();
+        } else {
+            salarySection.style.display = 'none';
+            businessSection.style.display = 'none';
+        }
+    }
+
+    // Clear Salary Fields
+    function clearSalaryFields() {
+        const fields = ['monthly_salary', 'salary_designation', 'date_of_joining', 'years_experience',
+                       'net_salary', 'gross_salary', 'company_name', 'company_address', 
+                       'company_landmark', 'previous_company', 'form_16_available'];
+        fields.forEach(field => {
+            const element = document.getElementById(field);
+            if (element) element.value = '';
+        });
+    }
+
+    // Clear Business Fields
+    function clearBusinessFields() {
+        const fields = ['business_email', 'date_of_incorporation', 'nature_of_business',
+                       'number_of_employees', 'itr_details', 'stock_value', 'business_address',
+                       'business_landmark', 'business_pin_code', 'buyer_name', 'seller_name'];
+        fields.forEach(field => {
+            const element = document.getElementById(field);
+            if (element) element.value = '';
+        });
+        // Uncheck business documents
+        document.querySelectorAll('input[name="business_documents"]').forEach(cb => cb.checked = false);
+    }
+
+    // Copy Permanent Address to Present Address
+    function copyPermanentToPresent() {
+        const checkbox = document.getElementById('same_as_permanent').checked;
+        
+        if (checkbox) {
+            document.getElementById('current_address').value = document.getElementById('perm_address').value;
+            document.getElementById('current_landmark').value = document.getElementById('perm_landmark').value;
+            document.getElementById('current_pin_code').value = document.getElementById('perm_pin_code').value;
+        } else {
+            document.getElementById('current_address').value = '';
+            document.getElementById('current_landmark').value = '';
+            document.getElementById('current_pin_code').value = '';
+        }
+    }
+
+    // Calculate EMI with formula: (P × R × (1+R)^N) / ((1+R)^N - 1)
+    function calculateEMI() {
+        const principal = parseFloat(document.getElementById('loan_amount').value) || 0;
+        const tenure = parseInt(document.getElementById('tenure_months').value) || 0;
+        const rate = parseFloat(document.getElementById('interest_rate').value) || 0;
+
+        if (principal > 0 && tenure > 0 && rate > 0) {
+            const monthlyRate = rate / 100 / 12;
+            const numPayments = tenure;
+            
+            if (monthlyRate > 0) {
+                const emi = (principal * monthlyRate * Math.pow(1 + monthlyRate, numPayments)) / 
+                           (Math.pow(1 + monthlyRate, numPayments) - 1);
+                document.getElementById('emi').value = emi.toFixed(2);
+            } else {
+                document.getElementById('emi').value = (principal / numPayments).toFixed(2);
+            }
+        }
+    }
+
+    // Calculate CIBIL Category
+    function calculateCIBILCategory() {
+        const score = parseInt(document.getElementById('cibil_score').value) || 0;
+        const categoryField = document.getElementById('cibil_category');
+        let category = '';
+        let color = '';
+
+        if (score >= 750) {
+            category = 'Excellent';
+            color = '#28a745';
+        } else if (score >= 700) {
+            category = 'Very Good';
+            color = '#17a2b8';
+        } else if (score >= 650) {
+            category = 'Good';
+            color = '#ffc107';
+        } else if (score >= 600) {
+            category = 'Fair';
+            color = '#ff9800';
+        } else if (score >= 300) {
+            category = 'Poor';
+            color = '#dc3545';
+        }
+
+        categoryField.value = category;
+        categoryField.style.borderColor = color;
+        categoryField.style.backgroundColor = color + '20';
+    }
+
+    // Add Document Upload Field
+    let documentCount = 0;
+    function addDocumentField() {
+        documentCount++;
+        const container = document.getElementById('document_uploads_container');
+        
+        const docField = document.createElement('div');
+        docField.className = 'document-field mb-3';
+        docField.id = `document_${documentCount}`;
+        docField.style.padding = '12px';
+        docField.style.backgroundColor = '#ffffff';
+        docField.style.border = '1px solid #e0e0e0';
+        docField.style.borderRadius = '4px';
+        docField.style.marginBottom = '12px';
+        
+        docField.innerHTML = `
+            <div class="row">
+                <div class="col-md-8 mb-2">
+                    <label class="form-label">Document Name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control form-control-sm" name="document_name[]" placeholder="e.g., PAN Card, Aadhaar, Salary Slip" required>
+                </div>
+                <div class="col-md-4 mb-2">
+                    <label class="form-label">Upload File <span class="text-danger">*</span></label>
+                    <input type="file" class="form-control form-control-sm" name="document_file[]" accept=".pdf,.jpg,.jpeg,.png" required>
+                </div>
+            </div>
+            <small class="text-muted">Max size: 5MB | Formats: PDF, JPG, PNG</small>
+            <button type="button" class="btn btn-danger btn-sm mt-2" onclick="removeDocumentField('document_${documentCount}')">
+                <i class="bi bi-trash"></i> Remove
+            </button>
+        `;
+        
+        container.appendChild(docField);
+    }
+
+    // Remove Document Upload Field
+    function removeDocumentField(fieldId) {
+        const field = document.getElementById(fieldId);
+        if (field) {
+            field.remove();
+        }
+    }
+
+    // Toggle Co-applicant Section
+    function toggleCoApplicant() {
+        const checkbox = document.getElementById('has_co_applicant').checked;
+        document.getElementById('co_applicant_section').style.display = checkbox ? 'block' : 'none';
+        
+        if (!checkbox) {
+            document.getElementById('co_applicant_name').value = '';
+            document.getElementById('co_applicant_phone').value = '';
+            document.getElementById('co_applicant_email').value = '';
+        }
+    }
+
+    // Toggle Guarantor Section
+    function toggleGuarantor() {
+        const checkbox = document.getElementById('has_guarantor').checked;
+        document.getElementById('guarantor_section').style.display = checkbox ? 'block' : 'none';
+        
+        if (!checkbox) {
+            document.getElementById('guarantor_name').value = '';
+            document.getElementById('guarantor_phone').value = '';
+            document.getElementById('guarantor_email').value = '';
+        }
+    }
+
+    // Update Assignment UI
+    function updateAssignmentUI() {
+        const applicantType = document.querySelector('input[name="applicant_type"]:checked').value;
+        document.getElementById('employee_assignment').style.display = applicantType === 'employee' ? 'block' : 'none';
+        document.getElementById('agent_assignment').style.display = applicantType === 'agent' ? 'block' : 'none';
+    }
+
+    // Open Employee Modal
+    function openEmployeeModal() {
+        const modal = new bootstrap.Modal(document.getElementById('employeeModal'));
+        loadEmployees();
+        modal.show();
+    }
+
+    // Open Agent Modal
+    function openAgentModal() {
+        const modal = new bootstrap.Modal(document.getElementById('agentModal'));
+        loadAgents();
+        modal.show();
+    }
+
+    // Load Employees
+    async function loadEmployees() {
+        try {
+            const response = await fetch('/api/users/?role=employee', {
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            });
+            const employees = await response.json();
+            
+            const employeeList = document.getElementById('employeeList');
+            employeeList.innerHTML = '';
+            
+            employees.results?.forEach(emp => {
+                const item = document.createElement('a');
+                item.href = '#';
+                item.className = 'list-group-item list-group-item-action';
+                item.innerHTML = `<div><strong>${emp.first_name || emp.username}</strong><br><small class="text-muted">${emp.email}</small></div>`;
+                item.onclick = (e) => {
+                    e.preventDefault();
+                    selectEmployee(emp);
+                };
+                employeeList.appendChild(item);
+            });
+        } catch (error) {
+            console.error('Error loading employees:', error);
+        }
+    }
+
+    // Load Agents
+    async function loadAgents() {
+        try {
+            const response = await fetch('/api/agents/', {
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            });
+            const agents = await response.json();
+            
+            const agentList = document.getElementById('agentList');
+            agentList.innerHTML = '';
+            
+            agents.results?.forEach(agent => {
+                const item = document.createElement('a');
+                item.href = '#';
+                item.className = 'list-group-item list-group-item-action';
+                item.innerHTML = `<div><strong>${agent.name}</strong><br><small class="text-muted">${agent.phone} - ${agent.email}</small></div>`;
+                item.onclick = (e) => {
+                    e.preventDefault();
+                    selectAgent(agent);
+                };
+                agentList.appendChild(item);
+            });
+        } catch (error) {
+            console.error('Error loading agents:', error);
+        }
+    }
+
+    // Select Employee
+    function selectEmployee(emp) {
+        const displayDiv = document.getElementById('selected_employee');
+        displayDiv.innerHTML = 
+            `<div class="alert alert-success"><strong>${emp.first_name || emp.username}</strong> - ${emp.email}</div>`;
+        const assignedEmpField = document.getElementById('assigned_employee');
+        assignedEmpField.value = emp.id;
+        assignedEmpField.dataset.id = emp.id;
+        bootstrap.Modal.getInstance(document.getElementById('employeeModal')).hide();
+    }
+
+    // Select Agent
+    function selectAgent(agent) {
+        const displayDiv = document.getElementById('selected_agent');
+        displayDiv.innerHTML = 
+            `<div class="alert alert-success"><strong>${agent.name}</strong> - ${agent.phone}</div>`;
+        const assignedAgentField = document.getElementById('assigned_agent');
+        assignedAgentField.value = agent.id;
+        assignedAgentField.dataset.id = agent.id;
+        bootstrap.Modal.getInstance(document.getElementById('agentModal')).hide();
+    }
+
+    // Save Draft
+    function saveDraft() {
+        const formData = new FormData(document.getElementById('advancedLoanForm'));
+        const draft = {};
+        
+        for (let [key, value] of formData.entries()) {
+            draft[key] = value;
+        }
+        
+        localStorage.setItem('loanFormDraft', JSON.stringify(draft));
+        alert('✓ Draft saved successfully!');
+    }
+
+    // Get CSRF Token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    // Form Submission
+    document.getElementById('advancedLoanForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Validate required fields based on occupation type
+        const occupationType = document.querySelector('input[name="occupation_type"]:checked')?.value;
+        const requiredFields = ['full_name', 'dob', 'mobile_number', 'email', 'perm_address', 
+                               'perm_pin_code', 'current_address', 'current_pin_code',
+                               'loan_type', 'loan_amount', 'tenure_months', 'loan_purpose',
+                               'disbursement_bank_name', 'disbursement_account_number',
+                               'cibil_score', 'aadhar_number', 'pan_number'];
+        
+        // Add occupation-specific fields
+        if (occupationType === 'salary') {
+            requiredFields.push('monthly_salary', 'salary_designation', 'date_of_joining', 'net_salary',
+                              'gross_salary', 'company_name', 'company_address', 'form_16_available');
+        } else if (occupationType === 'business') {
+            requiredFields.push('business_email', 'date_of_incorporation', 'nature_of_business',
+                              'number_of_employees', 'itr_details', 'stock_value', 'business_address',
+                              'business_pin_code', 'buyer_name', 'seller_name');
+        }
+        
+        for (let field of requiredFields) {
+            const element = document.getElementById(field);
+            if (element && (!element.value || element.value.trim() === '')) {
+                alert(`⚠️ Please fill in: ${field.replace(/_/g, ' ')}`);
+                element.focus();
+                return;
+            }
+        }
+        
+        // Validate document uploads
+        const docFiles = document.querySelectorAll('input[name="document_file[]"]');
+        if (docFiles.length === 0) {
+            alert('⚠️ Please add at least one document');
+            return;
+        }
+        
+        // Submit the form with documents
+        submitLoanForm();
+    });
+    
+    // Submit Loan Form via API (with FormData for file uploads)
+    async function submitLoanForm() {
+        const formElement = document.getElementById('advancedLoanForm');
+        const formData = new FormData(formElement);
+        
+        try {
+            const response = await fetch('/api/loans/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                credentials: 'same-origin',
+                body: formData
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                console.error('Error:', errorData);
+                alert('❌ Error submitting loan: ' + JSON.stringify(errorData));
+                return;
+            }
+            
+            const result = await response.json();
+            alert('✓ Loan saved successfully! Redirecting to next step...');
+            window.location.href = `/loan-list/`;
+        } catch (error) {
+            console.error('Error:', error);
+            alert('❌ Error submitting form: ' + error.message);
+        }
+    }
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add first document upload field
+        addDocumentField();
+        
+        // Initialize assignment UI
+        updateAssignmentUI();
+        
+        // Restore draft if available
+        const draft = localStorage.getItem('loanFormDraft');
+        if (draft) {
+            const draftData = JSON.parse(draft);
+            Object.keys(draftData).forEach(key => {
+                const element = document.querySelector(`[name="${key}"]`);
+                if (element) {
+                    if (element.type === 'checkbox') {
+                        element.checked = draftData[key] === 'true';
+                    } else {
+                        element.value = draftData[key];
+                    }
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,369 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}New Loan Entries - Admin{% endblock %}
+
+{% block extra_css %}
+<style>
+    body {
+        background-color: #f5f6fa;
+    }
+    .entries-header {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 8px;
+        margin-bottom: 30px;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+    }
+    .entries-header h1 {
+        margin: 0;
+        font-size: 28px;
+        font-weight: 700;
+    }
+    .entries-header p {
+        margin: 8px 0 0 0;
+        opacity: 0.9;
+        font-size: 14px;
+    }
+    .entries-controls {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 25px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+    .search-box {
+        flex: 1;
+        min-width: 250px;
+    }
+    .search-box input {
+        width: 100%;
+        padding: 12px 15px;
+        border: 2px solid #e0e0e0;
+        border-radius: 6px;
+        font-size: 14px;
+        transition: border-color 0.3s;
+    }
+    .search-box input:focus {
+        outline: none;
+        border-color: #10b981;
+    }
+    .btn-refresh {
+        padding: 12px 24px;
+        background: #10b981;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: background 0.3s;
+    }
+    .btn-refresh:hover {
+        background: #059669;
+    }
+    .entries-table-container {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+    .entries-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .entries-table thead {
+        background: #f8f9fa;
+        border-bottom: 2px solid #e0e0e0;
+    }
+    .entries-table th {
+        padding: 15px;
+        text-align: left;
+        font-weight: 600;
+        color: #333;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .entries-table td {
+        padding: 15px;
+        border-bottom: 1px solid #f0f0f0;
+        font-size: 14px;
+    }
+    .entries-table tbody tr:hover {
+        background-color: #f5f5f5;
+    }
+    .applicant-photo {
+        width: 45px;
+        height: 45px;
+        border-radius: 50%;
+        border: 2px solid #10b981;
+        object-fit: cover;
+        background: #f0f0f0;
+    }
+    .applicant-info {
+        line-height: 1.5;
+    }
+    .applicant-name {
+        font-weight: 600;
+        color: #333;
+    }
+    .applicant-email {
+        font-size: 12px;
+        color: #999;
+    }
+    .amount-badge {
+        color: #10b981;
+        font-weight: 700;
+        font-size: 15px;
+    }
+    .status-badge {
+        background: #e3f2fd;
+        color: #1976d2;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+    .actions-cell {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+    .btn-action {
+        padding: 8px 14px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 600;
+        transition: all 0.3s;
+        text-decoration: none;
+        display: inline-block;
+    }
+    .btn-view {
+        background: #e3f2fd;
+        color: #1976d2;
+    }
+    .btn-view:hover {
+        background: #bbdefb;
+    }
+    .btn-assign {
+        background: #fff3e0;
+        color: #f57c00;
+    }
+    .btn-assign:hover {
+        background: #ffe0b2;
+    }
+    .btn-delete {
+        background: #ffebee;
+        color: #c62828;
+    }
+    .btn-delete:hover {
+        background: #ffcdd2;
+    }
+    .no-entries {
+        text-align: center;
+        padding: 50px 20px;
+        color: #999;
+        font-size: 16px;
+    }
+    .loading {
+        text-align: center;
+        padding: 40px 20px;
+        color: #10b981;
+    }
+    .spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #10b981;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    @media (max-width: 768px) {
+        .entries-controls {
+            flex-direction: column;
+        }
+        .search-box {
+            min-width: 100%;
+        }
+        .btn-refresh {
+            width: 100%;
+        }
+        .entries-table {
+            font-size: 12px;
+        }
+        .entries-table td, .entries-table th {
+            padding: 10px;
+        }
+        .actions-cell {
+            flex-direction: column;
+        }
+        .btn-action {
+            width: 100%;
+            text-align: center;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header Section -->
+    <div class="entries-header">
+        <h1><i class="bi bi-inbox-fill"></i> New Loan Applications</h1>
+        <p>Click Refresh to load new applications. Click View to see full details.</p>
+    </div>
+
+    <!-- Controls Section -->
+    <div class="entries-controls">
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="Search by applicant name, phone, or email..." onkeyup="filterEntries()">
+        </div>
+        <button class="btn-refresh" onclick="refreshEntries()">
+            <i class="bi bi-arrow-clockwise"></i> Refresh Now
+        </button>
+    </div>
+
+    <!-- Table Container -->
+    <div class="entries-table-container">
+        <table class="entries-table" id="entriesTable">
+            <thead>
+                <tr>
+                    <th>Applicant Name</th>
+                    <th>Email</th>
+                    <th>Phone Number</th>
+                    <th>Loan Type</th>
+                    <th>Amount Requested</th>
+                    <th>Assign Agent</th>
+                    <th>Status</th>
+                    <th>Received Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="entriesTableBody">
+                <tr>
+                    <td colspan="9" class="loading">
+                        <div class="spinner"></div><br>Loading entries...
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    let allEntries = [];
+
+    document.addEventListener('DOMContentLoaded', function() {
+        loadEntries();
+    });
+
+    function loadEntries() {
+        fetch('/api/admin/new-entries/')
+            .then(response => response.json())
+            .then(data => {
+                allEntries = data.new_entries || [];
+                displayEntries(allEntries);
+            })
+            .catch(error => {
+                console.error('Error loading entries:', error);
+                document.getElementById('entriesTableBody').innerHTML = 
+                    '<tr><td colspan="9" class="no-entries">Error loading entries. Please try again.</td></tr>';
+            });
+    }
+
+    function displayEntries(entries) {
+        const tbody = document.getElementById('entriesTableBody');
+        
+        if (!entries || entries.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" class="no-entries">No new loan applications found.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = entries.map(entry => {
+            const name = entry.applicant ? entry.applicant.full_name : 'N/A';
+            const email = entry.applicant ? entry.applicant.email : '';
+            const phone = entry.applicant ? entry.applicant.mobile : 'N/A';
+            const amount = entry.loan_amount ? '₹' + entry.loan_amount.toLocaleString('en-IN') : 'N/A';
+            const loanType = entry.loan_type ? entry.loan_type.charAt(0).toUpperCase() + entry.loan_type.slice(1) : 'N/A';
+            const createdDate = entry.created_at ? new Date(entry.created_at).toLocaleDateString('en-IN') : 'N/A';
+            const assignedAgent = entry.assigned_to ? entry.assigned_to.first_name + ' ' + entry.assigned_to.last_name : '-';
+            
+            return `
+                <tr>
+                    <td><strong>${name}</strong></td>
+                    <td>${email}</td>
+                    <td>${phone}</td>
+                    <td>${loanType}</td>
+                    <td><span class="amount-badge">${amount}</span></td>
+                    <td>${assignedAgent}</td>
+                    <td><span class="status-badge">New</span></td>
+                    <td>${createdDate}</td>
+                    <td>
+                        <div class="actions-cell">
+                            <button class="btn-action btn-view" onclick="viewEntry(${entry.id})">View</button>
+                            <button class="btn-action btn-assign" onclick="assignEntry(${entry.id})">Edit</button>
+                            <button class="btn-action btn-assign" onclick="assignToAgent(${entry.id})">Assign To</button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    function filterEntries() {
+        const searchValue = document.getElementById('searchInput').value.toLowerCase();
+        const filtered = allEntries.filter(entry => {
+            const name = (entry.applicant && entry.applicant.full_name) ? entry.applicant.full_name.toLowerCase() : '';
+            const phone = (entry.applicant && entry.applicant.mobile) ? entry.applicant.mobile.toLowerCase() : '';
+            const email = (entry.applicant && entry.applicant.email) ? entry.applicant.email.toLowerCase() : '';
+            return name.includes(searchValue) || phone.includes(searchValue) || email.includes(searchValue);
+        });
+        displayEntries(filtered);
+    }
+
+    function refreshEntries() {
+        document.getElementById('entriesTableBody').innerHTML = 
+            '<tr><td colspan="9" class="loading"><div class="spinner"></div><br>Refreshing...</td></tr>';
+        loadEntries();
+    }
+
+    function viewEntry(id) {
+        // Redirect to the comprehensive detail page
+        window.location.href = `/admin/application-detail/${id}/`;
+    }
+
+    function assignEntry(id) {
+        window.location.href = `/admin/assign-application/${id}/`;
+    }
+
+    function assignToAgent(id) {
+        window.location.href = `/admin/assign-application/${id}/`;
+    }
+
+    function deleteEntry(id) {
+        if (confirm('Are you sure you want to delete this application?')) {
+            fetch(`/api/delete-entry/${id}/`, { method: 'DELETE' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        loadEntries();
+                    } else {
+                        alert('Error: ' + (data.error || 'Could not delete entry'));
+                    }
+                })
+                .catch(error => {
+                    alert('Error deleting entry: ' + error);
+                });
+        }
+    }
+</script>
+
+{% endblock %}

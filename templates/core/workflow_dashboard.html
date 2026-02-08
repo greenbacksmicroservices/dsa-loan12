@@ -1,0 +1,625 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Workflow Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    .workflow-container {
+        margin: 20px 0;
+    }
+    
+    .status-card {
+        border-left: 4px solid #007bff;
+        padding: 15px;
+        background: #f8f9fa;
+        margin-bottom: 15px;
+        border-radius: 4px;
+    }
+    
+    .status-card.new-entry {
+        border-left-color: #007bff;
+    }
+    
+    .status-card.waiting {
+        border-left-color: #ffc107;
+    }
+    
+    .status-card.follow-up {
+        border-left-color: #dc3545;
+    }
+    
+    .status-card.approved {
+        border-left-color: #28a745;
+    }
+    
+    .status-card.rejected {
+        border-left-color: #6c757d;
+    }
+    
+    .status-badge {
+        padding: 4px 8px;
+        border-radius: 3px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+    
+    .badge-new {
+        background-color: #cfe2ff;
+        color: #084298;
+    }
+    
+    .badge-waiting {
+        background-color: #fff3cd;
+        color: #664d03;
+    }
+    
+    .badge-follow-up {
+        background-color: #f8d7da;
+        color: #842029;
+    }
+    
+    .badge-approved {
+        background-color: #d1e7dd;
+        color: #0f5132;
+    }
+    
+    .badge-rejected {
+        background-color: #e2e3e5;
+        color: #383d41;
+    }
+    
+    .section-header {
+        background: linear-gradient(135deg, #667eea 0%, #2d8cb5 100%);
+        color: white;
+        padding: 15px 20px;
+        border-radius: 4px;
+        margin: 30px 0 20px 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .section-count {
+        background: rgba(255, 255, 255, 0.3);
+        padding: 5px 15px;
+        border-radius: 20px;
+        font-weight: bold;
+    }
+    
+    .workflow-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 15px;
+        margin-bottom: 30px;
+    }
+    
+    .stat-box {
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 15px;
+        text-align: center;
+    }
+    
+    .stat-number {
+        font-size: 28px;
+        font-weight: bold;
+        color: #007bff;
+    }
+    
+    .stat-label {
+        font-size: 12px;
+        color: #666;
+        text-transform: uppercase;
+        margin-top: 5px;
+    }
+    
+    .action-buttons {
+        margin: 10px 0;
+    }
+    
+    .action-buttons .btn {
+        margin-right: 5px;
+        margin-bottom: 5px;
+        font-size: 12px;
+        padding: 5px 10px;
+    }
+    
+    .aging-indicator {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 3px;
+        font-size: 11px;
+        margin-left: 10px;
+    }
+    
+    .aging-warning {
+        background-color: #fff3cd;
+        color: #664d03;
+    }
+    
+    .aging-critical {
+        background-color: #f8d7da;
+        color: #842029;
+    }
+    
+    .table-responsive {
+        margin-top: 15px;
+    }
+    
+    .table-hover tbody tr:hover {
+        background-color: #f5f5f5;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 40px 20px;
+        color: #999;
+    }
+    
+    .empty-state svg {
+        width: 60px;
+        height: 60px;
+        margin-bottom: 15px;
+        opacity: 0.5;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid workflow-container">
+    <h1 class="mb-4">
+        <i class="fas fa-network-wired"></i> Workflow Dashboard
+    </h1>
+    
+    <!-- Statistics -->
+    <div class="workflow-stats">
+        <div class="stat-box">
+            <div class="stat-number">{{ stats.new_entry_count }}</div>
+            <div class="stat-label">New Entry</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-number">{{ stats.waiting_count }}</div>
+            <div class="stat-label">Waiting</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-number">{{ stats.follow_up_count }}</div>
+            <div class="stat-label">Follow-up</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-number">{{ stats.approved_count }}</div>
+            <div class="stat-label">Approved</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-number">{{ stats.rejected_count }}</div>
+            <div class="stat-label">Rejected</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-number">{{ stats.total_applications }}</div>
+            <div class="stat-label">Total</div>
+        </div>
+    </div>
+    
+    <!-- New Entry Applications -->
+    <div class="section-header">
+        <span><i class="fas fa-inbox"></i> New Entry Applications</span>
+        <span class="section-count">{{ stats.new_entry_count }}</span>
+    </div>
+    
+    {% if new_entries %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>Applicant</th>
+                        <th>Loan Type</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for app in new_entries %}
+                    <tr>
+                        <td>{{ app.applicant.full_name }}</td>
+                        <td>{{ app.applicant.get_loan_type_display }}</td>
+                        <td>₹{{ app.applicant.loan_amount }}</td>
+                        <td><span class="status-badge badge-new">{{ app.status }}</span></td>
+                        <td>{{ app.created_at|date:"M d, Y" }}</td>
+                        <td>
+                            <div class="action-buttons">
+                                <a href="{% url 'new_entry_detail' app.applicant.id %}" class="btn btn-sm btn-info">
+                                    <i class="fas fa-eye"></i> View
+                                </a>
+                                <a href="#" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#assignModal" onclick="prepareAssignModal({{ app.applicant.id }})">
+                                    <i class="fas fa-user-check"></i> Assign
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <i class="fas fa-inbox"></i>
+            <p>No new entry applications</p>
+        </div>
+    {% endif %}
+    
+    <!-- Waiting for Processing -->
+    <div class="section-header">
+        <span><i class="fas fa-hourglass-half"></i> Waiting for Processing <a href="{% url 'waiting_applications' %}" class="btn btn-sm btn-light ml-2" style="margin-left: 10px;">View All</a></span>
+        <span class="section-count">{{ stats.waiting_count }}</span>
+    </div>
+    
+    {% if waiting %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>Applicant</th>
+                        <th>Assigned To</th>
+                        <th>Waiting Since</th>
+                        <th>Hours Waiting</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in waiting %}
+                    <tr>
+                        <td>{{ item.app.applicant.full_name }}</td>
+                        <td>
+                            {% if item.app.assigned_employee %}
+                                {{ item.app.assigned_employee.first_name }} (Employee)
+                            {% elif item.app.assigned_agent %}
+                                {{ item.app.assigned_agent.name }} (Agent)
+                            {% else %}
+                                <span class="text-muted">Unassigned</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ item.app.assigned_at|date:"M d, Y H:i" }}</td>
+                        <td>
+                            {% if item.hours_since_assignment %}
+                                {{ item.hours_since_assignment|floatformat:0 }}h
+                                {% if item.requires_follow_up %}
+                                    <span class="aging-indicator aging-critical">
+                                        <i class="fas fa-exclamation-triangle"></i> Overdue
+                                    </span>
+                                {% elif item.hours_since_assignment > 20 %}
+                                    <span class="aging-indicator aging-warning">
+                                        <i class="fas fa-clock"></i> Due Soon
+                                    </span>
+                                {% endif %}
+                            {% endif %}
+                        </td>
+                        <td><span class="status-badge badge-waiting">{{ item.app.status }}</span></td>
+                        <td>
+                            <div class="action-buttons">
+                                <a href="{% url 'view_application' item.app.applicant.id %}" class="btn btn-sm btn-info">
+                                    <i class="fas fa-eye"></i> View
+                                </a>
+                                {% if item.requires_follow_up %}
+                                    <button class="btn btn-sm btn-warning" onclick="triggerFollowUp({{ item.app.applicant.id }})">
+                                        <i class="fas fa-bell"></i> Trigger Follow-up
+                                    </button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <i class="fas fa-check-circle"></i>
+            <p>No applications waiting for processing</p>
+        </div>
+    {% endif %}
+    
+    <!-- Required Follow-up (Admin Only) -->
+    <div class="section-header">
+        <span><i class="fas fa-bell"></i> Required Follow-up <a href="{% url 'follow_up_applications' %}" class="btn btn-sm btn-light ml-2" style="margin-left: 10px;">View All</a></span>
+        <span class="section-count">{{ stats.follow_up_count }}</span>
+    </div>
+    
+    {% if follow_ups %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>Applicant</th>
+                        <th>Assigned To</th>
+                        <th>Follow-up Triggered</th>
+                        <th>Count</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in follow_ups %}
+                    <tr class="status-card follow-up">
+                        <td>{{ item.app.applicant.full_name }}</td>
+                        <td>
+                            {% if item.app.assigned_employee %}
+                                {{ item.app.assigned_employee.first_name }} (Employee)
+                            {% elif item.app.assigned_agent %}
+                                {{ item.app.assigned_agent.name }} (Agent)
+                            {% else %}
+                                <span class="text-muted">Unassigned</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {{ item.app.follow_up_scheduled_at|date:"M d, Y H:i" }}
+                            <span class="aging-indicator aging-critical">{{ item.follow_up_age|floatformat:0 }}h ago</span>
+                        </td>
+                        <td>
+                            <span class="badge bg-danger">{{ item.follow_up_count }}x</span>
+                        </td>
+                        <td><span class="status-badge badge-follow-up">{{ item.app.status }}</span></td>
+                        <td>
+                            <div class="action-buttons">
+                                <a href="{% url 'follow_up_details' item.app.applicant.id %}" class="btn btn-sm btn-warning">
+                                    <i class="fas fa-file-alt"></i> Details
+                                </a>
+                                <button class="btn btn-sm btn-secondary" onclick="changeStatus({{ item.app.applicant.id }})">
+                                    <i class="fas fa-exchange-alt"></i> Change Status
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <i class="fas fa-check-circle"></i>
+            <p>No applications requiring follow-up</p>
+        </div>
+    {% endif %}
+    
+    <!-- Approved Applications -->
+    <div class="section-header">
+        <span><i class="fas fa-check-circle"></i> Approved Applications</span>
+        <span class="section-count">{{ stats.approved_count }}</span>
+    </div>
+    
+    {% if approved %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>Applicant</th>
+                        <th>Approved By</th>
+                        <th>Approved Date</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for app in approved %}
+                    <tr>
+                        <td>{{ app.applicant.full_name }}</td>
+                        <td>{{ app.approved_by.first_name }}</td>
+                        <td>{{ app.approved_at|date:"M d, Y" }}</td>
+                        <td>₹{{ app.applicant.loan_amount }}</td>
+                        <td><span class="status-badge badge-approved">{{ app.status }}</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <i class="fas fa-inbox"></i>
+            <p>No approved applications</p>
+        </div>
+    {% endif %}
+    
+    <!-- Rejected Applications -->
+    <div class="section-header">
+        <span><i class="fas fa-times-circle"></i> Rejected Applications</span>
+        <span class="section-count">{{ stats.rejected_count }}</span>
+    </div>
+    
+    {% if rejected %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>Applicant</th>
+                        <th>Rejected By</th>
+                        <th>Rejected Date</th>
+                        <th>Reason</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for app in rejected %}
+                    <tr>
+                        <td>{{ app.applicant.full_name }}</td>
+                        <td>{{ app.rejected_by.first_name }}</td>
+                        <td>{{ app.rejected_at|date:"M d, Y" }}</td>
+                        <td>{{ app.rejection_reason|truncatewords:10 }}</td>
+                        <td><span class="status-badge badge-rejected">{{ app.status }}</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <i class="fas fa-inbox"></i>
+            <p>No rejected applications</p>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Assign Modal -->
+<div class="modal fade" id="assignModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Assign Application</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Assign Type</label>
+                    <select id="assignType" class="form-select" onchange="updateAssigneeList()">
+                        <option value="">-- Select --</option>
+                        <option value="employee">Employee</option>
+                        <option value="agent">Agent</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Assignee</label>
+                    <select id="assigneeId" class="form-select">
+                        <option value="">-- Select assignee --</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="submitAssignment()">Assign</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentApplicantId = null;
+
+function prepareAssignModal(applicantId) {
+    currentApplicantId = applicantId;
+    document.getElementById('assignType').value = '';
+    document.getElementById('assigneeId').value = '';
+    document.getElementById('assigneeId').innerHTML = '<option value="">-- Select assignee --</option>';
+}
+
+function updateAssigneeList() {
+    const assignType = document.getElementById('assignType').value;
+    const endpoint = assignType === 'employee' ? '{% url "get_employees" %}' : '{% url "get_agents" %}';
+    
+    if (!assignType) return;
+    
+    fetch(endpoint, {
+        headers: {
+            'Authorization': 'Bearer ' + getCSRFToken(),
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        let options = '<option value="">-- Select --</option>';
+        data.forEach(item => {
+            const name = item.first_name ? `${item.first_name} ${item.last_name}` : item.name;
+            options += `<option value="${item.id}">${name}</option>`;
+        });
+        document.getElementById('assigneeId').innerHTML = options;
+    });
+}
+
+function submitAssignment() {
+    const assignType = document.getElementById('assignType').value;
+    const assigneeId = document.getElementById('assigneeId').value;
+    
+    if (!assignType || !assigneeId) {
+        alert('Please select both assignment type and assignee');
+        return;
+    }
+    
+    const endpoint = assignType === 'employee' 
+        ? `{% url 'assign_to_employee' 999 %}`.replace('999', currentApplicantId)
+        : `{% url 'assign_to_agent' 999 %}`.replace('999', currentApplicantId);
+    
+    fetch(endpoint, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken(),
+        },
+        body: JSON.stringify({
+            [assignType + '_id']: parseInt(assigneeId)
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error assigning application');
+    });
+}
+
+function triggerFollowUp(applicantId) {
+    if (!confirm('Trigger follow-up for this application?')) return;
+    
+    fetch(`/api/workflow/manual-follow-up/${applicantId}/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken(),
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    });
+}
+
+function changeStatus(applicantId) {
+    const newStatus = prompt('Enter new status:\n1. Waiting for Processing\n2. Required Follow-up\n3. Approved\n4. Rejected\n5. Disbursed');
+    
+    const statusMap = {
+        '1': 'Waiting for Processing',
+        '2': 'Required Follow-up',
+        '3': 'Approved',
+        '4': 'Rejected',
+        '5': 'Disbursed'
+    };
+    
+    if (!newStatus || !statusMap[newStatus]) return;
+    
+    fetch(`/api/workflow/change-status/${applicantId}/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken(),
+        },
+        body: JSON.stringify({ status: statusMap[newStatus] })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    });
+}
+
+function getCSRFToken() {
+    return document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
+           document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1] || '';
+}
+</script>
+{% endblock %}

@@ -1,0 +1,434 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Loan Details #{{ loan.id }}{% endblock %}
+
+{% block content %}
+<style>
+    .detail-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 8px;
+        margin-bottom: 30px;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+
+    .detail-header h1 {
+        margin: 0;
+        font-size: 28px;
+        font-weight: 700;
+    }
+
+    .detail-header p {
+        margin: 8px 0 0 0;
+        opacity: 0.95;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        margin-top: 10px;
+    }
+
+    .status-new {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .status-waiting {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .status-approved {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .status-rejected {
+        background: #fee2e2;
+        color: #7f1d1d;
+    }
+
+    .status-disbursed {
+        background: #cffafe;
+        color: #164e63;
+    }
+
+    .detail-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .detail-card {
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .detail-card h6 {
+        color: #6b7280;
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 8px;
+    }
+
+    .detail-card p {
+        color: #1f2937;
+        font-size: 16px;
+        font-weight: 600;
+        margin: 0;
+    }
+
+    .detail-card a {
+        color: #667eea;
+        text-decoration: none;
+    }
+
+    .detail-card a:hover {
+        text-decoration: underline;
+    }
+
+    .section-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: #1f2937;
+        padding-bottom: 12px;
+        border-bottom: 3px solid #667eea;
+        margin-bottom: 20px;
+    }
+
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .info-item {
+        background: #f9fafb;
+        padding: 16px;
+        border-radius: 6px;
+        border-left: 4px solid #667eea;
+    }
+
+    .info-label {
+        color: #6b7280;
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        margin-bottom: 6px;
+    }
+
+    .info-value {
+        color: #1f2937;
+        font-size: 15px;
+        font-weight: 600;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 30px;
+        flex-wrap: wrap;
+    }
+
+    .btn-edit {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .btn-edit:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-back {
+        background: #e5e7eb;
+        color: #1f2937;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .btn-back:hover {
+        background: #d1d5db;
+    }
+
+    .document-section {
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+
+    .document-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        margin-bottom: 10px;
+    }
+
+    .document-item:last-child {
+        margin-bottom: 0;
+    }
+
+    .document-name {
+        font-weight: 600;
+        color: #1f2937;
+    }
+
+    .document-status {
+        background: #d1fae5;
+        color: #065f46;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    @media (max-width: 768px) {
+        .detail-header {
+            padding: 20px;
+        }
+
+        .detail-header h1 {
+            font-size: 22px;
+        }
+
+        .action-buttons {
+            flex-direction: column;
+        }
+
+        .btn-edit, .btn-back {
+            width: 100%;
+        }
+    }
+</style>
+
+<div class="detail-header">
+    <h1><i class="bi bi-file-earmark"></i> Loan Application Details</h1>
+    <p>ID: <strong>#{{ loan.id }}</strong></p>
+    {% if loan.status %}
+        <span class="status-badge status-{{ loan.status|lower }}">
+            {{ loan.get_status_display|upper }}
+        </span>
+    {% endif %}
+</div>
+
+<!-- Action Buttons -->
+<div class="action-buttons">
+    <button class="btn-back" onclick="history.back()">
+        <i class="bi bi-arrow-left"></i> Back
+    </button>
+    <button class="btn-edit" onclick="editLoan()">
+        <i class="bi bi-pencil-square"></i> Edit Application
+    </button>
+</div>
+
+<!-- Applicant Information -->
+<div class="detail-grid">
+    <div class="detail-card">
+        <h6>Full Name</h6>
+        <p>{{ loan.full_name|default:"N/A" }}</p>
+    </div>
+    <div class="detail-card">
+        <h6>Email</h6>
+        <p><a href="mailto:{{ loan.email }}">{{ loan.email|default:"N/A" }}</a></p>
+    </div>
+    <div class="detail-card">
+        <h6>Mobile Number</h6>
+        <p><a href="tel:{{ loan.mobile }}">{{ loan.mobile|default:"N/A" }}</a></p>
+    </div>
+    <div class="detail-card">
+        <h6>Loan Type</h6>
+        <p>{{ loan.loan_type|default:"N/A" }}</p>
+    </div>
+</div>
+
+<!-- Loan Details Section -->
+<h3 class="section-title"><i class="bi bi-info-circle"></i> Loan Information</h3>
+
+<div class="info-grid">
+    {% if loan.loan_amount %}
+    <div class="info-item">
+        <div class="info-label">Loan Amount</div>
+        <div class="info-value">₹ {{ loan.loan_amount|floatformat:0 }}</div>
+    </div>
+    {% endif %}
+
+    {% if loan.monthly_income %}
+    <div class="info-item">
+        <div class="info-label">Monthly Income</div>
+        <div class="info-value">₹ {{ loan.monthly_income|floatformat:0 }}</div>
+    </div>
+    {% endif %}
+
+    {% if loan.created_at %}
+    <div class="info-item">
+        <div class="info-label">Submitted On</div>
+        <div class="info-value">{{ loan.created_at|date:"d M Y H:i" }}</div>
+    </div>
+    {% endif %}
+
+    {% if loan.status %}
+    <div class="info-item">
+        <div class="info-label">Current Status</div>
+        <div class="info-value">{{ loan.get_status_display }}</div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Personal Information Section -->
+{% if loan.date_of_birth or loan.pan_number or loan.aadhar_number %}
+<h3 class="section-title"><i class="bi bi-person"></i> Personal Information</h3>
+
+<div class="info-grid">
+    {% if loan.date_of_birth %}
+    <div class="info-item">
+        <div class="info-label">Date of Birth</div>
+        <div class="info-value">{{ loan.date_of_birth|date:"d M Y" }}</div>
+    </div>
+    {% endif %}
+
+    {% if loan.pan_number %}
+    <div class="info-item">
+        <div class="info-label">PAN Number</div>
+        <div class="info-value">{{ loan.pan_number }}</div>
+    </div>
+    {% endif %}
+
+    {% if loan.aadhar_number %}
+    <div class="info-item">
+        <div class="info-label">Aadhaar Number</div>
+        <div class="info-value">{{ loan.aadhar_number }}</div>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Address Information Section -->
+{% if loan.permanent_address or loan.present_address %}
+<h3 class="section-title"><i class="bi bi-geo-alt"></i> Address Information</h3>
+
+<div class="info-grid">
+    {% if loan.permanent_address %}
+    <div class="info-item">
+        <div class="info-label">Permanent Address</div>
+        <div class="info-value">{{ loan.permanent_address }}</div>
+    </div>
+    {% endif %}
+
+    {% if loan.permanent_city %}
+    <div class="info-item">
+        <div class="info-label">Permanent City</div>
+        <div class="info-value">{{ loan.permanent_city }}</div>
+    </div>
+    {% endif %}
+
+    {% if loan.permanent_pincode %}
+    <div class="info-item">
+        <div class="info-label">Permanent PIN</div>
+        <div class="info-value">{{ loan.permanent_pincode }}</div>
+    </div>
+    {% endif %}
+
+    {% if loan.present_address %}
+    <div class="info-item">
+        <div class="info-label">Present Address</div>
+        <div class="info-value">{{ loan.present_address }}</div>
+    </div>
+    {% endif %}
+
+    {% if loan.present_city %}
+    <div class="info-item">
+        <div class="info-label">Present City</div>
+        <div class="info-value">{{ loan.present_city }}</div>
+    </div>
+    {% endif %}
+
+    {% if loan.present_pincode %}
+    <div class="info-item">
+        <div class="info-label">Present PIN</div>
+        <div class="info-value">{{ loan.present_pincode }}</div>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Employment Information Section -->
+{% if loan.occupation_type or loan.company_name %}
+<h3 class="section-title"><i class="bi bi-briefcase"></i> Employment Information</h3>
+
+<div class="info-grid">
+    {% if loan.occupation_type %}
+    <div class="info-item">
+        <div class="info-label">Occupation Type</div>
+        <div class="info-value">{{ loan.occupation_type }}</div>
+    </div>
+    {% endif %}
+
+    {% if loan.company_name %}
+    <div class="info-item">
+        <div class="info-label">Company Name</div>
+        <div class="info-value">{{ loan.company_name }}</div>
+    </div>
+    {% endif %}
+
+    {% if loan.designation %}
+    <div class="info-item">
+        <div class="info-label">Designation</div>
+        <div class="info-value">{{ loan.designation }}</div>
+    </div>
+    {% endif %}
+
+    {% if loan.years_of_experience %}
+    <div class="info-item">
+        <div class="info-label">Years of Experience</div>
+        <div class="info-value">{{ loan.years_of_experience }}</div>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Remarks Section -->
+{% if loan.remarks or loan.remarks_suggestions %}
+<h3 class="section-title"><i class="bi bi-chat-quote"></i> Remarks</h3>
+
+<div class="document-section">
+    <p style="color: #1f2937; line-height: 1.6;">
+        {{ loan.remarks|default:loan.remarks_suggestions|default:"No remarks" }}
+    </p>
+</div>
+{% endif %}
+
+<script>
+    function editLoan() {
+        window.location.href = '/comprehensive-loan-form/?edit={{ loan.id }}';
+    }
+</script>
+
+{% endblock %}

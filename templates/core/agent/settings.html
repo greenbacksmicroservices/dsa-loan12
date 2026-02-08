@@ -1,0 +1,321 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}Settings | DSA{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="mb-0">
+                    <i class="fas fa-cog"></i> Settings
+                </h1>
+                <a href="{% url 'agent_profile' %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Back
+                </a>
+            </div>
+        </div>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+                <i class="fas fa-check-circle"></i> {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Settings Tabs -->
+    <div class="row">
+        <div class="col-lg-8 offset-lg-2">
+            <div class="card shadow-sm border-0 rounded-lg">
+                <div class="card-header">
+                    <ul class="nav nav-tabs card-header-tabs" id="settingsTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="password-tab" data-bs-toggle="tab" data-bs-target="#password" 
+                                    type="button" role="tab" aria-controls="password" aria-selected="true">
+                                <i class="fas fa-lock"></i> Password & Security
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="notifications-tab" data-bs-toggle="tab" data-bs-target="#notifications" 
+                                    type="button" role="tab" aria-controls="notifications" aria-selected="false">
+                                <i class="fas fa-bell"></i> Notifications
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="privacy-tab" data-bs-toggle="tab" data-bs-target="#privacy" 
+                                    type="button" role="tab" aria-controls="privacy" aria-selected="false">
+                                <i class="fas fa-shield-alt"></i> Privacy & Account
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="card-body p-4">
+                    <!-- Tab Content -->
+                    <div class="tab-content" id="settingsTabContent">
+                        
+                        <!-- Password & Security Tab -->
+                        <div class="tab-pane fade show active" id="password" role="tabpanel" aria-labelledby="password-tab">
+                            <h5 class="mb-4"><i class="fas fa-key"></i> Change Password</h5>
+                            <form method="POST">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="change_password">
+
+                                <div class="mb-3">
+                                    <label for="old_password" class="form-label">
+                                        <i class="fas fa-lock"></i> Current Password
+                                    </label>
+                                    <input type="password" class="form-control" id="old_password" name="old_password" 
+                                           placeholder="Enter your current password" required>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="new_password" class="form-label">
+                                        <i class="fas fa-lock"></i> New Password
+                                    </label>
+                                    <input type="password" class="form-control" id="new_password" name="new_password" 
+                                           placeholder="Enter new password" required>
+                                    <small class="form-text text-muted">
+                                        Password must be at least 6 characters long
+                                    </small>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="confirm_password" class="form-label">
+                                        <i class="fas fa-lock"></i> Confirm New Password
+                                    </label>
+                                    <input type="password" class="form-control" id="confirm_password" name="confirm_password" 
+                                           placeholder="Re-enter new password" required>
+                                </div>
+
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save"></i> Update Password
+                                </button>
+                            </form>
+
+                            <hr class="my-4">
+
+                            <h6 class="mb-3"><i class="fas fa-history"></i> Login Activity</h6>
+                            <div class="alert alert-info">
+                                <small>
+                                    <strong>Last Login:</strong> Today at 10:30 AM <br>
+                                    <strong>Device:</strong> Windows (Chrome) <br>
+                                    <strong>IP Address:</strong> 192.168.1.1
+                                </small>
+                            </div>
+                        </div>
+
+                        <!-- Notifications Tab -->
+                        <div class="tab-pane fade" id="notifications" role="tabpanel" aria-labelledby="notifications-tab">
+                            <h5 class="mb-4"><i class="fas fa-bell"></i> Notification Preferences</h5>
+                            <form method="POST">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="notification_settings">
+
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="email_loans" checked>
+                                    <label class="form-check-label" for="email_loans">
+                                        <strong>Email Notifications for New Loans</strong>
+                                        <small class="d-block text-muted">Get notified when new loans are assigned to you</small>
+                                    </label>
+                                </div>
+
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="email_approvals" checked>
+                                    <label class="form-check-label" for="email_approvals">
+                                        <strong>Email Notifications for Approvals</strong>
+                                        <small class="d-block text-muted">Get notified when your loans are approved or rejected</small>
+                                    </label>
+                                </div>
+
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="email_complaints" checked>
+                                    <label class="form-check-label" for="email_complaints">
+                                        <strong>Email Notifications for Complaints</strong>
+                                        <small class="d-block text-muted">Get notified about new complaints and updates</small>
+                                    </label>
+                                </div>
+
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="push_notifications" checked>
+                                    <label class="form-check-label" for="push_notifications">
+                                        <strong>Push Notifications</strong>
+                                        <small class="d-block text-muted">Enable in-browser notifications</small>
+                                    </label>
+                                </div>
+
+                                <div class="form-check mb-4">
+                                    <input class="form-check-input" type="checkbox" id="sms_alerts">
+                                    <label class="form-check-label" for="sms_alerts">
+                                        <strong>SMS Alerts</strong>
+                                        <small class="d-block text-muted">Receive important updates via SMS (optional)</small>
+                                    </label>
+                                </div>
+
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save"></i> Save Notification Settings
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- Privacy & Account Tab -->
+                        <div class="tab-pane fade" id="privacy" role="tabpanel" aria-labelledby="privacy-tab">
+                            <h5 class="mb-4"><i class="fas fa-shield-alt"></i> Privacy & Account Settings</h5>
+                            
+                            <!-- Account Status -->
+                            <div class="mb-4 p-3 border rounded bg-light">
+                                <h6 class="mb-2"><i class="fas fa-check-circle text-success"></i> Account Status</h6>
+                                <p class="mb-0 text-muted">
+                                    Your account is <strong class="text-success">Active</strong> and in good standing.
+                                </p>
+                            </div>
+
+                            <!-- Data & Privacy -->
+                            <h6 class="mb-3">Data & Privacy</h6>
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="data_collection" checked>
+                                <label class="form-check-label" for="data_collection">
+                                    <strong>Allow Data Collection for Analytics</strong>
+                                    <small class="d-block text-muted">Help us improve the platform by analyzing usage patterns</small>
+                                </label>
+                            </div>
+
+                            <div class="form-check mb-4">
+                                <input class="form-check-input" type="checkbox" id="marketing_emails">
+                                <label class="form-check-label" for="marketing_emails">
+                                    <strong>Marketing & Product Updates</strong>
+                                    <small class="d-block text-muted">Receive emails about new features and announcements</small>
+                                </label>
+                            </div>
+
+                            <!-- Account Actions -->
+                            <hr class="my-4">
+                            <h6 class="mb-3">Account Actions</h6>
+                            
+                            <button class="btn btn-warning btn-sm mb-2" data-bs-toggle="modal" data-bs-target="#downloadDataModal">
+                                <i class="fas fa-download"></i> Download My Data
+                            </button>
+
+                            <button class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deactivateModal">
+                                <i class="fas fa-ban"></i> Deactivate Account
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Account Info Summary -->
+            <div class="card shadow-sm border-0 rounded-lg mt-4">
+                <div class="card-body p-4">
+                    <h6 class="mb-3"><i class="fas fa-info-circle"></i> Account Information</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <small class="text-muted d-block">Username</small>
+                            <strong>{{ request.user.username }}</strong>
+                        </div>
+                        <div class="col-md-6">
+                            <small class="text-muted d-block">Email</small>
+                            <strong>{{ request.user.email }}</strong>
+                        </div>
+                        <div class="col-md-6 mt-3">
+                            <small class="text-muted d-block">Role</small>
+                            <strong>
+                                {% if request.user.role == 'admin' %}
+                                    <span class="badge bg-danger">Administrator</span>
+                                {% elif request.user.role == 'agent' %}
+                                    <span class="badge bg-primary">Agent</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Employee</span>
+                                {% endif %}
+                            </strong>
+                        </div>
+                        <div class="col-md-6 mt-3">
+                            <small class="text-muted d-block">Account Created</small>
+                            <strong>{{ request.user.date_joined|date:"d M, Y" }}</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Download Data Modal -->
+<div class="modal fade" id="downloadDataModal" tabindex="-1" aria-labelledby="downloadDataLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="downloadDataLabel">
+                    <i class="fas fa-download"></i> Download Your Data
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>You can download all your account data in a machine-readable format (JSON).</p>
+                <p class="text-muted small">This includes your profile information, loan applications, and activity history.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-warning">
+                    <i class="fas fa-download"></i> Download Data
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Deactivate Account Modal -->
+<div class="modal fade" id="deactivateModal" tabindex="-1" aria-labelledby="deactivateLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content border-danger">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="deactivateLabel">
+                    <i class="fas fa-ban"></i> Deactivate Account
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning" role="alert">
+                    <strong>Warning!</strong> This action will temporarily deactivate your account. You will not be able to:
+                    <ul class="mb-0 mt-2">
+                        <li>Log in to the system</li>
+                        <li>View your loans and applications</li>
+                        <li>File or manage complaints</li>
+                    </ul>
+                </div>
+                <p>You can reactivate your account by contacting the administrator.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger">
+                    <i class="fas fa-ban"></i> Deactivate Account
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .nav-tabs .nav-link {
+        color: #6c757d;
+        border: none;
+        border-bottom: 3px solid transparent;
+        margin-bottom: -1px;
+    }
+
+    .nav-tabs .nav-link:hover {
+        border-bottom-color: #667eea;
+    }
+
+    .nav-tabs .nav-link.active {
+        color: #667eea;
+        background-color: transparent;
+        border-bottom-color: #667eea;
+    }
+</style>
+{% endblock %}

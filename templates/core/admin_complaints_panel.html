@@ -1,0 +1,529 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Complaints Management - Admin Panel{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --primary: #10b981;
+        --secondary: #059669;
+        --danger: #ef4444;
+        --warning: #f59e0b;
+        --text-dark: #1f2937;
+        --text-light: #9ca3af;
+        --border: #e5e7eb;
+        --bg-light: #f9fafb;
+    }
+
+    .page-header {
+        background: linear-gradient(135deg, var(--warning) 0%, var(--danger) 100%);
+        color: white;
+        padding: 35px;
+        border-radius: 12px;
+        margin-bottom: 30px;
+        box-shadow: 0 10px 30px rgba(245, 158, 11, 0.2);
+    }
+
+    .page-header h1 {
+        margin: 0;
+        font-size: 28px;
+        font-weight: 700;
+    }
+
+    .controls {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 25px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .filters {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .filter-btn {
+        padding: 10px 16px;
+        border: 2px solid var(--border);
+        background: white;
+        color: var(--text-dark);
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 13px;
+        transition: all 0.3s ease;
+    }
+
+    .filter-btn.active {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+
+    .complaint-list {
+        display: grid;
+        gap: 16px;
+    }
+
+    .complaint-card {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        border-left: 4px solid var(--warning);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        transition: all 0.3s ease;
+    }
+
+    .complaint-card:hover {
+        box-shadow: 0 6px 16px rgba(245, 158, 11, 0.2);
+        transform: translateY(-2px);
+    }
+
+    .complaint-card.urgent {
+        border-left-color: var(--danger);
+        background: #fef2f2;
+    }
+
+    .complaint-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        margin-bottom: 12px;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .complaint-id {
+        font-weight: 700;
+        color: var(--text-dark);
+        font-size: 15px;
+    }
+
+    .complaint-badges {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+
+    .badge-priority-low {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .badge-priority-medium {
+        background: #fcd34d;
+        color: #78350f;
+    }
+
+    .badge-priority-high {
+        background: #fed7aa;
+        color: #92400e;
+    }
+
+    .badge-priority-urgent {
+        background: #fecaca;
+        color: #7c2d12;
+    }
+
+    .badge-status-open {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .badge-status-in_progress {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .badge-status-resolved {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .complaint-content {
+        margin-bottom: 12px;
+    }
+
+    .complaint-text {
+        font-size: 14px;
+        color: var(--text-dark);
+        margin-bottom: 8px;
+    }
+
+    .complaint-meta {
+        font-size: 12px;
+        color: var(--text-light);
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+
+    .complaint-meta-item {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .complaint-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .btn-small {
+        padding: 8px 14px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-block;
+    }
+
+    .btn-view {
+        background: #dbeafe;
+        color: #1976d2;
+    }
+
+    .btn-view:hover {
+        background: #bfdbfe;
+    }
+
+    .btn-assign {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .btn-assign:hover {
+        background: #bbf7d0;
+    }
+
+    .btn-resolve {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .btn-resolve:hover {
+        background: #a7f3d0;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        background: white;
+        border-radius: 10px;
+        color: var(--text-light);
+    }
+
+    .empty-state-icon {
+        font-size: 48px;
+        margin-bottom: 16px;
+        opacity: 0.5;
+    }
+
+    .loading-indicator {
+        display: none;
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: var(--warning);
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        z-index: 1000;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .loading-indicator.show {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+        from {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    .spinner {
+        width: 16px;
+        height: 16px;
+        border: 2px solid rgba(255,255,255,0.3);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    .stats-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 15px;
+        margin-bottom: 25px;
+    }
+
+    .stat-card {
+        background: white;
+        padding: 16px;
+        border-radius: 10px;
+        text-align: center;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+
+    .stat-value {
+        font-size: 28px;
+        font-weight: 700;
+        color: var(--warning);
+    }
+
+    .stat-label {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-light);
+        margin-top: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-exclamation-circle"></i> Complaints Management</h1>
+    <p style="margin: 8px 0 0 0; opacity: 0.9;">Monitor and resolve customer complaints in real-time</p>
+</div>
+
+<!-- Statistics -->
+<div class="stats-container">
+    <div class="stat-card">
+        <div class="stat-value" id="statTotal">0</div>
+        <div class="stat-label">Total Complaints</div>
+    </div>
+    <div class="stat-card" style="border-left: 3px solid var(--danger);">
+        <div class="stat-value" id="statOpen" style="color: var(--danger);">0</div>
+        <div class="stat-label">Open</div>
+    </div>
+    <div class="stat-card" style="border-left: 3px solid #3b82f6;">
+        <div class="stat-value" id="statInProgress" style="color: #3b82f6;">0</div>
+        <div class="stat-label">In Progress</div>
+    </div>
+    <div class="stat-card" style="border-left: 3px solid var(--primary);">
+        <div class="stat-value" id="statResolved" style="color: var(--primary);">0</div>
+        <div class="stat-label">Resolved</div>
+    </div>
+</div>
+
+<!-- Controls -->
+<div class="controls">
+    <div class="filters">
+        <button class="filter-btn active" data-filter="all" onclick="filterComplaints(this)">
+            All Complaints
+        </button>
+        <button class="filter-btn" data-filter="open" onclick="filterComplaints(this)">
+            Open
+        </button>
+        <button class="filter-btn" data-filter="in_progress" onclick="filterComplaints(this)">
+            In Progress
+        </button>
+        <button class="filter-btn" data-filter="resolved" onclick="filterComplaints(this)">
+            Resolved
+        </button>
+    </div>
+    <button class="btn-small" style="background: var(--primary); color: white; margin-left: auto;" onclick="refreshComplaints()">
+        <i class="bi bi-arrow-clockwise"></i> Refresh
+    </button>
+</div>
+
+<!-- Loading Indicator -->
+<div class="loading-indicator" id="loadingIndicator">
+    <div class="spinner"></div>
+    <span>Updating...</span>
+</div>
+
+<!-- Complaints List -->
+<div class="complaint-list" id="complaintsList">
+    <div class="empty-state">
+        <div class="empty-state-icon">⏳</div>
+        <p>Loading complaints...</p>
+    </div>
+</div>
+
+<script>
+let allComplaints = [];
+let currentFilter = 'all';
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadComplaints();
+    
+    // Auto-refresh every 10 seconds
+    setInterval(loadComplaints, 10000);
+});
+
+function loadComplaints() {
+    showLoading();
+    
+    fetch('/api/recent-complaints/?limit=50')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                allComplaints = data.data;
+                renderComplaints();
+                updateStatistics();
+            }
+            hideLoading();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            hideLoading();
+        });
+}
+
+function renderComplaints() {
+    const container = document.getElementById('complaintsList');
+    const filtered = currentFilter === 'all' 
+        ? allComplaints 
+        : allComplaints.filter(c => c.status === currentFilter);
+    
+    if (filtered.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-state-icon">📭</div>
+                <p>No complaints found</p>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = filtered.map(complaint => `
+        <div class="complaint-card ${complaint.priority === 'urgent' ? 'urgent' : ''}">
+            <div class="complaint-header">
+                <div>
+                    <div class="complaint-id">${escapeHtml(complaint.complaint_id)}</div>
+                    <div style="font-size: 13px; color: var(--text-light); margin-top: 4px;">
+                        ${escapeHtml(complaint.customer_name)}
+                    </div>
+                </div>
+                <div class="complaint-badges">
+                    <span class="badge badge-priority-${complaint.priority}">
+                        ${capitalize(complaint.priority)}
+                    </span>
+                    <span class="badge badge-status-${complaint.status}">
+                        ${capitalize(complaint.status)}
+                    </span>
+                </div>
+            </div>
+            <div class="complaint-content">
+                <div class="complaint-text">${escapeHtml(complaint.type)}</div>
+                <div class="complaint-meta">
+                    <div class="complaint-meta-item">
+                        <i class="bi bi-calendar"></i> ${complaint.hours_ago} hours ago
+                    </div>
+                    <div class="complaint-meta-item">
+                        <i class="bi bi-clock"></i> Created: ${escapeHtml(formatDate(complaint.created_at))}
+                    </div>
+                </div>
+            </div>
+            <div class="complaint-actions">
+                <button class="btn-small btn-view" onclick="viewComplaintDetails('${complaint.id}')">
+                    <i class="bi bi-eye"></i> View Details
+                </button>
+                <button class="btn-small btn-assign" onclick="assignComplaint('${complaint.id}')">
+                    <i class="bi bi-person-plus"></i> Assign
+                </button>
+                ${complaint.status !== 'resolved' ? `
+                <button class="btn-small btn-resolve" onclick="resolveComplaint('${complaint.id}')">
+                    <i class="bi bi-check-circle"></i> Resolve
+                </button>
+                ` : ''}
+            </div>
+        </div>
+    `).join('');
+}
+
+function updateStatistics() {
+    const total = allComplaints.length;
+    const open = allComplaints.filter(c => c.status === 'open').length;
+    const inProgress = allComplaints.filter(c => c.status === 'in_progress').length;
+    const resolved = allComplaints.filter(c => c.status === 'resolved').length;
+    
+    document.getElementById('statTotal').textContent = total;
+    document.getElementById('statOpen').textContent = open;
+    document.getElementById('statInProgress').textContent = inProgress;
+    document.getElementById('statResolved').textContent = resolved;
+}
+
+function filterComplaints(btn) {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentFilter = btn.getAttribute('data-filter');
+    renderComplaints();
+}
+
+function viewComplaintDetails(complaintId) {
+    alert('Detail view coming soon');
+}
+
+function assignComplaint(complaintId) {
+    alert('Assignment functionality coming soon');
+}
+
+function resolveComplaint(complaintId) {
+    if (confirm('Are you sure you want to mark this complaint as resolved?')) {
+        alert('Resolution functionality coming soon');
+    }
+}
+
+function refreshComplaints() {
+    loadComplaints();
+}
+
+function showLoading() {
+    document.getElementById('loadingIndicator').classList.add('show');
+}
+
+function hideLoading() {
+    document.getElementById('loadingIndicator').classList.remove('show');
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function capitalize(str) {
+    return str.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+}
+
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-IN') + ' ' + date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+}
+</script>
+{% endblock %}

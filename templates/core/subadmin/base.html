@@ -1,0 +1,296 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}SubAdmin Panel - DSA{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Alpine -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #f9fafb;
+        }
+
+        /* === BEAUTIFUL TABLE STYLES === */
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .table-responsive table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .table-responsive thead th {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 14px 12px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 13px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            border: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .table-responsive tbody td {
+            padding: 13px 12px;
+            border-bottom: 1px solid #e5e7eb;
+            font-size: 14px;
+            color: #374151;
+        }
+        
+        .table-responsive tbody tr {
+            transition: all 0.2s ease;
+            background-color: white;
+        }
+        
+        .table-responsive tbody tr:hover {
+            background-color: #f0fdf4;
+            box-shadow: inset 0 0 8px rgba(16,185,129,0.1);
+        }
+        
+        .table-responsive tbody tr:nth-child(even) {
+            background-color: #fafafa;
+        }
+        
+        .table-responsive tbody tr:nth-child(even):hover {
+            background-color: #f0fdf4;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        
+        .badge-primary {
+            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+            color: #0c4a6e;
+        }
+        
+        .badge-success {
+            background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+            color: #15803d;
+        }
+        
+        .badge-danger {
+            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+            color: #991b1b;
+        }
+        
+        .badge-warning {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            color: #92400e;
+        }
+        
+        .badge-info {
+            background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+            color: #3730a3;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            transition: all 0.3s ease;
+        }
+        
+        .card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .card-header {
+            padding: 16px;
+            border-bottom: 1px solid #e5e7eb;
+            background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+        }
+        
+        .card-body {
+            padding: 16px;
+        }
+
+        /* === SIDEBAR === */
+        .sidebar {
+            width: 260px;
+            min-width: 260px;
+            flex-shrink: 0;
+            background: #020617; /* PURE BLACK */
+            color: #e5e7eb;
+        }
+
+        .sidebar-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 20px;
+            font-size: 14px;
+            color: #cbd5f5;
+            text-decoration: none;
+            transition: all .2s ease;
+            border-left: 3px solid transparent;
+        }
+
+        .sidebar-link:hover {
+            background: rgba(255,255,255,0.05);
+            color: white;
+        }
+
+        .sidebar-link.active {
+            background: rgba(255,255,255,0.08);
+            color: white;
+            border-left-color: #22c55e;
+        }
+
+        /* === CONTENT === */
+        .content-wrapper {
+            min-width: 0;
+            overflow: hidden;
+        }
+
+        main {
+            overflow-y: auto;
+            background: #f9fafb;
+        }
+    </style>
+
+    {% block extra_css %}{% endblock %}
+</head>
+
+<body>
+<div class="flex w-screen h-screen">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar flex flex-col">
+        <div class="px-6 py-6 border-b border-white/10 flex flex-col items-center text-center">
+            <!-- Safe/Vault Logo with Rounded Box -->
+            <div class="mb-4">
+                <div class="w-16 h-16 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg border-4 border-emerald-300">
+                    <i class="fas fa-vault text-white text-2xl"></i>
+                </div>
+            </div>
+            
+            <!-- DSA Text -->
+            <h1 class="text-2xl font-bold tracking-wide text-white">DSA</h1>
+            <p class="text-gray-400 text-xs mt-1 mb-2">GreenbacksMicroservice</p>
+            
+            <!-- SubAdmin Badge -->
+            <span class="text-xs bg-emerald-500 text-white px-3 py-1 rounded-full font-semibold">SubAdmin</span>
+        </div>
+
+        <nav class="mt-4 flex-1">
+            <a href="{% url 'subadmin_dashboard' %}" class="sidebar-link {% if request.resolver_match.url_name == 'subadmin_dashboard' %}active{% endif %}">
+                <i class="fas fa-chart-line w-5"></i> Dashboard
+            </a>
+
+            <a href="{% url 'subadmin_add_loan' %}" class="sidebar-link {% if request.resolver_match.url_name == 'subadmin_add_loan' %}active{% endif %}">
+                <i class="fas fa-plus-circle w-5"></i> Add New Loan
+            </a>
+
+            <a href="{% url 'subadmin_all_loans' %}" class="sidebar-link {% if request.resolver_match.url_name == 'subadmin_all_loans' %}active{% endif %}">
+                <i class="fas fa-file-contract w-5"></i> My All Loans
+            </a>
+
+            <a href="{% url 'subadmin_my_agents' %}" class="sidebar-link {% if request.resolver_match.url_name == 'subadmin_my_agents' %}active{% endif %}">
+                <i class="fas fa-users w-5"></i> My Agents
+            </a>
+
+            <a href="{% url 'subadmin_my_employees' %}" class="sidebar-link {% if request.resolver_match.url_name == 'subadmin_my_employees' %}active{% endif %}">
+                <i class="fas fa-user-tie w-5"></i> My Employees
+            </a>
+
+            <a href="{% url 'subadmin_reports' %}" class="sidebar-link {% if request.resolver_match.url_name == 'subadmin_reports' %}active{% endif %}">
+                <i class="fas fa-chart-bar w-5"></i> Reports
+            </a>
+
+            <a href="{% url 'subadmin_complaints' %}" class="sidebar-link {% if request.resolver_match.url_name == 'subadmin_complaints' %}active{% endif %}">
+                <i class="fas fa-exclamation-circle w-5"></i> Complaints
+            </a>
+
+            <a href="{% url 'subadmin_settings' %}" class="sidebar-link {% if request.resolver_match.url_name == 'subadmin_settings' %}active{% endif %}">
+                <i class="fas fa-cog w-5"></i> Settings
+            </a>
+        </nav>
+
+        <div class="border-t border-white/10 p-4">
+            <form method="post" action="{% url 'logout' %}">
+                {% csrf_token %}
+                <button class="sidebar-link w-full text-left">
+                    <i class="fas fa-sign-out-alt w-5"></i> Logout
+                </button>
+            </form>
+        </div>
+    </aside>
+
+    <!-- MAIN -->
+    <div class="flex-1 flex flex-col content-wrapper">
+
+        <!-- HEADER -->
+        <header class="bg-white border-b px-6 py-4 flex justify-between items-center">
+            <div>
+                <h2 class="text-xl font-semibold text-gray-800">{% block page_title %}SubAdmin{% endblock %}</h2>
+                <p class="text-sm text-gray-500">{{ request.user.get_full_name|default:request.user.username }}</p>
+            </div>
+
+            <div x-data="{open:false}" class="relative">
+                <button @click="open=!open" class="flex items-center gap-3 hover:opacity-80 transition">
+                    {% if request.user.profile_photo %}
+                        <img class="w-10 h-10 rounded-full object-cover border-2 border-emerald-500 shadow-md"
+                             src="{{ request.user.profile_photo.url }}"
+                             alt="{{ request.user.get_full_name }}">
+                    {% else %}
+                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white font-bold text-sm border-2 border-emerald-500 shadow-md">
+                            {{ request.user.first_name|first }}{{ request.user.last_name|first }}
+                        </div>
+                    {% endif %}
+                    <span class="hidden sm:inline text-sm font-medium text-gray-700">{{ request.user.get_full_name|truncatewords:2 }}</span>
+                    <i class="fas fa-chevron-down text-sm text-gray-600"></i>
+                </button>
+
+                <div x-show="open" @click.outside="open=false"
+                     class="absolute right-0 mt-2 bg-white border rounded shadow w-44">
+                    <a href="{% url 'subadmin_settings' %}" class="block px-4 py-2 hover:bg-gray-100">Settings</a>
+                    <form method="post" action="{% url 'logout' %}">
+                        {% csrf_token %}
+                        <button class="w-full text-left px-4 py-2 hover:bg-gray-100">Logout</button>
+                    </form>
+                </div>
+            </div>
+        </header>
+
+        <!-- PAGE CONTENT -->
+        <main class="flex-1 p-6">
+            {% block content %}{% endblock %}
+        </main>
+
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+{% block extra_js %}{% endblock %}
+</body>
+</html>

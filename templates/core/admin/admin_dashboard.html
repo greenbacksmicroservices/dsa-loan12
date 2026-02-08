@@ -1,0 +1,436 @@
+{% extends 'core/admin/admin_base.html' %}
+
+{% block title %}Admin Dashboard - DSA Loans{% endblock %}
+
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<style>
+    .stat-card {
+        padding: 25px;
+        border-radius: 12px;
+        color: white;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: block;
+        margin-bottom: 20px;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 12px 24px rgba(0,0,0,0.15);
+    }
+
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: -50px;
+        width: 150px;
+        height: 150px;
+        background: rgba(255,255,255,0.1);
+        border-radius: 50%;
+        transition: all 0.3s ease;
+    }
+
+    .stat-card:hover::before {
+        right: -30px;
+    }
+
+    .stat-card-content {
+        position: relative;
+        z-index: 2;
+    }
+
+    .stat-icon {
+        font-size: 36px;
+        margin-bottom: 10px;
+        display: block;
+        opacity: 0.9;
+    }
+
+    .stat-card h3 {
+        margin: 10px 0;
+        font-size: 16px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .stat-card .number {
+        font-size: 42px;
+        font-weight: 700;
+        margin: 15px 0;
+        line-height: 1;
+    }
+
+    .stat-card p {
+        font-size: 13px;
+        margin: 10px 0 0 0;
+        opacity: 0.95;
+        font-weight: 500;
+    }
+
+    .stat-card .view-link {
+        display: inline-block;
+        margin-top: 12px;
+        padding: 8px 15px;
+        background: rgba(255,255,255,0.2);
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        transition: all 0.2s ease;
+    }
+
+    .stat-card:hover .view-link {
+        background: rgba(255,255,255,0.3);
+    }
+
+    .card-primary {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    }
+
+    .card-warning {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    }
+
+    .card-secondary {
+        background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+    }
+
+    .card-success {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    }
+
+    .card-danger {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    }
+
+    .card-info {
+        background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+    }
+
+    .table-container {
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 25px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        margin-bottom: 25px;
+    }
+</style>
+
+<div class="container-fluid">
+    <!-- ROW 1: Main Statistics Cards - Clickable -->
+    <div class="row">
+        <div class="col-lg-2 col-md-4 col-sm-6 col-12">
+            <a href="/admin/all-loans/?status=new_entry" class="stat-card card-primary" title="View New Entries">
+                <div class="stat-card-content">
+                    <i class="fas fa-file-alt stat-icon"></i>
+                    <h3>New Entry</h3>
+                    <div class="number">1</div>
+                    <p>Total New Applications</p>
+                    <span class="view-link">View Details →</span>
+                </div>
+            </a>
+        </div>
+
+        <div class="col-lg-2 col-md-4 col-sm-6 col-12">
+            <a href="/admin/all-loans/?status=in_processing" class="stat-card card-warning" title="View In Processing">
+                <div class="stat-card-content">
+                    <i class="fas fa-hourglass-half stat-icon"></i>
+                    <h3>In Processing</h3>
+                    <div class="number">0</div>
+                    <p>Pending Review</p>
+                    <span class="view-link">View Details →</span>
+                </div>
+            </a>
+        </div>
+
+        <div class="col-lg-2 col-md-4 col-sm-6 col-12">
+            <a href="/admin/all-loans/?status=follow_up" class="stat-card card-secondary" title="View Follow-ups">
+                <div class="stat-card-content">
+                    <i class="fas fa-phone-volume stat-icon"></i>
+                    <h3>Follow-up</h3>
+                    <div class="number">0</div>
+                    <p>Need Follow-up</p>
+                    <span class="view-link">View Details →</span>
+                </div>
+            </a>
+        </div>
+
+        <div class="col-lg-2 col-md-4 col-sm-6 col-12">
+            <a href="/admin/all-loans/?status=approved" class="stat-card card-success" title="View Approved">
+                <div class="stat-card-content">
+                    <i class="fas fa-check-circle stat-icon"></i>
+                    <h3>Approved</h3>
+                    <div class="number">2</div>
+                    <p>Successfully Approved</p>
+                    <span class="view-link">View Details →</span>
+                </div>
+            </a>
+        </div>
+
+        <div class="col-lg-2 col-md-4 col-sm-6 col-12">
+            <a href="/admin/all-loans/?status=rejected" class="stat-card card-danger" title="View Rejected">
+                <div class="stat-card-content">
+                    <i class="fas fa-ban stat-icon"></i>
+                    <h3>Rejected</h3>
+                    <div class="number">1</div>
+                    <p>Rejected Applications</p>
+                    <span class="view-link">View Details →</span>
+                </div>
+            </a>
+        </div>
+
+        <div class="col-lg-2 col-md-4 col-sm-6 col-12">
+            <a href="/admin/all-loans/?status=disbursed" class="stat-card card-info" title="View Disbursed">
+                <div class="stat-card-content">
+                    <i class="fas fa-money-bill-wave stat-icon"></i>
+                    <h3>Disbursed</h3>
+                    <div class="number">1</div>
+                    <p>Amount Disbursed</p>
+                    <span class="view-link">View Details →</span>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <!-- ROW 2: Team & Quick Stats -->
+    <div class="row" style="margin-top: 30px;">
+        <div class="col-lg-6 col-md-12">
+            <div class="table-container">
+                <h4 style="margin-bottom: 20px; color: #2d3748; font-weight: 700; display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-users" style="color: #1abc9c;"></i>
+                    Team Overview
+                </h4>
+                <div style="display: grid; gap: 15px;">
+                    <div style="padding: 15px; background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); border-radius: 8px; border-left: 4px solid #3b82f6;">
+                        <p style="color: #0c4a6e; font-size: 12px; margin: 0; font-weight: 600; text-transform: uppercase;">Active Agents</p>
+                        <h3 style="color: #0c4a6e; margin: 8px 0 0 0; font-size: 28px; font-weight: 700;">5</h3>
+                    </div>
+                    <div style="padding: 15px; background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%); border-radius: 8px; border-left: 4px solid #10b981;">
+                        <p style="color: #15803d; font-size: 12px; margin: 0; font-weight: 600; text-transform: uppercase;">Active Employees</p>
+                        <h3 style="color: #15803d; margin: 8px 0 0 0; font-size: 28px; font-weight: 700;">3</h3>
+                    </div>
+                    <div style="padding: 15px; background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%); border-radius: 8px; border-left: 4px solid #8b5cf6;">
+                        <p style="color: #3730a3; font-size: 12px; margin: 0; font-weight: 600; text-transform: uppercase;">Total SubAdmins</p>
+                        <h3 style="color: #3730a3; margin: 8px 0 0 0; font-size: 28px; font-weight: 700;">2</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6 col-md-12">
+            <div class="table-container">
+                <h4 style="margin-bottom: 20px; color: #2d3748; font-weight: 700; display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-chart-pie" style="color: #1abc9c;"></i>
+                    Quick Statistics
+                </h4>
+                <div style="display: grid; gap: 18px;">
+                    <div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                            <span style="color: #2d3748; font-weight: 600; font-size: 13px;">Approval Rate</span>
+                            <span style="color: #10b981; font-weight: 700; font-size: 14px;">40%</span>
+                        </div>
+                        <div style="width: 100%; background: #e5e7eb; border-radius: 8px; height: 8px; overflow: hidden;">
+                            <div style="width: 40%; height: 100%; background: linear-gradient(90deg, #10b981, #059669); border-radius: 8px;"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                            <span style="color: #2d3748; font-weight: 600; font-size: 13px;">Rejection Rate</span>
+                            <span style="color: #ef4444; font-weight: 700; font-size: 14px;">20%</span>
+                        </div>
+                        <div style="width: 100%; background: #e5e7eb; border-radius: 8px; height: 8px; overflow: hidden;">
+                            <div style="width: 20%; height: 100%; background: linear-gradient(90deg, #ef4444, #dc2626); border-radius: 8px;"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                            <span style="color: #2d3748; font-weight: 600; font-size: 13px;">Disbursement Rate</span>
+                            <span style="color: #8b5cf6; font-weight: 700; font-size: 14px;">20%</span>
+                        </div>
+                        <div style="width: 100%; background: #e5e7eb; border-radius: 8px; height: 8px; overflow: hidden;">
+                            <div style="width: 20%; height: 100%; background: linear-gradient(90deg, #8b5cf6, #7c3aed); border-radius: 8px;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ROW 3: Charts Section -->
+    <div class="row" style="margin-top: 30px;">
+        <!-- Chart 1: Monthly Loan Applications -->
+        <div class="col-lg-6 col-md-12">
+            <div class="table-container">
+                <h4 style="margin-bottom: 20px; color: #2d3748; font-weight: 700; display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-chart-line" style="color: #3b82f6;"></i>
+                    Monthly Loan Applications
+                </h4>
+                <canvas id="monthlyApplicationsChart" style="max-height: 300px;"></canvas>
+            </div>
+        </div>
+
+        <!-- Chart 2: Loan Status Distribution -->
+        <div class="col-lg-6 col-md-12">
+            <div class="table-container">
+                <h4 style="margin-bottom: 20px; color: #2d3748; font-weight: 700; display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-chart-pie" style="color: #10b981;"></i>
+                    Loan Status Distribution
+                </h4>
+                <canvas id="statusDistributionChart" style="max-height: 300px;"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Include Chart.js Library -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    // Display current stats dynamically (you can connect to API later)
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Admin Dashboard Loaded');
+        
+        // Chart 1: Monthly Loan Applications (Line Chart)
+        const ctx1 = document.getElementById('monthlyApplicationsChart');
+        if (ctx1) {
+            const monthlyChart = new Chart(ctx1, {
+                type: 'line',
+                data: {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                    datasets: [
+                        {
+                            label: 'New Applications',
+                            data: [12, 19, 15, 25, 22, 18, 30, 28, 20, 25, 28, 32],
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            borderWidth: 3,
+                            tension: 0.4,
+                            fill: true,
+                            pointBackgroundColor: '#3b82f6',
+                            pointBorderColor: '#fff',
+                            pointBorderWidth: 2,
+                            pointRadius: 6,
+                            pointHoverRadius: 8,
+                        },
+                        {
+                            label: 'Approved Applications',
+                            data: [8, 12, 10, 18, 16, 14, 22, 20, 15, 18, 20, 25],
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            borderWidth: 3,
+                            tension: 0.4,
+                            fill: true,
+                            pointBackgroundColor: '#10b981',
+                            pointBorderColor: '#fff',
+                            pointBorderWidth: 2,
+                            pointRadius: 6,
+                            pointHoverRadius: 8,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 15,
+                                font: {
+                                    size: 13,
+                                    weight: '600'
+                                },
+                                color: '#6b7280'
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(229, 231, 235, 0.5)',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: '#6b7280',
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false,
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: '#6b7280',
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Chart 2: Loan Status Distribution (Pie Chart)
+        const ctx2 = document.getElementById('statusDistributionChart');
+        if (ctx2) {
+            const statusChart = new Chart(ctx2, {
+                type: 'doughnut',
+                data: {
+                    labels: ['New Entry', 'In Processing', 'Follow-up', 'Approved', 'Rejected', 'Disbursed'],
+                    datasets: [
+                        {
+                            data: [1, 0, 0, 2, 1, 1],
+                            backgroundColor: [
+                                '#3b82f6',
+                                '#f59e0b',
+                                '#8b5cf6',
+                                '#10b981',
+                                '#ef4444',
+                                '#06b6d4'
+                            ],
+                            borderColor: '#fff',
+                            borderWidth: 2
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'bottom',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 15,
+                                font: {
+                                    size: 13,
+                                    weight: '600'
+                                },
+                                color: '#6b7280'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Replace with actual API calls
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,235 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}All Loans - DSA Loan Management System{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="dashboard-header bg-white p-4 mb-4 border-bottom">
+    <div class="container-fluid d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="fw-bold fs-3 mb-1">
+                <i class="bi bi-stack me-2"></i>All Loans - Complete History
+            </h1>
+            <p class="text-muted mb-0">All loans assigned to you with complete details and status</p>
+        </div>
+        <a href="/employee/dashboard/" class="btn btn-outline-secondary fw-semibold rounded-3">
+            <i class="bi bi-arrow-left"></i> Back to Dashboard
+        </a>
+    </div>
+</div>
+
+<!-- Summary Stats Section -->
+<div class="container-fluid mb-4">
+    <div class="row g-3">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100" style="cursor: pointer; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; transition: transform 0.3s;">
+                <div class="card-body text-center">
+                    <h6 class="mb-2 opacity-75">Total Loans</h6>
+                    <h3 class="mb-0" id="total-loans">0</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100" style="cursor: pointer; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; transition: transform 0.3s;">
+                <div class="card-body text-center">
+                    <h6 class="mb-2 opacity-75">Approved</h6>
+                    <h3 class="mb-0" id="approved-loans">0</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100" style="cursor: pointer; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; transition: transform 0.3s;">
+                <div class="card-body text-center">
+                    <h6 class="mb-2 opacity-75">Rejected</h6>
+                    <h3 class="mb-0" id="rejected-loans">0</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100" style="cursor: pointer; background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; transition: transform 0.3s;">
+                <div class="card-body text-center">
+                    <h6 class="mb-2 opacity-75">Disbursed</h6>
+                    <h3 class="mb-0" id="disbursed-loans">0</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters & Search -->
+<div class="container-fluid mb-4">
+    <div class="row g-3">
+        <div class="col-md-5">
+            <input type="text" id="search-input" class="form-control bg-light border-0" placeholder="Search by applicant name, phone, or email..." />
+        </div>
+        <div class="col-md-3">
+            <select id="status-filter" class="form-select bg-light border-0">
+                <option value="">All Status</option>
+                <option value="new_entry">New Entry</option>
+                <option value="waiting">Waiting</option>
+                <option value="follow_up">Follow-up</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+                <option value="disbursed">Disbursed</option>
+            </select>
+        </div>
+        <div class="col-md-4 text-end">
+            <button class="btn btn-outline-primary fw-semibold" id="reset-filters">
+                <i class="bi bi-arrow-clockwise"></i> Reset Filters
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Loans Table -->
+<div class="container-fluid">
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+            <strong><i class="bi bi-list-task"></i> Loans</strong>
+            <span id="loan-count" class="badge bg-secondary">0</span>
+        </div>
+        <div class="card-body p-0">
+            <div id="loans-container" class="text-center py-5">
+                <div class="spinner-border spinner-border-sm" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="text-muted mt-2">Loading loans...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .status-badge {
+        padding: 0.35rem 0.65rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+    .status-new { background-color: #dbeafe; color: #1e40af; }
+    .status-waiting { background-color: #fef3c7; color: #92400e; }
+    .status-follow_up { background-color: #fce7f3; color: #831843; }
+    .status-approved { background-color: #dcfce7; color: #166534; }
+    .status-rejected { background-color: #fee2e2; color: #991b1b; }
+    .status-disbursed { background-color: #ccfbf1; color: #134e4a; }
+</style>
+
+<script>
+    let currentPage = 1;
+    let loansPerPage = 20;
+    
+    async function loadLoans() {
+        try {
+            const search = document.getElementById('search-input').value;
+            const status = document.getElementById('status-filter').value;
+            
+            const url = new URL('/api/employee/all-loans/', window.location.origin);
+            if (search) url.searchParams.append('search', search);
+            if (status) url.searchParams.append('status', status);
+            url.searchParams.append('page', currentPage);
+            url.searchParams.append('limit', loansPerPage);
+            
+            const response = await fetch(url, {
+                headers: {'X-Requested-With': 'XMLHttpRequest'}
+            });
+            
+            if (!response.ok) throw new Error('Failed to load loans');
+            const data = await response.json();
+            
+            if (data.success) {
+                // Update summary counts
+                const summary = data.summary;
+                document.getElementById('total-loans').textContent = summary.total_loans;
+                document.getElementById('approved-loans').textContent = summary.approved;
+                document.getElementById('rejected-loans').textContent = summary.rejected;
+                document.getElementById('disbursed-loans').textContent = summary.disbursed;
+                document.getElementById('loan-count').textContent = summary.total_loans;
+                
+                // Build table
+                buildTable(data.loans);
+            }
+        } catch (error) {
+            console.error('Error loading loans:', error);
+            document.getElementById('loans-container').innerHTML = `
+                <div class="alert alert-danger m-3">
+                    <i class="bi bi-exclamation-triangle"></i> Error loading loans. Please try again.
+                </div>
+            `;
+        }
+    }
+    
+    function buildTable(loans) {
+        if (loans.length === 0) {
+            document.getElementById('loans-container').innerHTML = `
+                <div class="alert alert-info m-3">
+                    <i class="bi bi-info-circle"></i> No loans found
+                </div>
+            `;
+            return;
+        }
+        
+        const html = `
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Loan ID</th>
+                        <th>Applicant Name</th>
+                        <th>Loan Type</th>
+                        <th>Amount</th>
+                        <th>Submitted By</th>
+                        <th>Assigned Date</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${loans.map(loan => `
+                        <tr style="vertical-align: middle;">
+                            <td><strong>${loan.loan_id}</strong></td>
+                            <td>${loan.applicant_name}</td>
+                            <td>${loan.loan_type}</td>
+                            <td><strong>₹${loan.loan_amount.toLocaleString()}</strong></td>
+                            <td>${loan.submitted_by}</td>
+                            <td>${loan.assigned_date}</td>
+                            <td>
+                                <span class="status-badge status-${loan.status}">
+                                    ${loan.status_display}
+                                </span>
+                            </td>
+                            <td>
+                                <a href="/employee/loan/${loan.id}/detail/" class="btn btn-sm btn-primary">
+                                    <i class="bi bi-eye"></i> View
+                                </a>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+        
+        document.getElementById('loans-container').innerHTML = html;
+    }
+    
+    // Event listeners
+    document.getElementById('search-input').addEventListener('input', () => {
+        currentPage = 1;
+        loadLoans();
+    });
+    
+    document.getElementById('status-filter').addEventListener('change', () => {
+        currentPage = 1;
+        loadLoans();
+    });
+    
+    document.getElementById('reset-filters').addEventListener('click', () => {
+        document.getElementById('search-input').value = '';
+        document.getElementById('status-filter').value = '';
+        currentPage = 1;
+        loadLoans();
+    });
+    
+    // Load on page load
+    document.addEventListener('DOMContentLoaded', loadLoans);
+</script>
+{% endblock %}

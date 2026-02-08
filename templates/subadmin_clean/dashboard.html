@@ -1,0 +1,128 @@
+{% extends "base/subadmin_base.html" %}
+
+{% block subadmin_page_title %}Dashboard{% endblock %}
+
+{% block page_content %}
+<div class="container-fluid">
+    <!-- STATS CARDS - DASHBOARD ONLY -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="card text-center" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                <div class="card-body">
+                    <h6 class="card-title">Total Loans</h6>
+                    <h2 id="total-loans">{{ stats.total_loans }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card text-center" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;">
+                <div class="card-body">
+                    <h6 class="card-title">Processing</h6>
+                    <h2 id="processing">{{ stats.processing }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card text-center" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white;">
+                <div class="card-body">
+                    <h6 class="card-title">Approved</h6>
+                    <h2 id="approved">{{ stats.approved }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card text-center" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); color: white;">
+                <div class="card-body">
+                    <h6 class="card-title">My Agents</h6>
+                    <h2 id="my-agents">{{ stats.my_agents }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- STATS SUMMARY -->
+    <div class="row mb-4">
+        <div class="col-lg-12">
+            <div class="card">
+                <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                    <h5 class="card-title mb-0">Performance Summary</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-4">
+                            <p class="text-muted">Total Value</p>
+                            <h4>${{ stats.total_value }}</h4>
+                            <div class="progress" style="height: 5px;">
+                                <div class="progress-bar" role="progressbar" style="width: 100%;"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <p class="text-muted">Approved Value</p>
+                            <h4>${{ stats.approved_value }}</h4>
+                            <div class="progress" style="height: 5px;">
+                                <div class="progress-bar bg-success" role="progressbar" style="width: 75%;"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <p class="text-muted">Pending Value</p>
+                            <h4>${{ stats.pending_value }}</h4>
+                            <div class="progress" style="height: 5px;">
+                                <div class="progress-bar bg-warning" role="progressbar" style="width: 60%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- QUICK ACTIONS -->
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card">
+                <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                    <h5 class="card-title mb-0">Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-2">
+                            <a href="{% url 'subadmin_all_loans' %}" class="btn btn-outline-primary btn-block" style="width: 100%;">
+                                <i class="fas fa-list"></i> View All Loans
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <a href="{% url 'subadmin_all_agents' %}" class="btn btn-outline-info btn-block" style="width: 100%;">
+                                <i class="fas fa-users"></i> My Agents
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <a href="{% url 'subadmin_profile' %}" class="btn btn-outline-secondary btn-block" style="width: 100%;">
+                                <i class="fas fa-user"></i> My Profile
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <a href="{% url 'subadmin_reports' %}" class="btn btn-outline-success btn-block" style="width: 100%;">
+                                <i class="fas fa-file-pdf"></i> Reports
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        fetch('{% url "api_subadmin_dashboard_stats" %}')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('total-loans').textContent = data.total_loans;
+                document.getElementById('processing').textContent = data.processing;
+                document.getElementById('approved').textContent = data.approved;
+                document.getElementById('my-agents').textContent = data.my_agents;
+            })
+            .catch(error => console.error('Error loading stats:', error));
+    });
+</script>
+{% endblock %}

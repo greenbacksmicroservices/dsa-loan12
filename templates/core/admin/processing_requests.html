@@ -1,0 +1,243 @@
+{% extends "core/admin/admin_base.html" %}
+
+{% block title %}Processing Requests - DSA Admin{% endblock %}
+
+{% block page_title %}
+    <div>
+        <h2 class="text-2xl font-bold text-gray-900">Processing Requests</h2>
+        <p class="text-sm text-gray-600 mt-1">Manage loan applications assigned to employees</p>
+    </div>
+{% endblock %}
+
+{% block content %}
+<div x-data="processingManager()" x-init="loadRequests()" class="space-y-6">
+    <!-- Filters -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <!-- Status Filter -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                <select x-model="filters.status" @change="loadRequests()" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                    <option value="">All Status</option>
+                    <option value="Waiting for Processing">Waiting for Processing</option>
+                    <option value="Processing">Processing</option>
+                    <option value="Approved">Approved</option>
+                    <option value="Rejected">Rejected</option>
+                </select>
+            </div>
+            
+            <!-- Assigned Employee -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Assigned To</label>
+                <select x-model="filters.employee" @change="loadRequests()" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                    <option value="">All Employees</option>
+                    <template x-for="emp in employees" :key="emp.id">
+                        <option :value="emp.id" x-text="emp.full_name"></option>
+                    </template>
+                </select>
+            </div>
+            
+            <!-- Search -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Search</label>
+                <input 
+                    type="text" 
+                    x-model="filters.search"
+                    @input="debounceSearch()"
+                    placeholder="Applicant name or ID..."
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                >
+            </div>
+            
+            <!-- Reset -->
+            <div class="flex items-end">
+                <button @click="resetFilters()" class="w-full px-4 py-2 bg-gray-200 text-gray-900 rounded-lg hover:bg-gray-300 transition-colors">
+                    <i class="fas fa-redo w-4 mr-2"></i>Reset Filters
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Statistics -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="bg-white rounded-lg shadow-md p-4 border-l-4 border-blue-600">
+            <div class="text-2xl font-bold text-blue-600" x-text="stats.total"></div>
+            <div class="text-sm text-gray-600">Total Assignments</div>
+        </div>
+        <div class="bg-white rounded-lg shadow-md p-4 border-l-4 border-yellow-600">
+            <div class="text-2xl font-bold text-yellow-600" x-text="stats.processing"></div>
+            <div class="text-sm text-gray-600">Processing</div>
+        </div>
+        <div class="bg-white rounded-lg shadow-md p-4 border-l-4 border-green-600">
+            <div class="text-2xl font-bold text-green-600" x-text="stats.approved"></div>
+            <div class="text-sm text-gray-600">Approved</div>
+        </div>
+        <div class="bg-white rounded-lg shadow-md p-4 border-l-4 border-red-600">
+            <div class="text-2xl font-bold text-red-600" x-text="stats.rejected"></div>
+            <div class="text-sm text-gray-600">Rejected</div>
+        </div>
+    </div>
+    
+    <!-- Requests Table -->
+    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+        <!-- Loading State -->
+        <div x-show="loading" class="flex items-center justify-center py-12">
+            <div class="text-center">
+                <i class="fas fa-spinner fa-spin text-4xl text-blue-600 mb-4"></i>
+                <p class="text-gray-600 mt-4">Loading requests...</p>
+            </div>
+        </div>
+        
+        <!-- Empty State -->
+        <div x-show="!loading && requests.length === 0" class="flex items-center justify-center py-12">
+            <div class="text-center">
+                <i class="fas fa-inbox text-4xl text-gray-300 mb-4"></i>
+                <p class="text-gray-600 mt-4">No requests found</p>
+            </div>
+        </div>
+        
+        <!-- Table -->
+        <div x-show="!loading && requests.length > 0" class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Applicant</th>
+                        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Loan Type</th>
+                        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Amount</th>
+                        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Assigned To</th>
+                        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Assigned Date</th>
+                        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    <template x-for="req in requests" :key="req.id">
+                        <tr class="hover:bg-gray-50 transition-colors">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center gap-3">
+                                    <img :src="req.applicant_photo" :alt="req.applicant_name" class="w-10 h-10 rounded-full object-cover">
+                                    <div>
+                                        <div class="text-sm font-semibold text-gray-900" x-text="req.applicant_name"></div>
+                                        <div class="text-xs text-gray-600" x-text="req.applicant_mobile"></div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="text-sm text-gray-900" x-text="req.loan_type"></span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="text-sm font-semibold text-gray-900" x-text="'₹' + (req.loan_amount || 0).toLocaleString('en-IN')"></span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="text-sm text-gray-900" x-text="req.assigned_employee_name"></span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span :class="{
+                                    'bg-yellow-100 text-yellow-800': req.status === 'Waiting for Processing',
+                                    'bg-blue-100 text-blue-800': req.status === 'Processing',
+                                    'bg-green-100 text-green-800': req.status === 'Approved',
+                                    'bg-red-100 text-red-800': req.status === 'Rejected'
+                                }" class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold" x-text="req.status"></span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="text-sm text-gray-600" x-text="new Date(req.assigned_date).toLocaleDateString()"></span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center gap-2">
+                                    <button @click="viewDetails(req.id)" class="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors" title="View Details">
+                                        <i class="fas fa-eye w-4"></i>
+                                    </button>
+                                    <button @click="reassign(req.id)" class="p-2 text-orange-600 hover:bg-orange-50 rounded transition-colors" title="Reassign">
+                                        <i class="fas fa-exchange-alt w-4"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function processingManager() {
+    return {
+        requests: [],
+        employees: [],
+        loading: true,
+        filters: {
+            status: '',
+            employee: '',
+            search: ''
+        },
+        stats: {
+            total: 0,
+            processing: 0,
+            approved: 0,
+            rejected: 0
+        },
+        searchTimeout: null,
+        
+        async loadRequests() {
+            this.loading = true;
+            try {
+                const url = new URL('/api/admin/processing-requests/', window.location.origin);
+                if (this.filters.status) url.searchParams.append('status', this.filters.status);
+                if (this.filters.employee) url.searchParams.append('employee', this.filters.employee);
+                if (this.filters.search) url.searchParams.append('search', this.filters.search);
+                
+                const response = await fetch(url.toString(), {
+                    method: 'GET',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken'),
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                if (!response.ok) throw new Error('Failed to load requests');
+                
+                const data = await response.json();
+                this.requests = data.requests || [];
+                this.employees = data.employees || [];
+                
+                // Calculate stats
+                this.stats.total = this.requests.length;
+                this.stats.processing = this.requests.filter(r => r.status === 'Processing').length;
+                this.stats.approved = this.requests.filter(r => r.status === 'Approved').length;
+                this.stats.rejected = this.requests.filter(r => r.status === 'Rejected').length;
+                
+            } catch (error) {
+                console.error('Error loading requests:', error);
+                alert('Failed to load requests: ' + error.message);
+            } finally {
+                this.loading = false;
+            }
+        },
+        
+        debounceSearch() {
+            clearTimeout(this.searchTimeout);
+            this.searchTimeout = setTimeout(() => {
+                this.loadRequests();
+            }, 300);
+        },
+        
+        resetFilters() {
+            this.filters = { status: '', employee: '', search: '' };
+            this.loadRequests();
+        },
+        
+        viewDetails(id) {
+            alert('View details for request #' + id);
+        },
+        
+        reassign(id) {
+            alert('Reassign request #' + id);
+        }
+    }
+}
+</script>
+{% endblock %}

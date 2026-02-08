@@ -1,0 +1,431 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Follow-up Details{% endblock %}
+
+{% block extra_css %}
+<style>
+    .follow-up-header {
+        background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 4px;
+        margin-bottom: 30px;
+    }
+    
+    .info-card {
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    
+    .info-row {
+        display: grid;
+        grid-template-columns: 200px 1fr;
+        gap: 20px;
+        margin-bottom: 15px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid #eee;
+    }
+    
+    .info-row:last-child {
+        border-bottom: none;
+    }
+    
+    .info-label {
+        font-weight: 600;
+        color: #333;
+    }
+    
+    .info-value {
+        color: #666;
+    }
+    
+    .status-badge {
+        display: inline-block;
+        padding: 6px 12px;
+        border-radius: 3px;
+        font-weight: 600;
+        background-color: #f8d7da;
+        color: #842029;
+    }
+    
+    .timeline {
+        position: relative;
+        padding: 20px 0;
+    }
+    
+    .timeline-item {
+        padding: 15px 0 15px 40px;
+        border-left: 2px solid #ddd;
+        position: relative;
+    }
+    
+    .timeline-item:before {
+        content: '';
+        position: absolute;
+        left: -8px;
+        top: 20px;
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: #007bff;
+        border: 2px solid white;
+    }
+    
+    .timeline-item.active:before {
+        background: #dc3545;
+    }
+    
+    .timeline-time {
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 5px;
+    }
+    
+    .timeline-desc {
+        color: #666;
+        font-size: 14px;
+    }
+    
+    .action-buttons {
+        margin-top: 30px;
+    }
+    
+    .action-buttons .btn {
+        margin-right: 10px;
+    }
+    
+    .alert-warning {
+        margin-bottom: 30px;
+    }
+    
+    .document-list {
+        list-style: none;
+        padding: 0;
+    }
+    
+    .document-item {
+        padding: 10px;
+        background: #f8f9fa;
+        margin-bottom: 10px;
+        border-radius: 3px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .document-type {
+        font-weight: 600;
+        color: #333;
+    }
+    
+    .document-date {
+        color: #999;
+        font-size: 12px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="follow-up-header">
+        <h1 class="mb-1">
+            <i class="fas fa-bell"></i> Follow-up Details
+        </h1>
+        <p class="mb-0">Status: <span class="status-badge">{{ loan_app.status }}</span></p>
+    </div>
+    
+    <!-- Alert -->
+    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+        <i class="fas fa-exclamation-triangle"></i>
+        <strong>Follow-up Required!</strong> This application has been waiting for more than 24 hours. 
+        Please take immediate action or assign to appropriate personnel.
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    
+    <!-- Applicant Information -->
+    <div class="info-card">
+        <h5 class="mb-3">
+            <i class="fas fa-user"></i> Applicant Information
+        </h5>
+        
+        <div class="info-row">
+            <div class="info-label">Name</div>
+            <div class="info-value">{{ applicant.full_name }}</div>
+        </div>
+        
+        <div class="info-row">
+            <div class="info-label">Email</div>
+            <div class="info-value">{{ applicant.email }}</div>
+        </div>
+        
+        <div class="info-row">
+            <div class="info-label">Phone</div>
+            <div class="info-value">{{ applicant.phone_number }}</div>
+        </div>
+        
+        <div class="info-row">
+            <div class="info-label">Loan Type</div>
+            <div class="info-value">{{ applicant.get_loan_type_display }}</div>
+        </div>
+        
+        <div class="info-row">
+            <div class="info-label">Loan Amount</div>
+            <div class="info-value">₹{{ applicant.loan_amount|floatformat:0 }}</div>
+        </div>
+    </div>
+    
+    <!-- Application Status -->
+    <div class="info-card">
+        <h5 class="mb-3">
+            <i class="fas fa-hourglass-end"></i> Follow-up Status
+        </h5>
+        
+        <div class="info-row">
+            <div class="info-label">Current Status</div>
+            <div class="info-value"><span class="status-badge">{{ loan_app.status }}</span></div>
+        </div>
+        
+        <div class="info-row">
+            <div class="info-label">Initial Assignment</div>
+            <div class="info-value">{{ loan_app.assigned_at|date:"M d, Y H:i" }}</div>
+        </div>
+        
+        <div class="info-row">
+            <div class="info-label">Hours Waiting</div>
+            <div class="info-value">
+                {{ waiting_age_hours|floatformat:0 }} hours
+                {% if waiting_age_hours > 24 %}
+                    <span class="badge bg-danger">({{ waiting_age_hours|add:"-24"|floatformat:0 }}h overdue)</span>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="info-row">
+            <div class="info-label">Follow-up Triggered</div>
+            <div class="info-value">{{ loan_app.follow_up_scheduled_at|date:"M d, Y H:i" }}</div>
+        </div>
+        
+        <div class="info-row">
+            <div class="info-label">Follow-up Count</div>
+            <div class="info-value">
+                <span class="badge bg-danger">{{ loan_app.follow_up_count }}x</span>
+            </div>
+        </div>
+        
+        <div class="info-row">
+            <div class="info-label">Assigned To</div>
+            <div class="info-value">
+                {% if loan_app.assigned_employee %}
+                    <strong>{{ loan_app.assigned_employee.first_name }} {{ loan_app.assigned_employee.last_name }}</strong>
+                    <span class="badge bg-primary">Employee</span>
+                {% elif loan_app.assigned_agent %}
+                    <strong>{{ loan_app.assigned_agent.name }}</strong>
+                    <span class="badge bg-info">Agent</span>
+                {% else %}
+                    <span class="text-muted">Not assigned</span>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="info-row">
+            <div class="info-label">Assigned By</div>
+            <div class="info-value">{{ loan_app.assigned_by.first_name }} {{ loan_app.assigned_by.last_name }}</div>
+        </div>
+    </div>
+    
+    <!-- Timeline -->
+    <div class="info-card">
+        <h5 class="mb-3">
+            <i class="fas fa-history"></i> Application Timeline
+        </h5>
+        
+        <div class="timeline">
+            <div class="timeline-item">
+                <div class="timeline-time">Application Started</div>
+                <div class="timeline-desc">Status: New Entry</div>
+            </div>
+            
+            <div class="timeline-item">
+                <div class="timeline-time">{{ loan_app.assigned_at|date:"M d, Y H:i" }}</div>
+                <div class="timeline-desc">Assigned to 
+                    {% if loan_app.assigned_employee %}
+                        {{ loan_app.assigned_employee.first_name }}
+                    {% elif loan_app.assigned_agent %}
+                        Agent {{ loan_app.assigned_agent.name }}
+                    {% endif %}
+                </div>
+                <div class="timeline-desc">Status: Waiting for Processing</div>
+            </div>
+            
+            <div class="timeline-item active">
+                <div class="timeline-time">{{ loan_app.follow_up_scheduled_at|date:"M d, Y H:i" }}</div>
+                <div class="timeline-desc">Follow-up Triggered (24+ hours waiting)</div>
+                <div class="timeline-desc">Status: Required Follow-up</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Documents -->
+    {% if documents %}
+    <div class="info-card">
+        <h5 class="mb-3">
+            <i class="fas fa-file"></i> Submitted Documents
+        </h5>
+        
+        <ul class="document-list">
+            {% for doc in documents %}
+            <li class="document-item">
+                <div>
+                    <div class="document-type">
+                        <i class="fas fa-file-pdf"></i>
+                        {{ doc.get_document_type_display|title }}
+                    </div>
+                    <div class="document-date">Uploaded: {{ doc.uploaded_at|date:"M d, Y H:i" }}</div>
+                </div>
+                <div>
+                    <a href="{{ doc.file.url }}" class="btn btn-sm btn-primary" target="_blank">
+                        <i class="fas fa-download"></i> Download
+                    </a>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+    
+    <!-- Actions -->
+    <div class="action-buttons">
+        <h5 class="mb-3">Actions</h5>
+        
+        <button class="btn btn-primary" onclick="changeStatus()">
+            <i class="fas fa-exchange-alt"></i> Change Status
+        </button>
+        
+        <button class="btn btn-warning" onclick="triggerFollowUpAgain()">
+            <i class="fas fa-bell"></i> Trigger Follow-up Again
+        </button>
+        
+        <button class="btn btn-success" onclick="approveApplication()">
+            <i class="fas fa-check-circle"></i> Approve
+        </button>
+        
+        <button class="btn btn-danger" onclick="rejectApplication()">
+            <i class="fas fa-times-circle"></i> Reject
+        </button>
+        
+        <a href="{% url 'workflow_dashboard' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </a>
+    </div>
+</div>
+
+<script>
+function changeStatus() {
+    const newStatus = prompt('Enter new status:\n1. Waiting for Processing\n2. Required Follow-up\n3. Approved\n4. Rejected\n5. Disbursed');
+    
+    const statusMap = {
+        '1': 'Waiting for Processing',
+        '2': 'Required Follow-up',
+        '3': 'Approved',
+        '4': 'Rejected',
+        '5': 'Disbursed'
+    };
+    
+    if (!newStatus || !statusMap[newStatus]) return;
+    
+    fetch(`/api/workflow/change-status/{{ applicant.id }}/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken(),
+        },
+        body: JSON.stringify({ status: statusMap[newStatus] })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    });
+}
+
+function triggerFollowUpAgain() {
+    if (!confirm('Trigger follow-up again?')) return;
+    
+    fetch(`/api/workflow/manual-follow-up/{{ applicant.id }}/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken(),
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    });
+}
+
+function approveApplication() {
+    const notes = prompt('Enter approval notes (optional):');
+    
+    fetch(`/api/approve/{{ applicant.id }}/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken(),
+        },
+        body: JSON.stringify({ approval_notes: notes || '' })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    });
+}
+
+function rejectApplication() {
+    const reason = prompt('Enter rejection reason:');
+    
+    if (!reason) return;
+    
+    fetch(`/api/reject/{{ applicant.id }}/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken(),
+        },
+        body: JSON.stringify({ rejection_reason: reason })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    });
+}
+
+function getCSRFToken() {
+    return document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
+           document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1] || '';
+}
+</script>
+{% endblock %}

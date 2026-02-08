@@ -1,0 +1,535 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Agent List - DSA Loan Management System{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2><i class="bi bi-person-badge"></i> Agent / CP List</h2>
+    {% if user.role == 'admin' %}
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addAgentModal">
+        <i class="bi bi-plus-circle"></i> Add Agent
+    </button>
+    {% endif %}
+</div>
+
+<div class="table-container">
+    <!-- Filter Section -->
+    <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
+        <div class="d-flex gap-2">
+            <input type="text" class="form-control form-control-sm" id="searchAgents" placeholder="Search by name or phone..." style="max-width: 300px;">
+            <select class="form-select form-select-sm" id="filterStatus" style="max-width: 200px;">
+                <option value="">All Status</option>
+                <option value="active">Active</option>
+                <option value="blocked">Blocked</option>
+            </select>
+        </div>
+        <div class="text-muted">
+            <span id="agentCount">Total: 0</span>
+        </div>
+    </div>
+
+    <!-- Responsive Table -->
+    <div class="table-responsive">
+        <table class="table table-hover table-striped">
+            <thead class="table-light">
+                <tr>
+                    <th>
+                        <i class="bi bi-image"></i> Photo
+                    </th>
+                    <th>
+                        <i class="bi bi-person"></i> Name
+                    </th>
+                    <th>
+                        <i class="bi bi-telephone"></i> Phone
+                    </th>
+                    <th>
+                        <i class="bi bi-envelope"></i> Email
+                    </th>
+                    <th>
+                        <i class="bi bi-briefcase"></i> Leads
+                    </th>
+                    <th>
+                        <i class="bi bi-check-circle"></i> Approved
+                    </th>
+                    <th>
+                        <i class="bi bi-cash-coin"></i> Disbursed
+                    </th>
+                    <th>
+                        <i class="bi bi-toggle2-on"></i> Status
+                    </th>
+                    <th>
+                        <i class="bi bi-calendar"></i> Joined
+                    </th>
+                    <th style="width: 120px;">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="agentsTableBody">
+                <!-- Will be populated by JavaScript -->
+                <tr>
+                    <td colspan="10" class="text-center py-4 text-muted">
+                        <i class="bi bi-hourglass-split" style="font-size: 24px;"></i>
+                        <p class="mt-2">Loading agents...</p>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    <div class="d-flex justify-content-between align-items-center mt-3">
+        <small class="text-muted" id="paginationInfo">Page 1</small>
+        <nav>
+            <ul class="pagination pagination-sm mb-0" id="paginationControls">
+                <!-- Will be populated by JavaScript -->
+            </ul>
+        </nav>
+    </div>
+</div>
+
+<!-- Add Agent Modal -->
+<div class="modal fade" id="addAgentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add New Agent</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="addAgentForm" onsubmit="addAgent(event)">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="agent_name" class="form-label">Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="agent_name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="agent_phone" class="form-label">Phone <span class="text-danger">*</span></label>
+                        <input type="tel" class="form-control" id="agent_phone" required pattern="[0-9]{10,15}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="agent_email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="agent_email">
+                    </div>
+                    <div class="mb-3">
+                        <label for="agent_city" class="form-label">City</label>
+                        <input type="text" class="form-control" id="agent_city">
+                    </div>
+                    <div class="mb-3">
+                        <label for="agent_state" class="form-label">State</label>
+                        <input type="text" class="form-control" id="agent_state">
+                    </div>
+                    <div class="mb-3">
+                        <label for="agent_pin_code" class="form-label">Pin Code</label>
+                        <input type="text" class="form-control" id="agent_pin_code" pattern="[0-9]{6}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="agent_address" class="form-label">Address</label>
+                        <textarea class="form-control" id="agent_address" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Agent</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Agent Modal -->
+<div class="modal fade" id="editAgentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Agent</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="editAgentForm" onsubmit="updateAgent(event)">
+                <input type="hidden" id="edit_agent_id">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="edit_agent_name" class="form-label">Name</label>
+                        <input type="text" class="form-control" id="edit_agent_name">
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_agent_phone" class="form-label">Phone</label>
+                        <input type="tel" class="form-control" id="edit_agent_phone" pattern="[0-9]{10,15}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_agent_email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="edit_agent_email">
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_agent_status" class="form-label">Status</label>
+                        <select class="form-select" id="edit_agent_status">
+                            <option value="active">Active</option>
+                            <option value="blocked">Blocked</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_agent_address" class="form-label">Address</label>
+                        <textarea class="form-control" id="edit_agent_address" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update Agent</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header border-danger">
+                <h5 class="modal-title text-danger"><i class="bi bi-exclamation-triangle"></i> Delete Agent</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete agent <strong id="delete_agent_name"></strong>?</p>
+                <p class="text-muted">This action cannot be undone. All linked loans will remain.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" onclick="confirmDelete()">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .table-light th {
+        background-color: #f8fafc;
+        font-weight: 600;
+        color: #475569;
+        text-transform: uppercase;
+        font-size: 12px;
+        letter-spacing: 0.5px;
+        border: none;
+    }
+
+    .table-hover tbody tr:hover {
+        background-color: #f1f5f9;
+    }
+
+    .table tbody td {
+        vertical-align: middle;
+        border-color: #e2e8f0;
+    }
+
+    .agent-photo {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        object-fit: cover;
+        background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 600;
+    }
+
+    .badge {
+        padding: 6px 12px;
+        font-weight: 500;
+    }
+
+    .stats-badge {
+        background: #f1f5f9;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 13px;
+        font-weight: 600;
+    }
+</style>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let currentPage = 1;
+    let allAgents = [];
+    const itemsPerPage = 10;
+    let deleteAgentId = null;
+
+    // Load agents on page load
+    document.addEventListener('DOMContentLoaded', loadAgents);
+
+    // Search and filter handlers
+    document.getElementById('searchAgents').addEventListener('input', filterAndDisplayAgents);
+    document.getElementById('filterStatus').addEventListener('change', filterAndDisplayAgents);
+
+    async function loadAgents() {
+        try {
+            const response = await fetch('/api/agents/?limit=1000', {
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            });
+            const data = await response.json();
+            allAgents = data.results || [];
+            filterAndDisplayAgents();
+        } catch (error) {
+            console.error('Error loading agents:', error);
+            showAlert('danger', 'Failed to load agents');
+        }
+    }
+
+    function filterAndDisplayAgents() {
+        const searchTerm = document.getElementById('searchAgents').value.toLowerCase();
+        const statusFilter = document.getElementById('filterStatus').value;
+
+        let filtered = allAgents.filter(agent => {
+            const matchesSearch = agent.name.toLowerCase().includes(searchTerm) || 
+                                 agent.phone.includes(searchTerm);
+            
+            const matchesStatus = statusFilter === '' || agent.status === statusFilter;
+            
+            return matchesSearch && matchesStatus;
+        });
+
+        document.getElementById('agentCount').textContent = `Total: ${filtered.length}`;
+        displayAgentTable(filtered);
+    }
+
+    function displayAgentTable(agents) {
+        const tbody = document.getElementById('agentsTableBody');
+        const start = (currentPage - 1) * itemsPerPage;
+        const end = start + itemsPerPage;
+        const pageAgents = agents.slice(start, end);
+
+        tbody.innerHTML = '';
+
+        if (pageAgents.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="10" class="text-center py-4 text-muted">No agents found</td></tr>';
+            return;
+        }
+
+        pageAgents.forEach(agent => {
+            const row = document.createElement('tr');
+            const avatar = agent.name[0].toUpperCase();
+            const statusBadge = agent.status === 'active' ? 
+                '<span class="badge bg-success">Active</span>' : 
+                '<span class="badge bg-danger">Blocked</span>';
+            const approvedLoans = agent.approved_loans_count || 0;
+            const disbursedAmount = agent.total_disbursed_amount || 0;
+
+            row.innerHTML = `
+                <td>
+                    <div class="agent-photo" style="width: 40px; height: 40px;">
+                        ${avatar}
+                    </div>
+                </td>
+                <td><strong>${agent.name}</strong></td>
+                <td>${agent.phone}</td>
+                <td>${agent.email || 'N/A'}</td>
+                <td><span class="stats-badge">${agent.total_leads || 0}</span></td>
+                <td><span class="stats-badge">${approvedLoans}</span></td>
+                <td><span class="stats-badge">₹${(disbursedAmount / 100000).toFixed(2)}L</span></td>
+                <td>${statusBadge}</td>
+                <td><small class="text-muted">${new Date(agent.created_at).toLocaleDateString()}</small></td>
+                <td>
+                    <div class="btn-group btn-group-sm" role="group">
+                        <button class="btn btn-outline-primary" onclick="viewAgent(${agent.id})">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                        <button class="btn btn-outline-warning" onclick="editAgent(${agent.id})">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="btn btn-outline-danger" onclick="deleteAgent(${agent.id}, '${agent.name}')">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+
+        // Update pagination
+        const totalPages = Math.ceil(agents.length / itemsPerPage);
+        updatePagination(totalPages, agents.length);
+    }
+
+    function updatePagination(totalPages, totalItems) {
+        const paginationInfo = document.getElementById('paginationInfo');
+        const paginationControls = document.getElementById('paginationControls');
+        
+        paginationInfo.textContent = `Page ${currentPage} of ${totalPages} (${totalItems} total)`;
+        paginationControls.innerHTML = '';
+
+        if (totalPages <= 1) return;
+
+        // Previous button
+        const prevLi = document.createElement('li');
+        prevLi.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
+        prevLi.innerHTML = `<a class="page-link" href="#" onclick="changePage(${currentPage - 1})">Previous</a>`;
+        paginationControls.appendChild(prevLi);
+
+        // Page numbers
+        for (let i = 1; i <= totalPages; i++) {
+            const li = document.createElement('li');
+            li.className = `page-item ${i === currentPage ? 'active' : ''}`;
+            li.innerHTML = `<a class="page-link" href="#" onclick="changePage(${i})">${i}</a>`;
+            paginationControls.appendChild(li);
+        }
+
+        // Next button
+        const nextLi = document.createElement('li');
+        nextLi.className = `page-item ${currentPage === totalPages ? 'disabled' : ''}`;
+        nextLi.innerHTML = `<a class="page-link" href="#" onclick="changePage(${currentPage + 1})">Next</a>`;
+        paginationControls.appendChild(nextLi);
+    }
+
+    function changePage(page) {
+        currentPage = page;
+        filterAndDisplayAgents();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    async function addAgent(event) {
+        event.preventDefault();
+        
+        const agentData = {
+            name: document.getElementById('agent_name').value,
+            phone: document.getElementById('agent_phone').value,
+            email: document.getElementById('agent_email').value,
+            city: document.getElementById('agent_city').value,
+            state: document.getElementById('agent_state').value,
+            pin_code: document.getElementById('agent_pin_code').value,
+            address: document.getElementById('agent_address').value,
+            status: 'active'
+        };
+
+        try {
+            const response = await fetch('/api/agents/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify(agentData)
+            });
+
+            if (response.ok) {
+                bootstrap.Modal.getInstance(document.getElementById('addAgentModal')).hide();
+                document.getElementById('addAgentForm').reset();
+                showAlert('success', 'Agent added successfully!');
+                loadAgents();
+            } else {
+                const errors = await response.json();
+                showAlert('danger', 'Error: ' + JSON.stringify(errors));
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showAlert('danger', 'Failed to add agent');
+        }
+    }
+
+    function viewAgent(agentId) {
+        // TODO: Implement view agent detail page
+        alert('View agent #' + agentId);
+    }
+
+    function editAgent(agentId) {
+        const agent = allAgents.find(a => a.id === agentId);
+        if (agent) {
+            document.getElementById('edit_agent_id').value = agent.id;
+            document.getElementById('edit_agent_name').value = agent.name;
+            document.getElementById('edit_agent_phone').value = agent.phone;
+            document.getElementById('edit_agent_email').value = agent.email || '';
+            document.getElementById('edit_agent_status').value = agent.status;
+            document.getElementById('edit_agent_address').value = agent.address || '';
+            
+            const modal = new bootstrap.Modal(document.getElementById('editAgentModal'));
+            modal.show();
+        }
+    }
+
+    async function updateAgent(event) {
+        event.preventDefault();
+        
+        const agentId = document.getElementById('edit_agent_id').value;
+        const agentData = {
+            name: document.getElementById('edit_agent_name').value,
+            phone: document.getElementById('edit_agent_phone').value,
+            email: document.getElementById('edit_agent_email').value,
+            status: document.getElementById('edit_agent_status').value,
+            address: document.getElementById('edit_agent_address').value
+        };
+
+        try {
+            const response = await fetch(`/api/agents/${agentId}/`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify(agentData)
+            });
+
+            if (response.ok) {
+                bootstrap.Modal.getInstance(document.getElementById('editAgentModal')).hide();
+                showAlert('success', 'Agent updated successfully!');
+                loadAgents();
+            } else {
+                showAlert('danger', 'Failed to update agent');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showAlert('danger', 'Error updating agent');
+        }
+    }
+
+    function deleteAgent(agentId, agentName) {
+        deleteAgentId = agentId;
+        document.getElementById('delete_agent_name').textContent = agentName;
+        
+        const modal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+        modal.show();
+    }
+
+    async function confirmDelete() {
+        try {
+            const response = await fetch(`/api/agents/${deleteAgentId}/`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            });
+
+            if (response.ok) {
+                bootstrap.Modal.getInstance(document.getElementById('deleteConfirmModal')).hide();
+                showAlert('success', 'Agent deleted successfully!');
+                loadAgents();
+            } else {
+                showAlert('danger', 'Failed to delete agent');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showAlert('danger', 'Error deleting agent');
+        }
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function showAlert(type, message) {
+        // TODO: Implement alert display
+        console.log(`[${type}] ${message}`);
+    }
+</script>
+{% endblock %}

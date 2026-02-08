@@ -1,0 +1,242 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Reports - Agent{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 text-gray-800 mb-0">
+                        <i class="bi bi-file-earmark-bar-graph"></i> Reports
+                    </h1>
+                    <p class="text-muted mt-2 mb-0">Download and view your loan reports</p>
+                </div>
+                <div class="dropdown">
+                    <button class="btn btn-light border rounded-circle p-3" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-person-circle" style="font-size: 1.5rem; color: #007bff;"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="#"><i class="bi bi-person"></i> Profile</a></li>
+                        <li><a class="dropdown-item" href="#"><i class="bi bi-gear"></i> Settings</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-danger" href="{% url 'logout' %}"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Report Templates -->
+    <div class="row mb-4">
+        <!-- Quick Download Cards -->
+        <div class="col-md-6 mb-3">
+            <div class="card shadow border-left-primary">
+                <div class="card-body text-center">
+                    <i class="bi bi-calendar-month display-3 text-primary mb-3"></i>
+                    <h5 class="card-title">Last 1 Month</h5>
+                    <p class="card-text text-muted">Download loan data from the last 30 days</p>
+                    <div class="btn-group w-100" role="group">
+                        <a href="?period=1month&format=csv" class="btn btn-outline-primary">
+                            <i class="bi bi-download"></i> CSV
+                        </a>
+                        <a href="?period=1month&format=excel" class="btn btn-outline-primary">
+                            <i class="bi bi-file-earmark-excel"></i> Excel
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <div class="card shadow border-left-success">
+                <div class="card-body text-center">
+                    <i class="bi bi-calendar2-week display-3 text-success mb-3"></i>
+                    <h5 class="card-title">Last 6 Months</h5>
+                    <p class="card-text text-muted">Download loan data from the last 6 months</p>
+                    <div class="btn-group w-100" role="group">
+                        <a href="?period=6months&format=csv" class="btn btn-outline-success">
+                            <i class="bi bi-download"></i> CSV
+                        </a>
+                        <a href="?period=6months&format=excel" class="btn btn-outline-success">
+                            <i class="bi bi-file-earmark-excel"></i> Excel
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <div class="card shadow border-left-info">
+                <div class="card-body text-center">
+                    <i class="bi bi-calendar-year display-3 text-info mb-3"></i>
+                    <h5 class="card-title">Last 1 Year</h5>
+                    <p class="card-text text-muted">Download loan data from the last 12 months</p>
+                    <div class="btn-group w-100" role="group">
+                        <a href="?period=1year&format=csv" class="btn btn-outline-info">
+                            <i class="bi bi-download"></i> CSV
+                        </a>
+                        <a href="?period=1year&format=excel" class="btn btn-outline-info">
+                            <i class="bi bi-file-earmark-excel"></i> Excel
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <div class="card shadow border-left-warning">
+                <div class="card-body text-center">
+                    <i class="bi bi-calendar-date display-3 text-warning mb-3"></i>
+                    <h5 class="card-title">Custom Date Range</h5>
+                    <p class="card-text text-muted">Download data for specific dates</p>
+                    <button class="btn btn-outline-warning w-100" data-bs-toggle="collapse" data-bs-target="#customDateForm">
+                        <i class="bi bi-calendar-range"></i> Custom Range
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Date Form -->
+    <div id="customDateForm" class="collapse mb-4">
+        <div class="card shadow">
+            <div class="card-body">
+                <h5 class="card-title mb-3">Select Custom Date Range</h5>
+                <form method="get" action="">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">From Date</label>
+                            <input type="date" name="from_date" class="form-control" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">To Date</label>
+                            <input type="date" name="to_date" class="form-control" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Format</label>
+                            <select name="format" class="form-select" required>
+                                <option value="csv">CSV</option>
+                                <option value="excel">Excel</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">&nbsp;</label>
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="bi bi-download"></i> Download
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Report Statistics -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Report Summary</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-3 mb-3">
+                            <div class="h3 text-primary mb-2">{{ total_loans }}</div>
+                            <p class="text-muted">Total Loans</p>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="h3 text-success mb-2">{{ approved_loans }}</div>
+                            <p class="text-muted">Approved Loans</p>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="h3 text-info mb-2">{{ disbursed_loans }}</div>
+                            <p class="text-muted">Disbursed Loans</p>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="h3 text-danger mb-2">{{ rejected_loans }}</div>
+                            <p class="text-muted">Rejected Loans</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Reports -->
+    {% if generated_reports %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0">Generated Reports</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th>Report Name</th>
+                                    <th>Date Range</th>
+                                    <th>Format</th>
+                                    <th>Generated Date</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for report in generated_reports %}
+                                <tr>
+                                    <td>{{ report.name }}</td>
+                                    <td>{{ report.from_date }} to {{ report.to_date }}</td>
+                                    <td>
+                                        <span class="badge bg-info">{{ report.format|upper }}</span>
+                                    </td>
+                                    <td>{{ report.generated_date|date:"d M, Y H:i" }}</td>
+                                    <td>
+                                        <a href="{{ report.file_url }}" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-download"></i> Download
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Help Section -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="alert alert-info">
+                <h5 class="alert-heading">
+                    <i class="bi bi-question-circle"></i> Report Information
+                </h5>
+                <ul class="mb-0">
+                    <li><strong>CSV Format:</strong> Ideal for opening in spreadsheet applications like Excel or Google Sheets</li>
+                    <li><strong>Excel Format:</strong> Pre-formatted with tables, filters, and professional styling</li>
+                    <li><strong>Data Included:</strong> Applicant name, phone, email, loan amount, status, and creation date</li>
+                    <li><strong>Updates:</strong> Reports show real-time data and can be downloaded anytime</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.border-left-primary { border-left: 0.25rem solid #007bff !important; }
+.border-left-success { border-left: 0.25rem solid #28a745 !important; }
+.border-left-warning { border-left: 0.25rem solid #ffc107 !important; }
+.border-left-info { border-left: 0.25rem solid #17a2b8 !important; }
+.border-left-secondary { border-left: 0.25rem solid #6c757d !important; }
+
+.card { border: none; }
+.table-hover tbody tr:hover { background-color: #f8f9fa; }
+</style>
+{% endblock %}

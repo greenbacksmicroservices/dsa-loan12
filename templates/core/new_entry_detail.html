@@ -1,0 +1,683 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Application Details - {{ applicant.full_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .detail-container {
+        padding: 30px 20px;
+        background-color: #f5f6fa;
+        min-height: calc(100vh - 80px);
+    }
+
+    .detail-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+        margin-bottom: 25px;
+        overflow: hidden;
+    }
+
+    .card-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 25px;
+        font-weight: 600;
+        font-size: 18px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .card-body {
+        padding: 25px;
+    }
+
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+    }
+
+    .info-item {
+        padding: 15px;
+        background-color: #f9f9f9;
+        border-radius: 8px;
+        border-left: 4px solid #667eea;
+    }
+
+    .info-label {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #999;
+        margin-bottom: 8px;
+        font-weight: 600;
+    }
+
+    .info-value {
+        font-size: 16px;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .applicant-header {
+        display: flex;
+        align-items: center;
+        gap: 25px;
+        margin-bottom: 30px;
+        padding-bottom: 25px;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .applicant-photo-large {
+        width: 120px;
+        height: 120px;
+        border-radius: 12px;
+        object-fit: cover;
+        background-color: #e0e0e0;
+        border: 3px solid #667eea;
+    }
+
+    .applicant-title {
+        flex: 1;
+    }
+
+    .applicant-title h2 {
+        color: #333;
+        margin: 0 0 10px 0;
+        font-size: 28px;
+    }
+
+    .applicant-subtitle {
+        color: #999;
+        font-size: 14px;
+        margin-bottom: 8px;
+    }
+
+    .status-badge {
+        display: inline-block;
+        background: #ffc107;
+        color: #333;
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 12px;
+    }
+
+    .section-title {
+        font-size: 16px;
+        font-weight: 700;
+        color: #333;
+        margin-bottom: 18px;
+        padding-bottom: 12px;
+        border-bottom: 2px solid #667eea;
+    }
+
+    .document-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 15px;
+        margin-bottom: 25px;
+    }
+
+    .document-item {
+        padding: 15px;
+        background-color: #f9f9f9;
+        border-radius: 8px;
+        border: 2px solid #e0e0e0;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .document-item:hover {
+        border-color: #667eea;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+    }
+
+    .document-icon {
+        font-size: 32px;
+        margin-bottom: 10px;
+    }
+
+    .document-name {
+        font-size: 12px;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 8px;
+    }
+
+    .document-status {
+        font-size: 11px;
+        padding: 4px 8px;
+        border-radius: 4px;
+        background-color: #d4edda;
+        color: #155724;
+        font-weight: 600;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 15px;
+        margin-top: 30px;
+    }
+
+    .btn {
+        padding: 12px 30px;
+        border-radius: 8px;
+        border: none;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        flex: 1;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+    }
+
+    .btn-secondary {
+        background-color: #f0f0f0;
+        color: #333;
+        flex: 1;
+    }
+
+    .btn-secondary:hover {
+        background-color: #e0e0e0;
+    }
+
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-overlay.active {
+        display: flex;
+    }
+
+    .modal-content {
+        background: white;
+        border-radius: 12px;
+        padding: 30px;
+        max-width: 500px;
+        width: 90%;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    }
+
+    .modal-header {
+        font-size: 20px;
+        font-weight: 700;
+        color: #333;
+        margin-bottom: 25px;
+    }
+
+    .modal-form-group {
+        margin-bottom: 20px;
+    }
+
+    .modal-form-group label {
+        display: block;
+        margin-bottom: 10px;
+        color: #333;
+        font-weight: 600;
+        font-size: 14px;
+    }
+
+    .modal-form-group select {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        font-size: 14px;
+    }
+
+    .modal-form-group select:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .modal-buttons {
+        display: flex;
+        gap: 12px;
+        margin-top: 25px;
+    }
+
+    .modal-buttons button {
+        flex: 1;
+        padding: 12px;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .modal-buttons .btn-confirm {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+
+    .modal-buttons .btn-confirm:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+    }
+
+    .modal-buttons .btn-cancel {
+        background-color: #f0f0f0;
+        color: #333;
+    }
+
+    .modal-buttons .btn-cancel:hover {
+        background-color: #e0e0e0;
+    }
+
+    .back-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 25px;
+        color: #667eea;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.2s ease;
+    }
+
+    .back-button:hover {
+        gap: 12px;
+    }
+
+    @media (max-width: 768px) {
+        .applicant-header {
+            flex-direction: column;
+            text-align: center;
+        }
+
+        .applicant-title h2 {
+            font-size: 22px;
+        }
+
+        .action-buttons {
+            flex-direction: column;
+        }
+
+        .info-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .modal-content {
+            padding: 20px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="detail-container">
+    <!-- Back Button -->
+    <a href="{% url 'new_entries' %}" class="back-button">
+        <i class="bi bi-arrow-left"></i> Back to New Entries
+    </a>
+
+    <!-- Applicant Header Card -->
+    <div class="detail-card">
+        <div class="card-body">
+            <div class="applicant-header">
+                <div class="applicant-photo-large">
+                    {% if photo_document %}
+                        <img src="{{ photo_document.file.url }}" alt="{{ applicant.full_name }}" class="applicant-photo-large">
+                    {% else %}
+                        <i class="bi bi-person-circle" style="font-size: 120px; color: #ddd;"></i>
+                    {% endif %}
+                </div>
+                <div class="applicant-title">
+                    <h2>{{ applicant.full_name }}</h2>
+                    <div class="applicant-subtitle">{{ applicant.get_role_display|upper }}</div>
+                    <span class="status-badge">
+                        <i class="bi bi-hourglass-split"></i> {{ loan_app.status }}
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Applicant Details -->
+    <div class="detail-card">
+        <div class="card-header">
+            <i class="bi bi-person-fill"></i> Applicant Information
+        </div>
+        <div class="card-body">
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-label">Full Name</div>
+                    <div class="info-value">{{ applicant.full_name }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Username</div>
+                    <div class="info-value">{{ applicant.username }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Mobile Number</div>
+                    <div class="info-value">{{ applicant.mobile }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Email Address</div>
+                    <div class="info-value" style="word-break: break-all;">{{ applicant.email }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Gender</div>
+                    <div class="info-value">{{ applicant.get_gender_display }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Location</div>
+                    <div class="info-value">{{ applicant.city }}, {{ applicant.state }} - {{ applicant.pin_code }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loan Details -->
+    <div class="detail-card">
+        <div class="card-header">
+            <i class="bi bi-cash-coin"></i> Loan & Bank Details
+        </div>
+        <div class="card-body">
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-label">Loan Type</div>
+                    <div class="info-value">{{ applicant.get_loan_type_display }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Loan Amount</div>
+                    <div class="info-value">₹{{ applicant.loan_amount|floatformat:0 }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Tenure</div>
+                    <div class="info-value">{{ applicant.tenure_months }} Months</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Interest Rate</div>
+                    <div class="info-value">{{ applicant.interest_rate }}%</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Monthly EMI</div>
+                    <div class="info-value">₹{{ applicant.emi|floatformat:0 }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Loan Purpose</div>
+                    <div class="info-value">{{ applicant.loan_purpose }}</div>
+                </div>
+            </div>
+
+            <h4 style="margin-top: 30px; color: #333; font-weight: 700;">Bank Details</h4>
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-label">Bank Name</div>
+                    <div class="info-value">{{ applicant.bank_name }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Bank Type</div>
+                    <div class="info-value">{{ applicant.get_bank_type_display }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Account Number</div>
+                    <div class="info-value">****{{ applicant.account_number|slice:"-4:" }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">IFSC Code</div>
+                    <div class="info-value">{{ applicant.ifsc_code }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Documents -->
+    {% if documents %}
+    <div class="detail-card">
+        <div class="card-header">
+            <i class="bi bi-file-earmark-text"></i> Uploaded Documents
+        </div>
+        <div class="card-body">
+            <div class="document-grid">
+                {% for doc in documents %}
+                <a href="{{ doc.file.url }}" target="_blank" class="document-item">
+                    <div class="document-icon">
+                        {% if doc.document_type == 'photo' %}
+                            📷
+                        {% elif 'pan' in doc.document_type %}
+                            🆔
+                        {% elif 'aadhaar' in doc.document_type %}
+                            🎫
+                        {% elif 'address' in doc.document_type %}
+                            🏠
+                        {% elif 'salary' in doc.document_type %}
+                            💼
+                        {% elif 'bank' in doc.document_type %}
+                            🏦
+                        {% else %}
+                            📄
+                        {% endif %}
+                    </div>
+                    <div class="document-name">{{ doc.get_document_type_display }}</div>
+                    <div class="document-status">✓ Uploaded</div>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Action Buttons -->
+    <div class="detail-card">
+        <div class="card-body">
+            <div class="action-buttons">
+                <button type="button" class="btn btn-primary" onclick="openAssignModal()">
+                    <i class="bi bi-person-check"></i> Assign Application
+                </button>
+                <a href="{% url 'new_entries' %}" class="btn btn-secondary" style="text-decoration: none; justify-content: center;">
+                    <i class="bi bi-arrow-left"></i> Back
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Assign Modal -->
+<div class="modal-overlay" id="assignModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <i class="bi bi-person-check"></i> Assign Application
+        </div>
+        <div class="modal-form-group">
+            <label>Assign To (Type)</label>
+            <select id="assignType" onchange="updateAssignOptions()" required>
+                <option value="">Select Type...</option>
+                <option value="employee">Employee</option>
+                <option value="agent">Agent</option>
+            </select>
+        </div>
+
+        <div class="modal-form-group">
+            <label>Select Person</label>
+            <select id="assignTo" required>
+                <option value="">Select...</option>
+            </select>
+        </div>
+
+        <div class="modal-buttons">
+            <button type="button" class="btn-cancel" onclick="closeAssignModal()">Cancel</button>
+            <button type="button" class="btn-confirm" onclick="submitAssignment()">Assign</button>
+        </div>
+        
+        <div id="assignmentStatus" style="margin-top: 15px; display: none;"></div>
+    </div>
+</div>
+
+<script>
+    let employeeOptions = [];
+    let agentOptions = [];
+
+    // Load employees and agents on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        loadEmployees();
+        loadAgents();
+    });
+
+    function loadEmployees() {
+        fetch('/api/get-employees/')
+            .then(response => response.json())
+            .then(data => {
+                employeeOptions = data;
+            })
+            .catch(error => console.error('Error loading employees:', error));
+    }
+
+    function loadAgents() {
+        fetch('/api/get-agents/')
+            .then(response => response.json())
+            .then(data => {
+                agentOptions = data;
+            })
+            .catch(error => console.error('Error loading agents:', error));
+    }
+
+    function openAssignModal() {
+        document.getElementById('assignModal').classList.add('active');
+        document.getElementById('assignType').value = '';
+        document.getElementById('assignTo').innerHTML = '<option value="">Select...</option>';
+        document.getElementById('assignmentStatus').style.display = 'none';
+    }
+
+    function closeAssignModal() {
+        document.getElementById('assignModal').classList.remove('active');
+    }
+
+    function updateAssignOptions() {
+        const assignType = document.getElementById('assignType').value;
+        const assignTo = document.getElementById('assignTo');
+        assignTo.innerHTML = '<option value="">Select...</option>';
+
+        let options = [];
+        if (assignType === 'employee') {
+            options = employeeOptions;
+        } else if (assignType === 'agent') {
+            options = agentOptions;
+        }
+
+        options.forEach(option => {
+            const opt = document.createElement('option');
+            opt.value = option.id;
+            if (assignType === 'employee') {
+                opt.textContent = `${option.first_name} ${option.last_name} (${option.email})`;
+            } else {
+                opt.textContent = `${option.name} (${option.phone})`;
+            }
+            assignTo.appendChild(opt);
+        });
+    }
+
+    function submitAssignment() {
+        const assignType = document.getElementById('assignType').value;
+        const assignTo = document.getElementById('assignTo').value;
+        const applicantId = {{ applicant.id }};
+        const statusDiv = document.getElementById('assignmentStatus');
+
+        if (!assignType || !assignTo) {
+            showAssignmentStatus('Please select type and person', 'error');
+            return;
+        }
+
+        const endpoint = assignType === 'employee' 
+            ? `/api/assign-to-employee/${applicantId}/`
+            : `/api/assign-to-agent/${applicantId}/`;
+
+        const data = assignType === 'employee'
+            ? { employee_id: assignTo }
+            : { agent_id: assignTo };
+
+        fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAssignmentStatus(`✓ ${data.message}`, 'success');
+                setTimeout(() => {
+                    closeAssignModal();
+                    location.reload();
+                }, 1500);
+            } else {
+                showAssignmentStatus(`✗ ${data.error}`, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showAssignmentStatus('Error assigning application', 'error');
+        });
+    }
+
+    function showAssignmentStatus(message, type) {
+        const statusDiv = document.getElementById('assignmentStatus');
+        statusDiv.style.display = 'block';
+        statusDiv.textContent = message;
+        statusDiv.style.padding = '12px';
+        statusDiv.style.borderRadius = '8px';
+        statusDiv.style.textAlign = 'center';
+        statusDiv.style.fontWeight = '600';
+        
+        if (type === 'success') {
+            statusDiv.style.backgroundColor = '#d4edda';
+            statusDiv.style.color = '#155724';
+            statusDiv.style.border = '1px solid #c3e6cb';
+        } else {
+            statusDiv.style.backgroundColor = '#f8d7da';
+            statusDiv.style.color = '#721c24';
+            statusDiv.style.border = '1px solid #f5c6cb';
+        }
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    // Close modal when clicking outside
+    document.getElementById('assignModal').addEventListener('click', function (e) {
+        if (e.target === this) {
+            closeAssignModal();
+        }
+    });
+</script>
+{% endblock %}

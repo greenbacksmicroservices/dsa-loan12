@@ -1,0 +1,468 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Complaints - DSA Loan Management System{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2><i class="bi bi-exclamation-triangle"></i> Complains</h2>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addComplaintModal">
+        <i class="bi bi-plus-circle"></i> Add Complaint
+    </button>
+</div>
+
+<!-- Filters -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="table-container">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label for="filter_complaint_status" class="form-label">Status</label>
+                    <select class="form-select" id="filter_complaint_status">
+                        <option value="">All Status</option>
+                        <option value="open">Open</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="resolved">Resolved</option>
+                        <option value="closed">Closed</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="filter_complaint_priority" class="form-label">Priority</label>
+                    <select class="form-select" id="filter_complaint_priority">
+                        <option value="">All Priority</option>
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                        <option value="urgent">Urgent</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="filter_complaint_type" class="form-label">Type</label>
+                    <select class="form-select" id="filter_complaint_type">
+                        <option value="">All Types</option>
+                        <option value="service">Service Issue</option>
+                        <option value="payment">Payment Issue</option>
+                        <option value="documentation">Documentation Issue</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">&nbsp;</label>
+                    <button class="btn btn-primary w-100" onclick="filterComplaints()">
+                        <i class="bi bi-funnel"></i> Filter
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Complaints Table -->
+<div class="table-container">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">Complaints List</h5>
+        <input type="text" class="form-control form-control-sm" id="searchComplaints" placeholder="Search complaints..." style="max-width: 300px;">
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Complaint ID</th>
+                    <th>Customer Name</th>
+                    <th>Loan ID</th>
+                    <th>Type</th>
+                    <th>Priority</th>
+                    <th>Status</th>
+                    <th>Assigned Admin</th>
+                    <th>Created At</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="complaintsTableBody">
+                {% for complaint in complaints %}
+                <tr>
+                    <td><strong>{{ complaint.complaint_id }}</strong></td>
+                    <td>{{ complaint.customer_name }}</td>
+                    <td>
+                        {% if complaint.loan %}
+                        <a href="#" onclick="viewLoan({{ complaint.loan.id }})">#{{ complaint.loan.id }}</a>
+                        {% else %}
+                        N/A
+                        {% endif %}
+                    </td>
+                    <td><span class="badge bg-info">{{ complaint.get_complaint_type_display }}</span></td>
+                    <td>
+                        <span class="badge bg-{{ complaint.priority|yesno:'danger,warning,secondary,primary' }}">
+                            {{ complaint.get_priority_display }}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge bg-{{ complaint.status|yesno:'warning,info,success,secondary' }}">
+                            {{ complaint.get_status_display }}
+                        </span>
+                    </td>
+                    <td>{{ complaint.assigned_admin.username|default:"Unassigned" }}</td>
+                    <td>{{ complaint.created_at|date:"Y-m-d H:i" }}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="viewComplaint({{ complaint.id }})">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-success" onclick="updateComplaintStatus({{ complaint.id }})">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="9" class="text-center text-muted py-4">No complaints found</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Add Complaint Modal -->
+<div class="modal fade" id="addComplaintModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Complaint</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="addComplaintForm">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="complaint_customer_name" class="form-label">Customer Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="complaint_customer_name" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="complaint_loan" class="form-label">Loan ID (Optional)</label>
+                            <input type="number" class="form-control" id="complaint_loan">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="complaint_type" class="form-label">Complaint Type <span class="text-danger">*</span></label>
+                            <select class="form-select" id="complaint_type" required>
+                                <option value="">Select Type</option>
+                                <option value="service">Service Issue</option>
+                                <option value="payment">Payment Issue</option>
+                                <option value="documentation">Documentation Issue</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="complaint_priority" class="form-label">Priority <span class="text-danger">*</span></label>
+                            <select class="form-select" id="complaint_priority" required>
+                                <option value="medium" selected>Medium</option>
+                                <option value="low">Low</option>
+                                <option value="high">High</option>
+                                <option value="urgent">Urgent</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="complaint_description" class="form-label">Description <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="complaint_description" rows="4" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">Submit Complaint</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- View Complaint Modal -->
+<div class="modal fade" id="viewComplaintModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Complaint Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="complaintDetails">
+                <!-- Details will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Load complaints via API
+    async function loadComplaints() {
+        try {
+            const response = await fetch('/api/complaints/', {
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                credentials: 'same-origin'
+            });
+            const data = await response.json();
+            
+            updateComplaintsTable(data.results || []);
+        } catch (error) {
+            console.error('Error loading complaints:', error);
+        }
+    }
+
+    // Update Complaints Table
+    function updateComplaintsTable(complaints) {
+        const tbody = document.getElementById('complaintsTableBody');
+        
+        if (complaints.length > 0) {
+            tbody.innerHTML = complaints.map(complaint => `
+                <tr>
+                    <td><strong>${complaint.complaint_id}</strong></td>
+                    <td>${complaint.customer_name}</td>
+                    <td>${complaint.loan ? `<a href="#" onclick="viewLoan(${complaint.loan})">#${complaint.loan}</a>` : 'N/A'}</td>
+                    <td><span class="badge bg-info">${complaint.complaint_type}</span></td>
+                    <td><span class="badge bg-${getPriorityColor(complaint.priority)}">${complaint.priority}</span></td>
+                    <td><span class="badge bg-${getStatusColor(complaint.status)}">${complaint.status}</span></td>
+                    <td>${complaint.assigned_admin_name || 'Unassigned'}</td>
+                    <td>${new Date(complaint.created_at).toLocaleString()}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="viewComplaint(${complaint.id})">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-success" onclick="updateComplaintStatus(${complaint.id})">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        } else {
+            tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">No complaints found</td></tr>';
+        }
+    }
+
+    // Add Complaint Form
+    document.getElementById('addComplaintForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const data = {
+            customer_name: document.getElementById('complaint_customer_name').value,
+            complaint_type: document.getElementById('complaint_type').value,
+            priority: document.getElementById('complaint_priority').value,
+            description: document.getElementById('complaint_description').value,
+            status: 'open'
+        };
+        
+        const loanId = document.getElementById('complaint_loan').value;
+        if (loanId) {
+            data.loan = parseInt(loanId);
+        }
+        
+        try {
+            const response = await fetch('/api/complaints/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify(data)
+            });
+            
+            if (response.ok) {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('addComplaintModal'));
+                modal.hide();
+                this.reset();
+                loadComplaints();
+            } else {
+                const result = await response.json();
+                alert('Error: ' + (result.detail || 'Failed to add complaint'));
+            }
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    });
+
+    // View Complaint
+    async function viewComplaint(complaintId) {
+        try {
+            const response = await fetch(`/api/complaints/${complaintId}/`, {
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                credentials: 'same-origin'
+            });
+            const complaint = await response.json();
+            
+            const detailsHtml = `
+                <div class="mb-3">
+                    <strong>Complaint ID:</strong> ${complaint.complaint_id}
+                </div>
+                <div class="mb-3">
+                    <strong>Customer Name:</strong> ${complaint.customer_name}
+                </div>
+                <div class="mb-3">
+                    <strong>Type:</strong> <span class="badge bg-info">${complaint.complaint_type}</span>
+                </div>
+                <div class="mb-3">
+                    <strong>Priority:</strong> <span class="badge bg-${getPriorityColor(complaint.priority)}">${complaint.priority}</span>
+                </div>
+                <div class="mb-3">
+                    <strong>Status:</strong> <span class="badge bg-${getStatusColor(complaint.status)}">${complaint.status}</span>
+                </div>
+                <div class="mb-3">
+                    <strong>Description:</strong>
+                    <p>${complaint.description}</p>
+                </div>
+                <div class="mb-3">
+                    <strong>Comments:</strong>
+                    <div id="complaintComments">
+                        ${complaint.comments && complaint.comments.length > 0 ? 
+                            complaint.comments.map(c => `<div class="border p-2 mb-2"><small>${c.commented_by_name} - ${new Date(c.created_at).toLocaleString()}</small><p>${c.comment}</p></div>`).join('') :
+                            '<p class="text-muted">No comments yet</p>'
+                        }
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label>Add Comment:</label>
+                    <textarea class="form-control" id="newComment" rows="3"></textarea>
+                    <button class="btn btn-primary btn-sm mt-2" onclick="addComment(${complaint.id})">Add Comment</button>
+                </div>
+            `;
+            
+            document.getElementById('complaintDetails').innerHTML = detailsHtml;
+            const modal = new bootstrap.Modal(document.getElementById('viewComplaintModal'));
+            modal.show();
+        } catch (error) {
+            alert('Error loading complaint: ' + error.message);
+        }
+    }
+
+    // Add Comment
+    async function addComment(complaintId) {
+        const comment = document.getElementById('newComment').value;
+        if (!comment.trim()) {
+            alert('Please enter a comment');
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/api/complaints/${complaintId}/add_comment/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({ comment })
+            });
+            
+            if (response.ok) {
+                document.getElementById('newComment').value = '';
+                viewComplaint(complaintId);
+            } else {
+                alert('Error adding comment');
+            }
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    }
+
+    // Update Complaint Status
+    function updateComplaintStatus(complaintId) {
+        const newStatus = prompt('Enter new status (open, in_progress, resolved, closed):');
+        if (!newStatus) return;
+        
+        fetch(`/api/complaints/${complaintId}/`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({ status: newStatus })
+        })
+        .then(response => {
+            if (response.ok) {
+                loadComplaints();
+            } else {
+                alert('Error updating status');
+            }
+        });
+    }
+
+    // Filter Complaints
+    function filterComplaints() {
+        const params = new URLSearchParams();
+        const status = document.getElementById('filter_complaint_status').value;
+        const priority = document.getElementById('filter_complaint_priority').value;
+        const type = document.getElementById('filter_complaint_type').value;
+        
+        if (status) params.append('status', status);
+        if (priority) params.append('priority', priority);
+        if (type) params.append('complaint_type', type);
+        
+        fetch(`/api/complaints/?${params.toString()}`, {
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => response.json())
+        .then(data => updateComplaintsTable(data.results || []))
+        .catch(error => console.error('Error filtering complaints:', error));
+    }
+
+    function getPriorityColor(priority) {
+        const colors = {
+            'low': 'secondary',
+            'medium': 'warning',
+            'high': 'danger',
+            'urgent': 'danger'
+        };
+        return colors[priority] || 'secondary';
+    }
+
+    function getStatusColor(status) {
+        const colors = {
+            'open': 'warning',
+            'in_progress': 'info',
+            'resolved': 'success',
+            'closed': 'secondary'
+        };
+        return colors[status] || 'secondary';
+    }
+
+    // Search functionality
+    document.getElementById('searchComplaints').addEventListener('input', function(e) {
+        const searchTerm = e.target.value.toLowerCase();
+        const rows = document.querySelectorAll('#complaintsTableBody tr');
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(searchTerm) ? '' : 'none';
+        });
+    });
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    // Load on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        loadComplaints();
+    });
+</script>
+{% endblock %}
+
+

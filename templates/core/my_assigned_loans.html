@@ -1,0 +1,299 @@
+{% extends 'core/base.html' %}
+
+{% block title %}My Assigned Loans - DSA Loan Management System{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2><i class="bi bi-briefcase"></i> My Assigned Loans</h2>
+</div>
+
+<!-- Stats Section -->
+<div class="stat-cards-single-line">
+    <div class="stat-item">
+        <span class="stat-label">Total Assigned</span>
+        <span class="stat-value" id="total-count">{{ total_count }}</span>
+    </div>
+    <div class="stat-item">
+        <span class="stat-label">Waiting for Action</span>
+        <span class="stat-value" id="waiting-count">{{ waiting_count }}</span>
+    </div>
+    <div class="stat-item">
+        <span class="stat-label">Required Follow-up</span>
+        <span class="stat-value" id="followup-count">{{ followup_count }}</span>
+    </div>
+</div>
+
+<!-- Loans Table -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="table-container">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">Loans Assigned to Me</h5>
+                <input type="text" class="form-control form-control-sm" id="searchLoans" placeholder="Search by name..." style="max-width: 300px;">
+            </div>
+            
+            {% if loans %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Applicant Name</th>
+                            <th>Mobile</th>
+                            <th>Email</th>
+                            <th>Loan Type</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                            <th>Assigned</th>
+                            <th>Hours Since</th>
+                            <th>Documents</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="loansTable">
+                        {% for loan in loans %}
+                        <tr class="loan-row" data-loan-id="{{ loan.id }}">
+                            <td><strong>{{ loan.full_name }}</strong></td>
+                            <td>{{ loan.mobile_number }}</td>
+                            <td>{{ loan.email }}</td>
+                            <td>
+                                <span class="badge bg-info">{{ loan.get_loan_type_display }}</span>
+                            </td>
+                            <td>₹{{ loan.loan_amount|floatformat:0 }}</td>
+                            <td>
+                                {% if loan.status == 'waiting' %}
+                                    <span class="badge bg-warning">Waiting</span>
+                                {% elif loan.status == 'follow_up' %}
+                                    <span class="badge bg-danger">Follow-up</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ loan.get_status_display }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small class="text-muted">
+                                    {{ loan.assigned_at|date:"d M H:i" }}
+                                </small>
+                            </td>
+                            <td>
+                                <span class="badge bg-primary">{{ loan.hours_since_assignment }}h</span>
+                                {% if loan.hours_since_assignment >= 20 %}
+                                    <i class="bi bi-exclamation-triangle-fill text-danger" title="Approaching 24-hour deadline"></i>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="#" class="btn btn-sm btn-outline-secondary" onclick="viewDocuments({{ loan.id }})">
+                                    <i class="bi bi-file-pdf"></i> View
+                                </a>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <button type="button" class="btn btn-success" onclick="approveLoan({{ loan.id }})" title="Approve Loan">
+                                        <i class="bi bi-check-circle"></i> Approve
+                                    </button>
+                                    <button type="button" class="btn btn-danger" onclick="rejectLoan({{ loan.id }})" title="Reject Loan">
+                                        <i class="bi bi-x-circle"></i> Reject
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info" role="alert">
+                <i class="bi bi-info-circle"></i> No loans assigned to you at this moment.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Document Modal -->
+<div class="modal fade" id="documentModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-file-pdf"></i> Loan Documents
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="documentList">
+                <div class="text-center text-muted py-4">
+                    <i class="bi bi-hourglass-split"></i> Loading documents...
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reject Reason Modal -->
+<div class="modal fade" id="rejectModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-x-circle"></i> Reject Loan Application
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="rejectForm">
+                    <div class="mb-3">
+                        <label for="rejectReason" class="form-label">Rejection Reason <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="rejectReason" rows="4" placeholder="Enter reason for rejection..." required></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" onclick="submitReject()" id="submitRejectBtn">
+                    <i class="bi bi-check"></i> Confirm Rejection
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let currentRejectLoanId = null;
+    
+    function viewDocuments(loanId) {
+        const documentList = document.getElementById('documentList');
+        documentList.innerHTML = '<div class="text-center text-muted py-4"><i class="bi bi-hourglass-split"></i> Loading documents...</div>';
+        
+        // Show modal
+        const modal = new bootstrap.Modal(document.getElementById('documentModal'));
+        modal.show();
+        
+        // Fetch documents
+        fetch(`/api/loan-documents/?loan=${loanId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.results.length === 0) {
+                    documentList.innerHTML = '<div class="alert alert-info">No documents uploaded yet.</div>';
+                    return;
+                }
+                
+                let html = '<div class="list-group">';
+                data.results.forEach(doc => {
+                    html += `
+                        <a href="${doc.file}" target="_blank" class="list-group-item list-group-item-action">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1"><i class="bi bi-file-pdf"></i> ${doc.document_type}</h6>
+                                <small class="text-muted">${new Date(doc.uploaded_at).toLocaleDateString()}</small>
+                            </div>
+                        </a>
+                    `;
+                });
+                html += '</div>';
+                documentList.innerHTML = html;
+            })
+            .catch(error => {
+                documentList.innerHTML = '<div class="alert alert-danger">Error loading documents.</div>';
+                console.error('Error:', error);
+            });
+    }
+    
+    function approveLoan(loanId) {
+        if (confirm('Are you sure you want to APPROVE this loan?')) {
+            fetch(`/api/loan/${loanId}/approve/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                credentials: 'same-origin'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showAlert('success', data.message);
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    showAlert('danger', data.error || 'Failed to approve loan');
+                }
+            })
+            .catch(error => {
+                showAlert('danger', 'Error: ' + error.message);
+            });
+        }
+    }
+    
+    function rejectLoan(loanId) {
+        currentRejectLoanId = loanId;
+        const modal = new bootstrap.Modal(document.getElementById('rejectModal'));
+        modal.show();
+    }
+    
+    function submitReject() {
+        const reason = document.getElementById('rejectReason').value;
+        
+        if (!reason.trim()) {
+            alert('Please provide a rejection reason');
+            return;
+        }
+        
+        const formData = new FormData();
+        formData.append('reason', reason);
+        
+        fetch(`/api/loan/${currentRejectLoanId}/reject/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: formData,
+            credentials: 'same-origin'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAlert('success', data.message);
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showAlert('danger', data.error || 'Failed to reject loan');
+            }
+        })
+        .catch(error => {
+            showAlert('danger', 'Error: ' + error.message);
+        });
+    }
+    
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    
+    function showAlert(type, message) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+        alertDiv.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.querySelector('.page-header').insertAdjacentElement('afterend', alertDiv);
+        setTimeout(() => alertDiv.remove(), 4000);
+    }
+    
+    // Search functionality
+    document.getElementById('searchLoans').addEventListener('keyup', function() {
+        const searchTerm = this.value.toLowerCase();
+        document.querySelectorAll('.loan-row').forEach(row => {
+            const name = row.querySelector('td:nth-child(1)').textContent.toLowerCase();
+            row.style.display = name.includes(searchTerm) ? '' : 'none';
+        });
+    });
+</script>
+{% endblock %}

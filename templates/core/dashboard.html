@@ -1,0 +1,537 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Dashboard - DSA Loan Management System{% endblock %}
+
+{% block content %}
+<!-- Error Message Banner (hidden by default) -->
+<div id="dashboard-error-banner" class="alert alert-warning alert-dismissible fade show" role="alert" style="display: none;">
+    <i class="bi bi-exclamation-triangle"></i> <strong>Loading Dashboard...</strong> Please wait for data to load.
+    <button type="button" class="btn-close" data-bs-dismiss="alert" onclick="document.getElementById('dashboard-error-banner').style.display='none';"></button>
+</div>
+
+    <div class="page-header">
+        <h2><i class="bi bi-speedometer2"></i> Dashboard</h2>
+        <div class="user-info">
+            <span class="text-muted">Welcome, {{ user.username }}</span>
+        </div>
+    </div>
+
+    <!-- Stat Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-lg-2 col-md-4 col-sm-6">
+            <div class="stat-card new-entry" data-status="new_entry">
+                <div class="stat-card-header">
+                    <span class="stat-card-title">Total New Entry</span>
+                    <i class="bi bi-file-plus stat-card-icon"></i>
+                </div>
+                <div class="stat-card-value" id="stat-new-entry">0</div>
+                <div class="stat-card-footer">
+                    <a href="/admin/new-entries/" class="btn btn-light btn-sm w-100" style="color: #0284c7; font-weight: 600; text-decoration: none;">View</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-sm-6">
+            <div class="stat-card waiting" data-status="waiting">
+                <div class="stat-card-header">
+                    <span class="stat-card-title">Waiting for Processing</span>
+                    <i class="bi bi-hourglass-split stat-card-icon"></i>
+                </div>
+                <div class="stat-card-value" id="stat-waiting">0</div>
+                <div class="stat-card-footer">
+                    <a href="/admin/loan-details/?status=waiting" class="btn btn-light btn-sm w-100" style="color: #d97706; font-weight: 600; text-decoration: none;">View</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-sm-6">
+            <div class="stat-card follow-up" data-status="follow_up">
+                <div class="stat-card-header">
+                    <span class="stat-card-title">Required Follow-up</span>
+                    <i class="bi bi-arrow-repeat stat-card-icon"></i>
+                </div>
+                <div class="stat-card-value" id="stat-follow-up">0</div>
+                <div class="stat-card-footer">
+                    <a href="/admin/loan-details/?status=follow_up" class="btn btn-light btn-sm w-100" style="color: #ea580c; font-weight: 600; text-decoration: none;">View</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-sm-6">
+            <div class="stat-card approved" data-status="approved">
+                <div class="stat-card-header">
+                    <span class="stat-card-title">Approved</span>
+                    <i class="bi bi-check-circle stat-card-icon"></i>
+                </div>
+                <div class="stat-card-value" id="stat-approved">0</div>
+                <div class="stat-card-footer">
+                    <a href="/admin/loan-details/?status=approved" class="btn btn-light btn-sm w-100" style="color: #059669; font-weight: 600; text-decoration: none;">View</a>
+                </div>
+            </div>
+    </div>
+    <div class="col-lg-2 col-md-4 col-sm-6">
+        <div class="stat-card rejected" data-status="rejected">
+            <div class="stat-card-header">
+                <span class="stat-card-title">Rejected</span>
+                <i class="bi bi-x-circle stat-card-icon"></i>
+            </div>
+            <div class="stat-card-value" id="stat-rejected">0</div>
+        </div>
+    </div>
+    <div class="col-lg-2 col-md-4 col-sm-6">
+        <div class="stat-card disbursed" data-status="disbursed">
+            <div class="stat-card-header">
+                <span class="stat-card-title">Disbursed</span>
+                <i class="bi bi-cash-coin stat-card-icon"></i>
+            </div>
+            <div class="stat-card-value" id="stat-disbursed">0</div>
+        </div>
+    </div>
+</div>
+
+<!-- Loan Status Breakdown Section -->
+<div class="mt-5 mb-4">
+    <h4 class="mb-4"><i class="bi bi-pie-chart"></i> Loan Status Breakdown</h4>
+    <div class="row g-3">
+        <div class="col-lg-2 col-md-4 col-sm-6">
+            <div class="stat-card new-entry" data-status="new_entry">
+                <div class="stat-card-header">
+                    <span class="stat-card-title">New Entry</span>
+                    <i class="bi bi-file-plus stat-card-icon"></i>
+                </div>
+                <div class="stat-card-value" id="breakdown-new-entry">0</div>
+                <div class="stat-card-footer">
+                    <small class="text-white">Count</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-sm-6">
+            <div class="stat-card waiting" data-status="waiting">
+                <div class="stat-card-header">
+                    <span class="stat-card-title">Waiting for Processing</span>
+                    <i class="bi bi-hourglass-split stat-card-icon"></i>
+                </div>
+                <div class="stat-card-value" id="breakdown-waiting">0</div>
+                <div class="stat-card-footer">
+                    <small class="text-white">Count</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-sm-6">
+            <div class="stat-card follow-up" data-status="follow_up">
+                <div class="stat-card-header">
+                    <span class="stat-card-title">Required Follow-up</span>
+                    <i class="bi bi-arrow-repeat stat-card-icon"></i>
+                </div>
+                <div class="stat-card-value" id="breakdown-follow-up">0</div>
+                <div class="stat-card-footer">
+                    <small class="text-white">Count</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-sm-6">
+            <div class="stat-card approved" data-status="approved">
+                <div class="stat-card-header">
+                    <span class="stat-card-title">Approved</span>
+                    <i class="bi bi-check-circle stat-card-icon"></i>
+                </div>
+                <div class="stat-card-value" id="breakdown-approved">0</div>
+                <div class="stat-card-footer">
+                    <small class="text-white">Count</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-sm-6">
+            <div class="stat-card rejected" data-status="rejected">
+                <div class="stat-card-header">
+                    <span class="stat-card-title">Rejected</span>
+                    <i class="bi bi-x-circle stat-card-icon"></i>
+                </div>
+                <div class="stat-card-value" id="breakdown-rejected">0</div>
+                <div class="stat-card-footer">
+                    <small class="text-white">Count</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-sm-6">
+            <div class="stat-card disbursed" data-status="disbursed">
+                <div class="stat-card-header">
+                    <span class="stat-card-title">Disbursed</span>
+                    <i class="bi bi-cash-coin stat-card-icon"></i>
+                </div>
+                <div class="stat-card-value" id="breakdown-disbursed">0</div>
+                <div class="stat-card-footer">
+                    <small class="text-white">Count</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Section -->
+<div class="row mt-5">
+    <h4 class="mb-4"><i class="bi bi-graph-up"></i> Daily Loan Trend (Last 30 Days)</h4>
+    <div class="col-md-6">
+        <div class="chart-container">
+            <h5 class="chart-title">Loan Status Breakdown</h5>
+            <canvas id="pieChart" height="250"></canvas>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="chart-container">
+            <h5 class="chart-title">Monthly Loan Trend</h5>
+            <canvas id="lineChart" height="250"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Additional Sections -->
+<div class="row mt-4">
+    <div class="col-md-8">
+        <div class="activity-panel">
+            <h5 class="mb-4"><i class="bi bi-clock-history"></i> Recent Activity</h5>
+            <div id="recent-activities">
+                <div class="text-center text-muted py-4">
+                    <i class="bi bi-hourglass-split" style="font-size: 32px;"></i>
+                    <p class="mt-2">Loading activities...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="activity-panel">
+            <h5 class="mb-4"><i class="bi bi-exclamation-triangle"></i> Complaints Overview</h5>
+            <div class="mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span>Total Complaints</span>
+                    <span class="badge bg-secondary" id="total-complaints">0</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span>Open Complaints</span>
+                    <span class="badge bg-warning" id="open-complaints">0</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span>Resolved Complaints</span>
+                    <span class="badge bg-success" id="resolved-complaints">0</span>
+                </div>
+            </div>
+            <a href="{% url 'complaints_legacy' %}" class="btn btn-primary btn-sm w-100">
+                <i class="bi bi-arrow-right"></i> View All Complaints
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let pieChartInstance = null;
+    let lineChartInstance = null;
+
+    // Fetch Dashboard Stats
+    async function loadDashboardStats() {
+        // Hide error banner at start
+        const errorBanner = document.getElementById('dashboard-error-banner');
+        if (errorBanner) {
+            errorBanner.style.display = 'none';
+        }
+
+        try {
+            const response = await fetch('/api/dashboard-stats/', {
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                credentials: 'same-origin'
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            // Check for success flag or default values
+            if (!data.success && data.error) {
+                console.warn('Dashboard data error:', data.error);
+                // Fall back to 0 values which are provided in error response
+            }
+
+            // Update Stat Cards - with default 0 if missing
+            document.getElementById('stat-new-entry').textContent = data.total_new_entry || 0;
+            document.getElementById('stat-waiting').textContent = data.waiting_for_processing || 0;
+            document.getElementById('stat-follow-up').textContent = data.required_follow_up || 0;
+            document.getElementById('stat-approved').textContent = data.approved || 0;
+            document.getElementById('stat-rejected').textContent = data.rejected || 0;
+            document.getElementById('stat-disbursed').textContent = data.disbursed || 0;
+
+            // Update Breakdown Cards - with default 0 if missing
+            document.getElementById('breakdown-new-entry').textContent = data.total_new_entry || 0;
+            document.getElementById('breakdown-waiting').textContent = data.waiting_for_processing || 0;
+            document.getElementById('breakdown-follow-up').textContent = data.required_follow_up || 0;
+            document.getElementById('breakdown-approved').textContent = data.approved || 0;
+            document.getElementById('breakdown-rejected').textContent = data.rejected || 0;
+            document.getElementById('breakdown-disbursed').textContent = data.disbursed || 0;
+
+            // Update Complaints Overview
+            document.getElementById('total-complaints').textContent = data.total_complaints || 0;
+            document.getElementById('open-complaints').textContent = data.open_complaints || 0;
+            document.getElementById('resolved-complaints').textContent = data.resolved_complaints || 0;
+
+            // Update Pie Chart - only if data exists
+            if (data.loan_status_breakdown) {
+                updatePieChart(data.loan_status_breakdown);
+            }
+
+            // Update Line Chart - only if data exists
+            if (data.monthly_loan_trend && data.monthly_loan_trend.length > 0) {
+                updateLineChart(data.monthly_loan_trend);
+            }
+
+            // Update Recent Activities
+            if (data.recent_activities) {
+                updateRecentActivities(data.recent_activities);
+            }
+
+        } catch (error) {
+            console.error('Error loading dashboard stats:', error);
+            // Set all values to 0 on error
+            document.getElementById('stat-new-entry').textContent = 0;
+            document.getElementById('stat-waiting').textContent = 0;
+            document.getElementById('stat-follow-up').textContent = 0;
+            document.getElementById('stat-approved').textContent = 0;
+            document.getElementById('stat-rejected').textContent = 0;
+            document.getElementById('stat-disbursed').textContent = 0;
+            document.getElementById('total-complaints').textContent = 0;
+            document.getElementById('open-complaints').textContent = 0;
+            document.getElementById('resolved-complaints').textContent = 0;
+        }
+    }
+
+    // Update Pie Chart
+    function updatePieChart(data) {
+        const ctx = document.getElementById('pieChart');
+        if (!ctx) return;
+        
+        const canvasCtx = ctx.getContext('2d');
+        
+        if (pieChartInstance) {
+            pieChartInstance.destroy();
+        }
+
+        // Safe data extraction with defaults
+        const chartData = {
+            approved: data?.approved || 0,
+            waiting: data?.waiting || 0,
+            rejected: data?.rejected || 0,
+            disbursed: data?.disbursed || 0
+        };
+
+        pieChartInstance = new Chart(canvasCtx, {
+            type: 'pie',
+            data: {
+                labels: ['Approved', 'Waiting', 'Rejected', 'Disbursed'],
+                datasets: [{
+                    data: [chartData.approved, chartData.waiting, chartData.rejected, chartData.disbursed],
+                    backgroundColor: [
+                        '#10b981',
+                        '#f59e0b',
+                        '#ef4444',
+                        '#3b82f6'
+                    ],
+                    borderWidth: 3,
+                    borderColor: '#fff',
+                    borderRadius: 8,
+                    hoverOffset: 10
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            font: { weight: '600', size: 12 },
+                            padding: 15,
+                            usePointStyle: true,
+                            pointStyle: 'circle'
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        padding: 12,
+                        titleFont: { weight: '600', size: 13 },
+                        bodyFont: { size: 12 },
+                        borderColor: '#fff',
+                        borderWidth: 1,
+                        callbacks: {
+                            label: function(context) {
+                                return context.label + ': ' + context.parsed;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Update Line Chart
+    function updateLineChart(data) {
+        const ctx = document.getElementById('lineChart');
+        if (!ctx) return;
+        
+        const canvasCtx = ctx.getContext('2d');
+        
+        if (lineChartInstance) {
+            lineChartInstance.destroy();
+        }
+
+        // Safe data extraction with defaults
+        const trendData = Array.isArray(data) && data.length > 0 ? data : [];
+        const months = trendData.map(item => item.month || 'N/A');
+        const counts = trendData.map(item => item.count || 0);
+
+        lineChartInstance = new Chart(canvasCtx, {
+            type: 'line',
+            data: {
+                labels: months.length > 0 ? months : ['No Data'],
+                datasets: [{
+                    label: 'Loan Count',
+                    data: counts.length > 0 ? counts : [0],
+                    borderColor: '#0ea5e9',
+                    backgroundColor: 'rgba(14, 165, 233, 0.15)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 6,
+                    pointHoverRadius: 8,
+                    pointBackgroundColor: '#0284c7',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    shadowOffsetX: 0,
+                    shadowOffsetY: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: {
+                            font: { weight: '600', size: 12 },
+                            padding: 15,
+                            usePointStyle: true
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        padding: 12,
+                        titleFont: { weight: '600', size: 13 },
+                        bodyFont: { size: 12 },
+                        borderColor: '#0ea5e9',
+                        borderWidth: 2
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1,
+                            font: { weight: '500', size: 11 }
+                        },
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)',
+                            drawBorder: false
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            font: { weight: '500', size: 11 }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Update Recent Activities
+    function updateRecentActivities(activities) {
+        const container = document.getElementById('recent-activities');
+        
+        if (activities.length === 0) {
+            container.innerHTML = '<div class="text-center text-muted py-4"><i class="bi bi-inbox" style="font-size: 32px;"></i><p class="mt-2">No recent activities</p></div>';
+            return;
+        }
+
+        const badgeColors = {
+            'created': 'bg-primary',
+            'updated': 'bg-info',
+            'approved': 'bg-success',
+            'rejected': 'bg-danger',
+            'uploaded': 'bg-warning',
+            'default': 'bg-secondary'
+        };
+
+        const html = activities.map(activity => {
+            const timeAgo = getTimeAgo(activity.created_at);
+            const badgeColor = badgeColors[activity.action?.toLowerCase()] || badgeColors['default'];
+            return `
+                <div class="activity-item">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <strong style="color: #1e293b;">${activity.description}</strong>
+                            <div class="activity-time"><i class="bi bi-clock-history"></i> ${timeAgo}</div>
+                        </div>
+                        <span class="badge ${badgeColor}" style="white-space: nowrap;">${activity.action}</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        container.innerHTML = html;
+    }
+
+    // Filter by Status - Using direct links now
+    function filterByStatus(status) {
+        // Deprecated - using direct navigation instead
+    }
+
+    // Helper Functions
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function getTimeAgo(dateString) {
+        const date = new Date(dateString);
+        const now = new Date();
+        const diffInSeconds = Math.floor((now - date) / 1000);
+        
+        if (diffInSeconds < 60) return 'Just now';
+        if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`;
+        if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
+        return `${Math.floor(diffInSeconds / 86400)} days ago`;
+    }
+
+    // Load dashboard stats on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        loadDashboardStats();
+        // Refresh every 5 minutes
+        setInterval(loadDashboardStats, 300000);
+    });
+</script>
+{% endblock %}
+
+

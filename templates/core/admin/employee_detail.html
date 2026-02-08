@@ -1,0 +1,412 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Employee Details - {{ employee.get_full_name }}{% endblock %}
+
+{% block content %}
+<style>
+    .employee-detail-container {
+        max-width: 1000px;
+        margin: 30px auto;
+        padding: 0 20px;
+    }
+
+    .detail-header {
+        background: linear-gradient(135deg, #667eea 0%, #2d8cb5 100%);
+        color: white;
+        padding: 40px;
+        border-radius: 12px;
+        margin-bottom: 30px;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+    }
+
+    .employee-photo-section {
+        display: flex;
+        gap: 25px;
+        align-items: start;
+        flex: 1;
+    }
+
+    .employee-photo {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        overflow: hidden;
+        border: 4px solid rgba(255, 255, 255, 0.3);
+        flex-shrink: 0;
+    }
+
+    .employee-photo img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .header-info h1 {
+        margin: 0 0 10px 0;
+        font-size: 28px;
+        font-weight: 700;
+    }
+
+    .header-info p {
+        margin: 5px 0;
+        opacity: 0.95;
+        font-size: 14px;
+    }
+
+    .header-buttons {
+        display: flex;
+        gap: 10px;
+    }
+
+    .btn-back {
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+        padding: 10px 20px;
+        border-radius: 6px;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        font-weight: 600;
+    }
+
+    .btn-back:hover {
+        background: rgba(255, 255, 255, 0.3);
+    }
+
+    .detail-section {
+        background: white;
+        border-radius: 12px;
+        padding: 30px;
+        margin-bottom: 25px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .section-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #f0f0f0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .section-title i {
+        color: #667eea;
+        font-size: 20px;
+    }
+
+    .detail-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+    }
+
+    .detail-item {
+        padding: 15px;
+        background: #f9f9f9;
+        border-radius: 8px;
+        border-left: 4px solid #667eea;
+    }
+
+    .detail-label {
+        font-size: 12px;
+        text-transform: uppercase;
+        color: #999;
+        font-weight: 600;
+        margin-bottom: 8px;
+        letter-spacing: 0.5px;
+    }
+
+    .detail-value {
+        font-size: 16px;
+        color: #1e293b;
+        font-weight: 600;
+        word-break: break-word;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 15px;
+    }
+
+    .stat-card {
+        background: linear-gradient(135deg, #667eea 0%, #2d8cb5 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 10px;
+        text-align: center;
+    }
+
+    .stat-value {
+        font-size: 28px;
+        font-weight: 700;
+        margin-bottom: 5px;
+    }
+
+    .stat-label {
+        font-size: 12px;
+        opacity: 0.9;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .status-active {
+        background: #d1fae5;
+        color: #065f46;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 13px;
+        display: inline-block;
+    }
+
+    .status-inactive {
+        background: #fee2e2;
+        color: #991b1b;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 13px;
+        display: inline-block;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 10px;
+        margin-top: 25px;
+        padding-top: 20px;
+        border-top: 2px solid #f0f0f0;
+    }
+
+    .btn {
+        padding: 10px 20px;
+        border-radius: 6px;
+        border: none;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        font-size: 14px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #2d8cb5 100%);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+
+    .btn-danger {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .btn-danger:hover {
+        background: #fecaca;
+    }
+
+    @media (max-width: 768px) {
+        .detail-header {
+            flex-direction: column;
+        }
+
+        .employee-photo-section {
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        .header-buttons {
+            flex-direction: column;
+            width: 100%;
+        }
+
+        .detail-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<div class="employee-detail-container">
+    <!-- Header -->
+    <div class="detail-header">
+        <div class="employee-photo-section">
+            <div class="employee-photo">
+                {% if employee.profile_photo %}
+                    <img src="{{ employee.profile_photo.url }}" alt="{{ employee.get_full_name }}">
+                {% else %}
+                    <div style="display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); font-size: 40px; color: white;">
+                        {{ employee.first_name|first|upper }}
+                    </div>
+                {% endif %}
+            </div>
+            <div class="header-info">
+                <h1>{{ employee.get_full_name }}</h1>
+                <p><i class="bi bi-person-badge"></i> {{ employee.employee_id }}</p>
+                <p><i class="bi bi-telephone"></i> {{ employee.phone }}</p>
+                <p><i class="bi bi-envelope"></i> {{ employee.email }}</p>
+                <p style="margin-top: 15px;">
+                    {% if employee.is_active %}
+                        <span class="status-active">✓ Active</span>
+                    {% else %}
+                        <span class="status-inactive">✗ Inactive</span>
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+        <div class="header-buttons">
+            <a href="{% url 'employee_management' %}" class="btn-back">
+                <i class="bi bi-arrow-left"></i> Back
+            </a>
+        </div>
+    </div>
+
+    <!-- Personal Information -->
+    <div class="detail-section">
+        <div class="section-title">
+            <i class="bi bi-person"></i> Personal Information
+        </div>
+        <div class="detail-grid">
+            <div class="detail-item">
+                <div class="detail-label">Full Name</div>
+                <div class="detail-value">{{ employee.get_full_name }}</div>
+            </div>
+            <div class="detail-item">
+                <div class="detail-label">Employee ID</div>
+                <div class="detail-value">{{ employee.employee_id }}</div>
+            </div>
+            <div class="detail-item">
+                <div class="detail-label">Gender</div>
+                <div class="detail-value">
+                    {% if employee.gender == 'M' %}Male
+                    {% elif employee.gender == 'F' %}Female
+                    {% else %}{{ employee.gender|default:"N/A" }}{% endif %}
+                </div>
+            </div>
+            <div class="detail-item">
+                <div class="detail-label">Date of Birth</div>
+                <div class="detail-value">{% if employee.date_of_birth %}{{ employee.date_of_birth|date:"d M, Y" }}{% else %}N/A{% endif %}</div>
+            </div>
+            <div class="detail-item">
+                <div class="detail-label">Joined Date</div>
+                <div class="detail-value">{{ employee.created_at|date:"d M, Y" }}</div>
+            </div>
+            <div class="detail-item">
+                <div class="detail-label">Status</div>
+                <div class="detail-value">
+                    {% if employee.is_active %}
+                        <span class="status-active">Active</span>
+                    {% else %}
+                        <span class="status-inactive">Inactive</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contact Information -->
+    <div class="detail-section">
+        <div class="section-title">
+            <i class="bi bi-telephone"></i> Contact Information
+        </div>
+        <div class="detail-grid">
+            <div class="detail-item">
+                <div class="detail-label">Phone Number</div>
+                <div class="detail-value">{{ employee.phone|default:"N/A" }}</div>
+            </div>
+            <div class="detail-item">
+                <div class="detail-label">Email Address</div>
+                <div class="detail-value">{{ employee.email|default:"N/A" }}</div>
+            </div>
+            <div class="detail-item">
+                <div class="detail-label">Address</div>
+                <div class="detail-value">{{ employee.address|default:"N/A" }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Performance Statistics -->
+    <div class="detail-section">
+        <div class="section-title">
+            <i class="bi bi-bar-chart"></i> Performance Statistics
+        </div>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value">{{ total_leads|default:0 }}</div>
+                <div class="stat-label">Total Leads</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ approved_loans|default:0 }}</div>
+                <div class="stat-label">Approved Loans</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">₹{{ total_disbursed|default:"0"|floatformat:0 }}</div>
+                <div class="stat-label">Total Disbursed</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="detail-section">
+        <div class="action-buttons">
+            <a href="{% url 'employee_management' %}" class="btn btn-primary">
+                <i class="bi bi-arrow-left"></i> Back to Employees
+            </a>
+            {% if employee.is_active %}
+                <button onclick="toggleStatus({{ employee.id }})" class="btn btn-danger">
+                    <i class="bi bi-toggle-off"></i> Deactivate
+                </button>
+            {% else %}
+                <button onclick="toggleStatus({{ employee.id }})" class="btn btn-primary">
+                    <i class="bi bi-toggle-on"></i> Activate
+                </button>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleStatus(employeeId) {
+    if (!confirm('Are you sure you want to toggle this employee\'s status?')) return;
+    
+    fetch(`/api/employees/${employeeId}/toggle-status/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '',
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Status updated successfully');
+            location.reload();
+        } else {
+            alert('Error: ' + (data.error || 'Failed to update status'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error updating status');
+    });
+}
+</script>
+{% endblock %}

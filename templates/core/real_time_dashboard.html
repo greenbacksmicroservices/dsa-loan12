@@ -1,0 +1,546 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Real-time Dashboard - Professional Loan Management{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --primary: #10b981;
+        --secondary: #059669;
+        --accent: #06b6d4;
+        --danger: #ef4444;
+        --warning: #f59e0b;
+        --success: #10b981;
+        --text-dark: #1f2937;
+        --text-light: #9ca3af;
+        --border: #e5e7eb;
+        --bg-light: #f9fafb;
+    }
+
+    body {
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        min-height: 100vh;
+    }
+
+    .dashboard-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .dashboard-header {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 12px;
+        margin-bottom: 30px;
+        box-shadow: 0 10px 30px rgba(16, 185, 129, 0.2);
+    }
+
+    .dashboard-header h1 {
+        margin: 0 0 10px 0;
+        font-size: 28px;
+        font-weight: 700;
+    }
+
+    .dashboard-header p {
+        margin: 0;
+        opacity: 0.9;
+        font-size: 14px;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .stat-card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        transition: all 0.3s ease;
+        border-left: 4px solid var(--primary);
+    }
+
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    }
+
+    .stat-card.new {
+        border-left-color: #fbbf24;
+    }
+
+    .stat-card.waiting {
+        border-left-color: #60a5fa;
+    }
+
+    .stat-card.approved {
+        border-left-color: #34d399;
+    }
+
+    .stat-card.rejected {
+        border-left-color: #f87171;
+    }
+
+    .stat-label {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-light);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 8px;
+    }
+
+    .stat-value {
+        font-size: 32px;
+        font-weight: 700;
+        color: var(--primary);
+    }
+
+    .stat-subtitle {
+        font-size: 12px;
+        color: var(--text-light);
+        margin-top: 8px;
+    }
+
+    .content-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .content-grid.full {
+        grid-template-columns: 1fr;
+    }
+
+    .card {
+        background: white;
+        border-radius: 12px;
+        padding: 25px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+
+    .card-header {
+        border-bottom: 2px solid var(--border);
+        padding-bottom: 15px;
+        margin-bottom: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .card-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--text-dark);
+        margin: 0;
+    }
+
+    .card-actions {
+        display: flex;
+        gap: 10px;
+    }
+
+    .btn-small {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .btn-primary {
+        background: var(--primary);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: var(--secondary);
+    }
+
+    .chart-container {
+        position: relative;
+        height: 300px;
+        margin-bottom: 20px;
+    }
+
+    .activity-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .activity-item {
+        padding: 15px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+        transition: background 0.2s;
+    }
+
+    .activity-item:hover {
+        background: var(--bg-light);
+    }
+
+    .activity-item:last-child {
+        border-bottom: none;
+    }
+
+    .activity-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: var(--primary);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .activity-content h6 {
+        margin: 0 0 4px 0;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-dark);
+    }
+
+    .activity-content p {
+        margin: 0;
+        font-size: 12px;
+        color: var(--text-light);
+    }
+
+    .activity-time {
+        font-size: 12px;
+        color: var(--text-light);
+        white-space: nowrap;
+        margin-left: auto;
+    }
+
+    .complaint-item {
+        padding: 15px;
+        border-left: 3px solid var(--warning);
+        background: #fef3c7;
+        border-radius: 6px;
+        margin-bottom: 12px;
+        transition: all 0.3s ease;
+    }
+
+    .complaint-item:hover {
+        box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
+    }
+
+    .complaint-id {
+        font-weight: 600;
+        color: var(--text-dark);
+        font-size: 13px;
+    }
+
+    .complaint-text {
+        font-size: 14px;
+        color: var(--text-dark);
+        margin-top: 4px;
+    }
+
+    .complaint-meta {
+        font-size: 12px;
+        color: var(--text-light);
+        margin-top: 8px;
+    }
+
+    .loading-indicator {
+        display: none;
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: var(--primary);
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        z-index: 1000;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .loading-indicator.show {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+        from {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    .spinner {
+        width: 16px;
+        height: 16px;
+        border: 2px solid rgba(255,255,255,0.3);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 1024px) {
+        .content-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @media (max-width: 640px) {
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .dashboard-header {
+            padding: 20px;
+        }
+
+        .dashboard-header h1 {
+            font-size: 22px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <!-- Header -->
+    <div class="dashboard-header">
+        <h1><i class="bi bi-speedometer2"></i> Real-time Dashboard</h1>
+        <p>Live updates on loan applications, employees, and system activities</p>
+    </div>
+
+    <!-- Loading Indicator -->
+    <div class="loading-indicator" id="loadingIndicator">
+        <div class="spinner"></div>
+        <span>Updating...</span>
+    </div>
+
+    <!-- Statistics Grid -->
+    <div class="stats-grid" id="statsGrid">
+        <div class="stat-card">
+            <div class="stat-label">New Entries</div>
+            <div class="stat-value" id="statNewEntries">0</div>
+            <div class="stat-subtitle">Applications pending</div>
+        </div>
+        <div class="stat-card waiting">
+            <div class="stat-label">Waiting</div>
+            <div class="stat-value" id="statWaiting">0</div>
+            <div class="stat-subtitle">Under processing</div>
+        </div>
+        <div class="stat-card approved">
+            <div class="stat-label">Approved</div>
+            <div class="stat-value" id="statApproved">0</div>
+            <div class="stat-subtitle">Ready for disbursement</div>
+        </div>
+        <div class="stat-card rejected">
+            <div class="stat-label">Rejected</div>
+            <div class="stat-value" id="statRejected">0</div>
+            <div class="stat-subtitle">Not approved</div>
+        </div>
+    </div>
+
+    <!-- Content Grid -->
+    <div class="content-grid">
+        <!-- Amount Summary -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title"><i class="bi bi-currency-rupee"></i> Amount Summary</h3>
+            </div>
+            <div>
+                <p style="font-size: 14px; color: var(--text-light); margin-bottom: 15px;">
+                    <strong>Total Disbursed:</strong>
+                    <span style="font-size: 20px; color: var(--success); font-weight: 700;">
+                        ₹<span id="amountDisbursed">0</span>
+                    </span>
+                </p>
+                <p style="font-size: 14px; color: var(--text-light);">
+                    <strong>Pending Amount:</strong>
+                    <span style="font-size: 20px; color: var(--warning); font-weight: 700;">
+                        ₹<span id="amountPending">0</span>
+                    </span>
+                </p>
+            </div>
+        </div>
+
+        <!-- Employee Summary -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title"><i class="bi bi-people"></i> Employee Summary</h3>
+            </div>
+            <div>
+                <p style="font-size: 14px; color: var(--text-light); margin-bottom: 15px;">
+                    <strong>Total Employees:</strong>
+                    <span style="font-size: 20px; color: var(--primary); font-weight: 700;">
+                        <span id="totalEmployees">0</span>
+                    </span>
+                </p>
+                <p style="font-size: 14px; color: var(--text-light);">
+                    <strong>Active Employees:</strong>
+                    <span style="font-size: 20px; color: var(--primary); font-weight: 700;">
+                        <span id="activeEmployees">0</span>
+                    </span>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activities -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title"><i class="bi bi-clock-history"></i> Recent Activities</h3>
+            <div class="card-actions">
+                <button class="btn-small btn-primary" onclick="refreshActivities()">
+                    <i class="bi bi-arrow-clockwise"></i> Refresh
+                </button>
+            </div>
+        </div>
+        <ul class="activity-list" id="activityList">
+            <li class="activity-item">
+                <div class="activity-icon">⏳</div>
+                <div class="activity-content">
+                    <h6>Loading activities...</h6>
+                </div>
+            </li>
+        </ul>
+    </div>
+
+    <!-- Complaints Panel (Admin only) -->
+    {% if is_admin %}
+    <div class="card" style="margin-top: 20px;">
+        <div class="card-header">
+            <h3 class="card-title" style="color: var(--warning);">
+                <i class="bi bi-exclamation-circle"></i> Recent Complaints
+            </h3>
+            <div class="card-actions">
+                <button class="btn-small btn-primary" onclick="refreshComplaints()">
+                    <i class="bi bi-arrow-clockwise"></i> Refresh
+                </button>
+            </div>
+        </div>
+        <div id="complaintsList">
+            <p style="color: var(--text-light); text-align: center; padding: 20px;">
+                Loading complaints...
+            </p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+// Auto-refresh interval (5 seconds)
+const AUTO_REFRESH_INTERVAL = 5000;
+
+// Initialize dashboard
+document.addEventListener('DOMContentLoaded', function() {
+    loadDashboardData();
+    
+    // Auto-refresh every 5 seconds
+    setInterval(loadDashboardData, AUTO_REFRESH_INTERVAL);
+});
+
+function loadDashboardData() {
+    showLoading();
+    
+    Promise.all([
+        fetch('/api/dashboard-realtime-stats/').then(r => r.json()),
+        fetch('/api/recent-complaints/').then(r => r.json()),
+    ])
+    .then(([statsData, complaintsData]) => {
+        if (statsData.success) {
+            updateStatistics(statsData.data);
+        }
+        if (complaintsData.success) {
+            updateComplaints(complaintsData.data);
+        }
+        hideLoading();
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        hideLoading();
+    });
+}
+
+function updateStatistics(stats) {
+    document.getElementById('statNewEntries').textContent = stats.new_entries || 0;
+    document.getElementById('statWaiting').textContent = stats.waiting || 0;
+    document.getElementById('statApproved').textContent = stats.approved || 0;
+    document.getElementById('statRejected').textContent = stats.rejected || 0;
+    document.getElementById('amountDisbursed').textContent = formatNumber(stats.total_amount_disbursed || 0);
+    document.getElementById('amountPending').textContent = formatNumber(stats.total_amount_pending || 0);
+}
+
+function updateComplaints(complaints) {
+    const container = document.getElementById('complaintsList');
+    
+    if (complaints.length === 0) {
+        container.innerHTML = '<p style="color: var(--text-light); text-align: center; padding: 20px;">No recent complaints</p>';
+        return;
+    }
+    
+    container.innerHTML = complaints.map(complaint => `
+        <div class="complaint-item">
+            <div class="complaint-id">${escapeHtml(complaint.complaint_id)} - ${escapeHtml(complaint.customer_name)}</div>
+            <div class="complaint-text">${complaint.type}</div>
+            <div class="complaint-meta">
+                <span style="color: var(--danger);">Priority: ${complaint.priority}</span> · 
+                <span>${complaint.hours_ago} hours ago</span>
+            </div>
+        </div>
+    `).join('');
+}
+
+function refreshActivities() {
+    loadDashboardData();
+}
+
+function refreshComplaints() {
+    loadDashboardData();
+}
+
+function showLoading() {
+    document.getElementById('loadingIndicator').classList.add('show');
+}
+
+function hideLoading() {
+    document.getElementById('loadingIndicator').classList.remove('show');
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function formatNumber(num) {
+    return new Intl.NumberFormat('en-IN').format(Math.round(num));
+}
+</script>
+{% endblock %}

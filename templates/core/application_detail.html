@@ -1,0 +1,504 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Application Details - {{ entry.applicant.full_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .detail-container {
+        padding: 30px 20px;
+        background-color: #f5f6fa;
+        min-height: calc(100vh - 80px);
+    }
+
+    .breadcrumb-section {
+        margin-bottom: 25px;
+    }
+
+    .breadcrumb {
+        background: white;
+        padding: 15px 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    .detail-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+        margin-bottom: 25px;
+        overflow: hidden;
+    }
+
+    .card-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 25px;
+        font-weight: 600;
+        font-size: 18px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .card-body {
+        padding: 25px;
+    }
+
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+    }
+
+    .info-item {
+        padding: 15px;
+        background-color: #f9f9f9;
+        border-radius: 8px;
+        border-left: 4px solid #667eea;
+    }
+
+    .info-label {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #999;
+        margin-bottom: 8px;
+        font-weight: 600;
+    }
+
+    .info-value {
+        font-size: 15px;
+        color: #333;
+        font-weight: 600;
+        word-break: break-word;
+    }
+
+    .applicant-header {
+        display: flex;
+        align-items: center;
+        gap: 25px;
+        margin-bottom: 30px;
+        padding-bottom: 25px;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .applicant-photo {
+        width: 120px;
+        height: 120px;
+        border-radius: 12px;
+        object-fit: cover;
+        background-color: #e0e0e0;
+        border: 3px solid #667eea;
+    }
+
+    .applicant-info-header {
+        flex: 1;
+    }
+
+    .applicant-info-header h2 {
+        color: #333;
+        margin: 0 0 10px 0;
+        font-size: 26px;
+    }
+
+    .applicant-email {
+        color: #666;
+        font-size: 15px;
+        margin-bottom: 8px;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 8px 16px;
+        background: #e3f2fd;
+        color: #1976d2;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 600;
+        margin-top: 10px;
+    }
+
+    .button-group {
+        display: flex;
+        gap: 10px;
+        margin-top: 20px;
+        flex-wrap: wrap;
+    }
+
+    .btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 14px;
+        transition: all 0.3s;
+        text-decoration: none;
+        display: inline-block;
+    }
+
+    .btn-primary {
+        background: #667eea;
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: #5568d3;
+    }
+
+    .btn-secondary {
+        background: #e0e0e0;
+        color: #333;
+    }
+
+    .btn-secondary:hover {
+        background: #d0d0d0;
+    }
+
+    .section-divider {
+        height: 1px;
+        background: #e0e0e0;
+        margin: 25px 0;
+    }
+
+    .two-column {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
+
+    .label-value {
+        margin-bottom: 15px;
+    }
+
+    .label-value-label {
+        font-size: 12px;
+        text-transform: uppercase;
+        color: #999;
+        margin-bottom: 5px;
+        font-weight: 600;
+    }
+
+    .label-value-text {
+        font-size: 15px;
+        color: #333;
+        font-weight: 500;
+    }
+
+    .table-info {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .table-info th {
+        background-color: #f0f0f0;
+        padding: 10px;
+        text-align: left;
+        font-weight: 600;
+        font-size: 13px;
+        border-bottom: 2px solid #e0e0e0;
+    }
+
+    .table-info td {
+        padding: 10px;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    @media (max-width: 768px) {
+        .applicant-header {
+            flex-direction: column;
+            text-align: center;
+        }
+
+        .two-column {
+            grid-template-columns: 1fr;
+        }
+
+        .button-group {
+            flex-direction: column;
+        }
+
+        .btn {
+            width: 100%;
+            text-align: center;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="detail-container">
+    <!-- Breadcrumb -->
+    <div class="breadcrumb-section">
+        <div class="breadcrumb">
+            <a href="/admin/dashboard/" style="color: #667eea; text-decoration: none;">Dashboard</a> >
+            <a href="/admin/new-entries/" style="color: #667eea; text-decoration: none;">New Entries</a> >
+            <span style="color: #333;">Application Details</span>
+        </div>
+    </div>
+
+    <!-- Applicant Header Card -->
+    <div class="detail-card">
+        <div class="card-body">
+            <div class="applicant-header">
+                <img src="{{ entry.applicant.photo|default:'/static/images/default-avatar.svg' }}" 
+                     alt="{{ entry.applicant.full_name }}" 
+                     class="applicant-photo"
+                     onerror="this.src='/static/images/default-avatar.svg'">
+                <div class="applicant-info-header">
+                    <h2>{{ entry.applicant.full_name }}</h2>
+                    <div class="applicant-email">{{ entry.applicant.email }}</div>
+                    <div class="applicant-email">{{ entry.applicant.mobile }}</div>
+                    <span class="status-badge">New Entry Application</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Summary Card -->
+    <div class="detail-card">
+        <div class="card-header">
+            <i class="bi bi-info-circle"></i> Quick Summary
+        </div>
+        <div class="card-body">
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-label">Loan Amount</div>
+                    <div class="info-value">₹{{ entry.loan_amount|default:"N/A" }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Loan Type</div>
+                    <div class="info-value">{{ entry.loan_type|default:"N/A"|title }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Loan Tenure</div>
+                    <div class="info-value">{{ entry.loan_tenure|default:"N/A" }} Months</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Application Date</div>
+                    <div class="info-value">{{ entry.created_at|date:"d M Y" }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Assigned To</div>
+                    <div class="info-value">
+                        {% if entry.assigned_to %}
+                            {{ entry.assigned_to.first_name }} {{ entry.assigned_to.last_name }}
+                        {% else %}
+                            Not Assigned
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Status</div>
+                    <div class="info-value">{{ entry.status|default:"New"|title }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Applicant Information Card -->
+    <div class="detail-card">
+        <div class="card-header">
+            <i class="bi bi-person"></i> Applicant Information
+        </div>
+        <div class="card-body">
+            <div class="two-column">
+                <div>
+                    <div class="label-value">
+                        <div class="label-value-label">Full Name</div>
+                        <div class="label-value-text">{{ entry.applicant.full_name|default:"N/A" }}</div>
+                    </div>
+                    <div class="label-value">
+                        <div class="label-value-label">Email</div>
+                        <div class="label-value-text">{{ entry.applicant.email|default:"N/A" }}</div>
+                    </div>
+                    <div class="label-value">
+                        <div class="label-value-label">Phone Number</div>
+                        <div class="label-value-text">{{ entry.applicant.mobile|default:"N/A" }}</div>
+                    </div>
+                    <div class="label-value">
+                        <div class="label-value-label">Date of Birth</div>
+                        <div class="label-value-text">{{ entry.date_of_birth|default:"N/A" }}</div>
+                    </div>
+                </div>
+                <div>
+                    <div class="label-value">
+                        <div class="label-value-label">Gender</div>
+                        <div class="label-value-text">{{ entry.gender|default:"N/A"|title }}</div>
+                    </div>
+                    <div class="label-value">
+                        <div class="label-value-label">Alternate Phone</div>
+                        <div class="label-value-text">{{ entry.alternate_phone|default:"N/A" }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Address Information Card -->
+    <div class="detail-card">
+        <div class="card-header">
+            <i class="bi bi-geo-alt"></i> Address Information
+        </div>
+        <div class="card-body">
+            <div class="two-column">
+                <div>
+                    <div class="label-value">
+                        <div class="label-value-label">Permanent Address</div>
+                        <div class="label-value-text">{{ entry.permanent_address|default:"N/A" }}</div>
+                    </div>
+                    <div class="label-value">
+                        <div class="label-value-label">City</div>
+                        <div class="label-value-text">{{ entry.city|default:"N/A" }}</div>
+                    </div>
+                    <div class="label-value">
+                        <div class="label-value-label">State</div>
+                        <div class="label-value-text">{{ entry.state|default:"N/A" }}</div>
+                    </div>
+                </div>
+                <div>
+                    <div class="label-value">
+                        <div class="label-value-label">Current Address</div>
+                        <div class="label-value-text">{{ entry.current_address|default:"N/A" }}</div>
+                    </div>
+                    <div class="label-value">
+                        <div class="label-value-label">PIN Code</div>
+                        <div class="label-value-text">{{ entry.pin_code|default:"N/A" }}</div>
+                    </div>
+                    <div class="label-value">
+                        <div class="label-value-label">Country</div>
+                        <div class="label-value-text">{{ entry.country|default:"N/A" }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loan Details Card -->
+    <div class="detail-card">
+        <div class="card-header">
+            <i class="bi bi-wallet2"></i> Loan Details
+        </div>
+        <div class="card-body">
+            <div class="two-column">
+                <div>
+                    <div class="label-value">
+                        <div class="label-value-label">Loan Type</div>
+                        <div class="label-value-text">{{ entry.loan_type|default:"N/A"|title }}</div>
+                    </div>
+                    <div class="label-value">
+                        <div class="label-value-label">Loan Amount (₹)</div>
+                        <div class="label-value-text">₹{{ entry.loan_amount|default:"N/A" }}</div>
+                    </div>
+                    <div class="label-value">
+                        <div class="label-value-label">Loan Tenure</div>
+                        <div class="label-value-text">{{ entry.loan_tenure|default:"N/A" }} Months</div>
+                    </div>
+                </div>
+                <div>
+                    <div class="label-value">
+                        <div class="label-value-label">Annual Income (₹)</div>
+                        <div class="label-value-text">₹{{ entry.annual_income|default:"N/A" }}</div>
+                    </div>
+                    <div class="label-value">
+                        <div class="label-value-label">Employment Type</div>
+                        <div class="label-value-text">{{ entry.employment_type|default:"N/A"|title }}</div>
+                    </div>
+                    <div class="label-value">
+                        <div class="label-value-label">Employer/Business Name</div>
+                        <div class="label-value-text">{{ entry.employer_name|default:"N/A" }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-divider"></div>
+
+            <div class="label-value">
+                <div class="label-value-label">Purpose of Loan</div>
+                <div class="label-value-text">{{ entry.loan_purpose|default:"N/A" }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bank & Collateral Details Card -->
+    <div class="detail-card">
+        <div class="card-header">
+            <i class="bi bi-bank"></i> Bank & Collateral Details
+        </div>
+        <div class="card-body">
+            <div class="two-column">
+                <div>
+                    <div class="label-value">
+                        <div class="label-value-label">Bank Name</div>
+                        <div class="label-value-text">{{ entry.bank_name|default:"N/A" }}</div>
+                    </div>
+                    <div class="label-value">
+                        <div class="label-value-label">Account Type</div>
+                        <div class="label-value-text">{{ entry.account_type|default:"N/A"|title }}</div>
+                    </div>
+                </div>
+                <div>
+                    <div class="label-value">
+                        <div class="label-value-label">Collateral Details</div>
+                        <div class="label-value-text">{{ entry.collateral_details|default:"N/A" }}</div>
+                    </div>
+                    <div class="label-value">
+                        <div class="label-value-label">Collateral Value (₹)</div>
+                        <div class="label-value-text">₹{{ entry.collateral_value|default:"N/A" }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Additional Information Card -->
+    <div class="detail-card">
+        <div class="card-header">
+            <i class="bi bi-file-text"></i> Additional Information
+        </div>
+        <div class="card-body">
+            <div class="two-column">
+                <div>
+                    <div class="label-value">
+                        <div class="label-value-label">Existing Loans/EMIs</div>
+                        <div class="label-value-text">{{ entry.existing_loans|default:"N/A" }}</div>
+                    </div>
+                    <div class="label-value">
+                        <div class="label-value-label">Credit Score</div>
+                        <div class="label-value-text">{{ entry.credit_score|default:"N/A" }}</div>
+                    </div>
+                </div>
+                <div>
+                    <div class="label-value">
+                        <div class="label-value-label">Extra Income (₹)</div>
+                        <div class="label-value-text">₹{{ entry.extra_income|default:"N/A" }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-divider"></div>
+
+            <div class="label-value">
+                <div class="label-value-label">Internal Remarks</div>
+                <div class="label-value-text">{{ entry.internal_remarks|default:"N/A" }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="detail-card">
+        <div class="card-body">
+            <div class="button-group">
+                <a href="/admin/assign-application/{{ entry.id }}/" class="btn btn-primary">
+                    <i class="bi bi-person-check"></i> Assign Employee
+                </a>
+                <a href="/admin/new-entries/" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to List
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

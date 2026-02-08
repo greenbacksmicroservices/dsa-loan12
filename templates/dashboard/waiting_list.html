@@ -1,0 +1,306 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Waiting for Processing - Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    .dashboard-container {
+        padding: 30px 20px;
+        background-color: #f5f6fa;
+        min-height: calc(100vh - 80px);
+    }
+
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+    }
+
+    .section-title {
+        font-size: 28px;
+        font-weight: 700;
+        color: #333;
+        margin: 0;
+    }
+
+    .section-subtitle {
+        font-size: 14px;
+        color: #999;
+        margin-top: 5px;
+    }
+
+    .count-badge {
+        background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+        color: white;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 14px;
+    }
+
+    .info-banner {
+        background: linear-gradient(135deg, #fff3cd 0%, #ffe082 100%);
+        border-left: 4px solid #ffc107;
+        padding: 16px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        color: #664d03;
+        font-size: 14px;
+    }
+
+    .table-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+        margin-bottom: 30px;
+    }
+
+    .table-responsive {
+        overflow-x: auto;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+    }
+
+    thead {
+        background-color: #f9f9f9;
+        border-bottom: 2px solid #e0e0e0;
+    }
+
+    th {
+        padding: 16px;
+        text-align: left;
+        font-weight: 600;
+        color: #666;
+        text-transform: uppercase;
+        font-size: 12px;
+        letter-spacing: 0.5px;
+    }
+
+    td {
+        padding: 16px;
+        border-bottom: 1px solid #f0f0f0;
+        color: #333;
+    }
+
+    tbody tr {
+        transition: all 0.3s ease;
+    }
+
+    tbody tr:hover {
+        background-color: #f9f9f9;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        background-color: #fff3cd;
+        color: #664d03;
+    }
+
+    .applicant-name {
+        font-weight: 600;
+        color: #333;
+    }
+
+    .waiting-time {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 8px;
+    }
+
+    .btn-sm {
+        padding: 8px 16px;
+        border-radius: 6px;
+        border: none;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .btn-view {
+        background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+        color: white;
+    }
+
+    .btn-view:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
+    }
+
+    .empty-state {
+        padding: 60px 30px;
+        text-align: center;
+        color: #999;
+    }
+
+    .empty-state i {
+        font-size: 48px;
+        margin-bottom: 20px;
+        opacity: 0.5;
+    }
+
+    .loan-amount {
+        font-weight: 600;
+        color: #ffc107;
+    }
+
+    .time-badge {
+        background-color: #f0f0f0;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .overdue {
+        background-color: #ffcccc;
+        color: #cc0000;
+    }
+
+    @media (max-width: 768px) {
+        .section-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .count-badge {
+            margin-top: 15px;
+        }
+
+        .action-buttons {
+            flex-direction: column;
+        }
+
+        .btn-sm {
+            width: 100%;
+            justify-content: center;
+        }
+
+        table {
+            font-size: 12px;
+        }
+
+        th, td {
+            padding: 12px 8px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <!-- Section Header -->
+    <div class="section-header">
+        <div>
+            <h1 class="section-title">⏳ Waiting for Processing</h1>
+            <p class="section-subtitle">Applications assigned to you for review and decision</p>
+        </div>
+        <span class="count-badge" id="count">{{ app_count }} Applications</span>
+    </div>
+
+    <!-- Info Banner -->
+    <div class="info-banner">
+        <i class="fas fa-info-circle"></i>
+        Please review all details carefully. You have <strong>24 hours</strong> to make a decision before application moves to follow-up.
+    </div>
+
+    <!-- Applications Table -->
+    {% if applications %}
+    <div class="table-card">
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Applicant</th>
+                        <th>Loan Type</th>
+                        <th>Amount</th>
+                        <th>Assigned At</th>
+                        <th>Waiting Time</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for app in applications %}
+                    <tr>
+                        <td>
+                            <div class="applicant-name">{{ app.applicant.full_name }}</div>
+                            <div style="font-size: 12px; color: #999;">{{ app.applicant.email }}</div>
+                        </td>
+                        <td>{{ app.loan_type|default:"N/A" }}</td>
+                        <td class="loan-amount">₹{{ app.requested_amount|floatformat:0|default:"N/A" }}</td>
+                        <td>{{ app.assigned_at|date:"d M Y, H:i" }}</td>
+                        <td>
+                            <div class="time-badge {% if app.assigned_at|add:"-24h" < now %}overdue{% endif %}">
+                                {% with hours=app.hours_since_assignment|default:0 %}
+                                    {% if hours < 1 %}
+                                        < 1 hour
+                                    {% elif hours < 24 %}
+                                        {{ hours|floatformat:0 }} hours
+                                    {% else %}
+                                        {{ hours|floatformat:0 }} hours ⚠️
+                                    {% endif %}
+                                {% endwith %}
+                            </div>
+                        </td>
+                        <td>
+                            <span class="status-badge">{{ app.status }}</span>
+                        </td>
+                        <td>
+                            <div class="action-buttons">
+                                <a href="{% url 'waiting_for_processing_detail' app.applicant.id %}" class="btn-sm btn-view">
+                                    <i class="fas fa-eye"></i> Review
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <div class="table-card">
+        <div class="empty-state">
+            <i class="fas fa-check-circle"></i>
+            <h3>All Clear!</h3>
+            <p>You have no applications waiting for processing.</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+// Auto-refresh counts every 30 seconds
+setInterval(function() {
+    fetch('{% url "get_dashboard_counts" %}')
+        .then(response => response.json())
+        .then(data => {
+            {% if request.user.role == 'admin' %}
+                document.getElementById('count').textContent = data.waiting + ' Applications';
+            {% else %}
+                document.getElementById('count').textContent = data.waiting + ' Assigned to You';
+            {% endif %}
+        });
+}, 30000);
+</script>
+{% endblock %}

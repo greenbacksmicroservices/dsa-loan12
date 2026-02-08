@@ -1,0 +1,323 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Approved Application - {{ application.applicant.full_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .detail-container {
+        padding: 30px 20px;
+        background-color: #f5f6fa;
+        min-height: calc(100vh - 80px);
+    }
+
+    .detail-header {
+        background: white;
+        border-radius: 12px;
+        padding: 25px;
+        margin-bottom: 30px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .detail-header h2 {
+        color: #1e293b;
+        margin: 0;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .detail-header h2 i {
+        color: #16a34a;
+        font-size: 28px;
+    }
+
+    .status-badge {
+        display: inline-block;
+        background: #dcfce7;
+        color: #15803d;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .summary-card {
+        background: white;
+        border-radius: 12px;
+        padding: 25px;
+        margin-bottom: 30px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+    }
+
+    .summary-item {
+        padding: 15px;
+        background: #f9f9f9;
+        border-radius: 8px;
+        border-left: 4px solid #16a34a;
+    }
+
+    .summary-label {
+        font-size: 12px;
+        text-transform: uppercase;
+        color: #999;
+        font-weight: 600;
+        margin-bottom: 8px;
+        letter-spacing: 0.5px;
+    }
+
+    .summary-value {
+        font-size: 16px;
+        color: #1e293b;
+        font-weight: 700;
+    }
+
+    .approval-info {
+        background: #ecfdf5;
+        border-left: 4px solid #10b981;
+        padding: 20px;
+        border-radius: 6px;
+        margin-bottom: 30px;
+    }
+
+    .approval-info h4 {
+        color: #047857;
+        margin-top: 0;
+    }
+
+    .approval-info p {
+        color: #065f46;
+        margin: 10px 0;
+    }
+
+    .back-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 20px;
+        background: #f1f5f9;
+        border: none;
+        border-radius: 6px;
+        color: #334155;
+        cursor: pointer;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.3s ease;
+    }
+
+    .back-button:hover {
+        background: #e2e8f0;
+    }
+
+    .applicant-details {
+        background: white;
+        border-radius: 12px;
+        padding: 25px;
+        margin-bottom: 30px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .section-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #e2e8f0;
+    }
+
+    .detail-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+    }
+
+    .detail-row {
+        padding: 12px 0;
+    }
+
+    .detail-label {
+        font-size: 12px;
+        text-transform: uppercase;
+        color: #999;
+        font-weight: 600;
+        margin-bottom: 4px;
+        letter-spacing: 0.5px;
+    }
+
+    .detail-value {
+        font-size: 15px;
+        color: #333;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="detail-container">
+    <!-- Header -->
+    <div class="detail-header">
+        <div>
+            <h2>
+                <i class="fas fa-check-circle"></i>
+                {{ application.applicant.full_name }}
+            </h2>
+            <span class="status-badge">✓ Approved</span>
+        </div>
+        <a href="{% url 'approved_list' %}" class="back-button">
+            <i class="fas fa-arrow-left"></i> Back to List
+        </a>
+    </div>
+
+    <!-- Approval Information -->
+    {% if application.approved_by %}
+    <div class="approval-info">
+        <h4>✓ Approval Details</h4>
+        <p><strong>Approved By:</strong> {{ application.approved_by.get_full_name }}</p>
+        <p><strong>Approval Date:</strong> {{ application.approved_at|date:"d M, Y - h:i A" }}</p>
+        {% if application.approval_notes %}
+        <p><strong>Approval Notes:</strong></p>
+        <p style="margin-left: 20px; font-style: italic; color: #059669;">{{ application.approval_notes }}</p>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Applicant Summary -->
+    <div class="summary-card">
+        <h3 style="margin-top: 0; color: #1e293b;">Application Summary</h3>
+        <div class="summary-grid">
+            <div class="summary-item">
+                <div class="summary-label">Loan Type</div>
+                <div class="summary-value">{{ application.applicant.get_loan_type_display }}</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-label">Loan Amount</div>
+                <div class="summary-value">₹ {{ application.applicant.loan_amount|default:"N/A" }}</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-label">Tenure (Months)</div>
+                <div class="summary-value">{{ application.applicant.tenure_months|default:"N/A" }}</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-label">Interest Rate</div>
+                <div class="summary-value">{{ application.applicant.interest_rate|default:"N/A" }}%</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-label">EMI</div>
+                <div class="summary-value">₹ {{ application.applicant.emi|default:"N/A" }}</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-label">Application Status</div>
+                <div class="summary-value" style="color: #16a34a;">{{ application.status }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Applicant Details -->
+    <div class="applicant-details">
+        <h3 class="section-title">Personal Information</h3>
+        <div class="detail-grid">
+            <div class="detail-row">
+                <div class="detail-label">Full Name</div>
+                <div class="detail-value">{{ application.applicant.full_name }}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">Phone Number</div>
+                <div class="detail-value">{{ application.applicant.mobile }}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">Email</div>
+                <div class="detail-value">{{ application.applicant.email }}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">Gender</div>
+                <div class="detail-value">{{ application.applicant.get_gender_display }}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">City</div>
+                <div class="detail-value">{{ application.applicant.city }}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">State</div>
+                <div class="detail-value">{{ application.applicant.state }}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">Pin Code</div>
+                <div class="detail-value">{{ application.applicant.pin_code }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loan Details -->
+    <div class="applicant-details">
+        <h3 class="section-title">Loan Details</h3>
+        <div class="detail-grid">
+            <div class="detail-row">
+                <div class="detail-label">Loan Type</div>
+                <div class="detail-value">{{ application.applicant.get_loan_type_display }}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">Loan Amount</div>
+                <div class="detail-value">₹ {{ application.applicant.loan_amount }}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">Tenure (Months)</div>
+                <div class="detail-value">{{ application.applicant.tenure_months }}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">Interest Rate</div>
+                <div class="detail-value">{{ application.applicant.interest_rate }}%</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">EMI</div>
+                <div class="detail-value">₹ {{ application.applicant.emi }}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">Loan Purpose</div>
+                <div class="detail-value">{{ application.applicant.loan_purpose|default:"N/A" }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bank Details -->
+    <div class="applicant-details">
+        <h3 class="section-title">Bank Details</h3>
+        <div class="detail-grid">
+            <div class="detail-row">
+                <div class="detail-label">Bank Name</div>
+                <div class="detail-value">{{ application.applicant.bank_name|default:"N/A" }}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">Bank Type</div>
+                <div class="detail-value">{{ application.applicant.get_bank_type_display|default:"N/A" }}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">Account Number</div>
+                <div class="detail-value">{{ application.applicant.account_number|default:"N/A" }}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">IFSC Code</div>
+                <div class="detail-value">{{ application.applicant.ifsc_code|default:"N/A" }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div style="margin-top: 40px; text-align: center;">
+        <a href="{% url 'approved_list' %}" class="back-button">
+            <i class="fas fa-arrow-left"></i> Back to Approved Applications
+        </a>
+    </div>
+</div>
+{% endblock %}

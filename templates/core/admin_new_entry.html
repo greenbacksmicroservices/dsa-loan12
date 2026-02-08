@@ -1,0 +1,200 @@
+{% extends 'core/base.html' %}
+
+{% block title %}New Entry - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="page-header mb-4">
+        <h2><i class="bi bi-plus-circle"></i> New Entry</h2>
+        <p class="text-muted">Create new loan application</p>
+    </div>
+
+    {% comment %}
+    CRITICAL FORM ISOLATION POINT:
+    ==============================
+    This is the ONLY page where application forms are rendered.
+    The form partial (application_form_only.html) is ONLY included here.
+    
+    All other dashboard sections (Waiting, Follow-up, Approved, etc.)
+    must use read-only templates with NO form includes.
+    {% endcomment %}
+
+    {% if show_form %}
+        <div class="row g-4">
+            <!-- Form Container -->
+            <div class="col-lg-8">
+                <div class="card shadow-sm">
+                    <div class="card-body p-4">
+                        <!-- ISOLATED FORM PARTIAL: ONLY included here -->
+                        {% include 'partials/application_form_only.html' %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Help & Instructions Sidebar -->
+            <div class="col-lg-4">
+                <div class="card shadow-sm bg-light">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0"><i class="bi bi-question-circle"></i> Instructions</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <h6 class="card-subtitle mb-2"><i class="bi bi-1-circle-fill text-primary"></i> Required Fields</h6>
+                            <p class="small text-muted">
+                                Fields marked with <span class="text-danger">*</span> are mandatory.
+                                Ensure all required information is accurately filled.
+                            </p>
+                        </div>
+
+                        <div class="mb-3">
+                            <h6 class="card-subtitle mb-2"><i class="bi bi-2-circle-fill text-primary"></i> Upload Documents</h6>
+                            <p class="small text-muted">
+                                After creating the entry, you can upload supporting documents
+                                from the document upload section.
+                            </p>
+                        </div>
+
+                        <div class="mb-3">
+                            <h6 class="card-subtitle mb-2"><i class="bi bi-3-circle-fill text-primary"></i> Assignment</h6>
+                            <p class="small text-muted">
+                                Once created, you can assign the application to an employee
+                                or agent for processing.
+                            </p>
+                        </div>
+
+                        <hr>
+
+                        <div class="alert alert-info">
+                            <strong><i class="bi bi-lightbulb"></i> Pro Tip</strong><br>
+                            <small>
+                                Make sure all applicant details are correct before submitting.
+                                You can edit the details later if needed.
+                            </small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="card shadow-sm mt-3">
+                    <div class="card-header bg-secondary text-white">
+                        <h5 class="mb-0"><i class="bi bi-lightning"></i> Quick Actions</h5>
+                    </div>
+                    <div class="card-body d-grid gap-2">
+                        <a href="{% url 'admin_all_loans' %}" class="btn btn-outline-primary btn-sm">
+                            <i class="bi bi-list"></i> All Loans
+                        </a>
+                        <a href="{% url 'new_entry_list' %}" class="btn btn-outline-primary btn-sm">
+                            <i class="bi bi-list"></i> View Entries
+                        </a>
+                        <a href="{% url 'admin_logout' %}" class="btn btn-outline-danger btn-sm">
+                            <i class="bi bi-box-arrow-right"></i> Logout
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="alert alert-danger" role="alert">
+            <i class="bi bi-exclamation-triangle"></i> <strong>Error</strong><br>
+            The form could not be loaded. This might be due to:
+            <ul class="mb-0 mt-2">
+                <li>Insufficient permissions</li>
+                <li>Session timeout</li>
+                <li>Server configuration issue</li>
+            </ul>
+            <a href="{% url 'admin_all_loans' %}" class="btn btn-sm btn-primary mt-2">Return to All Loans</a>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Styles -->
+<style>
+    .card {
+        border: none;
+        border-radius: 8px;
+    }
+
+    .card-header {
+        border-radius: 8px 8px 0 0 !important;
+        padding: 1rem;
+        font-weight: 600;
+    }
+
+    .bg-light {
+        background-color: #f8f9fa !important;
+    }
+
+    .form-section {
+        margin-bottom: 2rem;
+    }
+
+    .section-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #1e293b;
+        margin-bottom: 1.5rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 2px solid #e2e8f0;
+    }
+</style>
+
+<!-- JavaScript for Form Feedback -->
+<script>
+    // Form submission handler
+    document.getElementById('applicationForm')?.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Collect form data
+        const formData = new FormData(this);
+        
+        // Show loading indicator
+        const submitBtn = this.querySelector('[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Creating...';
+        
+        // Submit form
+        fetch(this.action, {
+            method: this.method,
+            body: formData,
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        })
+        .then(response => {
+            if (response.ok) {
+                // Success
+                alert('✓ New entry created successfully!');
+                window.location.href = '{% url "admin_all_loans" %}';
+            } else {
+                // Error
+                return response.json().then(data => {
+                    throw new Error(data.detail || 'Failed to create entry');
+                });
+            }
+        })
+        .catch(error => {
+            alert('Error: ' + error.message);
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+        });
+    });
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+</script>
+
+{% endblock %}

@@ -1,0 +1,143 @@
+{% extends "core/admin/admin_base.html" %}
+{% load static %}
+
+{% block page_title %}Settings{% endblock %}
+
+{% block page_content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="mb-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <h2><i class="fas fa-cog" style="color: #667eea;"></i> Settings</h2>
+            <a href="{% url 'admin_all_loans' %}" class="btn text-white" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none;">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- System Settings -->
+        <div class="col-lg-6">
+            <div class="card mb-4" style="border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+                <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none;">
+                    <h5 class="mb-0"><i class="fas fa-sliders-h"></i> System Settings</h5>
+                </div>
+                <div class="card-body">
+                    <form>
+                        <div class="mb-3">
+                            <label class="form-label">Platform Name</label>
+                            <input type="text" class="form-control" value="DSA Loan Management" disabled>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Auto-escalation Time (hours)</label>
+                            <input type="number" class="form-control" value="24" min="1">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Minimum Loan Amount (₹)</label>
+                            <input type="number" class="form-control" value="10000">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Maximum Loan Amount (₹)</label>
+                            <input type="number" class="form-control" value="5000000">
+                        </div>
+                        <button type="button" class="btn text-white w-100" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none;" disabled>
+                            <i class="fas fa-save"></i> Save Settings
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Email Notifications -->
+        <div class="col-lg-6">
+            <div class="card mb-4" style="border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+                <div class="card-header" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; border: none;">
+                    <h5 class="mb-0"><i class="fas fa-envelope"></i> Email Notifications</h5>
+                </div>
+                <div class="card-body">
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="notify_new_entry" checked>
+                        <label class="form-check-label" for="notify_new_entry">
+                            Notify on New Applications
+                        </label>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="notify_assigned" checked>
+                        <label class="form-check-label" for="notify_assigned">
+                            Notify when Employee Assigned
+                        </label>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="notify_followup" checked>
+                        <label class="form-check-label" for="notify_followup">
+                            Notify on Follow-up Required
+                        </label>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="notify_status_change" checked>
+                        <label class="form-check-label" for="notify_status_change">
+                            Notify on Status Changes
+                        </label>
+                    </div>
+                    <button type="button" class="btn text-white w-100" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border: none;" disabled>
+                        <i class="fas fa-save"></i> Save Preferences
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Security Settings -->
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="card mb-4" style="border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+                <div class="card-header" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); color: white; border: none;">
+                    <h5 class="mb-0"><i class="fas fa-lock"></i> Security</h5>
+                </div>
+                <div class="card-body">
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="two_factor" checked>
+                        <label class="form-check-label" for="two_factor">
+                            Enable Two-Factor Authentication
+                        </label>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="session_timeout" checked>
+                        <label class="form-check-label" for="session_timeout">
+                            Session Timeout (30 minutes)
+                        </label>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Change Password</label>
+                        <button type="button" class="btn text-white w-100" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); border: none;" disabled>
+                            <i class="fas fa-key"></i> Change Password
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Backup & Maintenance -->
+        <div class="col-lg-6">
+            <div class="card mb-4" style="border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+                <div class="card-header" style="background: linear-gradient(135deg, #30cfd0 0%, #330867 100%); color: white; border: none;">
+                    <h5 class="mb-0"><i class="fas fa-database"></i> Backup & Maintenance</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small mb-3">Last Backup: <strong>Today at 2:30 PM</strong></p>
+                    <div class="mb-3">
+                        <button type="button" class="btn text-white w-100" style="background: linear-gradient(135deg, #30cfd0 0%, #330867 100%); border: none;" disabled>
+                            <i class="fas fa-download"></i> Create Backup Now
+                        </button>
+                    </div>
+                    <div class="mb-3">
+                        <button type="button" class="btn text-white w-100" style="background: #ff6b6b; border: none;" disabled>
+                            <i class="fas fa-trash"></i> Clear Old Logs
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,261 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}My Applications - Waiting for Processing{% endblock %}
+
+{% block extra_css %}
+<style>
+    .applications-container {
+        padding: 30px 20px;
+        background-color: #f5f6fa;
+        min-height: calc(100vh - 80px);
+    }
+
+    .header-section {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+        background: white;
+        padding: 25px;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .header-section h2 {
+        color: #333;
+        margin: 0;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .badge-count {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 8px 16px;
+        border-radius: 25px;
+        font-weight: 600;
+        font-size: 14px;
+    }
+
+    .applications-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 25px;
+    }
+
+    .app-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+
+    .app-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    }
+
+    .app-card-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+    }
+
+    .app-card-title {
+        flex: 1;
+    }
+
+    .app-card-title h3 {
+        margin: 0 0 5px 0;
+        font-size: 18px;
+        font-weight: 600;
+    }
+
+    .app-card-subtitle {
+        font-size: 13px;
+        opacity: 0.9;
+        margin: 0;
+    }
+
+    .status-badge {
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        border: 1px solid rgba(255, 255, 255, 0.4);
+    }
+
+    .app-card-body {
+        padding: 20px;
+    }
+
+    .app-info {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-bottom: 15px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .info-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 14px;
+    }
+
+    .info-label {
+        color: #999;
+        font-weight: 500;
+    }
+
+    .info-value {
+        color: #333;
+        font-weight: 600;
+    }
+
+    .loan-amount {
+        color: #10b981;
+        font-size: 16px;
+        font-weight: 700;
+    }
+
+    .app-card-footer {
+        padding: 0 20px 20px 20px;
+    }
+
+    .view-button {
+        width: 100%;
+        padding: 12px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    .view-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        background: white;
+        border-radius: 12px;
+    }
+
+    .empty-state-icon {
+        font-size: 64px;
+        margin-bottom: 20px;
+    }
+
+    .empty-state-text {
+        font-size: 20px;
+        color: #333;
+        margin-bottom: 10px;
+        font-weight: 600;
+    }
+
+    .empty-state-desc {
+        color: #999;
+        font-size: 14px;
+    }
+
+    @media (max-width: 768px) {
+        .header-section {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 15px;
+        }
+
+        .applications-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="applications-container">
+    <!-- Header Section -->
+    <div class="header-section">
+        <h2>
+            <i class="bi bi-hourglass-split"></i> Waiting for Processing
+        </h2>
+        <div class="badge-count">
+            <i class="bi bi-file-earmark-check"></i> {{ app_count }} Applications
+        </div>
+    </div>
+
+    <!-- Applications Grid -->
+    {% if applications %}
+        <div class="applications-grid">
+            {% for app in applications %}
+                <div class="app-card">
+                    <div class="app-card-header">
+                        <div class="app-card-title">
+                            <h3>{{ app.applicant.full_name }}</h3>
+                            <p class="app-card-subtitle">{{ app.applicant.get_role_display }}</p>
+                        </div>
+                        <span class="status-badge">{{ app.status }}</span>
+                    </div>
+                    <div class="app-card-body">
+                        <div class="app-info">
+                            <div class="info-row">
+                                <span class="info-label">Loan Type:</span>
+                                <span class="info-value">{{ app.applicant.get_loan_type_display }}</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Amount:</span>
+                                <span class="loan-amount">₹{{ app.applicant.loan_amount|floatformat:0 }}</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Mobile:</span>
+                                <span class="info-value">{{ app.applicant.mobile }}</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Email:</span>
+                                <span class="info-value" style="font-size: 12px;">{{ app.applicant.email }}</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Tenure:</span>
+                                <span class="info-value">{{ app.applicant.tenure_months }} months</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="app-card-footer">
+                        <a href="{% url 'view_application' app.applicant.id %}" class="view-button">
+                            <i class="bi bi-eye"></i> View & Process
+                        </a>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <div class="empty-state-icon">📭</div>
+            <div class="empty-state-text">No Applications Yet</div>
+            <p class="empty-state-desc">You don't have any applications waiting for processing</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,347 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}My Records - Agent{% endblock %}
+
+{% block content %}
+<style>
+    .status-new_entry { border-left: 4px solid #17a2b8; }
+    .status-waiting { border-left: 4px solid #ffc107; }
+    .status-follow_up { border-left: 4px solid #ff6c00; }
+    .status-approved { border-left: 4px solid #28a745; }
+    .status-rejected { border-left: 4px solid #dc3545; }
+    .status-disbursed { border-left: 4px solid #007bff; }
+    
+    .badge-new_entry { background-color: #cce5ff; color: #0c5aa0; }
+    .badge-waiting { background-color: #fff3cd; color: #856404; }
+    .badge-follow_up { background-color: #ffe0cc; color: #b35806; }
+    .badge-approved { background-color: #d4edda; color: #155724; }
+    .badge-rejected { background-color: #f8d7da; color: #721c24; }
+    .badge-disbursed { background-color: #d1ecf1; color: #0c5460; }
+    
+    .table-responsive {
+        max-height: 700px;
+        overflow-y: auto;
+    }
+</style>
+
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="h3 text-gray-800 mb-0">
+                <i class="bi bi-file-earmark"></i> My Records
+            </h1>
+            <p class="text-muted mt-2 mb-0">View all your loans - approved, rejected, active, and disbursed</p>
+        </div>
+    </div>
+
+    <!-- Status Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-muted mb-1 small">Total Loans</p>
+                            <h3 class="mb-0 fw-bold text-primary">{{ total_count }}</h3>
+                        </div>
+                        <i class="bi bi-list text-primary" style="font-size: 2rem; opacity: 0.3;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-muted mb-1 small">Processing</p>
+                            <h3 class="mb-0 fw-bold text-warning">{{ processing_count }}</h3>
+                        </div>
+                        <i class="bi bi-hourglass-split text-warning" style="font-size: 2rem; opacity: 0.3;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-muted mb-1 small">Approved</p>
+                            <h3 class="mb-0 fw-bold text-success">{{ approved_count }}</h3>
+                        </div>
+                        <i class="bi bi-check-circle text-success" style="font-size: 2rem; opacity: 0.3;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-muted mb-1 small">Rejected</p>
+                            <h3 class="mb-0 fw-bold text-danger">{{ rejected_count }}</h3>
+                        </div>
+                        <i class="bi bi-x-circle text-danger" style="font-size: 2rem; opacity: 0.3;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter and Search -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label small fw-600">Filter by Status</label>
+                            <select id="status-filter" class="form-select form-select-sm" onchange="filterByStatus(this.value)">
+                                <option value="">All Loans</option>
+                                <option value="new_entry">New Entry</option>
+                                <option value="waiting">Processing</option>
+                                <option value="follow_up">Follow Up</option>
+                                <option value="approved">Approved</option>
+                                <option value="rejected">Rejected</option>
+                                <option value="disbursed">Disbursed</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-600">Search Loans</label>
+                            <input type="text" id="search-input" class="form-control form-control-sm" placeholder="Search by name, phone, or amount" onkeyup="filterTable()">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-600">Actions</label>
+                            <button class="btn btn-sm btn-outline-primary w-100" onclick="window.location.href='{% url "agent_add_loan" %}' ">
+                                <i class="bi bi-plus-circle"></i> Add New Loan
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loans Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-gradient" style="background: linear-gradient(135deg, #007bff 0%, #0056b3 100%); color: white;">
+                    <h5 class="mb-0">
+                        <i class="bi bi-table"></i> All Loans
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    {% if loans %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0" id="loans-table">
+                            <thead class="bg-light sticky-top">
+                                <tr>
+                                    <th style="width: 15%"><small class="fw-600">Applicant Name</small></th>
+                                    <th style="width: 12%"><small class="fw-600">Phone</small></th>
+                                    <th style="width: 12%"><small class="fw-600">Loan Amount</small></th>
+                                    <th style="width: 12%"><small class="fw-600">Loan Type</small></th>
+                                    <th style="width: 12%"><small class="fw-600">Status</small></th>
+                                    <th style="width: 15%"><small class="fw-600">Created Date</small></th>
+                                    <th style="width: 22%"><small class="fw-600">Actions</small></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for loan in loans %}
+                                <tr class="status-{{ loan.status }}" data-status="{{ loan.status }}">
+                                    <td class="fw-600 align-middle">{{ loan.full_name }}</td>
+                                    <td class="align-middle"><a href="tel:{{ loan.mobile_number }}">{{ loan.mobile_number }}</a></td>
+                                    <td class="fw-bold align-middle text-primary">₹{{ loan.loan_amount|floatformat:0|default:"0" }}</td>
+                                    <td class="align-middle">
+                                        <span class="badge bg-info text-dark small">
+                                            {{ loan.get_loan_type_display|default:loan.loan_type }}
+                                        </span>
+                                    </td>
+                                    <td class="align-middle">
+                                        <span class="badge badge-{{ loan.status }} small">
+                                            {% if loan.status == 'new_entry' %} New Entry
+                                            {% elif loan.status == 'waiting' %} Processing
+                                            {% elif loan.status == 'follow_up' %} Follow Up
+                                            {% elif loan.status == 'approved' %} Approved
+                                            {% elif loan.status == 'rejected' %} Rejected
+                                            {% elif loan.status == 'disbursed' %} Disbursed
+                                            {% else %} {{ loan.get_status_display }}
+                                            {% endif %}
+                                        </span>
+                                    </td>
+                                    <td class="align-middle"><small class="text-muted">{{ loan.created_at|date:"d M, Y" }}</small></td>
+                                    <td class="align-middle">
+                                        <button class="btn btn-sm btn-outline-primary" onclick="viewLoanDetails({{ loan.id }}, '{{ loan.full_name }}')" title="View Details">
+                                            <i class="bi bi-eye"></i> View
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-inbox display-1 text-muted"></i>
+                        <h5 class="mt-3 text-muted">No Loans Found</h5>
+                        <p class="text-muted">You don't have any loans yet. Create your first loan now!</p>
+                        <a href="{% url 'agent_add_loan' %}" class="btn btn-primary mt-3">
+                            <i class="bi bi-plus-circle"></i> Create New Loan
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loan Details Modal -->
+<div class="modal fade" id="loanDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-gradient" style="background: linear-gradient(135deg, #007bff 0%, #0056b3 100%); color: white; border: none;">
+                <h5 class="modal-title">Loan Details</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="loan-details-body">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function filterByStatus(status) {
+    const rows = document.querySelectorAll('#loans-table tbody tr');
+    rows.forEach(row => {
+        if (status === '') {
+            row.style.display = '';
+        } else {
+            row.style.display = row.getAttribute('data-status') === status ? '' : 'none';
+        }
+    });
+}
+
+function filterTable() {
+    const searchText = document.getElementById('search-input').value.toLowerCase();
+    const rows = document.querySelectorAll('#loans-table tbody tr');
+    
+    rows.forEach(row => {
+        if (row.style.display === 'none' && document.getElementById('status-filter').value !== '') {
+            return;
+        }
+        
+        const name = row.cells[0].textContent.toLowerCase();
+        const phone = row.cells[1].textContent.toLowerCase();
+        const amount = row.cells[2].textContent.toLowerCase();
+        const matches = name.includes(searchText) || phone.includes(searchText) || amount.includes(searchText);
+        row.style.display = matches ? '' : 'none';
+    });
+}
+
+function viewLoanDetails(loanId, loanName) {
+    const modal = new bootstrap.Modal(document.getElementById('loanDetailsModal'));
+    const body = document.getElementById('loan-details-body');
+    
+    // Fetch loan details via API
+    fetch(`/api/loans/${loanId}/`, {
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        credentials: 'same-origin'
+    })
+    .then(response => response.json())
+    .then(loan => {
+        const statusColor = {
+            'new_entry': 'info',
+            'waiting': 'warning',
+            'follow_up': 'orange',
+            'approved': 'success',
+            'rejected': 'danger',
+            'disbursed': 'primary'
+        }[loan.status] || 'secondary';
+        
+        const statusText = {
+            'new_entry': 'New Entry',
+            'waiting': 'Processing',
+            'follow_up': 'Follow Up',
+            'approved': 'Approved',
+            'rejected': 'Rejected',
+            'disbursed': 'Disbursed'
+        }[loan.status] || loan.status;
+        
+        body.innerHTML = `
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label small text-muted">Applicant Name</label>
+                    <p class="form-control-plaintext fw-600">${loan.full_name}</p>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label small text-muted">Phone Number</label>
+                    <p class="form-control-plaintext"><a href="tel:${loan.mobile_number}">${loan.mobile_number}</a></p>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label small text-muted">Email</label>
+                    <p class="form-control-plaintext">${loan.email || 'N/A'}</p>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label small text-muted">City</label>
+                    <p class="form-control-plaintext">${loan.city || 'N/A'}</p>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label small text-muted">Loan Amount</label>
+                    <p class="form-control-plaintext fw-bold text-primary">₹${parseFloat(loan.loan_amount).toLocaleString('en-IN')}</p>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label small text-muted">Loan Type</label>
+                    <p class="form-control-plaintext"><span class="badge bg-info text-dark">${loan.loan_type}</span></p>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label small text-muted">Status</label>
+                    <p class="form-control-plaintext"><span class="badge bg-${statusColor}">${statusText}</span></p>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label small text-muted">Created Date</label>
+                    <p class="form-control-plaintext">${new Date(loan.created_at).toLocaleDateString('en-IN')}</p>
+                </div>
+                <div class="col-12 mb-3">
+                    <label class="form-label small text-muted">Address</label>
+                    <p class="form-control-plaintext">${loan.permanent_address || 'N/A'}</p>
+                </div>
+                <div class="col-12 mb-3">
+                    <label class="form-label small text-muted">Remarks</label>
+                    <p class="form-control-plaintext">${loan.remarks || 'No remarks'}</p>
+                </div>
+            </div>
+        `;
+    })
+    .catch(error => {
+        body.innerHTML = `<div class="alert alert-danger">Error loading loan details: ${error.message}</div>`;
+    });
+    
+    modal.show();
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}

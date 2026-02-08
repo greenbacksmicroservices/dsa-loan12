@@ -1,0 +1,620 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Document Upload - DSA Loan Management System{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2><i class="bi bi-file-earmark-pdf"></i> Document Upload - Loan #{{ loan.id }}</h2>
+    <div>
+        <span class="badge bg-info">{{ loan.full_name }}</span>
+        <span class="badge bg-primary">{{ loan.get_loan_type_display }}</span>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="table-container">
+            <form id="documentUploadForm" method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+
+                <!-- MANDATORY DOCUMENTS -->
+                <div class="document-section mb-4">
+                    <h5 class="section-title">
+                        <i class="bi bi-exclamation-circle text-danger"></i> Mandatory Documents (Required)
+                    </h5>
+                    
+                    <!-- PAN Card -->
+                    <div class="document-item">
+                        <div class="document-header">
+                            <div>
+                                <h6 class="mb-1">PAN Card <span class="badge bg-danger">Required</span></h6>
+                                <small class="text-muted">Front & Back side image</small>
+                            </div>
+                            <i class="bi bi-file-earmark-image document-icon"></i>
+                        </div>
+                        <div class="document-body">
+                            <div class="file-input-wrapper">
+                                <input type="file" id="pan_card" name="pan_card" accept="image/*,.pdf" required>
+                                <label for="pan_card" class="file-input-label">
+                                    <i class="bi bi-cloud-upload"></i> Click to upload or drag & drop
+                                </label>
+                            </div>
+                            <div id="pan_card_preview" class="file-preview mt-2"></div>
+                        </div>
+                    </div>
+
+                    <!-- Aadhaar Card -->
+                    <div class="document-item">
+                        <div class="document-header">
+                            <div>
+                                <h6 class="mb-1">Aadhaar Card <span class="badge bg-danger">Required</span></h6>
+                                <small class="text-muted">Front & Back side image</small>
+                            </div>
+                            <i class="bi bi-file-earmark-image document-icon"></i>
+                        </div>
+                        <div class="document-body">
+                            <div class="file-input-wrapper">
+                                <input type="file" id="aadhaar_card" name="aadhaar_card" accept="image/*,.pdf" required>
+                                <label for="aadhaar_card" class="file-input-label">
+                                    <i class="bi bi-cloud-upload"></i> Click to upload or drag & drop
+                                </label>
+                            </div>
+                            <div id="aadhaar_card_preview" class="file-preview mt-2"></div>
+                        </div>
+                    </div>
+
+                    <!-- Applicant Photo -->
+                    <div class="document-item">
+                        <div class="document-header">
+                            <div>
+                                <h6 class="mb-1">Applicant Photo <span class="badge bg-danger">Required</span></h6>
+                                <small class="text-muted">Passport size color photo (4x6 cm)</small>
+                            </div>
+                            <i class="bi bi-person-circle document-icon"></i>
+                        </div>
+                        <div class="document-body">
+                            <div class="file-input-wrapper">
+                                <input type="file" id="applicant_photo" name="applicant_photo" accept="image/*" required>
+                                <label for="applicant_photo" class="file-input-label">
+                                    <i class="bi bi-cloud-upload"></i> Click to upload or drag & drop
+                                </label>
+                            </div>
+                            <div id="applicant_photo_preview" class="file-preview mt-2"></div>
+                        </div>
+                    </div>
+
+                    <!-- Permanent Address Proof -->
+                    <div class="document-item">
+                        <div class="document-header">
+                            <div>
+                                <h6 class="mb-1">Permanent Address Proof <span class="badge bg-danger">Required</span></h6>
+                                <small class="text-muted">Utility bill, Ration card, Electricity bill, etc.</small>
+                            </div>
+                            <i class="bi bi-house-door document-icon"></i>
+                        </div>
+                        <div class="document-body">
+                            <div class="file-input-wrapper">
+                                <input type="file" id="permanent_address_proof" name="permanent_address_proof" accept="image/*,.pdf" required>
+                                <label for="permanent_address_proof" class="file-input-label">
+                                    <i class="bi bi-cloud-upload"></i> Click to upload or drag & drop
+                                </label>
+                            </div>
+                            <div id="permanent_address_proof_preview" class="file-preview mt-2"></div>
+                        </div>
+                    </div>
+
+                    <!-- Current Address Proof -->
+                    <div class="document-item">
+                        <div class="document-header">
+                            <div>
+                                <h6 class="mb-1">Current Address Proof <span class="badge bg-danger">Required</span></h6>
+                                <small class="text-muted">If different from permanent address</small>
+                            </div>
+                            <i class="bi bi-geo-alt document-icon"></i>
+                        </div>
+                        <div class="document-body">
+                            <div class="file-input-wrapper">
+                                <input type="file" id="current_address_proof" name="current_address_proof" accept="image/*,.pdf" required>
+                                <label for="current_address_proof" class="file-input-label">
+                                    <i class="bi bi-cloud-upload"></i> Click to upload or drag & drop
+                                </label>
+                            </div>
+                            <div id="current_address_proof_preview" class="file-preview mt-2"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FINANCIAL DOCUMENTS -->
+                <div class="document-section mb-4">
+                    <h5 class="section-title">
+                        <i class="bi bi-receipt"></i> Financial Documents (For Employment Verification)
+                    </h5>
+
+                    <!-- Salary Slips -->
+                    <div class="document-item">
+                        <div class="document-header">
+                            <div>
+                                <h6 class="mb-1">Last 3 Months Salary Slips <span class="badge bg-warning">Optional</span></h6>
+                                <small class="text-muted">Upload up to 3 files</small>
+                            </div>
+                            <i class="bi bi-file-earmark-text document-icon"></i>
+                        </div>
+                        <div class="document-body">
+                            <div class="file-input-wrapper">
+                                <input type="file" id="salary_slip" name="salary_slip" accept=".pdf,image/*" multiple>
+                                <label for="salary_slip" class="file-input-label">
+                                    <i class="bi bi-cloud-upload"></i> Click to upload or drag & drop
+                                </label>
+                            </div>
+                            <div id="salary_slip_preview" class="file-preview mt-2"></div>
+                        </div>
+                    </div>
+
+                    <!-- Bank Statements -->
+                    <div class="document-item">
+                        <div class="document-header">
+                            <div>
+                                <h6 class="mb-1">Last 6 Months Bank Statement <span class="badge bg-warning">Optional</span></h6>
+                                <small class="text-muted">PDF format preferred</small>
+                            </div>
+                            <i class="bi bi-file-earmark-spreadsheet document-icon"></i>
+                        </div>
+                        <div class="document-body">
+                            <div class="file-input-wrapper">
+                                <input type="file" id="bank_statement" name="bank_statement" accept=".pdf,image/*">
+                                <label for="bank_statement" class="file-input-label">
+                                    <i class="bi bi-cloud-upload"></i> Click to upload or drag & drop
+                                </label>
+                            </div>
+                            <div id="bank_statement_preview" class="file-preview mt-2"></div>
+                        </div>
+                    </div>
+
+                    <!-- Form 16 -->
+                    <div class="document-item">
+                        <div class="document-header">
+                            <div>
+                                <h6 class="mb-1">Form 16 (Last Year) <span class="badge bg-warning">Optional</span></h6>
+                                <small class="text-muted">For income verification</small>
+                            </div>
+                            <i class="bi bi-file-earmark-text document-icon"></i>
+                        </div>
+                        <div class="document-body">
+                            <div class="file-input-wrapper">
+                                <input type="file" id="form_16" name="form_16" accept=".pdf,image/*">
+                                <label for="form_16" class="file-input-label">
+                                    <i class="bi bi-cloud-upload"></i> Click to upload or drag & drop
+                                </label>
+                            </div>
+                            <div id="form_16_preview" class="file-preview mt-2"></div>
+                        </div>
+                    </div>
+
+                    <!-- Service Book -->
+                    <div class="document-item">
+                        <div class="document-header">
+                            <div>
+                                <h6 class="mb-1">Service Book <span class="badge bg-warning">Optional</span></h6>
+                                <small class="text-muted">For government employees</small>
+                            </div>
+                            <i class="bi bi-file-earmark-text document-icon"></i>
+                        </div>
+                        <div class="document-body">
+                            <div class="file-input-wrapper">
+                                <input type="file" id="service_book" name="service_book" accept=".pdf,image/*">
+                                <label for="service_book" class="file-input-label">
+                                    <i class="bi bi-cloud-upload"></i> Click to upload or drag & drop
+                                </label>
+                            </div>
+                            <div id="service_book_preview" class="file-preview mt-2"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PROPERTY DOCUMENTS (For LAP/Home Loan) -->
+                <div class="document-section mb-4" id="property_documents_section" style="display: none;">
+                    <h5 class="section-title">
+                        <i class="bi bi-building"></i> Property Documents (For LAP/Home Loan)
+                    </h5>
+
+                    <!-- Property Documents -->
+                    <div class="document-item">
+                        <div class="document-header">
+                            <div>
+                                <h6 class="mb-1">Home Property Documents <span class="badge bg-warning">Conditional</span></h6>
+                                <small class="text-muted">Sale Deed, Registry, Property Tax Receipt, etc.</small>
+                            </div>
+                            <i class="bi bi-file-earmark-pdf document-icon"></i>
+                        </div>
+                        <div class="document-body">
+                            <div class="file-input-wrapper">
+                                <input type="file" id="property_documents" name="property_documents" accept=".pdf,image/*" multiple>
+                                <label for="property_documents" class="file-input-label">
+                                    <i class="bi bi-cloud-upload"></i> Click to upload or drag & drop
+                                </label>
+                            </div>
+                            <div id="property_documents_preview" class="file-preview mt-2"></div>
+                        </div>
+                    </div>
+
+                    <!-- SOA of Existing Loan -->
+                    <div class="document-item">
+                        <div class="document-header">
+                            <div>
+                                <h6 class="mb-1">SOA of Existing Loan Account <span class="badge bg-warning">Optional</span></h6>
+                                <small class="text-muted">If loan is against existing property with mortgage</small>
+                            </div>
+                            <i class="bi bi-file-earmark-text document-icon"></i>
+                        </div>
+                        <div class="document-body">
+                            <div class="file-input-wrapper">
+                                <input type="file" id="soa_existing_loan" name="soa_existing_loan" accept=".pdf,image/*">
+                                <label for="soa_existing_loan" class="file-input-label">
+                                    <i class="bi bi-cloud-upload"></i> Click to upload or drag & drop
+                                </label>
+                            </div>
+                            <div id="soa_existing_loan_preview" class="file-preview mt-2"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CO-APPLICANT DOCUMENTS -->
+                <div class="document-section mb-4" id="co_applicant_documents_section" style="display: none;">
+                    <h5 class="section-title">
+                        <i class="bi bi-people"></i> Co-applicant Documents
+                    </h5>
+
+                    <!-- Co-applicant PAN -->
+                    <div class="document-item">
+                        <div class="document-header">
+                            <div>
+                                <h6 class="mb-1">Co-applicant PAN Card <span class="badge bg-warning">Conditional</span></h6>
+                            </div>
+                            <i class="bi bi-file-earmark-image document-icon"></i>
+                        </div>
+                        <div class="document-body">
+                            <div class="file-input-wrapper">
+                                <input type="file" id="co_applicant_pan" name="co_applicant_pan" accept="image/*,.pdf">
+                                <label for="co_applicant_pan" class="file-input-label">
+                                    <i class="bi bi-cloud-upload"></i> Click to upload or drag & drop
+                                </label>
+                            </div>
+                            <div id="co_applicant_pan_preview" class="file-preview mt-2"></div>
+                        </div>
+                    </div>
+
+                    <!-- Co-applicant Aadhaar -->
+                    <div class="document-item">
+                        <div class="document-header">
+                            <div>
+                                <h6 class="mb-1">Co-applicant Aadhaar Card <span class="badge bg-warning">Conditional</span></h6>
+                            </div>
+                            <i class="bi bi-file-earmark-image document-icon"></i>
+                        </div>
+                        <div class="document-body">
+                            <div class="file-input-wrapper">
+                                <input type="file" id="co_applicant_aadhaar" name="co_applicant_aadhaar" accept="image/*,.pdf">
+                                <label for="co_applicant_aadhaar" class="file-input-label">
+                                    <i class="bi bi-cloud-upload"></i> Click to upload or drag & drop
+                                </label>
+                            </div>
+                            <div id="co_applicant_aadhaar_preview" class="file-preview mt-2"></div>
+                        </div>
+                    </div>
+
+                    <!-- Co-applicant Photo -->
+                    <div class="document-item">
+                        <div class="document-header">
+                            <div>
+                                <h6 class="mb-1">Co-applicant Photo <span class="badge bg-warning">Conditional</span></h6>
+                            </div>
+                            <i class="bi bi-person-circle document-icon"></i>
+                        </div>
+                        <div class="document-body">
+                            <div class="file-input-wrapper">
+                                <input type="file" id="co_applicant_photo" name="co_applicant_photo" accept="image/*">
+                                <label for="co_applicant_photo" class="file-input-label">
+                                    <i class="bi bi-cloud-upload"></i> Click to upload or drag & drop
+                                </label>
+                            </div>
+                            <div id="co_applicant_photo_preview" class="file-preview mt-2"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- GUARANTOR DOCUMENTS -->
+                <div class="document-section mb-4" id="guarantor_documents_section" style="display: none;">
+                    <h5 class="section-title">
+                        <i class="bi bi-shield-check"></i> Guarantor Documents
+                    </h5>
+
+                    <!-- Guarantor PAN -->
+                    <div class="document-item">
+                        <div class="document-header">
+                            <div>
+                                <h6 class="mb-1">Guarantor PAN Card <span class="badge bg-warning">Optional</span></h6>
+                            </div>
+                            <i class="bi bi-file-earmark-image document-icon"></i>
+                        </div>
+                        <div class="document-body">
+                            <div class="file-input-wrapper">
+                                <input type="file" id="guarantor_pan" name="guarantor_pan" accept="image/*,.pdf">
+                                <label for="guarantor_pan" class="file-input-label">
+                                    <i class="bi bi-cloud-upload"></i> Click to upload or drag & drop
+                                </label>
+                            </div>
+                            <div id="guarantor_pan_preview" class="file-preview mt-2"></div>
+                        </div>
+                    </div>
+
+                    <!-- Guarantor Aadhaar -->
+                    <div class="document-item">
+                        <div class="document-header">
+                            <div>
+                                <h6 class="mb-1">Guarantor Aadhaar Card <span class="badge bg-warning">Optional</span></h6>
+                            </div>
+                            <i class="bi bi-file-earmark-image document-icon"></i>
+                        </div>
+                        <div class="document-body">
+                            <div class="file-input-wrapper">
+                                <input type="file" id="guarantor_aadhaar" name="guarantor_aadhaar" accept="image/*,.pdf">
+                                <label for="guarantor_aadhaar" class="file-input-label">
+                                    <i class="bi bi-cloud-upload"></i> Click to upload or drag & drop
+                                </label>
+                            </div>
+                            <div id="guarantor_aadhaar_preview" class="file-preview mt-2"></div>
+                        </div>
+                    </div>
+
+                    <!-- Guarantor Address Proof -->
+                    <div class="document-item">
+                        <div class="document-header">
+                            <div>
+                                <h6 class="mb-1">Guarantor Address Proof <span class="badge bg-warning">Optional</span></h6>
+                            </div>
+                            <i class="bi bi-house-door document-icon"></i>
+                        </div>
+                        <div class="document-body">
+                            <div class="file-input-wrapper">
+                                <input type="file" id="guarantor_address_proof" name="guarantor_address_proof" accept="image/*,.pdf">
+                                <label for="guarantor_address_proof" class="file-input-label">
+                                    <i class="bi bi-cloud-upload"></i> Click to upload or drag & drop
+                                </label>
+                            </div>
+                            <div id="guarantor_address_proof_preview" class="file-preview mt-2"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ACTION BUTTONS -->
+                <div class="d-flex gap-2 mb-4">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle"></i> Submit Documents
+                    </button>
+                    <a href="{% url 'admin_all_loans' %}" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left"></i> Back to Dashboard
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- SIDEBAR -->
+    <div class="col-lg-4">
+        <div class="activity-panel">
+            <h5 class="mb-4"><i class="bi bi-info-circle"></i> Upload Guidelines</h5>
+            <ul class="list-unstyled">
+                <li class="mb-2">
+                    <i class="bi bi-check-circle text-success"></i>
+                    <strong>File Format:</strong> PDF, JPG, PNG
+                </li>
+                <li class="mb-2">
+                    <i class="bi bi-check-circle text-success"></i>
+                    <strong>Max Size:</strong> 5 MB per file
+                </li>
+                <li class="mb-2">
+                    <i class="bi bi-check-circle text-success"></i>
+                    <strong>Image Quality:</strong> Clear & readable
+                </li>
+                <li class="mb-2">
+                    <i class="bi bi-check-circle text-success"></i>
+                    <strong>All 4 sides:</strong> For ID proof documents
+                </li>
+                <li class="mb-2">
+                    <i class="bi bi-check-circle text-success"></i>
+                    <strong>Recent:</strong> Bank statements (last 6 months)
+                </li>
+            </ul>
+
+            <div class="alert alert-warning mt-4">
+                <strong><i class="bi bi-exclamation-triangle"></i> Important</strong>
+                <p class="mb-0 mt-2">Documents required vary by loan type. Upload all conditional documents if applicable.</p>
+            </div>
+
+            <div class="progress mt-3" style="height: 8px;">
+                <div class="progress-bar" id="uploadProgress" style="width: 0%"></div>
+            </div>
+            <small class="text-muted" id="uploadPercentage">0% Complete</small>
+        </div>
+    </div>
+</div>
+
+<style>
+    .document-section {
+        background: #f8fafc;
+        padding: 20px;
+        border-radius: 8px;
+        border-left: 4px solid var(--primary-color);
+    }
+
+    .section-title {
+        color: #1e293b;
+        font-weight: 600;
+        margin: 0 0 15px 0;
+        font-size: 16px;
+    }
+
+    .document-item {
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        margin-bottom: 15px;
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+
+    .document-item:hover {
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .document-header {
+        padding: 15px;
+        background: #f1f5f9;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .document-header h6 {
+        color: #1e293b;
+        font-weight: 600;
+        margin: 0;
+    }
+
+    .document-icon {
+        font-size: 24px;
+        color: var(--primary-color);
+        opacity: 0.7;
+    }
+
+    .document-body {
+        padding: 15px;
+    }
+
+    .file-input-wrapper {
+        position: relative;
+        display: inline-block;
+        width: 100%;
+    }
+
+    .file-input-wrapper input[type="file"] {
+        display: none;
+    }
+
+    .file-input-label {
+        display: block;
+        padding: 30px;
+        border: 2px dashed var(--primary-color);
+        border-radius: 8px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        background: linear-gradient(135deg, rgba(79, 70, 229, 0.05) 0%, rgba(79, 70, 229, 0.02) 100%);
+        color: var(--primary-color);
+    }
+
+    .file-input-label:hover {
+        background: linear-gradient(135deg, rgba(79, 70, 229, 0.1) 0%, rgba(79, 70, 229, 0.05) 100%);
+        border-color: var(--primary-color);
+    }
+
+    .file-preview {
+        padding: 10px;
+        background: #f8fafc;
+        border-radius: 6px;
+        max-height: 200px;
+        overflow-y: auto;
+    }
+
+    .file-preview-item {
+        padding: 8px;
+        margin: 5px 0;
+        background: white;
+        border-radius: 4px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border: 1px solid #e2e8f0;
+    }
+
+    .file-preview-item img {
+        max-height: 60px;
+        margin-right: 10px;
+        border-radius: 4px;
+    }
+
+    .progress {
+        background: #e2e8f0;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .progress-bar {
+        background: linear-gradient(90deg, var(--primary-color) 0%, var(--success-color) 100%);
+        height: 100%;
+        transition: width 0.3s ease;
+    }
+</style>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // File preview functionality
+    document.querySelectorAll('input[type="file"]').forEach(input => {
+        input.addEventListener('change', function() {
+            const previewId = this.id + '_preview';
+            const previewElement = document.getElementById(previewId);
+            if (!previewElement) return;
+
+            previewElement.innerHTML = '';
+            const files = this.files;
+
+            for (let file of files) {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-preview-item';
+                
+                if (file.type.startsWith('image/')) {
+                    const img = document.createElement('img');
+                    img.src = URL.createObjectURL(file);
+                    fileItem.appendChild(img);
+                } else {
+                    const icon = document.createElement('i');
+                    icon.className = 'bi bi-file-earmark-pdf';
+                    icon.style.fontSize = '20px';
+                    fileItem.appendChild(icon);
+                }
+
+                const fileName = document.createElement('span');
+                fileName.textContent = file.name;
+                fileItem.appendChild(fileName);
+
+                previewElement.appendChild(fileItem);
+            }
+        });
+    });
+
+    // Form submission
+    document.getElementById('documentUploadForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        alert('Documents submitted successfully!');
+        // Implement actual form submission with AJAX
+    });
+
+    // Update progress bar (mock)
+    function updateProgressBar() {
+        const totalInputs = document.querySelectorAll('input[type="file"]').length;
+        const filledInputs = Array.from(document.querySelectorAll('input[type="file"]')).filter(input => input.files.length > 0).length;
+        const percentage = Math.round((filledInputs / totalInputs) * 100);
+        
+        document.getElementById('uploadProgress').style.width = percentage + '%';
+        document.getElementById('uploadPercentage').textContent = percentage + '% Complete';
+    }
+
+    // Listen for file changes
+    document.querySelectorAll('input[type="file"]').forEach(input => {
+        input.addEventListener('change', updateProgressBar);
+    });
+</script>
+{% endblock %}
