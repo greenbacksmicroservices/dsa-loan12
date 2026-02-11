@@ -1,0 +1,494 @@
+{% extends 'core/admin/admin_base.html' %}
+{% load static %}
+
+{% block title %}{{ status_name }} - Admin Panel{% endblock %}
+
+{% block page_title %}{{ status_name }}{% endblock %}
+
+{% block content %}
+<style>
+    .status-container {
+        background: #f8f9fa;
+        min-height: calc(100vh - 100px);
+        padding: 30px 0;
+    }
+
+    .status-header {
+        background: white;
+        padding: 30px;
+        border-radius: 12px;
+        margin-bottom: 30px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .header-title {
+        font-size: 28px;
+        font-weight: 700;
+        color: #1f2937;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .header-title i {
+        font-size: 32px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .status-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        margin-top: 20px;
+    }
+
+    .stat-item {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 10px;
+        text-align: center;
+    }
+
+    .stat-item .number {
+        font-size: 32px;
+        font-weight: 700;
+        margin: 10px 0;
+    }
+
+    .stat-item p {
+        font-size: 13px;
+        opacity: 0.9;
+        margin: 0;
+    }
+
+    .filters {
+        background: white;
+        padding: 20px;
+        border-radius: 12px;
+        margin-bottom: 30px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    .search-box {
+        position: relative;
+        margin-bottom: 15px;
+    }
+
+    .search-box input {
+        width: 100%;
+        padding: 12px 15px 12px 40px;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        font-size: 14px;
+        transition: all 0.2s;
+    }
+
+    .search-box input:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .search-box i {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #9ca3af;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    .empty-state i {
+        font-size: 64px;
+        color: #d1d5db;
+        display: block;
+        margin-bottom: 20px;
+    }
+
+    .empty-state h3 {
+        color: #6b7280;
+        font-size: 18px;
+        margin-bottom: 10px;
+    }
+
+    .empty-state p {
+        color: #9ca3af;
+        font-size: 14px;
+    }
+
+    .back-button {
+        display: inline-block;
+        margin-bottom: 20px;
+        padding: 10px 20px;
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        color: #667eea;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.2s;
+    }
+
+    .back-button:hover {
+        background: #f7fafc;
+        border-color: #667eea;
+    }
+</style>
+
+<div class="status-container">
+    <div class="container-fluid">
+        <!-- Back Button -->
+        <a href="{% url 'admin_dashboard' %}" class="back-button">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </a>
+
+        <!-- Status Header -->
+        <div class="status-header">
+            <div>
+                <h1 class="header-title">
+                    {% if status_name == 'New Entry' %}
+                        <i class="fas fa-file-alt"></i> New Entry Applications
+                    {% elif status_name == 'Waiting for Processing' %}
+                        <i class="fas fa-hourglass-half"></i> In Processing
+                    {% elif status_name == 'Required Follow-up' %}
+                        <i class="fas fa-phone-volume"></i> Follow-up Required
+                    {% elif status_name == 'Approved' %}
+                        <i class="fas fa-check-circle"></i> Approved Applications
+                    {% elif status_name == 'Rejected' %}
+                        <i class="fas fa-ban"></i> Rejected Applications
+                    {% elif status_name == 'Disbursed' %}
+                        <i class="fas fa-money-bill-wave"></i> Disbursed Loans
+                    {% else %}
+                        {{ status_name }}
+                    {% endif %}
+                </h1>
+
+                <!-- Stats -->
+                <div class="status-stats">
+                    <div class="stat-item">
+                        <p>Total Applications</p>
+                        <div class="number">{{ applications|length }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Empty or Action Message -->
+        {% if applications|length == 0 %}
+        <div class="empty-state">
+            <i class="fas fa-inbox"></i>
+            <h3>No {{ status_name|lower }} applications found</h3>
+            <p>Currently, there are no applications in this status.</p>
+        </div>
+        {% else %}
+        <div class="filters">
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="searchInput" placeholder="Search by applicant name or email..." onkeyup="filterApplications()">
+            </div>
+            <p style="color: #6b7280; font-size: 13px; margin: 0;">
+                Showing {{ applications|length }} application{{ applications|length|pluralize }}
+            </p>
+        </div>
+
+        <!-- Simple Info Box -->
+        <div style="background: white; padding: 30px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); overflow-x: auto;">
+            <table class="table" style="margin: 0;">
+                <thead>
+                    <tr style="background: #f7fafc; border-bottom: 2px solid #e2e8f0;">
+                        <th style="padding: 15px 20px; font-weight: 600; color: #2d3748; font-size: 13px; text-transform: uppercase;">Applicant Name</th>
+                        <th style="padding: 15px 20px; font-weight: 600; color: #2d3748; font-size: 13px; text-transform: uppercase;">Email</th>
+                        <th style="padding: 15px 20px; font-weight: 600; color: #2d3748; font-size: 13px; text-transform: uppercase;">Phone</th>
+                        <th style="padding: 15px 20px; font-weight: 600; color: #2d3748; font-size: 13px; text-transform: uppercase;">Loan Amount</th>
+                        <th style="padding: 15px 20px; font-weight: 600; color: #2d3748; font-size: 13px; text-transform: uppercase;">Date Applied</th>
+                        {% if status_name == 'Waiting for Processing' or status_name == 'Required Follow-up' or status_name == 'Approved' or status_name == 'Rejected' or status_name == 'Disbursed' %}
+                        <th style="padding: 15px 20px; font-weight: 600; color: #2d3748; font-size: 13px; text-transform: uppercase;">Assigned To</th>
+                        {% endif %}
+                        <th style="padding: 15px 20px; font-weight: 600; color: #2d3748; font-size: 13px; text-transform: uppercase;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for app in applications %}
+                    <tr style="border-bottom: 1px solid #e2e8f0;" class="app-row" data-search="{{ app.applicant.full_name|lower }},{{ app.applicant.email|lower }}">
+                        <td style="padding: 15px 20px; font-weight: 600; color: #1f2937;">{{ app.applicant.full_name }}</td>
+                        <td style="padding: 15px 20px; color: #666;">{{ app.applicant.email }}</td>
+                        <td style="padding: 15px 20px; color: #666;">{{ app.applicant.mobile|default:"-" }}</td>
+                        <td style="padding: 15px 20px; font-weight: 600; color: #2d5016;">₹{{ app.applicant.loan_amount|floatformat:0 }}</td>
+                        <td style="padding: 15px 20px; color: #666; font-size: 13px;">{{ app.created_at|date:"M d, Y" }}</td>
+                        {% if status_name == 'Waiting for Processing' or status_name == 'Required Follow-up' or status_name == 'Approved' or status_name == 'Rejected' or status_name == 'Disbursed' %}
+                        <td style="padding: 15px 20px; font-weight: 600; color: #374151;">
+                            {% if app.assigned_employee %}
+                                {{ app.assigned_employee.first_name }} {{ app.assigned_employee.last_name }}
+                            {% else %}
+                                <span style="color: #9ca3af; font-style: italic;">Not assigned</span>
+                            {% endif %}
+                        </td>
+                        {% endif %}
+                        <td style="padding: 15px 20px;">
+                            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                <button onclick="viewDetails({{ app.id }}, '{{ app.applicant.full_name }}', '{{ app.applicant.email }}', '{{ app.applicant.mobile }}', '{{ app.applicant.loan_type }}', '{{ app.applicant.loan_amount }}')" 
+                                    style="padding: 8px 14px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600;">
+                                    <i class="fas fa-eye"></i> View
+                                </button>
+                                {% if status_name == 'New Entry' %}
+                                <button onclick="assignToEmployee({{ app.id }}, '{{ app.applicant.full_name }}')" 
+                                    style="padding: 8px 14px; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600;">
+                                    <i class="fas fa-user-check"></i> Assign
+                                </button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function filterApplications() {
+    const input = document.getElementById('searchInput').value.toLowerCase();
+    const rows = document.querySelectorAll('.app-row');
+    
+    rows.forEach(row => {
+        const searchText = row.getAttribute('data-search') || '';
+        if (searchText.includes(input)) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+
+function viewDetails(appId, fullName, email, phone, loanType, loanAmount) {
+    // Fetch full application details from API
+    fetch(`/api/admin/application/${appId}/details/`)
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) {
+                alert('Error loading application details');
+                return;
+            }
+            
+            const app = data.applicant;
+            let documentsHTML = '<p style="color: #6b7280; font-size: 13px; margin: 0;">No documents uploaded yet.</p>';
+            
+            if (data.documents && data.documents.length > 0) {
+                documentsHTML = '<div style="display: flex; flex-direction: column; gap: 10px;">' +
+                    data.documents.map(doc => `
+                        <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: white; border-radius: 6px; border: 1px solid #e5e7eb;">
+                            <i class="fas fa-file" style="color: #667eea; font-size: 16px;"></i>
+                            <div style="flex: 1;">
+                                <p style="margin: 0; font-weight: 600; color: #374151; font-size: 13px;">${doc.name}</p>
+                                <p style="margin: 0; font-size: 11px; color: #9ca3af;">Uploaded: ${doc.uploaded}</p>
+                            </div>
+                            ${doc.url ? `<a href="${doc.url}" target="_blank" style="padding: 5px 10px; background: #3b82f6; color: white; border-radius: 4px; text-decoration: none; font-size: 11px; font-weight: 600;">View</a>` : ''}
+                        </div>
+                    `).join('') + '</div>';
+            }
+            
+            const formattedDOB = app.date_of_birth ? new Date(app.date_of_birth).toLocaleDateString('en-IN') : '-';
+            const formattedDOJ = app.date_of_joining ? new Date(app.date_of_joining).toLocaleDateString('en-IN') : '-';
+            
+            const modalHTML = `
+                <div id="detailsModal" style="
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    background: rgba(0,0,0,0.5);
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    z-index: 9999;
+                    overflow-y: auto;
+                    padding: 20px;
+                " onclick="if(event.target.id === 'detailsModal') closeDetailsModal()">
+                    <div style="
+                        background: white;
+                        border-radius: 12px;
+                        width: 100%;
+                        max-width: 900px;
+                        box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+                        margin: 20px auto;
+                    ">
+                        <!-- Modal Header -->
+                        <div style="
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                            padding: 20px;
+                            border-bottom: 1px solid #e5e7eb;
+                            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                            border-radius: 12px 12px 0 0;
+                        ">
+                            <h3 style="margin: 0; color: white; font-weight: 700; font-size: 18px;">
+                                <i class="fas fa-file-alt"></i> Complete Application Details
+                            </h3>
+                            <button onclick="closeDetailsModal()" style="
+                                background: none;
+                                border: none;
+                                font-size: 24px;
+                                cursor: pointer;
+                                color: white;
+                            ">&times;</button>
+                        </div>
+
+                        <!-- Modal Body -->
+                        <div style="padding: 25px; max-height: 85vh; overflow-y: auto;">
+                            <!-- SECTION 1: NAME & CONTACT DETAILS -->
+                            <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                                <h4 style="margin: 0 0 15px 0; color: #1f2937; font-weight: 700; font-size: 16px; border-bottom: 2px solid #667eea; padding-bottom: 10px;">
+                                    <i class="fas fa-user" style="color: #667eea; margin-right: 8px;"></i> Name & Contact Details
+                                </h4>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Full Name</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.full_name || '-'}</p></div>
+                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Email</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.email || '-'}</p></div>
+                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Mobile Number</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.mobile || '-'}</p></div>
+                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Alternate Mobile</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.alternate_mobile || '-'}</p></div>
+                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Father's Name</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.father_name || '-'}</p></div>
+                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Mother's Name</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.mother_name || '-'}</p></div>
+                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Date of Birth</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${formattedDOB}</p></div>
+                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Gender</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.gender || '-'}</p></div>
+                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Marital Status</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.marital_status || '-'}</p></div>
+                                </div>
+                                
+                                <!-- Permanent Address -->
+                                <h5 style="margin: 20px 0 10px 0; color: #374151; font-weight: 600; font-size: 14px;">Permanent Address</h5>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Address</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.permanent_address || '-'}</p></div>
+                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Landmark</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.permanent_landmark || '-'}</p></div>
+                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">City</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.permanent_city || '-'}</p></div>
+                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">PIN Code</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.permanent_pin || '-'}</p></div>
+                                </div>
+
+                                <!-- Present Address -->
+                                <h5 style="margin: 20px 0 10px 0; color: #374151; font-weight: 600; font-size: 14px;">Present Address</h5>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Address</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.present_address || '-'}</p></div>
+                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Landmark</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.present_landmark || '-'}</p></div>
+                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">City</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.present_city || '-'}</p></div>
+                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">PIN Code</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.present_pin || '-'}</p></div>
+                                </div>
+                            </div>
+
+                            <!-- SECTION 2: OCCUPATION & INCOME DETAILS -->
+                            <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                                <h4 style="margin: 0 0 15px 0; color: #1f2937; font-weight: 700; font-size: 16px; border-bottom: 2px solid #667eea; padding-bottom: 10px;">
+                                    <i class="fas fa-briefcase" style="color: #667eea; margin-right: 8px;"></i> Occupation & Income Details
+                                </h4>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Occupation</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.occupation || '-'}</p></div>
+                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Date of Joining</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${formattedDOJ}</p></div>
+                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Year of Experience</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.year_of_experience || '-'}</p></div>
+                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Additional Income</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.additional_income || 'No'}</p></div>
+                                </div>
+                                ${app.extra_income_details ? `<div style="margin-top: 10px;"><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Extra Income Details</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.extra_income_details}</p></div>` : ''}
+                            </div>
+
+                            <!-- SECTION 4: LOAN REQUEST -->
+                            <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                                <h4 style="margin: 0 0 15px 0; color: #1f2937; font-weight: 700; font-size: 16px; border-bottom: 2px solid #667eea; padding-bottom: 10px;">
+                                    <i class="fas fa-money-bill-wave" style="color: #667eea; margin-right: 8px;"></i> Loan Request Details
+                                </h4>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Service Required</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.loan_type || '-'}</p></div>
+                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Loan Tenure (Months)</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.loan_tenure || '-'}</p></div>
+                                    <div style="grid-column: 1 / -1;"><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Loan Amount Required</p><p style="margin: 0; color: #2d5016; font-weight: 700; font-size: 18px;">₹${app.loan_amount || '0'}</p></div>
+                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Any Charges or Fee</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.charges_fee}</p></div>
+                                </div>
+                            </div>
+
+                            <!-- SECTION 6: FINANCIAL & BANK DETAILS -->
+                            <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                                <h4 style="margin: 0 0 15px 0; color: #1f2937; font-weight: 700; font-size: 16px; border-bottom: 2px solid #667eea; padding-bottom: 10px;">
+                                    <i class="fas fa-credit-card" style="color: #667eea; margin-right: 8px;"></i> Financial & Bank Details
+                                </h4>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">CIBIL Score</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.cibil_score || '-'}</p></div>
+                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Aadhar Number</p><p style="margin: 0; color: #1f2937; font-weight: 600;">****${app.aadhar_number ? app.aadhar_number.slice(-4) : '-'}</p></div>
+                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">PAN Number</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.pan_number || '-'}</p></div>
+                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Bank Name</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.bank_name || '-'}</p></div>
+                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Account Number</p><p style="margin: 0; color: #1f2937; font-weight: 600;">****${app.account_number ? app.account_number.slice(-4) : '-'}</p></div>
+                                </div>
+                                ${app.remarks ? `<div style="margin-top: 10px;"><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Remarks / Suggestions</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.remarks}</p></div>` : ''}
+                            </div>
+
+                            <!-- SECTION 7: DOCUMENTS -->
+                            <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                                <h4 style="margin: 0 0 15px 0; color: #1f2937; font-weight: 700; font-size: 16px; border-bottom: 2px solid #667eea; padding-bottom: 10px;">
+                                    <i class="fas fa-file-upload" style="color: #667eea; margin-right: 8px;"></i> Documents
+                                </h4>
+                                ${documentsHTML}
+                            </div>
+                        </div>
+
+                        <!-- Modal Footer -->
+                        <div style="
+                            padding: 15px 20px;
+                            border-top: 1px solid #e5e7eb;
+                            background: #f9fafb;
+                            display: flex;
+                            gap: 10px;
+                            justify-content: flex-end;
+                            border-radius: 0 0 12px 12px;
+                        ">
+                            <button onclick="closeDetailsModal()" style="
+                                padding: 10px 20px;
+                                background: #e5e7eb;
+                                color: #374151;
+                                border: none;
+                                border-radius: 6px;
+                                cursor: pointer;
+                                font-weight: 600;
+                            ">Close</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error loading application details');
+        });
+}
+
+function closeDetailsModal() {
+    const modal = document.getElementById('detailsModal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+function assignToEmployee(appId, applicantName) {
+    window.location.href = `/admin/assign-application/${appId}/?applicant=${encodeURIComponent(applicantName)}`;
+}
+
+// Close modal with ESC key
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        closeDetailsModal();
+    }
+});
+</script>
+
+{% endblock %}

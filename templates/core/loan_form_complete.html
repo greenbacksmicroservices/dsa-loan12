@@ -1087,7 +1087,9 @@
                 setTimeout(() => {
                     const userRole = document.querySelector('[data-user-role]')?.getAttribute('data-user-role') || 'admin';
                     if (userRole === 'admin') {
-                        window.location.href = '/admin/dashboard/?scroll=new-entries';
+                        window.location.href = '/admin/new-entries/';
+                    } else if (userRole === 'employee') {
+                        window.location.href = '/employee/all-loans/';
                     } else {
                         window.location.href = '/agent/my-applications/';
                     }

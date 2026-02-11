@@ -57,7 +57,9 @@ def employee_dashboard_stats(request):
         
         # Calculate stats
         total_loans = loans.count()
-        in_processing = loans.filter(status__in=['waiting', 'follow_up']).count()
+        waiting_count = loans.filter(status='waiting').count()
+        follow_up_count = loans.filter(status='follow_up').count()
+        in_processing = waiting_count + follow_up_count
         approved = loans.filter(status='approved').count()
         rejected = loans.filter(status='rejected').count()
         disbursed = loans.filter(status='disbursed').count()
@@ -71,6 +73,8 @@ def employee_dashboard_stats(request):
             'success': True,
             'total_loans': total_loans,
             'in_processing': in_processing,
+            'waiting': waiting_count,
+            'follow_up': follow_up_count,
             'approved': approved,
             'rejected': rejected,
             'disbursed': disbursed,
@@ -163,10 +167,15 @@ def employee_all_loans_api(request):
                 'id': loan.id,
                 'loan_id': f'LOAN-{loan.id:06d}',
                 'applicant_name': loan.full_name or 'N/A',
+                'mobile': loan.mobile_number or '',
                 'loan_type': loan.loan_type or 'N/A',
                 'loan_amount': float(loan.loan_amount) if loan.loan_amount else 0,
+                'tenure_months': loan.tenure_months or 0,
+                'remarks': loan.remarks or '',
                 'submitted_by': submitted_by,
                 'assigned_date': loan.assigned_at.strftime('%Y-%m-%d') if loan.assigned_at else '-',
+                'created_date': loan.created_at.strftime('%Y-%m-%d') if loan.created_at else '-',
+                'created_time': loan.created_at.strftime('%H:%M') if loan.created_at else '',
                 'status': loan.status,
                 'status_display': loan.get_status_display(),
             })
@@ -382,6 +391,7 @@ def employee_loan_detail_api(request, loan_id):
                 'status': loan.status,
                 'status_display': loan.get_status_display(),
                 'assigned_date': loan.assigned_at.strftime('%Y-%m-%d %H:%M') if loan.assigned_at else '-',
+                'assigned_by_name': loan.created_by.get_full_name() if loan.created_by else 'System',
                 'hours_pending': hours_pending,
                 'agent_name': agent_name,
                 'documents': documents,
@@ -609,7 +619,7 @@ def employee_my_agents_api(request):
     
     try:
         # Get agents created by this employee
-        agents = Agent.objects.filter(created_by=request.user).order_by('-created_at')
+        agents = Agent.objects.filter(created_by=request.user).exclude(status='blocked').order_by('-created_at')
         
         agents_data = []
         for agent in agents:
@@ -730,6 +740,179 @@ def employee_add_agent_api(request):
             'agent_id': agent.id,
         }, status=status.HTTP_201_CREATED)
     
+    except Exception as e:
+        return Response({
+            'success': False,
+            'error': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def employee_update_agent_api(request, agent_id):
+    """Employee updates an agent they created"""
+    if request.user.role != 'employee':
+        return Response({'error': 'Only employees can update agents'}, status=status.HTTP_403_FORBIDDEN)
+
+    try:
+        agent = get_object_or_404(Agent, id=agent_id, created_by=request.user)
+        data = request.data
+
+        name = data.get('name', '').strip()
+        phone = data.get('phone', '').strip()
+        email = data.get('email', '').strip()
+        status_value = data.get('status', '').strip() or agent.status
+        gender = data.get('gender', '').strip()
+        address = data.get('address', '').strip()
+        pin_code = data.get('pin_code', '').strip()
+        state = data.get('state', '').strip()
+        city = data.get('city', '').strip()
+
+        if name:
+            agent.name = name
+        if phone:
+            agent.phone = phone
+        if email:
+            agent.email = email
+        if status_value:
+            agent.status = status_value
+        agent.gender = gender if gender else agent.gender
+        agent.address = address if address else agent.address
+        agent.pin_code = pin_code if pin_code else agent.pin_code
+        agent.state = state if state else agent.state
+        agent.city = city if city else agent.city
+
+        if 'photo' in request.FILES:
+            agent.profile_photo = request.FILES.get('photo')
+
+        agent.save()
+
+        if agent.user:
+            if name:
+                parts = name.split()
+                agent.user.first_name = parts[0]
+                agent.user.last_name = ' '.join(parts[1:]) if len(parts) > 1 else ''
+            if phone:
+                agent.user.phone = phone
+            if email:
+                agent.user.email = email
+            agent.user.save()
+
+        return Response({
+            'success': True,
+            'message': 'Agent updated successfully'
+        }, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        return Response({
+            'success': False,
+            'error': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def employee_delete_agent_api(request, agent_id):
+    """Employee deletes (blocks) an agent they created"""
+    if request.user.role != 'employee':
+        return Response({'error': 'Only employees can delete agents'}, status=status.HTTP_403_FORBIDDEN)
+
+    try:
+        agent = get_object_or_404(Agent, id=agent_id, created_by=request.user)
+
+        agent.status = 'blocked'
+        agent.save()
+
+        if agent.user:
+            agent.user.is_active = False
+            agent.user.save()
+
+        return Response({
+            'success': True,
+            'message': 'Agent removed successfully'
+        }, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        return Response({
+            'success': False,
+            'error': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def employee_update_loan_api(request, loan_id):
+    """Employee updates basic loan fields for assigned loan"""
+    if request.user.role != 'employee':
+        return Response({'error': 'Only employees can update loans'}, status=status.HTTP_403_FORBIDDEN)
+
+    try:
+        loan = get_object_or_404(Loan, id=loan_id, assigned_employee=request.user)
+        data = request.data
+
+        if 'loan_amount' in data:
+            try:
+                loan.loan_amount = float(data.get('loan_amount') or 0)
+            except (TypeError, ValueError):
+                pass
+        if 'tenure_months' in data:
+            try:
+                loan.tenure_months = int(data.get('tenure_months') or 0)
+            except (TypeError, ValueError):
+                pass
+        if 'loan_type' in data and data.get('loan_type'):
+            loan.loan_type = str(data.get('loan_type')).lower()
+        if 'remarks' in data:
+            loan.remarks = data.get('remarks') or ''
+
+        loan.save()
+
+        ActivityLog.objects.create(
+            action='loan_updated',
+            description=f"Employee {request.user.get_full_name()} updated loan #{loan.id}",
+            user=request.user,
+            related_loan=loan
+        )
+
+        return Response({
+            'success': True,
+            'message': 'Loan updated successfully'
+        }, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        return Response({
+            'success': False,
+            'error': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def employee_delete_loan_api(request, loan_id):
+    """Employee deletes (rejects) an assigned loan"""
+    if request.user.role != 'employee':
+        return Response({'error': 'Only employees can delete loans'}, status=status.HTTP_403_FORBIDDEN)
+
+    try:
+        loan = get_object_or_404(Loan, id=loan_id, assigned_employee=request.user)
+        reason = request.data.get('reason', '').strip() if isinstance(request.data, dict) else ''
+        if not reason:
+            reason = 'Deleted by employee'
+
+        deleted_id = loan.id
+        loan.delete()
+
+        ActivityLog.objects.create(
+            action='status_updated',
+            description=f"Employee {request.user.get_full_name()} deleted loan #{deleted_id}. Reason: {reason}",
+            user=request.user
+        )
+
+        return Response({
+            'success': True,
+            'message': 'Loan removed successfully'
+        }, status=status.HTTP_200_OK)
+
     except Exception as e:
         return Response({
             'success': False,

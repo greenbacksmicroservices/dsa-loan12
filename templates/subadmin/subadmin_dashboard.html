@@ -1,0 +1,702 @@
+{% extends "subadmin/base_subadmin.html" %}
+{% load static %}
+
+{% block title %}SubAdmin Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<style>
+    .stat-card {
+        padding: 24px;
+        border-radius: 16px;
+        color: white;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        text-decoration: none;
+        display: block;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        border: none;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-10px);
+        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+    }
+
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 200px;
+        height: 200px;
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: 50%;
+        transition: all 0.3s ease;
+    }
+
+    .stat-card:hover::before {
+        right: -30%;
+        top: -30%;
+    }
+
+    .stat-card-content {
+        position: relative;
+        z-index: 2;
+    }
+
+    .stat-icon {
+        font-size: 40px;
+        margin-bottom: 12px;
+        display: block;
+        opacity: 0.95;
+    }
+
+    .stat-card h3 {
+        margin: 12px 0;
+        font-size: 16px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .stat-number {
+        font-size: 48px;
+        font-weight: 800;
+        margin: 16px 0;
+        line-height: 1;
+        font-family: 'Courier New', monospace;
+    }
+
+    .stat-card p {
+        font-size: 13px;
+        margin: 8px 0 0 0;
+        opacity: 0.9;
+        font-weight: 500;
+    }
+
+    .stat-card .view-link {
+        display: inline-block;
+        margin-top: 14px;
+        padding: 8px 16px;
+        background: rgba(255, 255, 255, 0.25);
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 600;
+        transition: all 0.2s ease;
+    }
+
+    .stat-card:hover .view-link {
+        background: rgba(255, 255, 255, 0.35);
+    }
+
+    /* Gradient Colors */
+    .card-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .card-info {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    }
+
+    .card-warning {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+
+    .card-success {
+        background: linear-gradient(135deg, #1dd1a1 0%, #00b894 100%);
+    }
+
+    .card-danger {
+        background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+    }
+
+    .card-secondary {
+        background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+    }
+
+    .card-purple {
+        background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+    }
+
+    .card-cyan {
+        background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+    }
+
+    .dashboard-row {
+        display: grid;
+        grid-template-columns: repeat(6, minmax(180px, 1fr));
+        gap: 16px;
+        margin-bottom: 32px;
+        overflow-x: auto;
+        padding-bottom: 6px;
+    }
+
+    /* Progress Bar Styling */
+    .progress-bar {
+        height: 10px;
+        background: #e9ecef;
+        border-radius: 5px;
+        overflow: hidden;
+        margin: 12px 0;
+    }
+
+    .progress-fill {
+        height: 100%;
+        border-radius: 5px;
+        transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Chart Container */
+    .chart-container {
+        background: white;
+        border-radius: 16px;
+        padding: 28px;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+        margin-bottom: 30px;
+        border-top: 4px solid #667eea;
+    }
+
+    /* Recent Table */
+    .recent-table {
+        background: white;
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+        border-top: 4px solid #667eea;
+    }
+
+    .recent-table thead {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+
+    .recent-table th {
+        padding: 18px 14px;
+        font-weight: 700;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+    }
+
+    .recent-table tbody tr {
+        border-bottom: 1px solid #e9ecef;
+        transition: all 0.2s ease;
+    }
+
+    .recent-table tbody tr:hover {
+        background: #f8f9fa;
+    }
+
+    .recent-table td {
+        padding: 16px 14px;
+        vertical-align: middle;
+    }
+
+    .applicant-cell {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .avatar {
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 700;
+        font-size: 15px;
+        flex-shrink: 0;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .avatar.blue { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    .avatar.cyan { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+    .avatar.pink { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+    .avatar.green { background: linear-gradient(135deg, #1dd1a1 0%, #00b894 100%); }
+    .avatar.orange { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
+    .avatar.purple { background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); }
+
+    .status-badge {
+        padding: 8px 14px;
+        border-radius: 22px;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        display: inline-block;
+    }
+
+    .status-new { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+    .status-pending { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; }
+    .status-approved { background: linear-gradient(135deg, #1dd1a1 0%, #00b894 100%); color: white; }
+    .status-rejected { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); color: white; }
+    .status-disbursed { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; }
+
+    .amount-text {
+        font-weight: 700;
+        font-size: 15px;
+        background: linear-gradient(135deg, #1dd1a1 0%, #00b894 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .header-title {
+        font-size: 28px;
+        font-weight: 800;
+        margin-bottom: 10px;
+        color: #111827;
+    }
+
+    .header-subtitle {
+        font-size: 14px;
+        color: #6b7280;
+        font-weight: 500;
+    }
+</style>
+
+<!-- Stats Cards Grid -->
+<div class="dashboard-row">
+    <!-- Total Loans -->
+    <div class="stat-card card-primary">
+        <div class="stat-card-content">
+            <i class="fas fa-briefcase stat-icon"></i>
+            <h3>Total Loans</h3>
+            <div class="stat-number" id="stat-total">0</div>
+            <p>All applications</p>
+            <span class="view-link">📊 Load</span>
+        </div>
+    </div>
+
+    <!-- New Entry -->
+    <div class="stat-card card-info">
+        <div class="stat-card-content">
+            <i class="fas fa-file-earmark stat-icon"></i>
+            <h3>New Entry</h3>
+            <div class="stat-number" id="stat-new-entry">0</div>
+            <p>Fresh applications</p>
+            <span class="view-link">➕ New</span>
+        </div>
+    </div>
+
+    <!-- In Progress -->
+    <div class="stat-card card-warning">
+        <div class="stat-card-content">
+            <i class="fas fa-hourglass-half stat-icon"></i>
+            <h3>In Progress</h3>
+            <div class="stat-number" id="stat-processing">0</div>
+            <p>Under review</p>
+            <span class="view-link">⏳ View</span>
+        </div>
+    </div>
+
+    <!-- Approved -->
+    <div class="stat-card card-success">
+        <div class="stat-card-content">
+            <i class="fas fa-check-circle stat-icon"></i>
+            <h3>Approved</h3>
+            <div class="stat-number" id="stat-approved">0</div>
+            <p>Approved loans</p>
+            <span class="view-link">✅ View</span>
+        </div>
+    </div>
+
+    <!-- Rejected -->
+    <div class="stat-card card-danger">
+        <div class="stat-card-content">
+            <i class="fas fa-times-circle stat-icon"></i>
+            <h3>Rejected</h3>
+            <div class="stat-number" id="stat-rejected">0</div>
+            <p>Rejected loans</p>
+            <span class="view-link">❌ View</span>
+        </div>
+    </div>
+
+    <!-- Disbursed -->
+    <div class="stat-card card-cyan">
+        <div class="stat-card-content">
+            <i class="fas fa-university stat-icon"></i>
+            <h3>Disbursed</h3>
+            <div class="stat-number" id="stat-disbursed">0</div>
+            <p>Amount paid</p>
+            <span class="view-link">💰 View</span>
+        </div>
+    </div>
+</div>
+
+<!-- Loan Status Distribution -->
+<div class="chart-container">
+    <h3 class="chart-title">
+        <i class="fas fa-chart-bar"></i> Loan Status Distribution
+    </h3>
+    
+    <div id="status-distribution" style="margin-top: 20px;">
+        <div style="display: flex; align-items: center; margin-bottom: 16px;">
+            <span style="width: 130px; font-weight: 600; color: #6b7280;">New Entry</span>
+            <div class="progress-bar" style="flex: 1;">
+                <div class="progress-fill" id="progress-new" style="width: 0%; background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);"></div>
+            </div>
+            <span style="width: 50px; text-align: right; font-weight: 700; color: #667eea;" id="count-new">0</span>
+        </div>
+        
+        <div style="display: flex; align-items: center; margin-bottom: 16px;">
+            <span style="width: 130px; font-weight: 600; color: #6b7280;">Processing</span>
+            <div class="progress-bar" style="flex: 1;">
+                <div class="progress-fill" id="progress-processing" style="width: 0%; background: linear-gradient(90deg, #f093fb 0%, #f5576c 100%);"></div>
+            </div>
+            <span style="width: 50px; text-align: right; font-weight: 700; color: #f5576c;" id="count-processing">0</span>
+        </div>
+        
+        <div style="display: flex; align-items: center; margin-bottom: 16px;">
+            <span style="width: 130px; font-weight: 600; color: #6b7280;">Approved</span>
+            <div class="progress-bar" style="flex: 1;">
+                <div class="progress-fill" id="progress-approved" style="width: 0%; background: linear-gradient(90deg, #1dd1a1 0%, #00b894 100%);"></div>
+            </div>
+            <span style="width: 50px; text-align: right; font-weight: 700; color: #1dd1a1;" id="count-approved">0</span>
+        </div>
+        
+        <div style="display: flex; align-items: center; margin-bottom: 16px;">
+            <span style="width: 130px; font-weight: 600; color: #6b7280;">Rejected</span>
+            <div class="progress-bar" style="flex: 1;">
+                <div class="progress-fill" id="progress-rejected" style="width: 0%; background: linear-gradient(90deg, #fa709a 0%, #fee140 100%);"></div>
+            </div>
+            <span style="width: 50px; text-align: right; font-weight: 700; color: #fa709a;" id="count-rejected">0</span>
+        </div>
+        
+        <div style="display: flex; align-items: center;">
+            <span style="width: 130px; font-weight: 600; color: #6b7280;">Disbursed</span>
+            <div class="progress-bar" style="flex: 1;">
+                <div class="progress-fill" id="progress-disbursed" style="width: 0%; background: linear-gradient(90deg, #06b6d4 0%, #0891b2 100%);"></div>
+            </div>
+            <span style="width: 50px; text-align: right; font-weight: 700; color: #06b6d4;" id="count-disbursed">0</span>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Loans Table -->
+<div class="recent-table">
+    <div class="table-header">
+        <h3><i class="fas fa-list-check"></i>Recent Loan Applications</h3>
+        <button class="refresh-btn" onclick="refreshDashboard()">
+            <i class="fas fa-sync-alt"></i> Refresh
+        </button>
+    </div>
+
+    <div id="loans-table-container" style="overflow-x: auto;">
+        <div class="loading">
+            <div style="display: inline-block; width: 30px; height: 30px; border: 3px solid #e9ecef; border-top-color: #667eea; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+            <p style="margin-top: 12px;">Loading loans...</p>
+        </div>
+    </div>
+</div>
+
+<style>
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    .amount-text {
+        font-weight: 700;
+        font-size: 15px;
+        background: linear-gradient(135deg, #1dd1a1 0%, #00b894 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .refresh-btn {
+        padding: 10px 20px;
+        background: rgba(255, 255, 255, 0.25);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-size: 13px;
+    }
+
+    .refresh-btn:hover {
+        background: rgba(255, 255, 255, 0.35);
+    }
+
+    .loading {
+        text-align: center;
+        padding: 40px 20px;
+        color: #6b7280;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 40px 20px;
+        color: #9ca3af;
+    }
+
+    .empty-state-icon {
+        font-size: 48px;
+        margin-bottom: 16px;
+        opacity: 0.5;
+    }
+
+    .chart-title {
+        font-size: 18px;
+        font-weight: 700;
+        margin-bottom: 20px;
+        color: #1a1a1a;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .table-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        color: white;
+        border-radius: 16px 16px 0 0;
+    }
+
+    .table-header h3 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    @media (max-width: 768px) {
+        .dashboard-row {
+            grid-template-columns: repeat(6, minmax(160px, 1fr));
+        }
+
+        .stat-number {
+            font-size: 36px;
+        }
+
+        .dashboard-header h1 {
+            font-size: 24px;
+        }
+
+        .recent-table {
+            overflow-x: auto;
+        }
+    }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3/dist/chart.min.js"></script>
+
+<script>
+// Auto-refresh every 5 seconds for real-time experience
+let autoRefreshInterval = null;
+
+function startAutoRefresh() {
+    autoRefreshInterval = setInterval(refreshDashboard, 5000);
+}
+
+function stopAutoRefresh() {
+    if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+    }
+}
+
+function refreshDashboard() {
+    loadDashboardStats();
+    loadLoansTable();
+    console.log('Dashboard refreshed at', new Date().toLocaleTimeString());
+}
+
+function loadDashboardStats() {
+    fetch('/api/subadmin/dashboard-stats/')
+        .then(response => {
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return response.json();
+        })
+        .then(data => {
+            console.log('Stats loaded:', data);
+            
+            // Update stat cards
+            const stats = data.stats || data;
+            
+            document.getElementById('stat-total').textContent = stats.total || 0;
+            document.getElementById('stat-new-entry').textContent = stats.new_entry || 0;
+            document.getElementById('stat-processing').textContent = (stats.waiting || 0) + (stats.follow_up || 0);
+            document.getElementById('stat-approved').textContent = stats.approved || 0;
+            document.getElementById('stat-rejected').textContent = stats.rejected || 0;
+            document.getElementById('stat-disbursed').textContent = stats.disbursed || 0;
+            
+            // Update progress bars
+            const total = stats.total || 1;
+            const percentages = {
+                new: ((stats.new_entry || 0) / total * 100),
+                processing: (((stats.waiting || 0) + (stats.follow_up || 0)) / total * 100),
+                approved: ((stats.approved || 0) / total * 100),
+                rejected: ((stats.rejected || 0) / total * 100),
+                disbursed: ((stats.disbursed || 0) / total * 100),
+            };
+            
+            document.getElementById('progress-new').style.width = percentages.new + '%';
+            document.getElementById('progress-processing').style.width = percentages.processing + '%';
+            document.getElementById('progress-approved').style.width = percentages.approved + '%';
+            document.getElementById('progress-rejected').style.width = percentages.rejected + '%';
+            document.getElementById('progress-disbursed').style.width = percentages.disbursed + '%';
+            
+            document.getElementById('count-new').textContent = stats.new_entry || 0;
+            document.getElementById('count-processing').textContent = (stats.waiting || 0) + (stats.follow_up || 0);
+            document.getElementById('count-approved').textContent = stats.approved || 0;
+            document.getElementById('count-rejected').textContent = stats.rejected || 0;
+            document.getElementById('count-disbursed').textContent = stats.disbursed || 0;
+        })
+        .catch(error => console.error('Error loading stats:', error));
+}
+
+function loadLoansTable() {
+    fetch('/api/loans/')
+        .then(response => {
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return response.json();
+        })
+        .then(data => {
+            renderLoansTable(data.results || data || []);
+        })
+        .catch(error => {
+            console.error('Error loading loans:', error);
+            renderLoansTable([]);
+        });
+}
+
+function renderLoansTable(loans) {
+    const container = document.getElementById('loans-table-container');
+    
+    if (!loans || loans.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-state-icon"><i class="bi bi-inbox"></i></div>
+                <p>No loans found</p>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = `
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead class="recent-table">
+                <tr style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white;">
+                    <th style="padding: 16px 12px; text-align: left; font-weight: 600; font-size: 12px; text-transform: uppercase;">Applicant</th>
+                    <th style="padding: 16px 12px; text-align: left; font-weight: 600; font-size: 12px; text-transform: uppercase;">Loan Type</th>
+                    <th style="padding: 16px 12px; text-align: left; font-weight: 600; font-size: 12px; text-transform: uppercase;">Amount</th>
+                    <th style="padding: 16px 12px; text-align: left; font-weight: 600; font-size: 12px; text-transform: uppercase;">Status</th>
+                    <th style="padding: 16px 12px; text-align: left; font-weight: 600; font-size: 12px; text-transform: uppercase;">Date</th>
+                    <th style="padding: 16px 12px; text-align: left; font-weight: 600; font-size: 12px; text-transform: uppercase;">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+    
+    loans.forEach(loan => {
+        const name = loan.full_name || loan.applicant_name || 'N/A';
+        const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+        const avatarColor = getAvatarColorByInitial(initials);
+        
+        const amount = typeof loan.loan_amount === 'number' 
+            ? '₹' + loan.loan_amount.toLocaleString('en-IN')
+            : loan.loan_amount;
+        
+        const date = loan.created_at ? new Date(loan.created_at).toLocaleDateString('en-IN') : 'N/A';
+        const status = loan.status || 'N/A';
+        const statusBadgeClass = getStatusBadgeClass(status);
+        
+        html += `
+            <tr style="border-bottom: 1px solid #e9ecef;">
+                <td style="padding: 14px 12px;">
+                    <div class="applicant-cell">
+                        <div class="avatar ${avatarColor}">${initials}</div>
+                        <div>
+                            <div style="font-weight: 600; color: #1a1a1a;">${name}</div>
+                            <div style="font-size: 12px; color: #6b7280;">${loan.mobile_number || 'N/A'}</div>
+                        </div>
+                    </div>
+                </td>
+                <td style="padding: 14px 12px; color: #6b7280;">${loan.loan_type || 'N/A'}</td>
+                <td style="padding: 14px 12px; font-weight: 600; color: #10b981;">${amount}</td>
+                <td style="padding: 14px 12px;">
+                    <span class="status-badge ${statusBadgeClass}">${status}</span>
+                </td>
+                <td style="padding: 14px 12px; color: #6b7280; font-size: 13px;">${date}</td>
+                <td style="padding: 14px 12px;">
+                    <button onclick="viewLoan(${loan.id})" style="padding: 6px 12px; background: #3b82f6; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 12px;">
+                        <i class="bi bi-eye"></i> View
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+    
+    html += `
+            </tbody>
+        </table>
+    `;
+    
+    container.innerHTML = html;
+}
+
+function getAvatarColorByInitial(initials) {
+    const colors = ['blue', 'amber', 'green', 'red', 'purple', 'pink'];
+    let hash = 0;
+    for (let i = 0; i < initials.length; i++) {
+        hash = initials.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return colors[Math.abs(hash) % colors.length];
+}
+
+function getStatusBadgeClass(status) {
+    const statusMap = {
+        'new_entry': 'status-new',
+        'waiting': 'status-pending',
+        'waiting_for_processing': 'status-pending',
+        'follow_up': 'status-pending',
+        'approved': 'status-approved',
+        'rejected': 'status-rejected',
+        'disbursed': 'status-disbursed',
+    };
+    return statusMap[status] || 'status-pending';
+}
+
+function filterByStatus(status) {
+    console.log('Filter by status:', status);
+    // This could redirect to a filtered view or load filtered data
+    // For now, just log it
+}
+
+function viewLoan(loanId) {
+    window.location.href = `/loan/${loanId}/`;
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('SubAdmin Dashboard initializing...');
+    loadDashboardStats();
+    loadLoansTable();
+    startAutoRefresh();
+    console.log('Dashboard ready with auto-refresh enabled');
+});
+
+// Stop auto-refresh when page is hidden
+document.addEventListener('visibilitychange', function() {
+    if (document.hidden) {
+        stopAutoRefresh();
+    } else {
+        startAutoRefresh();
+    }
+});
+</script>
+
+{% endblock %}

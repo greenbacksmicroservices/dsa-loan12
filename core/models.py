@@ -107,6 +107,7 @@ class Loan(models.Model):
         ('rejected', 'Rejected'),
         ('disputed', 'Disputed'),
         ('disbursed', 'Disbursed'),
+        ('forclose', 'For Close'),
     ]
     
     LOAN_TYPE_CHOICES = [

@@ -3,21 +3,32 @@ SubAdmin Panel Views - Production-Grade Implementation
 Provides complete visibility and management for SubAdmin role
 """
 from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods, require_GET, require_POST
 from django.core.paginator import Paginator
+from django.db import transaction
 from django.db.models import Count, Q, Sum, F, Prefetch, Value, CharField
 from django.db.models.functions import Concat
 from django.http import JsonResponse
 from django.utils.decorators import method_decorator
 from .decorators import subadmin_required
-from .models import User, LoanApplication, Complaint, SubAdminEntry, Loan, LoanStatusHistory, Agent, LoanDocument
+from .models import User, LoanApplication, Complaint, SubAdminEntry, Loan, LoanStatusHistory, Agent, LoanDocument, EmployeeProfile
 from django.utils import timezone
 from datetime import timedelta
 import json
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+def _parse_request_data(request):
+    if request.content_type and request.content_type.startswith('application/json'):
+        try:
+            return json.loads(request.body)
+        except json.JSONDecodeError:
+            return {}
+    return request.POST
 
 
 # ============ DASHBOARD ============
@@ -106,7 +117,7 @@ def subadmin_dashboard(request):
         'monthly_data': monthly_data,
     }
     
-    return render(request, 'core/subadmin/dashboard.html', context)
+    return render(request, 'subadmin/subadmin_dashboard.html', context)
 
 
 @login_required(login_url='login')
@@ -295,7 +306,7 @@ def subadmin_all_loans(request):
         'date_to': date_to,
     }
     
-    return render(request, 'core/subadmin/all_loans.html', context)
+    return render(request, 'subadmin/subadmin_all_loans.html', context)
 
 
 # ============ LOAN DETAIL ============
@@ -341,7 +352,7 @@ def subadmin_loan_detail(request, loan_id):
         'available_employees': available_employees,
     }
     
-    return render(request, 'core/subadmin/loan_detail.html', context)
+    return render(request, 'subadmin/subadmin_all_loans.html', context)
 
 
 @login_required(login_url='login')
@@ -403,7 +414,98 @@ def subadmin_my_agents(request):
     - Status
     - Action: View
     """
-    agents_qs = Agent.objects.all()
+    if request.method == 'POST':
+        name = request.POST.get('name', '').strip()
+        agent_id = request.POST.get('agent_id', '').strip()
+        email = request.POST.get('email', '').strip()
+        phone = request.POST.get('phone', '').strip()
+        gender = request.POST.get('gender', '').strip()
+        address = request.POST.get('address', '').strip()
+        password = request.POST.get('password', '').strip()
+        profile_photo = request.FILES.get('profile_photo')
+
+        # Basic validation
+        if not all([name, agent_id, email, phone, password]):
+            messages.error(request, 'Please fill all required agent fields.')
+            return redirect('subadmin_my_agents')
+
+        if '@' not in email:
+            messages.error(request, 'Invalid email address.')
+            return redirect('subadmin_my_agents')
+
+        if len(password) < 6:
+            messages.error(request, 'Password must be at least 6 characters.')
+            return redirect('subadmin_my_agents')
+
+        phone_digits = phone.replace('+', '')
+        if not phone_digits.isdigit() or len(phone_digits) < 10 or len(phone_digits) > 15:
+            messages.error(request, 'Phone number must be 10-15 digits.')
+            return redirect('subadmin_my_agents')
+
+        if User.objects.filter(email=email).exists():
+            messages.error(request, 'Email already exists.')
+            return redirect('subadmin_my_agents')
+
+        if User.objects.filter(username=agent_id).exists() or Agent.objects.filter(agent_id=agent_id).exists():
+            messages.error(request, 'Agent ID already exists.')
+            return redirect('subadmin_my_agents')
+
+        if User.objects.filter(phone=phone).exists() or Agent.objects.filter(phone=phone).exists():
+            messages.error(request, 'Phone number already exists.')
+            return redirect('subadmin_my_agents')
+
+        if profile_photo and profile_photo.size > 5 * 1024 * 1024:
+            messages.error(request, 'Profile photo must be less than 5MB.')
+            return redirect('subadmin_my_agents')
+
+        gender_value = gender if gender in ['Male', 'Female', 'Other'] else None
+        name_parts = name.split(' ', 1)
+        first_name = name_parts[0]
+        last_name = name_parts[1] if len(name_parts) > 1 else ''
+
+        try:
+            with transaction.atomic():
+                agent_user = User.objects.create_user(
+                    username=agent_id,
+                    email=email,
+                    password=password,
+                    first_name=first_name,
+                    last_name=last_name,
+                    role='agent',
+                    phone=phone,
+                    gender=gender_value,
+                    address=address,
+                    is_active=True,
+                )
+
+                if profile_photo:
+                    agent_user.profile_photo = profile_photo
+                    agent_user.save()
+
+                agent = Agent.objects.create(
+                    user=agent_user,
+                    agent_id=agent_id,
+                    name=name,
+                    phone=phone,
+                    email=email,
+                    address=address,
+                    gender=gender_value,
+                    status='active',
+                    created_by=request.user,
+                )
+
+                if profile_photo and not agent.profile_photo:
+                    agent.profile_photo = agent_user.profile_photo or profile_photo
+                    agent.save()
+
+            messages.success(request, f'Agent {name} created successfully. Login ID: {agent_id}')
+        except Exception as e:
+            logger.error(f"Error creating agent: {str(e)}")
+            messages.error(request, f'Error creating agent: {str(e)}')
+
+        return redirect('subadmin_my_agents')
+
+    agents_qs = Agent.objects.all().select_related('user', 'created_by')
     
     # Search filter
     search_query = request.GET.get('q', '').strip()
@@ -411,7 +513,8 @@ def subadmin_my_agents(request):
         agents_qs = agents_qs.filter(
             Q(name__icontains=search_query) |
             Q(email__icontains=search_query) |
-            Q(phone__icontains=search_query)
+            Q(phone__icontains=search_query) |
+            Q(agent_id__icontains=search_query)
         )
     
     # Status filter
@@ -439,16 +542,26 @@ def subadmin_my_agents(request):
     
     agents_list = []
     for agent in page_obj:
+        photo_url = ''
+        if agent.profile_photo:
+            photo_url = agent.profile_photo.url
+        elif agent.user and agent.user.profile_photo:
+            photo_url = agent.user.profile_photo.url
+
         agents_list.append({
             'id': agent.id,
+            'agent_id': agent.agent_id or f'AG{agent.id:04d}',
             'name': agent.name,
             'email': agent.email or 'N/A',
             'phone': agent.phone,
+            'gender': agent.gender or 'N/A',
+            'address': agent.address or 'N/A',
             'created_by': agent.created_by.get_full_name() if agent.created_by else 'Admin',
             'total_loans': agent.agent_total_loans,
             'approved_count': agent.agent_approved_count,
             'status': agent.status,
             'created_date': agent.created_at.strftime('%Y-%m-%d'),
+            'photo_url': photo_url,
         })
     
     context = {
@@ -464,7 +577,7 @@ def subadmin_my_agents(request):
         'status_filter': status_filter,
     }
     
-    return render(request, 'core/subadmin/my_agents.html', context)
+    return render(request, 'subadmin/subadmin_my_staff.html', context)
 
 
 @login_required(login_url='login')
@@ -502,7 +615,151 @@ def subadmin_agent_detail(request, agent_id):
         'loans': loans[:10],  # Latest 10
     }
     
-    return render(request, 'core/subadmin/agent_detail.html', context)
+    return render(request, 'subadmin/subadmin_my_staff.html', context)
+
+
+@login_required(login_url='login')
+@subadmin_required
+@require_GET
+def subadmin_get_agent(request, agent_id):
+    try:
+        agent = get_object_or_404(Agent, id=agent_id)
+        photo_url = ''
+        if agent.profile_photo:
+            photo_url = agent.profile_photo.url
+        elif agent.user and agent.user.profile_photo:
+            photo_url = agent.user.profile_photo.url
+
+        return JsonResponse({
+            'success': True,
+            'agent': {
+                'id': agent.id,
+                'agent_id': agent.agent_id or f'AG{agent.id:04d}',
+                'name': agent.name,
+                'email': agent.email or '',
+                'phone': agent.phone or '',
+                'gender': agent.gender or 'Other',
+                'address': agent.address or '',
+                'status': agent.status or 'active',
+                'photo_url': photo_url,
+            }
+        })
+    except Exception as e:
+        logger.error(f"Error fetching agent: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+
+@login_required(login_url='login')
+@subadmin_required
+@require_POST
+def subadmin_update_agent(request, agent_id):
+    try:
+        agent = get_object_or_404(Agent, id=agent_id)
+        data = _parse_request_data(request)
+        profile_photo = request.FILES.get('profile_photo')
+
+        name = data.get('name', '').strip()
+        agent_id_val = data.get('agent_id', '').strip()
+        email = data.get('email', '').strip()
+        phone = data.get('phone', '').strip()
+        gender = data.get('gender', '').strip()
+        address = data.get('address', '').strip()
+        password = data.get('password', '').strip()
+        status_val = data.get('status', '').strip() or agent.status
+
+        if email:
+            if User.objects.filter(email=email).exclude(id=getattr(agent.user, 'id', None)).exists():
+                return JsonResponse({'success': False, 'error': 'Email already exists'}, status=400)
+
+        if agent_id_val:
+            if Agent.objects.filter(agent_id=agent_id_val).exclude(id=agent.id).exists():
+                return JsonResponse({'success': False, 'error': 'Agent ID already exists'}, status=400)
+            if User.objects.filter(username=agent_id_val).exclude(id=getattr(agent.user, 'id', None)).exists():
+                return JsonResponse({'success': False, 'error': 'Agent ID already exists'}, status=400)
+
+        if phone:
+            phone_exists = (
+                User.objects.filter(phone=phone).exclude(id=getattr(agent.user, 'id', None)).exists() or
+                Agent.objects.filter(phone=phone).exclude(id=agent.id).exists()
+            )
+            if phone_exists:
+                return JsonResponse({'success': False, 'error': 'Phone number already exists'}, status=400)
+
+        gender_value = gender if gender in ['Male', 'Female', 'Other'] else None
+
+        with transaction.atomic():
+            if name:
+                agent.name = name
+                if agent.user:
+                    parts = name.split(' ', 1)
+                    agent.user.first_name = parts[0]
+                    agent.user.last_name = parts[1] if len(parts) > 1 else ''
+
+            if agent_id_val:
+                agent.agent_id = agent_id_val
+                if agent.user:
+                    agent.user.username = agent_id_val
+
+            if email:
+                agent.email = email
+                if agent.user:
+                    agent.user.email = email
+
+            if phone:
+                agent.phone = phone
+                if agent.user:
+                    agent.user.phone = phone
+
+            if address is not None:
+                agent.address = address
+                if agent.user:
+                    agent.user.address = address
+
+            if gender_value:
+                agent.gender = gender_value
+                if agent.user:
+                    agent.user.gender = gender_value
+
+            if status_val in ['active', 'blocked']:
+                agent.status = status_val
+                if agent.user:
+                    agent.user.is_active = status_val == 'active'
+
+            if profile_photo:
+                if agent.user:
+                    agent.user.profile_photo = profile_photo
+                agent.profile_photo = profile_photo
+
+            if agent.user:
+                if password:
+                    agent.user.set_password(password)
+                agent.user.save()
+
+            agent.save()
+
+        return JsonResponse({'success': True, 'message': 'Agent updated successfully'})
+    except Exception as e:
+        logger.error(f"Error updating agent: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required(login_url='login')
+@subadmin_required
+@require_POST
+def subadmin_delete_agent(request, agent_id):
+    try:
+        agent = get_object_or_404(Agent, id=agent_id)
+        agent.status = 'blocked'
+        agent.save()
+
+        if agent.user:
+            agent.user.is_active = False
+            agent.user.save()
+
+        return JsonResponse({'success': True, 'message': 'Agent deleted successfully'})
+    except Exception as e:
+        logger.error(f"Error deleting agent: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
 # ============ MY EMPLOYEES ============
@@ -525,6 +782,92 @@ def subadmin_my_employees(request):
     - Status
     - Action: View
     """
+    if request.method == 'POST':
+        name = request.POST.get('name', '').strip()
+        employee_id = request.POST.get('employee_id', '').strip()
+        email = request.POST.get('email', '').strip()
+        phone = request.POST.get('phone', '').strip()
+        gender = request.POST.get('gender', '').strip()
+        address = request.POST.get('address', '').strip()
+        password = request.POST.get('password', '').strip()
+        profile_photo = request.FILES.get('profile_photo')
+
+        # Basic validation
+        if not all([name, employee_id, email, phone, password]):
+            messages.error(request, 'Please fill all required employee fields.')
+            return redirect('subadmin_my_employees')
+
+        if '@' not in email:
+            messages.error(request, 'Invalid email address.')
+            return redirect('subadmin_my_employees')
+
+        if len(password) < 6:
+            messages.error(request, 'Password must be at least 6 characters.')
+            return redirect('subadmin_my_employees')
+
+        phone_digits = phone.replace('+', '')
+        if not phone_digits.isdigit() or len(phone_digits) < 10 or len(phone_digits) > 15:
+            messages.error(request, 'Phone number must be 10-15 digits.')
+            return redirect('subadmin_my_employees')
+
+        if User.objects.filter(email=email).exists():
+            messages.error(request, 'Email already exists.')
+            return redirect('subadmin_my_employees')
+
+        if User.objects.filter(employee_id=employee_id).exists():
+            messages.error(request, 'Employee ID already exists.')
+            return redirect('subadmin_my_employees')
+
+        if User.objects.filter(phone=phone).exists():
+            messages.error(request, 'Phone number already exists.')
+            return redirect('subadmin_my_employees')
+
+        if profile_photo and profile_photo.size > 5 * 1024 * 1024:
+            messages.error(request, 'Profile photo must be less than 5MB.')
+            return redirect('subadmin_my_employees')
+
+        gender_value = gender if gender in ['Male', 'Female', 'Other'] else None
+        name_parts = name.split(' ', 1)
+        first_name = name_parts[0]
+        last_name = name_parts[1] if len(name_parts) > 1 else ''
+
+        # Generate unique username from email
+        base_username = email.split('@')[0]
+        username = base_username
+        counter = 1
+        while User.objects.filter(username=username).exists():
+            username = f"{base_username}{counter}"
+            counter += 1
+
+        try:
+            with transaction.atomic():
+                employee = User.objects.create_user(
+                    username=username,
+                    email=email,
+                    password=password,
+                    first_name=first_name,
+                    last_name=last_name,
+                    role='employee',
+                    employee_id=employee_id,
+                    phone=phone,
+                    gender=gender_value,
+                    address=address,
+                    is_active=True,
+                )
+
+                if profile_photo:
+                    employee.profile_photo = profile_photo
+                    employee.save()
+
+                EmployeeProfile.objects.get_or_create(user=employee)
+
+            messages.success(request, f'Employee {name} created successfully.')
+        except Exception as e:
+            logger.error(f"Error creating employee: {str(e)}")
+            messages.error(request, f'Error creating employee: {str(e)}')
+
+        return redirect('subadmin_my_employees')
+
     employees_qs = User.objects.filter(role='employee')
     
     # Search filter
@@ -533,7 +876,9 @@ def subadmin_my_employees(request):
         employees_qs = employees_qs.filter(
             Q(first_name__icontains=search_query) |
             Q(last_name__icontains=search_query) |
-            Q(email__icontains=search_query)
+            Q(email__icontains=search_query) |
+            Q(employee_id__icontains=search_query) |
+            Q(phone__icontains=search_query)
         )
     
     # Status filter
@@ -563,17 +908,21 @@ def subadmin_my_employees(request):
     
     employees_list = []
     for emp in page_obj:
+        photo_url = emp.profile_photo.url if emp.profile_photo else ''
         employees_list.append({
             'id': emp.id,
             'employee_id': emp.employee_id or f'EMP{emp.id:04d}',
             'name': emp.get_full_name() or emp.username,
             'email': emp.email,
             'phone': emp.phone or 'N/A',
+            'gender': emp.gender or 'N/A',
+            'address': emp.address or 'N/A',
             'assigned_loans': emp.total_assigned_loans,
             'approved': emp.total_approved_count,
             'rejected': emp.total_rejected_count,
             'status': 'Active' if emp.is_active else 'Inactive',
             'created_date': emp.created_at.strftime('%Y-%m-%d'),
+            'photo_url': photo_url,
         })
     
     context = {
@@ -588,7 +937,7 @@ def subadmin_my_employees(request):
         'status_filter': status_filter,
     }
     
-    return render(request, 'core/subadmin/my_employees.html', context)
+    return render(request, 'subadmin/subadmin_my_employee.html', context)
 
 
 @login_required(login_url='login')
@@ -629,7 +978,121 @@ def subadmin_employee_detail(request, employee_id):
         'loans': loans[:10],  # Latest 10
     }
     
-    return render(request, 'core/subadmin/employee_detail.html', context)
+    return render(request, 'subadmin/subadmin_my_employee.html', context)
+
+
+@login_required(login_url='login')
+@subadmin_required
+@require_GET
+def subadmin_get_employee(request, employee_id):
+    try:
+        user = get_object_or_404(User, id=employee_id, role='employee')
+        profile = getattr(user, 'employee_profile', None)
+
+        return JsonResponse({
+            'success': True,
+            'employee': {
+                'id': user.id,
+                'employee_id': user.employee_id or f'EMP{user.id:04d}',
+                'name': user.get_full_name() or user.username,
+                'email': user.email or '',
+                'phone': user.phone or '',
+                'gender': user.gender or 'Other',
+                'address': user.address or '',
+                'status': 'active' if user.is_active else 'inactive',
+                'photo_url': user.profile_photo.url if user.profile_photo else '',
+                'role': profile.employee_role if profile else 'loan_processor',
+            }
+        })
+    except Exception as e:
+        logger.error(f"Error fetching employee: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+
+@login_required(login_url='login')
+@subadmin_required
+@require_POST
+def subadmin_update_employee(request, employee_id):
+    try:
+        user = get_object_or_404(User, id=employee_id, role='employee')
+        data = _parse_request_data(request)
+        profile_photo = request.FILES.get('profile_photo')
+
+        name = data.get('name', '').strip()
+        employee_id_val = data.get('employee_id', '').strip()
+        email = data.get('email', '').strip()
+        phone = data.get('phone', '').strip()
+        gender = data.get('gender', '').strip()
+        address = data.get('address', '').strip()
+        password = data.get('password', '').strip()
+        status_val = data.get('status', '').strip()
+
+        if email:
+            if User.objects.filter(email=email).exclude(id=user.id).exists():
+                return JsonResponse({'success': False, 'error': 'Email already exists'}, status=400)
+
+        if employee_id_val:
+            if User.objects.filter(employee_id=employee_id_val).exclude(id=user.id).exists():
+                return JsonResponse({'success': False, 'error': 'Employee ID already exists'}, status=400)
+
+        if phone:
+            if User.objects.filter(phone=phone).exclude(id=user.id).exists():
+                return JsonResponse({'success': False, 'error': 'Phone number already exists'}, status=400)
+
+        gender_value = gender if gender in ['Male', 'Female', 'Other'] else None
+
+        with transaction.atomic():
+            if name:
+                parts = name.split(' ', 1)
+                user.first_name = parts[0]
+                user.last_name = parts[1] if len(parts) > 1 else ''
+
+            if employee_id_val:
+                user.employee_id = employee_id_val
+
+            if email:
+                user.email = email
+
+            if phone:
+                user.phone = phone
+
+            if address is not None:
+                user.address = address
+
+            if gender_value:
+                user.gender = gender_value
+
+            if status_val in ['active', 'inactive']:
+                user.is_active = status_val == 'active'
+
+            if password:
+                user.set_password(password)
+
+            if profile_photo:
+                user.profile_photo = profile_photo
+
+            user.save()
+
+            EmployeeProfile.objects.get_or_create(user=user)
+
+        return JsonResponse({'success': True, 'message': 'Employee updated successfully'})
+    except Exception as e:
+        logger.error(f"Error updating employee: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required(login_url='login')
+@subadmin_required
+@require_POST
+def subadmin_delete_employee(request, employee_id):
+    try:
+        user = get_object_or_404(User, id=employee_id, role='employee')
+        user.is_active = False
+        user.save()
+        return JsonResponse({'success': True, 'message': 'Employee deleted successfully'})
+    except Exception as e:
+        logger.error(f"Error deleting employee: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
 # ============ REPORTS ============
@@ -729,7 +1192,7 @@ def subadmin_reports(request):
         'monthly_trend': monthly_trend,
     }
     
-    return render(request, 'core/subadmin/reports.html', context)
+    return render(request, 'subadmin/subadmin_reports.html', context)
 
 
 # ============ COMPLAINTS ============
@@ -798,7 +1261,7 @@ def subadmin_complaints(request):
         'status_filter': status_filter,
     }
     
-    return render(request, 'core/subadmin/complaints.html', context)
+    return render(request, 'subadmin/subadmin_complaints.html', context)
 
 
 # ============ SETTINGS ============
@@ -842,7 +1305,7 @@ def subadmin_settings(request):
         'user': user,
     }
     
-    return render(request, 'core/subadmin/settings.html', context)
+    return render(request, 'subadmin/subadmin_settings.html', context)
 
 
 # ============ ADD NEW LOAN ============
@@ -960,10 +1423,10 @@ def subadmin_add_loan(request):
             logger.error(f"Error creating loan: {str(e)}")
             from django.contrib import messages
             messages.error(request, f'Error creating loan: {str(e)}')
-            return render(request, 'core/subadmin/add_loan.html')
+            return render(request, 'subadmin/subadmin_entries.html')
     
     context = {
         'page_title': 'Add New Loan Application',
     }
-    return render(request, 'core/subadmin/add_loan.html', context)
+    return render(request, 'subadmin/subadmin_entries.html', context)
 

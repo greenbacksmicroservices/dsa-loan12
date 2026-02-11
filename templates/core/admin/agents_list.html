@@ -5,429 +5,976 @@
 
 {% block content %}
 <style>
+    .agents-container {
+        background: #f8f9fa;
+        min-height: calc(100vh - 100px);
+        padding: 30px 0;
+    }
+    
     .agents-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
         margin-bottom: 30px;
-        padding-bottom: 20px;
-        border-bottom: 2px solid #e5e7eb;
+        padding: 20px 0;
     }
-
+    
     .agents-title {
         font-size: 28px;
         font-weight: 700;
         color: #1f2937;
     }
-
+    
     .agents-count {
-        font-size: 18px;
+        font-size: 14px;
         color: #6b7280;
         font-weight: 600;
+        margin-left: 15px;
     }
-
-    .btn-add-agent {
-        background: linear-gradient(135deg, #1abc9c 0%, #16a085 100%);
-        color: white;
-        padding: 12px 24px;
-        border: none;
-        border-radius: 8px;
-        font-weight: 600;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        transition: all 0.3s;
-    }
-
-    .btn-add-agent:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 16px rgba(26, 188, 156, 0.3);
-    }
-
-    .agents-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-        gap: 25px;
-        margin-bottom: 40px;
-    }
-
-    .agent-card {
+    
+    .search-bar {
         background: white;
         border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        margin-bottom: 30px;
+    }
+    
+    .search-bar input {
+        border-radius: 8px;
+        border: 1px solid #e0e0e0;
+        padding: 12px 15px;
+        font-size: 14px;
+        width: 100%;
+    }
+    
+    .agents-table-container {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         padding: 25px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        overflow-x: auto;
+    }
+    
+    .agents-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
         border: 1px solid #e5e7eb;
-        transition: all 0.3s ease;
-        display: flex;
-        flex-direction: column;
     }
-
-    .agent-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-        border-color: #1abc9c;
+    
+    .agents-table thead {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        color: white;
     }
-
-    .agent-avatar {
-        width: 70px;
-        height: 70px;
-        border-radius: 50%;
+    
+    .agents-table th {
+        padding: 16px 12px;
+        text-align: left;
+        font-weight: 600;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        white-space: nowrap;
+    }
+    
+    .agents-table td {
+        padding: 14px 12px;
+        border: 1px solid #e5e7eb;
+        vertical-align: middle;
+    }
+    
+    .agents-table tbody tr:hover {
+        background: #f9fafb;
+        transition: all 0.2s ease;
+    }
+    
+    .agent-photo {
+        width: 45px;
+        height: 45px;
+        border-radius: 8px;
         background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
         display: flex;
         align-items: center;
         justify-content: center;
         color: white;
-        font-size: 28px;
-        margin-bottom: 15px;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-    }
-
-    .agent-name {
-        font-size: 18px;
         font-weight: 700;
-        color: #1f2937;
-        margin-bottom: 5px;
+        font-size: 16px;
+        border: 2px solid #e5e7eb;
     }
-
-    .agent-username {
-        font-size: 13px;
-        color: #9ca3af;
-        margin-bottom: 15px;
+    
+    .agent-photo img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 6px;
     }
-
-    .agent-info {
+    
+    .agent-cell {
         display: flex;
-        flex-direction: column;
-        gap: 10px;
-        flex-grow: 1;
-        margin-bottom: 15px;
-    }
-
-    .agent-info-row {
-        display: flex;
-        justify-content: space-between;
-        padding: 8px 0;
-        border-bottom: 1px solid #f3f4f6;
-        font-size: 13px;
-    }
-
-    .agent-info-label {
-        color: #6b7280;
-        font-weight: 500;
-    }
-
-    .agent-info-value {
-        color: #1f2937;
+        align-items: center;
+        gap: 12px;
         font-weight: 600;
+        color: #1f2937;
     }
-
-    .agent-status {
+    
+    .agent-status-badge {
         display: inline-block;
         padding: 6px 12px;
         border-radius: 20px;
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 600;
-        margin-bottom: 15px;
     }
-
+    
     .status-active {
-        background: #d1fae5;
-        color: #047857;
+        background: #dcfce7;
+        color: #15803d;
     }
-
-    .status-inactive {
+    
+    .status-blocked {
         background: #fee2e2;
-        color: #dc2626;
+        color: #991b1b;
+    }
+    
+    .count-badge {
+        background: #fef3c7;
+        color: #92400e;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 12px;
+    }
+    
+    .date-text {
+        color: #666;
+        font-size: 13px;
+    }
+    
+    .no-agents {
+        text-align: center;
+        padding: 60px 20px;
+        color: #9ca3af;
+    }
+    
+    .no-agents i {
+        font-size: 48px;
+        color: #d1d5db;
+        margin-bottom: 15px;
+        display: block;
+    }
+    
+    @media (max-width: 1024px) {
+        .agents-table { font-size: 12px; }
+        .agents-table th { padding: 12px 8px; }
+        .agents-table td { padding: 10px 8px; }
     }
 
-    .agent-actions {
+    .action-buttons {
         display: flex;
-        gap: 10px;
-        padding-top: 15px;
-        border-top: 1px solid #f3f4f6;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+
+    .btn-action {
+        padding: 6px 12px;
+        font-size: 11px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.2s;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        white-space: nowrap;
+    }
+
+    .btn-action i {
+        font-size: 11px;
     }
 
     .btn-view {
-        flex: 1;
-        background: #1abc9c;
+        background: #3b82f6;
         color: white;
-        border: none;
-        padding: 10px 15px;
-        border-radius: 6px;
-        cursor: pointer;
-        font-weight: 600;
-        font-size: 12px;
-        transition: all 0.2s;
-        text-decoration: none;
-        text-align: center;
     }
 
     .btn-view:hover {
-        background: #16a085;
-        transform: scale(1.02);
+        background: #2563eb;
     }
 
     .btn-edit {
-        flex: 1;
-        background: #f3f4f6;
-        color: #374151;
-        border: 1px solid #d1d5db;
-        padding: 10px 15px;
-        border-radius: 6px;
-        cursor: pointer;
-        font-weight: 600;
-        font-size: 12px;
-        transition: all 0.2s;
-        text-decoration: none;
-        text-align: center;
+        background: #0891b2;
+        color: white;
     }
 
     .btn-edit:hover {
+        background: #0e7490;
+    }
+
+    .btn-delete {
+        background: #ef4444;
+        color: white;
+    }
+
+    .btn-delete:hover {
+        background: #dc2626;
+    }
+
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.6);
+        z-index: 2000;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    }
+
+    .modal-card {
+        background: white;
+        border-radius: 12px;
+        width: 100%;
+        max-width: 720px;
+        box-shadow: 0 20px 45px rgba(0, 0, 0, 0.2);
+        overflow: hidden;
+    }
+
+    .modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 20px 24px;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .modal-title {
+        margin: 0;
+        font-size: 20px;
+        font-weight: 700;
+        color: #1f2937;
+    }
+
+    .modal-body {
+        padding: 24px;
+    }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+    }
+
+    .form-grid.full {
+        grid-template-columns: 1fr;
+    }
+
+    .form-group label {
+        font-size: 13px;
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 6px;
+        display: block;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        font-size: 14px;
+    }
+
+    .form-group textarea {
+        resize: vertical;
+        min-height: 90px;
+    }
+
+    .modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        padding: 18px 24px;
+        border-top: 1px solid #e5e7eb;
+        background: #f9fafb;
+    }
+
+    .btn-secondary {
         background: #e5e7eb;
+        color: #1f2937;
+        border: none;
+        border-radius: 6px;
+        padding: 10px 18px;
+        font-weight: 600;
+        cursor: pointer;
     }
 
-    .empty-state {
-        text-align: center;
-        padding: 60px 20px;
-        color: #6b7280;
+    .btn-primary-solid {
+        background: #f59e0b;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        padding: 10px 18px;
+        font-weight: 600;
+        cursor: pointer;
     }
 
-    .empty-state-icon {
-        font-size: 48px;
-        margin-bottom: 15px;
+    .photo-preview {
+        margin-top: 10px;
+        display: none;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .photo-preview img {
+        width: 48px;
+        height: 48px;
+        border-radius: 8px;
+        object-fit: cover;
+        border: 1px solid #e5e7eb;
+    }
+
+    @media (max-width: 640px) {
+        .form-grid {
+            grid-template-columns: 1fr;
+        }
     }
 </style>
 
-<div style="padding: 30px;">
-    <div class="agents-header">
-        <div>
-            <h1 class="agents-title">🤝 All Agents</h1>
-            <p class="agents-count">Total: {{ agents|length }} Agent{{ agents|length|pluralize }}</p>
-        </div>
-        <button onclick="openAgentModal()" class="btn-add-agent">
-            <i class="fas fa-plus-circle"></i> Add New Agent
-        </button>
-    </div>
-
-    {% if agents %}
-    <div class="agents-grid">
-        {% for agent in agents %}
-        <div class="agent-card">
-            <div class="agent-avatar">
-                {{ agent.name|first|upper }}
+<div class="agents-container">
+    <div class="container-fluid">
+        <!-- Header -->
+        <div class="agents-header">
+            <div>
+                <h1 class="agents-title">All Agents</h1>
+                <span class="agents-count">Total: {{ agents|length }} Agents</span>
             </div>
-            
-            <div class="agent-name">{{ agent.name|default:"Agent" }}</div>
-            {% if agent.user %}
-            <div class="agent-username">@{{ agent.user.username }}</div>
+            <button type="button" class="btn btn-primary" onclick="openAddAgentModal()" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 600; border: none;">
+                <i class="fas fa-plus"></i> Add Agent
+            </button>
+        </div>
+        
+        <!-- Search Bar -->
+        <div class="search-bar">
+            <form method="GET" class="row g-3">
+                <div class="col-md-12">
+                    <input type="text" name="q" placeholder="Search by name, email, or phone..." 
+                           value="{{ search_query }}" class="form-control w-100" id="searchInput" onkeyup="filterTable()">
+                </div>
+            </form>
+        </div>
+        
+        <!-- Agents Table -->
+        <div class="agents-table-container">
+            {% if agents %}
+            <table class="agents-table">
+                <thead>
+                    <tr>
+                        <th style="width: 8%;">Photo</th>
+                        <th style="width: 16%;">Agent Name</th>
+                        <th style="width: 18%;">Email</th>
+                        <th style="width: 12%;">Phone</th>
+                        <th style="width: 10%;">City</th>
+                        <th style="width: 10%;">Status</th>
+                        <th style="width: 10%;">Total Loans</th>
+                        <th style="width: 10%;">Created By</th>
+                        <th style="width: 12%;">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for agent in agents %}
+                    <tr data-agent-id="{{ agent.id }}" data-search="{{ agent.name|lower }},{{ agent.email|lower }},{{ agent.phone|lower }}">
+                        <td>
+                            <div class="agent-photo">
+                                {% if agent.profile_photo %}
+                                    <img src="{{ agent.profile_photo.url }}" alt="{{ agent.name }}">
+                                {% else %}
+                                    {{ agent.name|first|upper }}
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <div class="agent-cell">
+                                <span>{{ agent.name }}</span>
+                            </div>
+                        </td>
+                        <td><span style="color: #1f2937;">{{ agent.email|default:"-" }}</span></td>
+                        <td><span style="color: #1f2937;">{{ agent.phone|default:"-" }}</span></td>
+                        <td><span style="color: #1f2937;">{{ agent.city|default:"-" }}</span></td>
+                        <td>
+                            <span class="agent-status-badge {% if agent.status == 'active' %}status-active{% else %}status-blocked{% endif %}">
+                                {% if agent.status == 'active' %}&#10003; Active{% else %}&#10007; Blocked{% endif %}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="count-badge">{{ agent.total_leads|default:"0" }}</span>
+                        </td>
+                        <td>
+                            {% if agent.created_by %}
+                                <span class="date-text">{{ agent.created_by.get_full_name|default:agent.created_by.username }}</span>
+                            {% else %}
+                                <span class="date-text">Admin</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="action-buttons">
+                                <button onclick="viewAgent('{{ agent.id }}', '{{ agent.name }}', '{{ agent.email }}', '{{ agent.phone }}')" class="btn-action btn-view" title="View Agent">
+                                    <i class="fas fa-eye"></i> View
+                                </button>
+                                <button onclick="editAgent('{{ agent.id }}')" class="btn-action btn-edit" title="Edit Agent">
+                                    <i class="fas fa-edit"></i> Edit
+                                </button>
+                                <button onclick="deleteAgent('{{ agent.id }}', '{{ agent.name }}')" class="btn-action btn-delete" title="Delete Agent">
+                                    <i class="fas fa-trash"></i> Delete
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="no-agents">
+                <i class="fas fa-inbox"></i>
+                <p>No agents found</p>
+            </div>
             {% endif %}
-            
-            <div class="agent-status {% if agent.status == 'active' %}status-active{% else %}status-inactive{% endif %}">
-                {% if agent.status == 'active' %}✓ Active{% else %}✗ Inactive{% endif %}
-            </div>
-
-            <div class="agent-info">
-                <div class="agent-info-row">
-                    <span class="agent-info-label">📧 Email</span>
-                    <span class="agent-info-value">{{ agent.email|truncatechars:20|default:"N/A" }}</span>
-                </div>
-                <div class="agent-info-row">
-                    <span class="agent-info-label">📱 Phone</span>
-                    <span class="agent-info-value">{{ agent.phone|default:"N/A" }}</span>
-                </div>
-                <div class="agent-info-row">
-                    <span class="agent-info-label">🏙️ City</span>
-                    <span class="agent-info-value">{{ agent.city|default:"N/A" }}</span>
-                </div>
-                <div class="agent-info-row">
-                    <span class="agent-info-label">📊 Leads</span>
-                    <span class="agent-info-value">{{ agent.total_leads|default:0 }}</span>
-                </div>
-                <div class="agent-info-row">
-                    <span class="agent-info-label">✅ Approved</span>
-                    <span class="agent-info-value">{{ agent.approved_loans_count|default:0 }}</span>
-                </div>
-            </div>
-
-            <div class="agent-actions">
-                <a href="#" class="btn-view">👁️ View</a>
-                <a href="#" class="btn-edit">✏️ Edit</a>
-            </div>
         </div>
-        {% endfor %}
     </div>
-    {% else %}
-    <div class="empty-state">
-        <div class="empty-state-icon">📭</div>
-        <h3 style="color: #1f2937; margin-bottom: 10px;">No Agents Found</h3>
-        <p>No agents have been added yet. Start by adding your first agent.</p>
-    </div>
-    {% endif %}
 </div>
 
-<!-- ADD NEW AGENT MODAL -->
-<div id="agentModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; overflow-y: auto;">
-    <div style="background: white; max-width: 900px; width: 95%; margin: 20px auto; border-radius: 8px; padding: 30px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <h2 style="font-size: 24px; font-weight: bold; color: #1f2937;">Add New Agent</h2>
-            <button onclick="closeAgentModal()" style="background: none; border: none; font-size: 28px; cursor: pointer; color: #6b7280;">&times;</button>
+<!-- Add Agent Modal -->
+<div id="addAgentModal" class="modal-overlay">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h2 class="modal-title">Add New Agent</h2>
+            <button type="button" onclick="closeAddAgentModal()" style="background: none; border: none; font-size: 26px; cursor: pointer; color: #6b7280;">&times;</button>
         </div>
-
-        <div id="agentError" style="display: none; background: #fee; border: 1px solid #fcc; color: #c33; padding: 12px; border-radius: 6px; margin-bottom: 20px;"></div>
-
-        <form id="agentForm" onsubmit="return handleAgentSubmit(event)">
-            {% csrf_token %}
-            
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 20px;">
-                <div>
-                    <label style="font-weight: 600; color: #1f2937; margin-bottom: 8px; display: block;">Agent Name <span style="color: #dc2626;">*</span></label>
-                    <input type="text" name="name" placeholder="Full name" required style="border: 1px solid #d1d5db; border-radius: 6px; padding: 10px; width: 100%;">
+        <form id="addAgentForm" enctype="multipart/form-data">
+            <div class="modal-body">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Name *</label>
+                        <input type="text" name="name" id="agentName" required placeholder="Agent full name">
+                    </div>
+                    <div class="form-group">
+                        <label>Email (Gmail) *</label>
+                        <input type="email" name="email" id="agentEmail" required placeholder="example@gmail.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Phone Number *</label>
+                        <input type="tel" name="phone" id="agentPhone" required placeholder="10-15 digits">
+                    </div>
+                    <div class="form-group">
+                        <label>Password *</label>
+                        <input type="password" name="password" id="agentPassword" required placeholder="Create login password">
+                    </div>
+                    <div class="form-group">
+                        <label>Gender</label>
+                        <select name="gender" id="agentGender">
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                            <option value="Other" selected>Other</option>
+                        </select>
+                    </div>
                 </div>
-                <div>
-                    <label style="font-weight: 600; color: #1f2937; margin-bottom: 8px; display: block;">Email <span style="color: #dc2626;">*</span></label>
-                    <input type="email" name="email" placeholder="Email address" required style="border: 1px solid #d1d5db; border-radius: 6px; padding: 10px; width: 100%;">
+                <div class="form-grid full" style="margin-top: 16px;">
+                    <div class="form-group">
+                        <label>Address</label>
+                        <textarea name="address" id="agentAddress" placeholder="Street, City, State"></textarea>
+                    </div>
                 </div>
-                <div>
-                    <label style="font-weight: 600; color: #1f2937; margin-bottom: 8px; display: block;">Phone <span style="color: #dc2626;">*</span></label>
-                    <input type="tel" name="phone" placeholder="Phone number" required style="border: 1px solid #d1d5db; border-radius: 6px; padding: 10px; width: 100%;">
-                </div>
-            </div>
-
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 20px;">
-                <div>
-                    <label style="font-weight: 600; color: #1f2937; margin-bottom: 8px; display: block;">Agent ID <span style="color: #dc2626;">*</span></label>
-                    <input type="text" name="agent_id" placeholder="Unique agent ID" required style="border: 1px solid #d1d5db; border-radius: 6px; padding: 10px; width: 100%;">
-                </div>
-                <div>
-                    <label style="font-weight: 600; color: #1f2937; margin-bottom: 8px; display: block;">City <span style="color: #dc2626;">*</span></label>
-                    <input type="text" name="city" placeholder="City name" required style="border: 1px solid #d1d5db; border-radius: 6px; padding: 10px; width: 100%;">
-                </div>
-                <div>
-                    <label style="font-weight: 600; color: #1f2937; margin-bottom: 8px; display: block;">Username <span style="color: #dc2626;">*</span></label>
-                    <input type="text" name="username" placeholder="Username" required style="border: 1px solid #d1d5db; border-radius: 6px; padding: 10px; width: 100%;">
-                </div>
-            </div>
-
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 20px;">
-                <div>
-                    <label style="font-weight: 600; color: #1f2937; margin-bottom: 8px; display: block;">Password <span style="color: #dc2626;">*</span></label>
-                    <input type="password" name="password" placeholder="Password" required style="border: 1px solid #d1d5db; border-radius: 6px; padding: 10px; width: 100%;">
-                </div>
-                <div>
-                    <label style="font-weight: 600; color: #1f2937; margin-bottom: 8px; display: block;">Confirm Password <span style="color: #dc2626;">*</span></label>
-                    <input type="password" name="password_confirm" placeholder="Confirm password" required style="border: 1px solid #d1d5db; border-radius: 6px; padding: 10px; width: 100%;">
-                </div>
-                <div>
-                    <label style="font-weight: 600; color: #1f2937; margin-bottom: 8px; display: block;">Status <span style="color: #dc2626;">*</span></label>
-                    <select name="status" required style="border: 1px solid #d1d5db; border-radius: 6px; padding: 10px; width: 100%;">
-                        <option value="active">Active</option>
-                        <option value="inactive">Inactive</option>
-                    </select>
+                <div class="form-grid full" style="margin-top: 16px;">
+                    <div class="form-group">
+                        <label>Photo</label>
+                        <input type="file" name="profile_photo" id="agentPhoto" accept="image/*">
+                        <div class="photo-preview" id="agentPhotoPreview">
+                            <img id="agentPhotoImg" alt="Preview">
+                            <span style="font-size: 12px; color: #6b7280;">Preview</span>
+                        </div>
+                    </div>
                 </div>
             </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" onclick="closeAddAgentModal()">Cancel</button>
+                <button type="submit" class="btn-primary-solid" id="saveAgentBtn">Save Agent</button>
+            </div>
+        </form>
+    </div>
+</div>
 
-            <div style="display: flex; gap: 10px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-                <button type="submit" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 10px 20px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;">Add Agent</button>
-                <button type="button" onclick="closeAgentModal()" style="background: #f3f4f6; color: #374151; padding: 10px 20px; border: 1px solid #d1d5db; border-radius: 6px; font-weight: 600; cursor: pointer;">Cancel</button>
+<!-- Edit Agent Modal -->
+<div id="editAgentModal" class="modal-overlay">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h2 class="modal-title">Edit Agent</h2>
+            <button type="button" onclick="closeEditAgentModal()" style="background: none; border: none; font-size: 26px; cursor: pointer; color: #6b7280;">&times;</button>
+        </div>
+        <form id="editAgentForm">
+            <div class="modal-body">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Name *</label>
+                        <input type="text" name="name" id="editAgentName" required placeholder="Agent full name">
+                    </div>
+                    <div class="form-group">
+                        <label>Email *</label>
+                        <input type="email" name="email" id="editAgentEmail" required placeholder="example@gmail.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Phone *</label>
+                        <input type="tel" name="phone" id="editAgentPhone" required placeholder="10-15 digits">
+                    </div>
+                    <div class="form-group">
+                        <label>Gender</label>
+                        <select name="gender" id="editAgentGender">
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-grid full" style="margin-top: 16px;">
+                    <div class="form-group">
+                        <label>Address</label>
+                        <textarea name="address" id="editAgentAddress" placeholder="Address"></textarea>
+                    </div>
+                </div>
+                <div class="form-grid" style="margin-top: 16px;">
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select name="status" id="editAgentStatus">
+                            <option value="active">Active</option>
+                            <option value="blocked">Blocked</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" onclick="closeEditAgentModal()">Cancel</button>
+                <button type="submit" class="btn-primary-solid" id="updateAgentBtn">Update Agent</button>
             </div>
         </form>
     </div>
 </div>
 
 <script>
-function openAgentModal() {
-    document.getElementById('agentModal').style.display = 'flex';
-    document.getElementById('agentModal').style.flexDirection = 'column';
-    document.getElementById('agentModal').style.justifyContent = 'flex-start';
-}
-
-function closeAgentModal() {
-    document.getElementById('agentModal').style.display = 'none';
-    document.getElementById('agentForm').reset();
-    const errorDiv = document.getElementById('agentError');
-    if (errorDiv) errorDiv.style.display = 'none';
-}
-
-function handleAgentSubmit(e) {
-    e.preventDefault();
-    const form = document.getElementById('agentForm');
-    const formData = new FormData(form);
-    const errorDiv = document.getElementById('agentError');
+function filterTable() {
+    const input = document.getElementById('searchInput').value.toLowerCase();
+    const rows = document.querySelectorAll('.agents-table tbody tr');
     
-    if (formData.get('password') !== formData.get('password_confirm')) {
-        if (errorDiv) {
-            errorDiv.innerHTML = '<strong>Error:</strong> Passwords do not match!';
-            errorDiv.style.display = 'block';
+    rows.forEach(row => {
+        const searchText = row.getAttribute('data-search') || '';
+        if (searchText.includes(input)) {
+            row.style.display = '';
         } else {
-            alert('Passwords do not match!');
-        }
-        return false;
-    }
-    
-    const data = {
-        name: formData.get('name'),
-        email: formData.get('email'),
-        phone: formData.get('phone'),
-        agent_id: formData.get('agent_id'),
-        city: formData.get('city'),
-        username: formData.get('username'),
-        password: formData.get('password'),
-        status: formData.get('status')
-    };
-    
-    fetch('/api/admin/agents/create/', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-        },
-        body: JSON.stringify(data)
-    })
-    .then(response => response.json())
-    .then(result => {
-        if (result.success) {
-            alert('Agent created successfully!');
-            closeAgentModal();
-            location.reload();
-        } else {
-            if (errorDiv) {
-                errorDiv.innerHTML = '<strong>Error:</strong> ' + (result.error || 'Failed to create agent');
-                errorDiv.style.display = 'block';
-            } else {
-                alert('Error: ' + (result.error || 'Failed to create agent'));
-            }
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        if (errorDiv) {
-            errorDiv.innerHTML = '<strong>Error:</strong> ' + error.message;
-            errorDiv.style.display = 'block';
-        } else {
-            alert('Error: ' + error.message);
+            row.style.display = 'none';
         }
     });
-    
-    return false;
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-    const modal = document.getElementById('agentModal');
+function openAddAgentModal() {
+    const modal = document.getElementById('addAgentModal');
     if (modal) {
-        modal.addEventListener('click', function(e) {
-            if (e.target === modal) {
-                closeAgentModal();
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    }
+}
+
+function closeAddAgentModal() {
+    const modal = document.getElementById('addAgentModal');
+    const form = document.getElementById('addAgentForm');
+    if (modal) {
+        modal.style.display = 'none';
+        document.body.style.overflow = 'auto';
+    }
+    if (form) {
+        form.reset();
+    }
+    const preview = document.getElementById('agentPhotoPreview');
+    if (preview) preview.style.display = 'none';
+}
+
+function escapeHtml(value) {
+    return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function escapeJsString(value) {
+    return String(value || '')
+        .replace(/\\/g, '\\\\')
+        .replace(/'/g, "\\'")
+        .replace(/\n/g, '\\n');
+}
+
+function ensureAgentsTable() {
+    const container = document.querySelector('.agents-table-container');
+    if (!container) return null;
+    let table = container.querySelector('.agents-table');
+    if (table) return table;
+
+    const empty = container.querySelector('.no-agents');
+    if (empty) empty.remove();
+
+    container.innerHTML = `
+        <table class="agents-table">
+            <thead>
+                <tr>
+                    <th style="width: 8%;">Photo</th>
+                    <th style="width: 16%;">Agent Name</th>
+                    <th style="width: 18%;">Email</th>
+                    <th style="width: 12%;">Phone</th>
+                    <th style="width: 10%;">City</th>
+                    <th style="width: 10%;">Status</th>
+                    <th style="width: 10%;">Total Loans</th>
+                    <th style="width: 10%;">Created By</th>
+                    <th style="width: 12%;">Action</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    `;
+    return container.querySelector('.agents-table');
+}
+
+function insertAgentRow(agent) {
+    const table = ensureAgentsTable();
+    if (!table) return;
+    const tbody = table.querySelector('tbody');
+    if (!tbody) return;
+
+    const rawName = agent.name || '';
+    const rawEmail = agent.email || '';
+    const rawPhone = agent.phone || '';
+    const name = escapeHtml(rawName);
+    const email = escapeHtml(rawEmail || '-');
+    const phone = escapeHtml(rawPhone || '-');
+    const city = escapeHtml(agent.city || 'N/A');
+    const createdBy = escapeHtml(agent.created_by || 'Admin');
+    const status = agent.status === 'active' ? 'active' : 'blocked';
+    const statusLabel = status === 'active' ? '\u2713 Active' : '\u2717 Blocked';
+    const photoUrl = agent.photo_url || '';
+    const initials = name ? name.charAt(0).toUpperCase() : '?';
+
+    const rowHtml = `
+        <tr data-agent-id="${agent.id}" data-search="${rawName.toLowerCase()},${rawEmail.toLowerCase()},${rawPhone}">
+            <td>
+                <div class="agent-photo">
+                    ${photoUrl ? `<img src="${photoUrl}" alt="${name}">` : initials}
+                </div>
+            </td>
+            <td>
+                <div class="agent-cell">
+                    <span>${name}</span>
+                </div>
+            </td>
+            <td><span style="color: #1f2937;">${email}</span></td>
+            <td><span style="color: #1f2937;">${phone}</span></td>
+            <td><span style="color: #1f2937;">${city}</span></td>
+            <td>
+                <span class="agent-status-badge ${status === 'active' ? 'status-active' : 'status-blocked'}">
+                    ${statusLabel}
+                </span>
+            </td>
+            <td><span class="count-badge">${agent.total_loans || 0}</span></td>
+            <td><span class="date-text">${createdBy}</span></td>
+            <td>
+                <div class="action-buttons">
+                    <button onclick="viewAgent('${escapeJsString(agent.id)}', '${escapeJsString(agent.name)}', '${escapeJsString(agent.email)}', '${escapeJsString(agent.phone)}')" class="btn-action btn-view" title="View Agent">
+                        <i class="fas fa-eye"></i> View
+                    </button>
+                    <button onclick="editAgent('${escapeJsString(agent.id)}')" class="btn-action btn-edit" title="Edit Agent">
+                        <i class="fas fa-edit"></i> Edit
+                    </button>
+                    <button onclick="deleteAgent('${escapeJsString(agent.id)}', '${escapeJsString(agent.name)}')" class="btn-action btn-delete" title="Delete Agent">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
+                </div>
+            </td>
+        </tr>
+    `;
+    tbody.insertAdjacentHTML('afterbegin', rowHtml);
+
+    const countEl = document.querySelector('.agents-count');
+    if (countEl) {
+        const match = countEl.textContent.match(/\d+/);
+        if (match) {
+            const next = parseInt(match[0], 10) + 1;
+            countEl.textContent = `Total: ${next} Agents`;
+        }
+    }
+}
+
+// View Agent Modal
+function viewAgent(id, name, email, phone) {
+    const modalHtml = `
+        <div id="viewModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 2000;">
+            <div style="background: white; border-radius: 12px; padding: 30px; max-width: 500px; width: 90%; box-shadow: 0 20px 25px rgba(0,0,0,0.2);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #e5e7eb; padding-bottom: 15px;">
+                    <h2 style="margin: 0; color: #1f2937; font-size: 20px; font-weight: 700;">Agent Details</h2>
+                    <button onclick="closeViewModal()" style="background: none; border: none; font-size: 28px; cursor: pointer; color: #6b7280;">&times;</button>
+                </div>
+                <div style="margin-bottom: 20px;">
+                    <p style="color: #718096; font-size: 12px; margin: 0 0 5px 0; text-transform: uppercase; font-weight: 600;">Name</p>
+                    <p style="color: #1f2937; font-size: 16px; font-weight: 600; margin: 0 0 20px 0;">${name}</p>
+                    
+                    <p style="color: #718096; font-size: 12px; margin: 0 0 5px 0; text-transform: uppercase; font-weight: 600;">Email</p>
+                    <p style="color: #1f2937; font-size: 14px; margin: 0 0 20px 0;">${email || 'N/A'}</p>
+                    
+                    <p style="color: #718096; font-size: 12px; margin: 0 0 5px 0; text-transform: uppercase; font-weight: 600;">Phone</p>
+                    <p style="color: #1f2937; font-size: 14px; margin: 0 0 20px 0;">${phone || 'N/A'}</p>
+                </div>
+                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button onclick="closeViewModal()" style="padding: 10px 20px; background: #e2e8f0; color: #2d3748; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">Close</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+function closeViewModal() {
+    const modal = document.getElementById('viewModal');
+    if (modal) modal.remove();
+}
+
+// Edit Agent
+function editAgent(id, name) {
+    openEditAgentModal(id);
+}
+
+// Delete Agent
+function deleteAgent(id, name) {
+    if (confirm(`Are you sure you want to delete ${name}? This action cannot be undone.`)) {
+        fetch(`/api/admin/agents/${id}/delete/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
             }
-        });
+        })
+        .then(response => {
+            if (response.ok) {
+                const row = document.querySelector(`tr[data-agent-id="${id}"]`);
+                if (row) row.remove();
+                const countEl = document.querySelector('.agents-count');
+                if (countEl) {
+                    const match = countEl.textContent.match(/\d+/);
+                    if (match) {
+                        const next = Math.max(0, parseInt(match[0], 10) - 1);
+                        countEl.textContent = `Total: ${next} Agents`;
+                    }
+                }
+                alert(`${name} deleted successfully`);
+            } else {
+                alert('Error deleting agent');
+            }
+        })
+        .catch(error => alert('Error: ' + error));
+    }
+}
+
+let currentEditingAgentId = null;
+
+function openEditAgentModal(agentId) {
+    currentEditingAgentId = agentId;
+    const modal = document.getElementById('editAgentModal');
+    if (!modal) return;
+
+    fetch(`/api/admin/agents/${agentId}/`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (!data.success) {
+            throw new Error(data.error || 'Failed to load agent');
+        }
+        const agent = data.agent || {};
+        document.getElementById('editAgentName').value = agent.name || '';
+        document.getElementById('editAgentEmail').value = agent.email || '';
+        document.getElementById('editAgentPhone').value = agent.phone || '';
+        document.getElementById('editAgentAddress').value = agent.address || '';
+        document.getElementById('editAgentGender').value = agent.gender || 'Other';
+        document.getElementById('editAgentStatus').value = agent.status || 'active';
+
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    })
+    .catch(error => {
+        console.error('Error loading agent:', error);
+        alert(error.message || 'Error loading agent');
+    });
+}
+
+function closeEditAgentModal() {
+    const modal = document.getElementById('editAgentModal');
+    if (modal) {
+        modal.style.display = 'none';
+        document.body.style.overflow = 'auto';
+    }
+    currentEditingAgentId = null;
+}
+
+const editAgentForm = document.getElementById('editAgentForm');
+if (editAgentForm) {
+    editAgentForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        if (!currentEditingAgentId) return;
+
+        const payload = {
+            name: document.getElementById('editAgentName').value.trim(),
+            email: document.getElementById('editAgentEmail').value.trim(),
+            phone: document.getElementById('editAgentPhone').value.trim(),
+            address: document.getElementById('editAgentAddress').value.trim(),
+            gender: document.getElementById('editAgentGender').value,
+            status: document.getElementById('editAgentStatus').value
+        };
+
+        try {
+            const response = await fetch(`/api/admin/agents/${currentEditingAgentId}/update/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify(payload)
+            });
+            const data = await response.json();
+            if (!response.ok || !data.success) {
+                throw new Error(data.error || 'Failed to update agent');
+            }
+
+            const row = document.querySelector(`tr[data-agent-id="${currentEditingAgentId}"]`);
+            if (row) {
+                const cells = row.querySelectorAll('td');
+                if (cells[1]) cells[1].querySelector('span').textContent = payload.name || payload.email;
+                if (cells[2]) cells[2].querySelector('span').textContent = payload.email || '-';
+                if (cells[3]) cells[3].querySelector('span').textContent = payload.phone || '-';
+                const badge = row.querySelector('.agent-status-badge');
+                if (badge) {
+                    const active = payload.status === 'active';
+                    badge.classList.toggle('status-active', active);
+                    badge.classList.toggle('status-blocked', !active);
+                    badge.textContent = active ? '✓ Active' : '✗ Blocked';
+                }
+                row.setAttribute('data-search', `${(payload.name || '').toLowerCase()},${(payload.email || '').toLowerCase()},${(payload.phone || '').toLowerCase()}`);
+            }
+
+            closeEditAgentModal();
+            alert(data.message || 'Agent updated successfully');
+        } catch (error) {
+            console.error('Update agent error:', error);
+            alert(error.message || 'Error updating agent');
+        }
+    });
+}
+
+const addAgentForm = document.getElementById('addAgentForm');
+if (addAgentForm) {
+    addAgentForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const submitBtn = document.getElementById('saveAgentBtn');
+        if (submitBtn) submitBtn.disabled = true;
+
+        try {
+            const formData = new FormData(addAgentForm);
+
+            const name = formData.get('name')?.trim();
+            const email = formData.get('email')?.trim();
+            const phone = formData.get('phone')?.trim();
+            const password = formData.get('password')?.trim();
+
+            if (!name || !email || !phone || !password) {
+                alert('Please fill all required fields');
+                return;
+            }
+
+            if (password.length < 6) {
+                alert('Password must be at least 6 characters');
+                return;
+            }
+
+            const response = await fetch('/api/admin/agents/add/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: formData
+            });
+
+            const result = await response.json();
+            if (!response.ok || !result.success) {
+                throw new Error(result.error || 'Failed to add agent');
+            }
+
+            insertAgentRow(result.agent || result);
+            closeAddAgentModal();
+            alert(result.message || 'Agent added successfully');
+        } catch (error) {
+            console.error('Add agent error:', error);
+            alert(error.message || 'Error adding agent');
+        } finally {
+            if (submitBtn) submitBtn.disabled = false;
+        }
+    });
+}
+
+const agentPhotoInput = document.getElementById('agentPhoto');
+if (agentPhotoInput) {
+    agentPhotoInput.addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        const preview = document.getElementById('agentPhotoPreview');
+        const img = document.getElementById('agentPhotoImg');
+        if (file && preview && img) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                img.src = e.target.result;
+                preview.style.display = 'flex';
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+document.addEventListener('click', function(event) {
+    if (event.target.id === 'viewModal') {
+        closeViewModal();
+    }
+    if (event.target.id === 'editAgentModal') {
+        closeEditAgentModal();
+    }
+    if (event.target.id === 'addAgentModal') {
+        closeAddAgentModal();
     }
 });
 </script>
 
-{% endblock %}
-
-{% block extra_css %}
-<style>
-    [x-cloak] { display: none !important; }
-</style>
 {% endblock %}

@@ -3,37 +3,13 @@
 {% block title %}Agent Dashboard - DSA Loan Management System{% endblock %}
 
 {% block content %}
-<!-- Clean White Header -->
-<div class="dashboard-header" style="background: white; padding: 24px 0; margin-bottom: 32px; border-bottom: 1px solid #f0f0f0;">
-    <div class="container-fluid">
-        <div class="d-flex justify-content-between align-items-center">
-            <div>
-                <h1 style="margin: 0; font-size: 32px; font-weight: 700; color: #1a1a1a;">
-                    <i class="bi bi-speedometer2" style="margin-right: 12px;"></i>Dashboard
-                </h1>
-                <p style="margin: 8px 0 0 0; color: #666; font-size: 14px;">Real-time loan management overview</p>
-            </div>
-            <div class="profile-dropdown">
-                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                    <i class="bi bi-person-circle"></i> Profile
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end">
-                    <li><a class="dropdown-item" href="/agent/profile/">My Profile</a></li>
-                    <li><a class="dropdown-item" href="/agent/settings/">Settings</a></li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item" href="/logout/">Logout</a></li>
-                </ul>
-            </div>
-        </div>
-    </div>
-</div>
 
 <!-- Dashboard Stats Cards - Professional Fintech Design -->
 <div class="container-fluid mb-5">
     <div class="row g-4">
         <!-- Total Loans Card -->
         <div class="col-lg-2.4 col-md-6 col-sm-12">
-            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 16px; padding: 28px; color: white; box-shadow: 0 8px 32px rgba(102, 126, 234, 0.15); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative; overflow: hidden;">
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 16px; padding: 28px; color: white; box-shadow: 0 8px 32px rgba(102, 126, 234, 0.15); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative; overflow: hidden; cursor: pointer;" onclick="filterByStatus('total')" title="Click to view all loans">
                 <div style="position: absolute; top: -40%; right: -40%; width: 200px; height: 200px; background: rgba(255,255,255,0.1); border-radius: 50%; pointer-events: none;"></div>
                 <div style="position: relative; z-index: 2;">
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
@@ -49,7 +25,7 @@
 
         <!-- Processing Card (Waiting + Follow-up) -->
         <div class="col-lg-2.4 col-md-6 col-sm-12">
-            <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border-radius: 16px; padding: 28px; color: white; box-shadow: 0 8px 32px rgba(245, 87, 108, 0.15); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative; overflow: hidden;">
+            <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border-radius: 16px; padding: 28px; color: white; box-shadow: 0 8px 32px rgba(245, 87, 108, 0.15); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative; overflow: hidden; cursor: pointer;" onclick="filterByStatus('processing')" title="Click to view processing loans">
                 <div style="position: absolute; top: -40%; right: -40%; width: 200px; height: 200px; background: rgba(255,255,255,0.1); border-radius: 50%; pointer-events: none;"></div>
                 <div style="position: relative; z-index: 2;">
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
@@ -65,7 +41,7 @@
 
         <!-- Approved Card -->
         <div class="col-lg-2.4 col-md-6 col-sm-12">
-            <div style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); border-radius: 16px; padding: 28px; color: white; box-shadow: 0 8px 32px rgba(79, 172, 254, 0.15); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative; overflow: hidden;">
+            <div style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); border-radius: 16px; padding: 28px; color: white; box-shadow: 0 8px 32px rgba(79, 172, 254, 0.15); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative; overflow: hidden; cursor: pointer;" onclick="filterByStatus('approved')" title="Click to view approved loans">
                 <div style="position: absolute; top: -40%; right: -40%; width: 200px; height: 200px; background: rgba(255,255,255,0.1); border-radius: 50%; pointer-events: none;"></div>
                 <div style="position: relative; z-index: 2;">
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
@@ -81,7 +57,7 @@
 
         <!-- Rejected Card -->
         <div class="col-lg-2.4 col-md-6 col-sm-12">
-            <div style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); border-radius: 16px; padding: 28px; color: white; box-shadow: 0 8px 32px rgba(254, 225, 64, 0.15); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative; overflow: hidden;">
+            <div style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); border-radius: 16px; padding: 28px; color: white; box-shadow: 0 8px 32px rgba(254, 225, 64, 0.15); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative; overflow: hidden; cursor: pointer;" onclick="filterByStatus('rejected')" title="Click to view rejected loans">
                 <div style="position: absolute; top: -40%; right: -40%; width: 200px; height: 200px; background: rgba(255,255,255,0.1); border-radius: 50%; pointer-events: none;"></div>
                 <div style="position: relative; z-index: 2;">
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
@@ -97,7 +73,7 @@
 
         <!-- Disbursed Card -->
         <div class="col-lg-2.4 col-md-6 col-sm-12">
-            <div style="background: linear-gradient(135deg, #1dd1a1 0%, #00b894 100%); border-radius: 16px; padding: 28px; color: white; box-shadow: 0 8px 32px rgba(29, 209, 161, 0.15); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative; overflow: hidden;">
+            <div style="background: linear-gradient(135deg, #1dd1a1 0%, #00b894 100%); border-radius: 16px; padding: 28px; color: white; box-shadow: 0 8px 32px rgba(29, 209, 161, 0.15); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative; overflow: hidden; cursor: pointer;" onclick="filterByStatus('disbursed')" title="Click to view disbursed loans">
                 <div style="position: absolute; top: -40%; right: -40%; width: 200px; height: 200px; background: rgba(255,255,255,0.1); border-radius: 50%; pointer-events: none;"></div>
                 <div style="position: relative; z-index: 2;">
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
@@ -153,11 +129,11 @@
     <div class="row">
         <div class="col-12">
             <div class="card border-0 shadow-sm" style="border-radius: 16px; overflow: hidden;">
-                <div class="card-header border-0" style="background: #f8f9fa; padding: 24px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e9ecef;">
+                <div class="card-header border-0" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 24px; display: flex; justify-content: space-between; align-items: center; color: white;">
                     <h6 class="mb-0" style="font-weight: 600; font-size: 16px;">
                         <i class="bi bi-list-task" style="margin-right: 8px;"></i>My Assigned Loans
                     </h6>
-                    <button class="btn btn-sm btn-primary" id="refresh-loans" style="border-radius: 8px; font-weight: 600;">
+                    <button class="btn btn-sm btn-light" id="refresh-loans" style="border-radius: 8px; font-weight: 600; color: #667eea;">
                         <i class="bi bi-arrow-clockwise"></i> Refresh
                     </button>
                 </div>
@@ -420,22 +396,24 @@ function loadMyLoans() {
 // ============ 4. RENDER LOANS TABLE ============
 /**
  * Render loans in professional table format with status badges and actions
+ * INCLUDES: Photos/Avatars, Professional styling, Real-time status
  */
 function renderLoansTable(loans) {
     let html = '<div class="loans-table">';
     
     if (!loans || loans.length === 0) {
-        html += '<div class="text-center py-5"><p class="text-muted">No loans found.</p></div>';
+        html += '<div class="text-center py-5"><p class="text-muted" style="font-size: 16px;"><i class="bi bi-inbox"></i> No loans found.</p></div>';
     } else {
         html += `
-            <table class="table table-hover mb-0">
+            <div style="overflow-x: auto;">
+            <table class="table table-hover mb-0" style="border-collapse: collapse;">
                 <thead>
-                    <tr>
-                        <th style="width: 25%;">Applicant</th>
-                        <th style="width: 15%;">Loan Amount</th>
-                        <th style="width: 15%;">Status</th>
-                        <th style="width: 15%;">Assigned</th>
-                        <th style="width: 20%;">Action</th>
+                    <tr style="background: #f8f9fa; border-bottom: 2px solid #e9ecef;">
+                        <th style="width: 30%; padding: 16px 12px; font-weight: 600; color: #495057; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;"><i class="bi bi-person-circle"></i> Applicant</th>
+                        <th style="width: 15%; padding: 16px 12px; font-weight: 600; color: #495057; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;"><i class="bi bi-cash-coin"></i> Loan Amount</th>
+                        <th style="width: 15%; padding: 16px 12px; font-weight: 600; color: #495057; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;"><i class="bi bi-tag"></i> Status</th>
+                        <th style="width: 15%; padding: 16px 12px; font-weight: 600; color: #495057; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;"><i class="bi bi-calendar"></i> Date</th>
+                        <th style="width: 20%; padding: 16px 12px; font-weight: 600; color: #495057; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;"><i class="bi bi-gear"></i> Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -451,18 +429,38 @@ function renderLoansTable(loans) {
             const createdDate = loan.created_at 
                 ? new Date(loan.created_at).toLocaleDateString('en-IN')
                 : 'N/A';
+            
+            // Generate avatar from initials or use photo if available
+            const applicantName = loan.applicant_name || loan.full_name || 'N/A';
+            const initials = applicantName
+                .split(' ')
+                .map(n => n[0])
+                .join('')
+                .toUpperCase()
+                .slice(0, 2);
+            
+            const avatarColor = getAvatarColor(initials);
+            const photoUrl = loan.photo || loan.applicant_photo || null;
 
             html += `
-                <tr>
-                    <td>
-                        <strong>${loan.applicant_name || loan.full_name || 'N/A'}</strong><br>
-                        <small class="text-muted">${loan.applicant_phone || loan.mobile_number || 'N/A'}</small>
+                <tr style="border-bottom: 1px solid #e9ecef; transition: all 0.2s ease;">
+                    <td style="padding: 14px 12px; vertical-align: middle;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            ${photoUrl ? 
+                                `<img src="${photoUrl}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid #e9ecef;">` :
+                                `<div style="width: 40px; height: 40px; border-radius: 50%; background: ${avatarColor}; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 14px;">${initials}</div>`
+                            }
+                            <div>
+                                <strong style="display: block; color: #1a1a1a;">${applicantName}</strong>
+                                <small style="color: #6b7280; display: block;">${loan.applicant_phone || loan.mobile_number || 'N/A'}</small>
+                            </div>
+                        </div>
                     </td>
-                    <td><strong>${loanAmount}</strong></td>
-                    <td><span class="badge bg-${statusColor}" style="font-size: 11px;">${statusLabel}</span></td>
-                    <td><small>${createdDate}</small></td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-primary" onclick="viewLoan(${loan.id})" style="border-radius: 6px; font-weight: 600; font-size: 11px;">
+                    <td style="padding: 14px 12px; vertical-align: middle;"><strong style="color: #1a1a1a; font-size: 15px;">${loanAmount}</strong></td>
+                    <td style="padding: 14px 12px; vertical-align: middle;"><span class="badge bg-${statusColor}" style="font-size: 11px; padding: 6px 10px; font-weight: 600;">${statusLabel}</span></td>
+                    <td style="padding: 14px 12px; vertical-align: middle;"><small style="color: #6b7280;">${createdDate}</small></td>
+                    <td style="padding: 14px 12px; vertical-align: middle;">
+                        <button class="btn btn-sm btn-outline-primary" onclick="viewLoan(${loan.id})" style="border-radius: 6px; font-weight: 600; font-size: 11px; padding: 6px 12px;">
                             <i class="bi bi-eye"></i> View
                         </button>
                     </td>
@@ -473,6 +471,7 @@ function renderLoansTable(loans) {
         html += `
                 </tbody>
             </table>
+            </div>
         `;
     }
 
@@ -621,10 +620,34 @@ function loadTrendChart() {
 
 // ============ 7. HELPER FUNCTIONS ============
 
+function getAvatarColor(initials) {
+    const colors = [
+        '#667eea',  // Purple
+        '#f093fb',  // Pink
+        '#4facfe',  // Blue
+        '#fa709a',  // Coral
+        '#1dd1a1',  // Green
+        '#f5576c',  // Red
+        '#f59e0b',  // Amber
+        '#06b6d4',  // Cyan
+        '#8b5cf6',  // Violet
+        '#ec4899',  // Rose
+    ];
+    
+    let hash = 0;
+    for (let i = 0; i < initials.length; i++) {
+        hash = initials.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    
+    const index = Math.abs(hash) % colors.length;
+    return colors[index];
+}
+
 function getStatusColor(status) {
     const colorMap = {
         'new_entry': 'info',
         'waiting_for_processing': 'warning',
+        'waiting': 'warning',
         'follow_up': 'warning',
         'approved': 'success',
         'rejected': 'danger',
@@ -699,13 +722,14 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Auto-refresh every 30 seconds for real-time updates
+    // Auto-refresh every 5 seconds for real-time updates
     setInterval(function() {
         loadDashboardStats();
+        loadMyLoans();
         loadStatusChart();
         loadTrendChart();
         console.log('⏱️ Auto-refresh @', new Date().toLocaleTimeString());
-    }, 30000);
+    }, 5000);
 
     console.log('✓ Dashboard ready');
 });

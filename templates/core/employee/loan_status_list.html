@@ -1,0 +1,349 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_title }} - Employee Panel{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-3">
+        <div>
+            <h2 class="h5 fw-bold mb-1">{{ page_title }}</h2>
+            <p class="text-muted mb-0" style="font-size: 13px;">{{ page_subtitle }}</p>
+        </div>
+        <a href="{% url 'employee_dashboard' %}" class="btn btn-outline-secondary btn-sm">Back</a>
+    </div>
+
+    <div class="row g-2 mb-3">
+        <div class="col-md-4">
+            <input id="search-input" class="form-control bg-light border-0 rounded-3"
+                   placeholder="Search by name or ID" style="font-size: 14px;">
+        </div>
+        <div class="col-md-8 text-end">
+            <span class="badge bg-primary me-2" id="filter-badge">{{ page_badge }}</span>
+            <button id="reset-filters" class="btn btn-outline-secondary btn-sm fw-semibold rounded-3">
+                <i class="bi bi-arrow-clockwise"></i> Reset
+            </button>
+        </div>
+    </div>
+
+    <div id="loans-container" class="text-center py-5">
+        <div class="spinner-border spinner-border-sm"></div>
+        <p class="text-muted mt-2">Loading loans...</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .status-header {
+        background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%);
+        color: white;
+    }
+
+    .loans-table {
+        width: 100%;
+        font-size: 14px;
+    }
+
+    .loans-table thead th {
+        padding: 12px;
+        font-weight: 600;
+        border: none;
+    }
+
+    .loans-table tbody td {
+        padding: 12px;
+        border: none;
+        vertical-align: middle;
+    }
+
+    .loans-table tbody tr {
+        border-bottom: 1px solid #e5e7eb;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let ALL_LOANS = [];
+const PAGE_FILTER = '{{ status_key }}';
+
+function getCookie(name) {
+    return document.cookie.split('; ')
+        .find(row => row.startsWith(name + '='))
+        ?.split('=')[1];
+}
+
+function filterByStatus(loans) {
+    if (!PAGE_FILTER || PAGE_FILTER === 'total') return loans;
+    if (PAGE_FILTER === 'awaiting') {
+        return loans.filter(l => ['waiting', 'follow_up'].includes(l.status));
+    }
+    return loans.filter(l => l.status === PAGE_FILTER);
+}
+
+async function loadLoans() {
+    try {
+        const res = await fetch('/api/employee/all-loans/', {
+            method: 'GET',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include'
+        });
+
+        if (!res.ok) {
+            const errorData = await res.json().catch(() => ({}));
+            throw new Error(`HTTP ${res.status}: ${errorData.error || res.statusText}`);
+        }
+
+        const data = await res.json();
+        ALL_LOANS = data.loans || [];
+        applyFilters();
+    } catch (error) {
+        document.getElementById('loans-container').innerHTML = `
+            <div class="alert alert-danger" role="alert">
+                <strong>Error loading loans.</strong><br/>
+                ${error.message}
+            </div>
+        `;
+    }
+}
+
+function applyFilters() {
+    const search = document.getElementById('search-input').value.toLowerCase().trim();
+    let loans = filterByStatus(ALL_LOANS);
+
+    if (search) {
+        loans = loans.filter(l => {
+            const name = (l.applicant_name || '').toLowerCase();
+            const id = String(l.loan_id || l.id || '');
+            return name.includes(search) || id.includes(search);
+        });
+    }
+
+    renderLoansTable(loans);
+}
+
+function renderLoansTable(loans) {
+    const container = document.getElementById('loans-container');
+
+    if (!loans.length) {
+        container.innerHTML = `
+            <div class="text-center py-5">
+                <i class="bi bi-inbox" style="font-size: 48px; color: #d1d5db;"></i>
+                <p class="text-muted mt-3">No loans found</p>
+            </div>
+        `;
+        return;
+    }
+
+    const statusMap = {
+        'new_entry': 'primary',
+        'waiting': 'warning',
+        'follow_up': 'info',
+        'approved': 'success',
+        'rejected': 'danger',
+        'disbursed': 'success'
+    };
+
+    const statusLabels = {
+        'new_entry': 'New Entry',
+        'waiting': 'Waiting',
+        'follow_up': 'Follow-up',
+        'approved': 'Approved',
+        'rejected': 'Rejected',
+        'disbursed': 'Disbursed'
+    };
+
+    container.innerHTML = `
+        <div class="table-responsive">
+            <table class="table table-striped table-hover align-middle mb-0 loans-table table-grid">
+                <thead class="status-header">
+                    <tr>
+                        <th>Photo</th>
+                        <th>Loan ID</th>
+                        <th>Applicant</th>
+                        <th>Type</th>
+                        <th>Amount (₹)</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${loans.map((l, idx) => `
+                        <tr style="background: ${idx % 2 === 0 ? '#f8f9ff' : 'white'};">
+                            <td>${(() => { const initial = (l.applicant_name || 'N').charAt(0).toUpperCase(); const photo = l.applicant_photo ? `<div class="table-avatar"><img src="${l.applicant_photo}" alt="${l.applicant_name || 'Applicant'}"></div>` : `<div class="table-avatar-fallback">${initial}</div>`; return photo; })()}</td>
+                            <td><strong>${l.loan_id || '#' + l.id}</strong></td>
+                            <td>${l.applicant_name || 'N/A'}</td>
+                            <td><span class="badge bg-light text-dark">${l.loan_type || 'N/A'}</span></td>
+                            <td><strong>₹ ${new Intl.NumberFormat('en-IN').format(l.loan_amount || 0)}</strong></td>
+                            <td>
+                                <span class="badge" style="background: ${statusMap[l.status] === 'warning' ? '#ffc107' : statusMap[l.status] === 'success' ? '#28a745' : statusMap[l.status] === 'danger' ? '#dc3545' : statusMap[l.status] === 'info' ? '#17a2b8' : '#6c757d'}; font-size: 11px; padding: 5px 10px; border-radius: 12px;">
+                                    ${statusLabels[l.status] || l.status || 'Unknown'}
+                                </span>
+                            </td>
+                            <td style="font-size: 13px;">${l.assigned_date || 'N/A'}</td>
+                            <td>
+                                <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                                    <a href="/employee/loan/${l.id}/detail/" class="btn btn-sm btn-success">View</a>
+                                    <button class="btn btn-sm btn-warning" type="button" onclick="openEditLoanModal(${l.id})">Edit</button>
+                                    <button class="btn btn-sm btn-danger" type="button" onclick="openDeleteLoanModal(${l.id})">Delete</button>
+                                </div>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+}
+
+let CURRENT_EDIT_LOAN_ID = null;
+let CURRENT_DELETE_LOAN_ID = null;
+
+function openEditLoanModal(loanId) {
+    CURRENT_EDIT_LOAN_ID = loanId;
+    const loan = ALL_LOANS.find(l => l.id === loanId);
+    if (!loan) return;
+
+    document.getElementById('editLoanAmount').value = loan.loan_amount || '';
+    document.getElementById('editLoanTenure').value = loan.tenure_months || '';
+    document.getElementById('editLoanType').value = (loan.loan_type || '').toLowerCase();
+    document.getElementById('editLoanRemarks').value = loan.remarks || '';
+
+    const modal = new bootstrap.Modal(document.getElementById('editLoanModal'));
+    modal.show();
+}
+
+function openDeleteLoanModal(loanId) {
+    CURRENT_DELETE_LOAN_ID = loanId;
+    const modal = new bootstrap.Modal(document.getElementById('deleteLoanModal'));
+    modal.show();
+}
+
+async function submitEditLoan() {
+    if (!CURRENT_EDIT_LOAN_ID) return;
+
+    const payload = {
+        loan_amount: document.getElementById('editLoanAmount').value,
+        tenure_months: document.getElementById('editLoanTenure').value,
+        loan_type: document.getElementById('editLoanType').value,
+        remarks: document.getElementById('editLoanRemarks').value
+    };
+
+    const res = await fetch(`/api/employee/loan/${CURRENT_EDIT_LOAN_ID}/update/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.success) {
+        await loadLoans();
+        bootstrap.Modal.getInstance(document.getElementById('editLoanModal')).hide();
+    } else {
+        alert(data.error || 'Failed to update loan');
+    }
+}
+
+async function submitDeleteLoan() {
+    if (!CURRENT_DELETE_LOAN_ID) return;
+
+    const reason = document.getElementById('deleteLoanReason').value.trim() || 'Deleted by employee';
+    const res = await fetch(`/api/employee/loan/${CURRENT_DELETE_LOAN_ID}/delete/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ reason })
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.success) {
+        await loadLoans();
+        bootstrap.Modal.getInstance(document.getElementById('deleteLoanModal')).hide();
+    } else {
+        alert(data.error || 'Failed to delete loan');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadLoans();
+    setInterval(loadLoans, 30000);
+
+    document.getElementById('search-input').addEventListener('input', applyFilters);
+    document.getElementById('reset-filters').addEventListener('click', () => {
+        document.getElementById('search-input').value = '';
+        applyFilters();
+    });
+});
+</script>
+
+<div class="modal fade" id="editLoanModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Loan</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Loan Amount</label>
+                        <input type="number" class="form-control" id="editLoanAmount" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Tenure (Months)</label>
+                        <input type="number" class="form-control" id="editLoanTenure" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Loan Type</label>
+                        <select class="form-select" id="editLoanType">
+                            <option value="">Select</option>
+                            <option value="personal">Personal</option>
+                            <option value="business">Business</option>
+                            <option value="home">Home</option>
+                            <option value="car">Auto</option>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Remarks</label>
+                        <textarea class="form-control" rows="3" id="editLoanRemarks"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-primary" type="button" onclick="submitEditLoan()">Save Changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="deleteLoanModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Delete Loan</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-2">Are you sure you want to remove this loan?</p>
+                <label class="form-label">Reason (optional)</label>
+                <textarea class="form-control" rows="3" id="deleteLoanReason"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-danger" type="button" onclick="submitDeleteLoan()">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

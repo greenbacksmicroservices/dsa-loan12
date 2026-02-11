@@ -4,18 +4,13 @@
 {% block title %}All Loans - DSA Loan Management System{% endblock %}
 
 {% block content %}
-<!-- Header with Back Button -->
-<div class="dashboard-header bg-white p-3 mb-4 border-bottom shadow-sm" style="background: linear-gradient(135deg, #667eea 0%, #250b66 100%); border: none; border-radius: 0 0 16px 16px;">
-    <div class="container-fluid d-flex justify-content-between align-items-center">
+<div class="container-fluid">
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-3">
         <div>
-            <h2 class="fw-bold mb-0 text-white" style="font-size: 28px; letter-spacing: 0.5px;">
-                <i class="bi bi-list-task me-2" style="font-size: 24px;"></i>All Loans
-            </h2>
-            <p class="text-white-50 mb-0 mt-1" style="font-size: 13px;">View and manage all your assigned loans</p>
+            <h2 class="h5 fw-bold mb-1">All Loans</h2>
+            <p class="text-muted mb-0" style="font-size: 13px;">View and manage all your assigned loans</p>
         </div>
-        <a href="/employee/dashboard/" class="btn btn-light fw-semibold rounded-pill shadow-sm" style="padding: 8px 18px; font-size: 13px;">
-            <i class="bi bi-arrow-left"></i> Back
-        </a>
+        <a href="{% url 'employee_dashboard' %}" class="btn btn-outline-secondary btn-sm">Back</a>
     </div>
 </div>
 
@@ -63,33 +58,7 @@ function getCookie(name) {
 }
 
 function confirmDelete(loanId) {
-    if (confirm('Are you sure you want to delete this loan?')) {
-        deleteLoan(loanId);
-    }
-}
-
-async function deleteLoan(loanId) {
-    try {
-        const res = await fetch(`/api/employee/loan/${loanId}/delete/`, {
-            method: 'DELETE',
-            headers: { 
-                'X-CSRFToken': getCookie('csrftoken'),
-                'Content-Type': 'application/json'
-            },
-            credentials: 'include'
-        });
-        
-        if (res.ok) {
-            alert('Loan deleted successfully');
-            loadLoans(); // Reload the table
-        } else {
-            const data = await res.json();
-            alert('Error: ' + (data.error || 'Failed to delete loan'));
-        }
-    } catch (error) {
-        console.error('Delete error:', error);
-        alert('Error deleting loan: ' + error.message);
-    }
+    return;
 }
 
 async function loadLoans() {
@@ -161,9 +130,10 @@ function renderLoansTable(loans) {
 
     container.innerHTML = `
     <div class="table-responsive">
-        <table class="table table-striped table-hover align-middle mb-0" style="border-collapse: collapse;">
+            <table class="table table-striped table-hover align-middle mb-0 table-grid" style="border-collapse: collapse;">
             <thead>
                 <tr style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none;">
+                    <th style="padding: 12px; border: none; font-weight: 600;">Photo</th>
                     <th style="padding: 12px; border: none; font-weight: 600;">Loan ID</th>
                     <th style="padding: 12px; border: none; font-weight: 600;">Applicant</th>
                     <th style="padding: 12px; border: none; font-weight: 600;">Type</th>
@@ -174,8 +144,15 @@ function renderLoansTable(loans) {
                 </tr>
             </thead>
             <tbody>
-                ${loans.map((l, idx) => `
+                ${loans.map((l, idx) => {
+                    const initial = (l.applicant_name || 'N').charAt(0).toUpperCase();
+                    const photoCell = l.applicant_photo
+                        ? `<div class="table-avatar"><img src="${l.applicant_photo}" alt="${l.applicant_name || 'Applicant'}"></div>`
+                        : `<div class="table-avatar-fallback">${initial}</div>`;
+
+                    return `
                     <tr style="border-bottom: 1px solid #e0e0e0; background: ${idx % 2 === 0 ? '#f8f9ff' : 'white'};">
+                        <td style="padding: 12px; border: none;">${photoCell}</td>
                         <td style="padding: 12px; border: none;"><strong>${l.loan_id || '#' + l.id}</strong></td>
                         <td style="padding: 12px; border: none;">${l.applicant_name || 'N/A'}</td>
                         <td style="padding: 12px; border: none;"><span style="background: #e3f2fd; color: #1976d2; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 500;">${l.loan_type || 'N/A'}</span></td>
@@ -188,22 +165,96 @@ function renderLoansTable(loans) {
                         <td style="padding: 12px; border: none; font-size: 13px;">${l.assigned_date || 'N/A'}</td>
                         <td style="padding: 12px; border: none;">
                             <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                                <a href="/employee/loan/${l.id}/detail/" class="btn btn-sm" title="View details" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 6px; font-size: 11px; padding: 6px 10px; display: flex; align-items: center; gap: 4px;">
+                                <a href="/employee/loan/${l.id}/detail/" class="btn btn-sm btn-success" title="View details">
                                     <i class="bi bi-eye"></i> View
                                 </a>
-                                <a href="/employee/loan/${l.id}/edit/" class="btn btn-sm" title="Edit loan" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; border: none; border-radius: 6px; font-size: 11px; padding: 6px 10px; display: flex; align-items: center; gap: 4px;">
-                                    <i class="bi bi-pencil"></i> Edit
-                                </a>
-                                <button onclick="confirmDelete(${l.id})" class="btn btn-sm" title="Delete loan" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; border: none; border-radius: 6px; font-size: 11px; padding: 6px 10px; display: flex; align-items: center; gap: 4px; cursor: pointer;">
+                                <button class="btn btn-sm btn-warning" type="button" onclick="openEditLoanModal(${l.id})">
+                                    <i class="bi bi-pencil-square"></i> Edit
+                                </button>
+                                <button class="btn btn-sm btn-danger" type="button" onclick="openDeleteLoanModal(${l.id})">
                                     <i class="bi bi-trash"></i> Delete
                                 </button>
                             </div>
                         </td>
                     </tr>
-                `).join('')}
+                `;
+                }).join('')}
             </tbody>
         </table>
     </div>`;
+}
+
+let CURRENT_EDIT_LOAN_ID = null;
+let CURRENT_DELETE_LOAN_ID = null;
+
+function openEditLoanModal(loanId) {
+    CURRENT_EDIT_LOAN_ID = loanId;
+    const loan = ALL_LOANS.find(l => l.id === loanId);
+    if (!loan) return;
+
+    document.getElementById('editLoanAmount').value = loan.loan_amount || '';
+    document.getElementById('editLoanTenure').value = loan.tenure_months || '';
+    document.getElementById('editLoanType').value = (loan.loan_type || '').toLowerCase();
+    document.getElementById('editLoanRemarks').value = loan.remarks || '';
+
+    const modal = new bootstrap.Modal(document.getElementById('editLoanModal'));
+    modal.show();
+}
+
+function openDeleteLoanModal(loanId) {
+    CURRENT_DELETE_LOAN_ID = loanId;
+    const modal = new bootstrap.Modal(document.getElementById('deleteLoanModal'));
+    modal.show();
+}
+
+async function submitEditLoan() {
+    if (!CURRENT_EDIT_LOAN_ID) return;
+
+    const payload = {
+        loan_amount: document.getElementById('editLoanAmount').value,
+        tenure_months: document.getElementById('editLoanTenure').value,
+        loan_type: document.getElementById('editLoanType').value,
+        remarks: document.getElementById('editLoanRemarks').value
+    };
+
+    const res = await fetch(`/api/employee/loan/${CURRENT_EDIT_LOAN_ID}/update/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.success) {
+        await loadLoans();
+        bootstrap.Modal.getInstance(document.getElementById('editLoanModal')).hide();
+    } else {
+        alert(data.error || 'Failed to update loan');
+    }
+}
+
+async function submitDeleteLoan() {
+    if (!CURRENT_DELETE_LOAN_ID) return;
+
+    const reason = document.getElementById('deleteLoanReason').value.trim() || 'Deleted by employee';
+    const res = await fetch(`/api/employee/loan/${CURRENT_DELETE_LOAN_ID}/delete/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ reason })
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.success) {
+        await loadLoans();
+        bootstrap.Modal.getInstance(document.getElementById('deleteLoanModal')).hide();
+    } else {
+        alert(data.error || 'Failed to delete loan');
+    }
 }
 
 function applyFilters() {
@@ -223,6 +274,7 @@ function applyFilters() {
 
 document.addEventListener('DOMContentLoaded', () => {
     loadLoans();
+    setInterval(loadLoans, 30000);
 
     document.getElementById('search-input').addEventListener('input', applyFilters);
     document.getElementById('status-filter').addEventListener('change', applyFilters);
@@ -233,4 +285,67 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 </script>
+
+<!-- Edit Loan Modal -->
+<div class="modal fade" id="editLoanModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Loan</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Loan Amount</label>
+                        <input type="number" class="form-control" id="editLoanAmount" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Tenure (Months)</label>
+                        <input type="number" class="form-control" id="editLoanTenure" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Loan Type</label>
+                        <select class="form-select" id="editLoanType">
+                            <option value="">Select</option>
+                            <option value="personal">Personal</option>
+                            <option value="business">Business</option>
+                            <option value="home">Home</option>
+                            <option value="car">Auto</option>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Remarks</label>
+                        <textarea class="form-control" rows="3" id="editLoanRemarks"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-primary" type="button" onclick="submitEditLoan()">Save Changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Loan Modal -->
+<div class="modal fade" id="deleteLoanModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Delete Loan</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-2">Are you sure you want to remove this loan?</p>
+                <label class="form-label">Reason (optional)</label>
+                <textarea class="form-control" rows="3" id="deleteLoanReason"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-danger" type="button" onclick="submitDeleteLoan()">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}

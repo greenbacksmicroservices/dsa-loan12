@@ -257,7 +257,7 @@ def employee_dashboard(request):
         messages.error(request, 'Access denied. Employee only.')
         return redirect('dashboard')
     
-    return render(request, 'core/employee_dashboard.html')
+    return render(request, 'core/employee/dashboard.html')
 
 
 @login_required
@@ -269,6 +269,61 @@ def employee_all_loans(request):
         return redirect('dashboard')
     
     return render(request, 'core/employee/all_loans.html')
+
+
+@login_required
+@require_http_methods(["GET"])
+def employee_loan_status_list(request, status_key):
+    """Employee: View loans by status from dashboard cards"""
+    if request.user.role != 'employee':
+        messages.error(request, 'Access denied. Employee only.')
+        return redirect('dashboard')
+
+    status_map = {
+        'total': {
+            'title': 'Total Assigned Loans',
+            'subtitle': 'All loans currently assigned to you',
+            'badge': 'All Status'
+        },
+        'awaiting': {
+            'title': 'Awaiting Action',
+            'subtitle': 'Waiting and follow-up loans that need your action',
+            'badge': 'Waiting + Follow-up'
+        },
+        'approved': {
+            'title': 'Approved Loans',
+            'subtitle': 'Loans approved by you',
+            'badge': 'Approved'
+        },
+        'rejected': {
+            'title': 'Rejected Loans',
+            'subtitle': 'Loans rejected by you',
+            'badge': 'Rejected'
+        },
+        'follow_up': {
+            'title': 'Follow-up Loans',
+            'subtitle': 'Loans marked for follow-up',
+            'badge': 'Follow-up'
+        },
+        'disbursed': {
+            'title': 'Disbursed Loans',
+            'subtitle': 'Loans successfully disbursed',
+            'badge': 'Disbursed'
+        }
+    }
+
+    if status_key not in status_map:
+        messages.error(request, 'Invalid loan status.')
+        return redirect('employee_dashboard')
+
+    context = {
+        'page_title': status_map[status_key]['title'],
+        'page_subtitle': status_map[status_key]['subtitle'],
+        'page_badge': status_map[status_key]['badge'],
+        'status_key': status_key,
+    }
+
+    return render(request, 'core/employee/loan_status_list.html', context)
 
 
 @login_required
@@ -1120,7 +1175,6 @@ def employee_monthly_loans_api(request):
     Returns loan count for each month (Jan-Dec)
     """
     try:
-        from .models import LoanApplication
         from datetime import datetime
         from django.db.models.functions import ExtractMonth
         
@@ -1128,7 +1182,7 @@ def employee_monthly_loans_api(request):
         monthly_data = [0] * 12
         
         # Get loans assigned to current employee, grouped by month
-        loans = LoanApplication.objects.filter(
+        loans = Loan.objects.filter(
             assigned_employee=request.user,
             assigned_at__year=current_year
         ).annotate(month=ExtractMonth('assigned_at')).values('month').annotate(count=Count('id'))

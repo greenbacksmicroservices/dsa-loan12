@@ -132,7 +132,7 @@
                 <div class="stat-card-content">
                     <i class="fas fa-file-alt stat-icon"></i>
                     <h3>New Entry</h3>
-                    <div class="number">1</div>
+                    <div class="number" id="stat-new-entry">{{ new_entry_count }}</div>
                     <p>Total New Applications</p>
                     <span class="view-link">View Details →</span>
                 </div>
@@ -140,11 +140,11 @@
         </div>
 
         <div class="col-lg-2 col-md-4 col-sm-6 col-12">
-            <a href="/admin/all-loans/?status=in_processing" class="stat-card card-warning" title="View In Processing">
+            <a href="/admin/all-loans/?status=waiting" class="stat-card card-warning" title="View In Processing">
                 <div class="stat-card-content">
                     <i class="fas fa-hourglass-half stat-icon"></i>
                     <h3>In Processing</h3>
-                    <div class="number">0</div>
+                    <div class="number" id="stat-processing">{{ in_processing_count }}</div>
                     <p>Pending Review</p>
                     <span class="view-link">View Details →</span>
                 </div>
@@ -156,7 +156,7 @@
                 <div class="stat-card-content">
                     <i class="fas fa-phone-volume stat-icon"></i>
                     <h3>Follow-up</h3>
-                    <div class="number">0</div>
+                    <div class="number" id="stat-followup">{{ followup_count }}</div>
                     <p>Need Follow-up</p>
                     <span class="view-link">View Details →</span>
                 </div>
@@ -168,7 +168,7 @@
                 <div class="stat-card-content">
                     <i class="fas fa-check-circle stat-icon"></i>
                     <h3>Approved</h3>
-                    <div class="number">2</div>
+                    <div class="number" id="stat-approved">{{ approved_count }}</div>
                     <p>Successfully Approved</p>
                     <span class="view-link">View Details →</span>
                 </div>
@@ -180,7 +180,7 @@
                 <div class="stat-card-content">
                     <i class="fas fa-ban stat-icon"></i>
                     <h3>Rejected</h3>
-                    <div class="number">1</div>
+                    <div class="number" id="stat-rejected">{{ rejected_count }}</div>
                     <p>Rejected Applications</p>
                     <span class="view-link">View Details →</span>
                 </div>
@@ -192,75 +192,11 @@
                 <div class="stat-card-content">
                     <i class="fas fa-money-bill-wave stat-icon"></i>
                     <h3>Disbursed</h3>
-                    <div class="number">1</div>
+                    <div class="number" id="stat-disbursed">{{ disbursed_count }}</div>
                     <p>Amount Disbursed</p>
                     <span class="view-link">View Details →</span>
                 </div>
             </a>
-        </div>
-    </div>
-
-    <!-- ROW 2: Team & Quick Stats -->
-    <div class="row" style="margin-top: 30px;">
-        <div class="col-lg-6 col-md-12">
-            <div class="table-container">
-                <h4 style="margin-bottom: 20px; color: #2d3748; font-weight: 700; display: flex; align-items: center; gap: 10px;">
-                    <i class="fas fa-users" style="color: #1abc9c;"></i>
-                    Team Overview
-                </h4>
-                <div style="display: grid; gap: 15px;">
-                    <div style="padding: 15px; background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); border-radius: 8px; border-left: 4px solid #3b82f6;">
-                        <p style="color: #0c4a6e; font-size: 12px; margin: 0; font-weight: 600; text-transform: uppercase;">Active Agents</p>
-                        <h3 style="color: #0c4a6e; margin: 8px 0 0 0; font-size: 28px; font-weight: 700;">5</h3>
-                    </div>
-                    <div style="padding: 15px; background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%); border-radius: 8px; border-left: 4px solid #10b981;">
-                        <p style="color: #15803d; font-size: 12px; margin: 0; font-weight: 600; text-transform: uppercase;">Active Employees</p>
-                        <h3 style="color: #15803d; margin: 8px 0 0 0; font-size: 28px; font-weight: 700;">3</h3>
-                    </div>
-                    <div style="padding: 15px; background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%); border-radius: 8px; border-left: 4px solid #8b5cf6;">
-                        <p style="color: #3730a3; font-size: 12px; margin: 0; font-weight: 600; text-transform: uppercase;">Total SubAdmins</p>
-                        <h3 style="color: #3730a3; margin: 8px 0 0 0; font-size: 28px; font-weight: 700;">2</h3>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-lg-6 col-md-12">
-            <div class="table-container">
-                <h4 style="margin-bottom: 20px; color: #2d3748; font-weight: 700; display: flex; align-items: center; gap: 10px;">
-                    <i class="fas fa-chart-pie" style="color: #1abc9c;"></i>
-                    Quick Statistics
-                </h4>
-                <div style="display: grid; gap: 18px;">
-                    <div>
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                            <span style="color: #2d3748; font-weight: 600; font-size: 13px;">Approval Rate</span>
-                            <span style="color: #10b981; font-weight: 700; font-size: 14px;">40%</span>
-                        </div>
-                        <div style="width: 100%; background: #e5e7eb; border-radius: 8px; height: 8px; overflow: hidden;">
-                            <div style="width: 40%; height: 100%; background: linear-gradient(90deg, #10b981, #059669); border-radius: 8px;"></div>
-                        </div>
-                    </div>
-                    <div>
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                            <span style="color: #2d3748; font-weight: 600; font-size: 13px;">Rejection Rate</span>
-                            <span style="color: #ef4444; font-weight: 700; font-size: 14px;">20%</span>
-                        </div>
-                        <div style="width: 100%; background: #e5e7eb; border-radius: 8px; height: 8px; overflow: hidden;">
-                            <div style="width: 20%; height: 100%; background: linear-gradient(90deg, #ef4444, #dc2626); border-radius: 8px;"></div>
-                        </div>
-                    </div>
-                    <div>
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                            <span style="color: #2d3748; font-weight: 600; font-size: 13px;">Disbursement Rate</span>
-                            <span style="color: #8b5cf6; font-weight: 700; font-size: 14px;">20%</span>
-                        </div>
-                        <div style="width: 100%; background: #e5e7eb; border-radius: 8px; height: 8px; overflow: hidden;">
-                            <div style="width: 20%; height: 100%; background: linear-gradient(90deg, #8b5cf6, #7c3aed); border-radius: 8px;"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -295,6 +231,8 @@
 
 <script>
     // Display current stats dynamically (you can connect to API later)
+    let statusChart = null;
+
     document.addEventListener('DOMContentLoaded', function() {
         console.log('Admin Dashboard Loaded');
         
@@ -388,7 +326,7 @@
         // Chart 2: Loan Status Distribution (Pie Chart)
         const ctx2 = document.getElementById('statusDistributionChart');
         if (ctx2) {
-            const statusChart = new Chart(ctx2, {
+            statusChart = new Chart(ctx2, {
                 type: 'doughnut',
                 data: {
                     labels: ['New Entry', 'In Processing', 'Follow-up', 'Approved', 'Rejected', 'Disbursed'],
@@ -429,8 +367,47 @@
                 }
             });
         }
-        
-        // Replace with actual API calls
+
+        // Real-time stats update
+        function applyDashboardStats(stats) {
+            const setText = (id, value) => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = value ?? 0;
+            };
+
+            setText('stat-new-entry', stats.new_entries);
+            setText('stat-processing', stats.waiting);
+            setText('stat-followup', stats.follow_up);
+            setText('stat-approved', stats.approved);
+            setText('stat-rejected', stats.rejected);
+            setText('stat-disbursed', stats.disbursed);
+
+            if (statusChart) {
+                statusChart.data.datasets[0].data = [
+                    stats.new_entries || 0,
+                    stats.waiting || 0,
+                    stats.follow_up || 0,
+                    stats.approved || 0,
+                    stats.rejected || 0,
+                    stats.disbursed || 0
+                ];
+                statusChart.update();
+            }
+        }
+
+        function refreshDashboardStats() {
+            fetch('/api/dashboard-realtime-stats/')
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.success && data.data) {
+                        applyDashboardStats(data.data);
+                    }
+                })
+                .catch(error => console.error('Dashboard stats error:', error));
+        }
+
+        refreshDashboardStats();
+        setInterval(refreshDashboardStats, 30000);
     });
 </script>
 {% endblock %}

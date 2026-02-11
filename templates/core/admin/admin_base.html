@@ -32,12 +32,28 @@
             top: 0;
             width: 280px;
             height: 100vh;
-            background: linear-gradient(180deg, #1abc9c 0%, #16a085 50%, #0d7968 100%);
+            background: linear-gradient(180deg, #0f766e 0%, #0b5f57 100%);
             color: white;
             padding: 30px 0 0 0;
             overflow-y: auto;
             box-shadow: 8px 0 25px rgba(0,0,0,0.2);
             z-index: 1000;
+            border-right: 1px solid rgba(255,255,255,0.12);
+        }
+
+        .sidebar::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(circle at 15% 10%, rgba(255,255,255,0.18), transparent 45%),
+                radial-gradient(circle at 85% 90%, rgba(0,0,0,0.25), transparent 55%);
+            pointer-events: none;
+        }
+
+        .sidebar > * {
+            position: relative;
+            z-index: 1;
         }
 
         .sidebar-logo {
@@ -537,9 +553,15 @@
     <aside class="sidebar">
         <div class="sidebar-logo">
             <h2><i class="fas fa-vault"></i> DSA</h2>
-            <div style="width: 70px; height: 70px; margin: 10px auto; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-size: 28px; box-shadow: 0 4px 8px rgba(0,0,0,0.3);">👤</div>
-            <p>GreenbacksMicroservice</p>
-            <div class="sidebar-badge">Admin</div>
+            <div style="width: 70px; height: 70px; margin: 10px auto; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-size: 28px; box-shadow: 0 4px 8px rgba(0,0,0,0.3); overflow: hidden;">
+                {% if user.profile_photo %}
+                    <img src="{{ user.profile_photo.url }}" alt="{{ user.get_full_name }}" style="width: 100%; height: 100%; object-fit: cover;">
+                {% else %}
+                    <i class="fas fa-user" style="font-size: 28px;"></i>
+                {% endif %}
+            </div>
+            <p>{{ user.get_full_name|default:user.username }}</p>
+            <div class="sidebar-badge">{{ user.get_role_display }}</div>
         </div>
 
         <ul class="sidebar-nav">
@@ -556,9 +578,15 @@
                 </a>
             </li>
             <li>
-                <a href="{% url 'admin_new_entry' %}" class="{% if request.resolver_match.url_name == 'admin_new_entry' %}active{% endif %}">
+                <a href="{% url 'admin_add_loan' %}" class="{% if request.resolver_match.url_name == 'admin_add_loan' %}active{% endif %}">
                     <i class="fas fa-plus-circle"></i>
                     <span>Add Loan</span>
+                </a>
+            </li>
+            <li>
+                <a href="{% url 'admin_join_requests' %}" class="{% if request.resolver_match.url_name == 'admin_join_requests' %}active{% endif %}">
+                    <i class="fas fa-handshake"></i>
+                    <span>Join Requests</span>
                 </a>
             </li>
             <li>
@@ -599,11 +627,8 @@
             </li>
         </ul>
 
-        <div style="padding: 20px; border-top: 2px solid rgba(255,255,255,0.1); margin-top: 30px;">
-            <a href="{% url 'logout' %}" style="display: flex; align-items: center; gap: 12px; color: rgba(255,255,255,0.9); text-decoration: none; font-weight: 500; transition: all 0.3s ease;">
-                <i class="fas fa-sign-out-alt"></i>
-                <span>Logout</span>
-            </a>
+        <div style="padding: 16px 20px; border-top: 2px solid rgba(255,255,255,0.1); margin-top: 30px; font-size: 11px; letter-spacing: 0.6px; text-transform: lowercase; color: rgba(255,255,255,0.7);">
+           @ Greenbacks Microservice Foundation
         </div>
     </aside>
 
@@ -614,7 +639,6 @@
             <div class="header-left">
                 <div>
                     <h1>{% block page_title %}Dashboard{% endblock %}</h1>
-                    <p class="header-subtitle">Welcome back, {{ request.user.email }}</p>
                 </div>
             </div>
 

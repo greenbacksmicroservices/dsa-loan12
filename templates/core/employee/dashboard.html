@@ -4,175 +4,90 @@
 {% block title %}Employee Dashboard{% endblock %}
 
 {% block content %}
-<div class="d-flex" style="min-height: 100vh;">
-    <!-- SIDEBAR -->
-    <div class="sidebar" style="width: 280px; background: linear-gradient(180deg, #10b981 0%, #059669 100%); position: fixed; height: 100vh; overflow-y: auto; box-shadow: 2px 0 8px rgba(0,0,0,0.1); z-index: 1000;">
-        <div style="padding: 20px; color: white; border-bottom: 2px solid rgba(255,255,255,0.2);">
-            <h5 style="margin: 0; font-weight: 700; display: flex; align-items: center; gap: 10px;">
-                <i class="bi bi-briefcase-fill" style="font-size: 1.3rem;"></i> Employee
-            </h5>
-            <small style="color: rgba(255,255,255,0.8);">Loan Management</small>
-        </div>
-
-        <nav style="padding: 20px 0;">
-            <a href="/comprehensive-loan-form/" class="sidebar-item" style="display: flex; align-items: center; gap: 12px; padding: 12px 20px; color: rgba(255,255,255,0.9); text-decoration: none; transition: all 0.2s; border-left: 3px solid transparent; cursor: pointer;" onmouseover="this.style.backgroundColor='rgba(255,255,255,0.1)'; this.style.borderLeftColor='white'; this.style.color='white'" onmouseout="this.style.backgroundColor='transparent'; this.style.borderLeftColor='transparent'; this.style.color='rgba(255,255,255,0.9)'">
-                <i class="bi bi-file-earmark-plus" style="font-size: 1.2rem;"></i>
-                <span>Add New Loan</span>
-            </a>
-
-            <a href="/employee/all-loans/" class="sidebar-item" style="display: flex; align-items: center; gap: 12px; padding: 12px 20px; color: rgba(255,255,255,0.9); text-decoration: none; transition: all 0.2s; border-left: 3px solid transparent; cursor: pointer;" onmouseover="this.style.backgroundColor='rgba(255,255,255,0.1)'; this.style.borderLeftColor='white'; this.style.color='white'" onmouseout="this.style.backgroundColor='transparent'; this.style.borderLeftColor='transparent'; this.style.color='rgba(255,255,255,0.9)'">
-                <i class="bi bi-list-check" style="font-size: 1.2rem;"></i>
-                <span>All Loans</span>
-            </a>
-
-            <a href="/employee/request-new-entry-loan/" class="sidebar-item" style="display: flex; align-items: center; gap: 12px; padding: 12px 20px; color: rgba(255,255,255,0.9); text-decoration: none; transition: all 0.2s; border-left: 3px solid transparent; cursor: pointer;" onmouseover="this.style.backgroundColor='rgba(255,255,255,0.1)'; this.style.borderLeftColor='white'; this.style.color='white'" onmouseout="this.style.backgroundColor='transparent'; this.style.borderLeftColor='transparent'; this.style.color='rgba(255,255,255,0.9)'">
-                <i class="bi bi-clipboard-check" style="font-size: 1.2rem;"></i>
-                <span>New Entry Request</span>
-            </a>
-
-            <a href="/employee/my-agents/" class="sidebar-item" style="display: flex; align-items: center; gap: 12px; padding: 12px 20px; color: rgba(255,255,255,0.9); text-decoration: none; transition: all 0.2s; border-left: 3px solid transparent; cursor: pointer;" onmouseover="this.style.backgroundColor='rgba(255,255,255,0.1)'; this.style.borderLeftColor='white'; this.style.color='white'" onmouseout="this.style.backgroundColor='transparent'; this.style.borderLeftColor='transparent'; this.style.color='rgba(255,255,255,0.9)'">
-                <i class="bi bi-people" style="font-size: 1.2rem;"></i>
-                <span>My Agents</span>
-            </a>
-
-            <div style="margin: 15px 0; border-top: 1px solid rgba(255,255,255,0.2);"></div>
-
-            <a href="{% url 'employee_profile' %}" class="sidebar-item" style="display: flex; align-items: center; gap: 12px; padding: 12px 20px; color: rgba(255,255,255,0.9); text-decoration: none; transition: all 0.2s; border-left: 3px solid transparent; cursor: pointer;" onmouseover="this.style.backgroundColor='rgba(255,255,255,0.1)'; this.style.borderLeftColor='white'; this.style.color='white'" onmouseout="this.style.backgroundColor='transparent'; this.style.borderLeftColor='transparent'; this.style.color='rgba(255,255,255,0.9)'">
-                <i class="bi bi-person-circle" style="font-size: 1.2rem;"></i>
-                <span>My Profile</span>
-            </a>
-
-            <a href="{% url 'employee_settings' %}" class="sidebar-item" style="display: flex; align-items: center; gap: 12px; padding: 12px 20px; color: rgba(255,255,255,0.9); text-decoration: none; transition: all 0.2s; border-left: 3px solid transparent; cursor: pointer;" onmouseover="this.style.backgroundColor='rgba(255,255,255,0.1)'; this.style.borderLeftColor='white'; this.style.color='white'" onmouseout="this.style.backgroundColor='transparent'; this.style.borderLeftColor='transparent'; this.style.color='rgba(255,255,255,0.9)'">
-                <i class="bi bi-gear" style="font-size: 1.2rem;"></i>
-                <span>Settings</span>
-            </a>
-        </nav>
-
-        <div style="padding: 0 20px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.2);">
-            <a href="{% url 'logout' %}" style="display: flex; align-items: center; gap: 12px; padding: 12px 20px; color: white; text-decoration: none; background: rgba(255,255,255,0.1); border-radius: 6px; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.2)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'">
-                <i class="bi bi-box-arrow-right" style="font-size: 1.2rem;"></i>
-                <span>Logout</span>
-            </a>
+<div class="container-fluid">
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-3">
+        <div>
+            <h1 class="h4 mb-1 text-dark fw-bold">Employee Dashboard</h1>
+            <p class="text-muted mb-0" style="font-size: 13px;">Overview of your assigned loan pipeline</p>
         </div>
     </div>
 
-    <!-- MAIN CONTENT -->
-    <div style="flex: 1; margin-left: 280px;">
-        <div class="container-fluid">
-            <!-- Professional Header -->
-            <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm sticky-top">
-                <div class="container-fluid px-4">
-                    <h1 class="h4 mb-0 text-dark fw-bold">
-                        <i class="bi bi-speedometer2" style="color: #10b981;"></i> Employee Dashboard
-                    </h1>
-                    
-                    <div class="d-flex align-items-center gap-3 ms-auto">
-
-                <!-- Notifications Bell -->
-                <div class="dropdown">
-                    <button class="btn btn-light border-0 position-relative p-2" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Notifications">
-                        <i class="bi bi-bell" style="font-size: 1.3rem; color: #f59e0b;"></i>
-                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notification-badge" style="display: none;">
-                            0
-                        </span>
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end" style="min-width: 350px;">
-                        <li><h6 class="dropdown-header">Notifications</h6></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li id="notifications-list">
-                            <a class="dropdown-item text-muted" href="#">No new notifications</a>
-                        </li>
-                    </ul>
-                </div>
-
-                <!-- Profile Dropdown -->
-                <div class="dropdown">
-                    <button class="btn btn-light border rounded-circle p-2" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Profile">
-                        <i class="bi bi-person-circle" style="font-size: 1.5rem; color: #10b981;"></i>
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        <li><h6 class="dropdown-header">{{ user.get_full_name|default:user.username }}</h6></li>
-                        <li><small class="dropdown-header text-muted">{{ user.email }}</small></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="{% url 'employee_profile' %}"><i class="bi bi-person"></i> My Profile</a></li>
-                        <li><a class="dropdown-item" href="{% url 'employee_settings' %}"><i class="bi bi-gear"></i> Settings</a></li>
-                        <li><a class="dropdown-item" href="#"><i class="bi bi-clock-history"></i> Activity</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item text-danger" href="{% url 'logout' %}"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-    </nav>
-
-    <!-- Main Content -->
-    <div class="mt-4">
-
     <!-- Statistics Cards -->
+    <div class="employee-stat-grid">
+        <a class="stat-card stat-total" href="{% url 'employee_loans_total' %}">
+            <div class="stat-top">
+                <span>Total Assigned</span>
+                <i class="bi bi-inbox"></i>
+            </div>
+            <div class="stat-number" id="stat-total">0</div>
+            <div class="stat-subtext">Click to view</div>
+        </a>
+
+        <a class="stat-card stat-awaiting" href="{% url 'employee_loans_awaiting' %}">
+            <div class="stat-top">
+                <span>Awaiting Action</span>
+                <i class="bi bi-hourglass-split"></i>
+            </div>
+            <div class="stat-number" id="stat-processing">0</div>
+            <div class="stat-subtext">Click to view</div>
+        </a>
+
+        <a class="stat-card stat-approved" href="{% url 'employee_loans_approved' %}">
+            <div class="stat-top">
+                <span>Approved</span>
+                <i class="bi bi-check-circle"></i>
+            </div>
+            <div class="stat-number" id="stat-approved">0</div>
+            <div class="stat-subtext">Click to view</div>
+        </a>
+
+        <a class="stat-card stat-rejected" href="{% url 'employee_loans_rejected' %}">
+            <div class="stat-top">
+                <span>Rejected</span>
+                <i class="bi bi-x-circle"></i>
+            </div>
+            <div class="stat-number" id="stat-rejected">0</div>
+            <div class="stat-subtext">Click to view</div>
+        </a>
+
+        <a class="stat-card stat-followup" href="{% url 'employee_loans_followup' %}">
+            <div class="stat-top">
+                <span>Follow-up</span>
+                <i class="bi bi-telephone-forward"></i>
+            </div>
+            <div class="stat-number" id="stat-followup">0</div>
+            <div class="stat-subtext">Click to view</div>
+        </a>
+
+        <a class="stat-card stat-disbursed" href="{% url 'employee_loans_disbursed' %}">
+            <div class="stat-top">
+                <span>Disbursed</span>
+                <i class="bi bi-cash-coin"></i>
+            </div>
+            <div class="stat-number" id="stat-disbursed">0</div>
+            <div class="stat-subtext">Click to view</div>
+        </a>
+    </div>
+
+    <!-- Charts -->
     <div class="row mb-4">
-        <div class="col-xl-2 col-md-4 mb-3">
-            <div class="card border-left-success shadow h-100 py-2" style="cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);" onclick="window.location.href='/employee/assigned-loans/'" onmouseover="this.style.transform='translateY(-8px)'; this.style.boxShadow='0 16px 32px rgba(16, 185, 129, 0.25)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow=''">
-                <div class="card-body">
-                    <div class="text-success text-center text-xl fw-bold">
-                        <div id="stat-total" class="h4">-</div>
-                    </div>
-                    <div class="text-center text-muted">Total Assigned</div>
+        <div class="col-lg-6 mb-3">
+            <div class="employee-chart-card">
+                <div class="employee-chart-header">
+                    <span>Status Breakdown</span>
+                </div>
+                <div class="employee-chart-body">
+                    <canvas id="statusChart" height="220"></canvas>
                 </div>
             </div>
         </div>
-
-        <div class="col-xl-2 col-md-4 mb-3">
-            <div class="card border-left-warning shadow h-100 py-2" style="cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);" onclick="window.location.href='/employee/request-new-entry-loan/'" onmouseover="this.style.transform='translateY(-8px)'; this.style.boxShadow='0 16px 32px rgba(245, 158, 11, 0.25)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow=''">
-                <div class="card-body">
-                    <div class="text-warning text-center text-xl fw-bold">
-                        <div id="stat-processing" class="h4">-</div>
-                    </div>
-                    <div class="text-center text-muted">Awaiting Action</div>
-                    <div class="text-center mt-2" style="font-size: 0.75rem; color: #666;">Click to view</div>
+        <div class="col-lg-6 mb-3">
+            <div class="employee-chart-card">
+                <div class="employee-chart-header employee-chart-header-alt">
+                    <span>Monthly Assigned Loans</span>
                 </div>
-            </div>
-        </div>
-
-        <div class="col-xl-2 col-md-4 mb-3">
-            <div class="card border-left-success shadow h-100 py-2" style="cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);" onclick="window.location.href='/employee/assigned-loans/?status=Approved'" onmouseover="this.style.transform='translateY(-8px)'; this.style.boxShadow='0 16px 32px rgba(16, 185, 129, 0.25)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow=''">
-                <div class="card-body">
-                    <div class="text-success text-center text-xl fw-bold">
-                        <div id="stat-approved" class="h4">-</div>
-                    </div>
-                    <div class="text-center text-muted">Approved</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xl-2 col-md-4 mb-3">
-            <div class="card border-left-danger shadow h-100 py-2" style="cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);" onclick="window.location.href='/employee/assigned-loans/?status=Rejected'" onmouseover="this.style.transform='translateY(-8px)'; this.style.boxShadow='0 16px 32px rgba(239, 68, 68, 0.25)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow=''">
-                <div class="card-body">
-                    <div class="text-danger text-center text-xl fw-bold">
-                        <div id="stat-rejected" class="h4">-</div>
-                    </div>
-                    <div class="text-center text-muted">Rejected</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xl-2 col-md-4 mb-3">
-            <div class="card border-left-info shadow h-100 py-2" style="cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);" onclick="window.location.href='/employee/assigned-loans/?status=Required%20Follow-up'" onmouseover="this.style.transform='translateY(-8px)'; this.style.boxShadow='0 16px 32px rgba(59, 130, 246, 0.25)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow=''">
-                <div class="card-body">
-                    <div class="text-info text-center text-xl fw-bold">
-                        <div id="stat-followup" class="h4">-</div>
-                    </div>
-                    <div class="text-center text-muted">Follow-up</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xl-2 col-md-4 mb-3">
-            <div class="card border-left-primary shadow h-100 py-2" style="cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);" onclick="window.location.href='/employee/assigned-loans/?status=Disbursed'" onmouseover="this.style.transform='translateY(-8px)'; this.style.boxShadow='0 16px 32px rgba(99, 102, 241, 0.25)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow=''">
-                <div class="card-body">
-                    <div class="text-primary text-center text-xl fw-bold">
-                        <div id="stat-disbursed" class="h4">-</div>
-                    </div>
-                    <div class="text-center text-muted">Disbursed</div>
+                <div class="employee-chart-body">
+                    <canvas id="monthlyChart" height="220"></canvas>
                 </div>
             </div>
         </div>
@@ -181,13 +96,13 @@
     <!-- Loan History Table -->
     <div class="row mb-4">
         <div class="col-12">
-            <div class="card shadow h-100">
-                <div class="card-header bg-success text-white">
+            <div class="employee-table-card">
+                <div class="employee-table-header">
                     <h6 class="m-0 fw-bold">
                         <i class="bi bi-clock-history"></i> Complete Loan History
                     </h6>
                 </div>
-                <div class="card-body">
+                <div class="employee-table-body">
                     <!-- Search & Filter Controls -->
                     <div class="row mb-3">
                         <div class="col-md-6">
@@ -199,28 +114,28 @@
                         <div class="col-md-3">
                             <select class="form-select border-0 bg-light" id="status-filter">
                                 <option value="">All Status</option>
-                                <option value="New Entry">New Entry</option>
-                                <option value="Waiting for Processing">Waiting for Processing</option>
-                                <option value="Approved">Approved</option>
-                                <option value="Rejected">Rejected</option>
-                                <option value="Disbursed">Disbursed</option>
-                                <option value="Required Follow-up">Required Follow-up</option>
+                                <option value="new_entry">New Entry</option>
+                                <option value="waiting">Waiting for Processing</option>
+                                <option value="approved">Approved</option>
+                                <option value="rejected">Rejected</option>
+                                <option value="disbursed">Disbursed</option>
+                                <option value="follow_up">Required Follow-up</option>
                             </select>
                         </div>
                         <div class="col-md-3">
                             <select class="form-select border-0 bg-light" id="type-filter">
                                 <option value="">All Types</option>
-                                <option value="Personal">Personal</option>
-                                <option value="Business">Business</option>
-                                <option value="Home">Home</option>
-                                <option value="Auto">Auto</option>
+                                <option value="personal">Personal</option>
+                                <option value="business">Business</option>
+                                <option value="home">Home</option>
+                                <option value="car">Auto</option>
                             </select>
                         </div>
                     </div>
 
                     <!-- Loans Table -->
                     <div class="table-responsive">
-                        <table class="table table-hover table-bordered" id="loans-table">
+                        <table class="table table-grid" id="loans-table">
                             <thead class="table-light">
                                 <tr>
                                     <th style="width: 50px;">Photo</th>
@@ -250,25 +165,125 @@
         </div>
     </div>
 
-    </div>
-    </div>
 </div>
 
 <style>
-    .border-left-success {
-        border-left: 4px solid #10b981;
+    .employee-stat-grid {
+        display: grid;
+        grid-template-columns: repeat(6, minmax(170px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+        overflow-x: auto;
+        padding-bottom: 6px;
     }
-    .border-left-warning {
-        border-left: 4px solid #f59e0b;
+
+    .stat-card {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        border-radius: 16px;
+        padding: 18px;
+        color: #fff;
+        text-decoration: none;
+        box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        min-height: 120px;
     }
-    .border-left-danger {
-        border-left: 4px solid #ef4444;
+
+    .stat-card:hover {
+        transform: translateY(-6px);
+        box-shadow: 0 18px 36px rgba(15, 23, 42, 0.28);
+        color: #fff;
     }
-    .border-left-info {
-        border-left: 4px solid #3b82f6;
+
+    .stat-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        opacity: 0.9;
+        font-weight: 600;
     }
-    .border-left-primary {
-        border-left: 4px solid #6366f1;
+
+    .stat-top i {
+        font-size: 18px;
+        opacity: 0.9;
+    }
+
+    .stat-number {
+        font-size: 30px;
+        font-weight: 800;
+        line-height: 1;
+        margin: 12px 0 4px;
+    }
+
+    .stat-subtext {
+        font-size: 11px;
+        opacity: 0.85;
+    }
+
+    .stat-total { background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%); }
+    .stat-awaiting { background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%); }
+    .stat-approved { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+    .stat-rejected { background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%); }
+    .stat-followup { background: linear-gradient(135deg, #38bdf8 0%, #0ea5e9 100%); }
+    .stat-disbursed { background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); }
+
+    @media (max-width: 992px) {
+        .employee-stat-grid {
+            grid-template-columns: repeat(3, minmax(160px, 1fr));
+        }
+    }
+
+    @media (max-width: 640px) {
+        .employee-stat-grid {
+            grid-template-columns: repeat(2, minmax(160px, 1fr));
+        }
+    }
+
+    .employee-chart-card {
+        background: #ffffff;
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+        border-top: 4px solid #4f46e5;
+    }
+
+    .employee-chart-header {
+        padding: 16px 20px;
+        background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
+        color: #ffffff;
+        font-weight: 700;
+        font-size: 14px;
+    }
+
+    .employee-chart-header-alt {
+        background: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
+    }
+
+    .employee-chart-body {
+        padding: 20px;
+        background: #ffffff;
+    }
+
+    .employee-table-card {
+        background: #ffffff;
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 12px 28px rgba(15, 23, 42, 0.1);
+        border-top: 4px solid #16a34a;
+    }
+
+    .employee-table-header {
+        padding: 16px 20px;
+        background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%);
+        color: #ffffff;
+    }
+
+    .employee-table-body {
+        padding: 20px;
     }
 
     .table-hover tbody tr:hover {
@@ -301,24 +316,30 @@
     }
 </style>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
 <script>
     // Load dashboard stats on page load
+    let allLoans = [];
+    let statusChartInstance = null;
+    let monthlyChartInstance = null;
+
     document.addEventListener('DOMContentLoaded', function() {
         loadEmployeeDashboardStats();
         loadAllLoansHistory();
+        loadMonthlyChart();
         
         // Auto-refresh every 30 seconds for real-time updates
         setInterval(function() {
             loadEmployeeDashboardStats();
             loadAllLoansHistory();
+            loadMonthlyChart();
         }, 30000);
 
         // Search and filter functionality
         const searchBox = document.getElementById('search-box');
         const statusFilter = document.getElementById('status-filter');
         const typeFilter = document.getElementById('type-filter');
-        
-        let allLoans = [];
 
         searchBox.addEventListener('input', function() {
             applyFilters();
@@ -339,9 +360,9 @@
 
             const filteredLoans = allLoans.filter(loan => {
                 const matchesSearch = !searchTerm || 
-                    loan.applicant_name.toLowerCase().includes(searchTerm) ||
-                    loan.mobile.includes(searchTerm) ||
-                    loan.applicant_id.toString().includes(searchTerm);
+                    (loan.applicant_name || '').toLowerCase().includes(searchTerm) ||
+                    (loan.mobile || '').includes(searchTerm) ||
+                    String(loan.loan_id || loan.id || '').includes(searchTerm);
                 
                 const matchesStatus = !statusTerm || loan.status === statusTerm;
                 const matchesType = !typeTerm || loan.loan_type === typeTerm;
@@ -354,7 +375,7 @@
     });
 
     function loadEmployeeDashboardStats() {
-        fetch('/api/employee-dashboard-stats/', {
+        fetch('/api/employee/dashboard-stats-new/', {
             headers: {
                 'X-CSRFToken': getCookie('csrftoken')
             }
@@ -362,19 +383,120 @@
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                document.getElementById('stat-total').textContent = data.total_assigned || 0;
-                document.getElementById('stat-processing').textContent = data.processing || 0;
+                document.getElementById('stat-total').textContent = data.total_loans || 0;
+                document.getElementById('stat-processing').textContent = data.in_processing || 0;
                 document.getElementById('stat-approved').textContent = data.approved || 0;
                 document.getElementById('stat-rejected').textContent = data.rejected || 0;
-                document.getElementById('stat-followup').textContent = data.follow_up || 0;
+                const followupEl = document.getElementById('stat-followup');
+                if (followupEl) {
+                    followupEl.textContent = data.follow_up || 0;
+                }
                 document.getElementById('stat-disbursed').textContent = data.disbursed || 0;
+                renderStatusChart(data);
             }
         })
         .catch(error => console.error('Error loading stats:', error));
     }
 
+    function renderStatusChart(data) {
+        if (!window.Chart) return;
+        const canvas = document.getElementById('statusChart');
+        if (!canvas) return;
+
+        const labels = ['Waiting', 'Follow-up', 'Approved', 'Rejected', 'Disbursed'];
+        const values = [
+            data.waiting || 0,
+            data.follow_up || 0,
+            data.approved || 0,
+            data.rejected || 0,
+            data.disbursed || 0
+        ];
+
+        if (statusChartInstance) {
+            statusChartInstance.data.datasets[0].data = values;
+            statusChartInstance.update();
+            return;
+        }
+
+        statusChartInstance = new Chart(canvas, {
+            type: 'doughnut',
+            data: {
+                labels,
+                datasets: [{
+                    data: values,
+                    backgroundColor: ['#f59e0b', '#0ea5e9', '#10b981', '#ef4444', '#6366f1']
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+    }
+
+    function loadMonthlyChart() {
+        if (!window.Chart) return;
+        fetch('/api/employee/monthly-loans/', {
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const values = data.monthly_data || data.data || data.monthly || [];
+            renderMonthlyChart(months, values);
+        })
+        .catch(error => console.error('Error loading monthly chart:', error));
+    }
+
+    function renderMonthlyChart(labels, values) {
+        const canvas = document.getElementById('monthlyChart');
+        if (!canvas || !window.Chart) return;
+
+        if (monthlyChartInstance) {
+            monthlyChartInstance.data.labels = labels;
+            monthlyChartInstance.data.datasets[0].data = values;
+            monthlyChartInstance.update();
+            return;
+        }
+
+        monthlyChartInstance = new Chart(canvas, {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Loans',
+                    data: values,
+                    borderColor: '#4f46e5',
+                    backgroundColor: 'rgba(79, 70, 229, 0.15)',
+                    tension: 0.35,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { precision: 0 }
+                    }
+                }
+            }
+        });
+    }
+
     function loadAllLoansHistory() {
-        fetch('/api/employee/all-loans-history/?limit=100', {
+        fetch('/api/employee/all-loans/?limit=100', {
             headers: {
                 'X-CSRFToken': getCookie('csrftoken')
             }
@@ -382,8 +504,8 @@
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                allLoans = data.loans;
-                displayLoans(data.loans);
+                allLoans = data.loans || [];
+                displayLoans(allLoans);
             }
         })
         .catch(error => console.error('Error loading loans:', error));
@@ -406,30 +528,32 @@
 
         tbody.innerHTML = loans.map(loan => {
             const statusBadges = {
-                'New Entry': 'bg-info',
-                'Waiting for Processing': 'bg-warning text-dark',
-                'Approved': 'bg-success',
-                'Rejected': 'bg-danger',
-                'Required Follow-up': 'bg-secondary',
-                'Disbursed': 'bg-primary'
+                'new_entry': 'bg-info',
+                'waiting': 'bg-warning text-dark',
+                'approved': 'bg-success',
+                'rejected': 'bg-danger',
+                'follow_up': 'bg-secondary',
+                'disbursed': 'bg-primary'
             };
 
             const badgeClass = statusBadges[loan.status] || 'bg-secondary';
             const photoUrl = loan.applicant_photo || '/static/images/default-avatar.svg';
+            const statusLabel = loan.status_display || loan.status || 'N/A';
 
             return `
                 <tr style="animation: fadeIn 0.3s ease-in-out;">
-                    <td style="width: 50px;">
-                        <img src="${photoUrl}" alt="Photo" 
-                             style="width: 40px; height: 40px; border-radius: 50%; border: 2px solid #10b981; object-fit: cover;" 
-                             onerror="this.src='https://via.placeholder.com/40?text=${loan.applicant_name.charAt(0)}'">
+                    <td style="width: 60px;">
+                        <div class="table-avatar">
+                            <img src="${photoUrl}" alt="Photo"
+                                 onerror="this.onerror=null; this.src='https://via.placeholder.com/40?text=${(loan.applicant_name || 'N').charAt(0)}'">
+                        </div>
                     </td>
                     <td>
                         <strong>${loan.applicant_name}</strong><br>
-                        <small class="text-muted">#${loan.applicant_id}</small>
+                        <small class="text-muted">#${loan.loan_id || loan.id}</small>
                     </td>
                     <td>
-                        <a href="tel:${loan.mobile}" class="text-decoration-none">${loan.mobile}</a>
+                        <a href="tel:${loan.mobile}" class="text-decoration-none">${loan.mobile || 'N/A'}</a>
                     </td>
                     <td>
                         <span class="badge bg-secondary">${loan.loan_type || 'N/A'}</span>
@@ -438,21 +562,15 @@
                         <strong>₹${formatAmount(loan.loan_amount)}</strong>
                     </td>
                     <td>
-                        <span class="badge ${badgeClass}">${loan.status || 'N/A'}</span>
+                        <span class="badge ${badgeClass}">${statusLabel}</span>
                     </td>
                     <td>
-                        <small class="text-muted">${loan.created_date || 'N/A'}</small><br>
+                        <small class="text-muted">${loan.assigned_date || loan.created_date || 'N/A'}</small><br>
                         <small class="text-muted">${loan.created_time || ''}</small>
                     </td>
                     <td style="white-space: nowrap;">
-                        <button class="btn btn-sm btn-outline-primary" onclick="viewLoanDetails(${loan.applicant_id})" title="View Details">
+                        <button class="btn btn-sm btn-outline-primary" onclick="viewLoanDetails(${loan.id})" title="View Details">
                             <i class="bi bi-eye"></i> View
-                        </button>
-                        <button class="btn btn-sm btn-outline-secondary" onclick="editLoan(${loan.applicant_id})" title="Edit">
-                            <i class="bi bi-pencil"></i>
-                        </button>
-                        <button class="btn btn-sm btn-outline-danger" onclick="deleteLoan(${loan.applicant_id})" title="Delete">
-                            <i class="bi bi-trash"></i>
                         </button>
                     </td>
                 </tr>
@@ -460,19 +578,8 @@
         }).join('');
     }
 
-    function viewLoanDetails(applicantId) {
-        window.location.href = `/dashboard/view-application/${applicantId}/`;
-    }
-
-    function editLoan(applicantId) {
-        window.location.href = `/edit-loan-application/${applicantId}/`;
-    }
-
-    function deleteLoan(applicantId) {
-        if (confirm('Are you sure you want to delete this loan record?')) {
-            // You can add delete functionality here via API
-            alert('Delete functionality to be implemented');
-        }
+    function viewLoanDetails(loanId) {
+        window.location.href = `/employee/loan/${loanId}/detail/`;
     }
 
     function formatAmount(amount) {

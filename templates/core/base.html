@@ -194,6 +194,112 @@
             width: 24px;
         }
 
+        /* Employee Theme (Match SubAdmin Sidebar Look) */
+        body.employee-theme .sidebar {
+            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+            box-shadow: 2px 0 12px rgba(15, 23, 42, 0.35);
+        }
+
+        body.employee-theme .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        body.employee-theme .brand-badge {
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 16px;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.35);
+        }
+
+        body.employee-theme .brand-text {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            color: #f8fafc;
+        }
+
+        body.employee-theme .sidebar-profile-section {
+            padding: 18px 20px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            text-align: center;
+        }
+
+        body.employee-theme .employee-profile-photo {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 2px solid rgba(255, 255, 255, 0.25);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+            margin: 0 auto 8px;
+        }
+
+        body.employee-theme .employee-profile-photo img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        body.employee-theme .employee-profile-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #f8fafc;
+        }
+
+        body.employee-theme .employee-profile-role {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: rgba(255, 255, 255, 0.6);
+            margin-top: 2px;
+        }
+
+        body.employee-theme .employee-profile-email {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.7);
+            word-break: break-all;
+            margin-top: 6px;
+        }
+
+        body.employee-theme .sidebar-menu a {
+            color: rgba(255, 255, 255, 0.8);
+            border-left-color: transparent;
+        }
+
+        body.employee-theme .sidebar-menu a:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+            border-left-color: #4f46e5;
+        }
+
+        body.employee-theme .sidebar-menu a.active {
+            background-color: rgba(79, 70, 229, 0.2);
+            color: #ffffff;
+            border-left-color: #4f46e5;
+        }
+
+        body.employee-theme .sidebar-company {
+            margin: 16px 20px 24px;
+            padding: 10px 12px;
+            background: #f8fafc;
+            color: #0f172a;
+            font-size: 11px;
+            font-weight: 600;
+            border-radius: 10px;
+            text-align: center;
+        }
+
         /* Main Content */
         .main-content {
             margin-left: var(--sidebar-width);
@@ -699,6 +805,65 @@
             border-bottom: 2px solid #e2e8f0;
         }
 
+        /* Employee Table Grid + Avatars */
+        body[data-role="employee"] .table-grid {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            border: 1px solid #e5e7eb;
+            border-radius: 14px;
+            overflow: hidden;
+            background: #ffffff;
+            box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+        }
+
+        body[data-role="employee"] .table-grid thead th {
+            border-bottom: 1px solid rgba(148, 163, 184, 0.4);
+            border-right: 1px solid rgba(148, 163, 184, 0.3);
+        }
+
+        body[data-role="employee"] .table-grid tbody td {
+            border-bottom: 1px solid #eef2f7;
+            border-right: 1px solid #eef2f7;
+        }
+
+        body[data-role="employee"] .table-grid th:last-child,
+        body[data-role="employee"] .table-grid td:last-child {
+            border-right: none;
+        }
+
+        body[data-role="employee"] .table-grid tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        body[data-role="employee"] .table-grid tbody tr:hover {
+            background: #f8fafc;
+        }
+
+        body[data-role="employee"] .table-avatar,
+        body[data-role="employee"] .table-avatar-fallback {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            overflow: hidden;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid rgba(15, 23, 42, 0.08);
+            background: linear-gradient(135deg, #c7d2fe 0%, #e0e7ff 100%);
+            color: #1e293b;
+            font-weight: 700;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        body[data-role="employee"] .table-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
         /* Badge Styles */
         .badge {
             padding: 6px 12px;
@@ -824,7 +989,7 @@
     
     {% block extra_css %}{% endblock %}
 </head>
-<body>
+<body data-role="{{ user.role }}" class="{% if user.role == 'employee' %}employee-theme{% endif %}">
     <!-- Mobile Toggle Button -->
     <button class="mobile-toggle" onclick="toggleSidebar()">
         <i class="bi bi-list"></i>
@@ -834,7 +999,12 @@
     <aside class="sidebar" id="sidebar">
         <!-- Branding Section -->
         <div class="sidebar-header">
-            <h4 style="margin: 0; font-weight: 700;">DSA</h4>
+            {% if user.role == 'employee' %}
+                <div class="brand-badge">EM</div>
+                <div class="brand-text">Employee</div>
+            {% else %}
+                <h4 style="margin: 0; font-weight: 700;">DSA</h4>
+            {% endif %}
         </div>
 
         <!-- Profile Section -->
@@ -860,23 +1030,18 @@
                     <p class="profile-role text-muted">{{ user.get_role_display }}</p>
                 </div>
             {% elif user.role == 'employee' %}
-                <!-- Employee Profile with Photo -->
-                <div class="text-center">
-                    <div class="profile-photo-large mx-auto mb-2">
+                <!-- Employee Profile (SubAdmin-style) -->
+                <div>
+                    <div class="employee-profile-photo">
                         {% if user.profile_photo %}
-                            <img src="{{ user.profile_photo.url }}" alt="{{ user.get_full_name }}" 
-                                 class="rounded-circle" style="width: 100%; height: 100%; object-fit: cover;">
+                            <img src="{{ user.profile_photo.url }}" alt="{{ user.get_full_name }}">
                         {% else %}
-                            <div class="d-flex align-items-center justify-content-center" 
-                                 style="width: 100%; height: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%;">
-                                <i class="fas fa-user" style="font-size: 32px; color: white;"></i>
-                            </div>
+                            <img src="https://via.placeholder.com/64?text={{ user.first_name|first|upper }}" alt="{{ user.get_full_name }}">
                         {% endif %}
                     </div>
-                    <a href="/employee/profile/" class="text-decoration-none">
-                        <p class="profile-name mb-1">{{ user.get_full_name|default:user.username }}</p>
-                    </a>
-                    <p class="profile-role text-muted">{{ user.get_role_display }}</p>
+                    <div class="employee-profile-name">{{ user.get_full_name|default:user.username }}</div>
+                    <div class="employee-profile-role">Employee</div>
+                    <div class="employee-profile-email">{{ user.email|default:"employee@example.com" }}</div>
                 </div>
             {% else %}
                 <!-- Default Profile -->
@@ -934,13 +1099,6 @@
                 <a href="{% url 'complaints_legacy' %}" class="{% if request.resolver_match.url_name == 'complaints_legacy' %}active{% endif %}">
                     <i class="bi bi-exclamation-triangle"></i>
                     <span>Complaints</span>
-                </a>
-            </li>
-            <li class="sidebar-divider"></li>
-            <li>
-                <a href="{% url 'logout' %}" style="color: #ef4444;">
-                    <i class="bi bi-box-arrow-right"></i>
-                    <span>Logout</span>
                 </a>
             </li>
             {% endif %}
@@ -1060,17 +1218,13 @@
                     <span>Settings</span>
                 </a>
             </li>
-            <li class="sidebar-divider"></li>
-            <li>
-                <a href="{% url 'logout' %}" style="color: #ef4444;">
-                    <i class="bi bi-box-arrow-right"></i>
-                    <span>Logout</span>
-                </a>
-            </li>
             {% endif %}
 
             <li class="sidebar-divider"></li>
         </ul>
+        {% if user.role == 'employee' %}
+        <div class="sidebar-company">Greenbacks Microservice Foundation</div>
+        {% endif %}
     </aside>
 
     <!-- Top Navigation Bar -->

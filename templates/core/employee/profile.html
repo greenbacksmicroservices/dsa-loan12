@@ -187,7 +187,7 @@
     });
 
     function loadProfileStats() {
-        fetch('/api/employee-dashboard-stats/', {
+        fetch('/api/employee/dashboard-stats-new/', {
             headers: {
                 'X-CSRFToken': getCookie('csrftoken')
             }
@@ -195,8 +195,8 @@
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                document.getElementById('total-loans').textContent = data.total_assigned || 0;
-                document.getElementById('processing-loans').textContent = data.processing || 0;
+                document.getElementById('total-loans').textContent = data.total_loans || 0;
+                document.getElementById('processing-loans').textContent = data.in_processing || 0;
                 document.getElementById('approved-loans').textContent = data.approved || 0;
                 document.getElementById('rejected-loans').textContent = data.rejected || 0;
             }

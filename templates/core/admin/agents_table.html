@@ -227,9 +227,9 @@
                     <td><strong>{{ agent.total_leads|default:0 }}</strong></td>
                     <td>
                         <div class="action-buttons">
-                            <button class="btn-sm btn-view" onclick="viewAgent({{ agent.id }})">👁️ View</button>
-                            <button class="btn-sm btn-edit" onclick="editAgent({{ agent.id }})">✏️ Edit</button>
-                            <button class="btn-sm btn-delete" onclick="deleteAgent({{ agent.id }})">🗑️ Delete</button>
+                            <button class="btn-sm btn-view" onclick="viewAgent({{ agent.id }}, '{{ agent.name }}', '{{ agent.email }}', '{{ agent.phone }}', '{{ agent.user.username }}', '{{ agent.status }}')">👁️ View</button>
+                            <button class="btn-sm btn-edit" onclick="editAgent({{ agent.id }}, '{{ agent.name }}', '{{ agent.email }}', '{{ agent.phone }}')">✏️ Edit</button>
+                            <button class="btn-sm btn-delete" onclick="deleteAgent({{ agent.id }}, '{{ agent.name }}')">🗑️ Delete</button>
                         </div>
                     </td>
                 </tr>
@@ -242,7 +242,6 @@
         <div class="empty-icon">🤝</div>
         <h3 style="color: #1f2937; margin-bottom: 10px;">No Agents Found</h3>
         <p>No agents have been added yet.</p>
-        <button onclick="openAddAgentModal()" class="btn-primary" style="margin-top: 20px;">➕ Add First Agent</button>
     </div>
     {% endif %}
 </div>
@@ -262,18 +261,101 @@ function filterTable() {
     });
 }
 
-function viewAgent(id) {
-    alert('View Agent #' + id + ' - Coming soon');
+function viewAgent(id, name, email, phone, username, status) {
+    const modal = document.createElement('div');
+    modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center;';
+    modal.innerHTML = `
+        <div style="background: white; border-radius: 12px; padding: 30px; max-width: 500px; width: 90%; box-shadow: 0 20px 25px rgba(0,0,0,0.2);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #e5e7eb; padding-bottom: 15px;">
+                <h2 style="margin: 0; color: #1a202c; font-size: 20px; font-weight: 700;">Agent Details</h2>
+                <button onclick="this.closest('[style*=position]').remove()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #718096;">&times;</button>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <p style="color: #718096; font-size: 12px; margin: 0 0 5px 0; text-transform: uppercase; font-weight: 600;">Name</p>
+                <p style="color: #1a202c; font-size: 14px; font-weight: 600; margin: 0 0 15px 0;">${name}</p>
+                
+                <p style="color: #718096; font-size: 12px; margin: 0 0 5px 0; text-transform: uppercase; font-weight: 600;">Email</p>
+                <p style="color: #1a202c; font-size: 14px; font-weight: 600; margin: 0 0 15px 0;">${email}</p>
+                
+                <p style="color: #718096; font-size: 12px; margin: 0 0 5px 0; text-transform: uppercase; font-weight: 600;">Phone</p>
+                <p style="color: #1a202c; font-size: 14px; font-weight: 600; margin: 0 0 15px 0;">${phone}</p>
+                
+                <p style="color: #718096; font-size: 12px; margin: 0 0 5px 0; text-transform: uppercase; font-weight: 600;">Username</p>
+                <p style="color: #1a202c; font-size: 14px; font-weight: 600; margin: 0 0 15px 0;">@${username}</p>
+                
+                <p style="color: #718096; font-size: 12px; margin: 0 0 5px 0; text-transform: uppercase; font-weight: 600;">Status</p>
+                <p style="color: #1a202c; font-size: 14px; font-weight: 600; margin: 0;">${status === 'active' ? '✓ Active' : '✗ Inactive'}</p>
+            </div>
+            
+            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 25px; padding-top: 20px; border-top: 2px solid #e5e7eb;">
+                <button onclick="this.closest('[style*=position]').remove()" style="padding: 10px 20px; background: #e2e8f0; color: #2d3748; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">Close</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) modal.remove();
+    });
 }
 
-function editAgent(id) {
-    alert('Edit Agent #' + id + ' - Coming soon');
+function editAgent(id, name, email, phone) {
+    const newName = prompt('Agent Name', name || '');
+    if (newName === null) return;
+    const newEmail = prompt('Agent Email', email || '');
+    if (newEmail === null) return;
+    const newPhone = prompt('Agent Phone', phone || '');
+    if (newPhone === null) return;
+
+    fetch(`/api/admin/agents/${id}/update/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            name: newName.trim(),
+            email: newEmail.trim(),
+            phone: newPhone.trim()
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (!data.success) throw new Error(data.error || 'Failed to update agent');
+        location.reload();
+    })
+    .catch(error => alert(error.message || 'Error updating agent'));
 }
 
-function deleteAgent(id) {
-    if (confirm('Are you sure you want to delete this agent?')) {
-        alert('Agent deleted - Coming soon');
+function deleteAgent(id, name) {
+    if (!confirm(`Are you sure you want to delete ${name}? This action cannot be undone.`)) return;
+    fetch(`/api/admin/agents/${id}/delete/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (!data.success) throw new Error(data.error || 'Failed to delete agent');
+        location.reload();
+    })
+    .catch(error => alert(error.message || 'Error deleting agent'));
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
     }
+    return cookieValue;
 }
 </script>
 

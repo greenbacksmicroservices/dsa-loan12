@@ -58,6 +58,15 @@ def login_view(request):
         elif email_input:
             # Try username as fallback
             user = authenticate(request, username=email_input, password=password)
+
+            # If not found, try agent_id mapping
+            if user is None:
+                try:
+                    agent = Agent.objects.get(agent_id=email_input)
+                    if agent.user:
+                        user = authenticate(request, username=agent.user.username, password=password)
+                except Agent.DoesNotExist:
+                    pass
         
         if user is not None and user.is_active:
             login(request, user)
@@ -83,9 +92,9 @@ def admin_login_view(request):
     """
     if request.user.is_authenticated:
         if request.user.role == 'admin':
-            return redirect('admin_all_loans')
+            return redirect('admin_dashboard')
         elif request.user.role == 'subadmin':
-            return redirect('/subadmin/dashboard/')
+            return redirect('subadmin_dashboard')
     
     if request.method == 'POST':
         username_or_email = request.POST.get('email', '').strip()
@@ -131,9 +140,9 @@ def admin_login_view(request):
                 
                 # Redirect based on role
                 if user.role == 'admin':
-                    return redirect('admin_all_loans')
+                    return redirect('admin_dashboard')
                 else:
-                    return redirect('/subadmin/dashboard/')
+                    return redirect('subadmin_dashboard')
             else:
                 messages.error(request, 'Unauthorized access. Admin/SubAdmin privileges required.')
         else:
@@ -212,7 +221,7 @@ def admin_all_employees(request):
     if request.user.role != 'admin':
         return redirect('dashboard')
     
-    employees = User.objects.filter(role='employee')
+    employees = User.objects.filter(role='employee', is_active=True)
     
     # Count data for each employee
     employee_loans_count = {}
@@ -240,7 +249,7 @@ def admin_all_agents(request):
     if request.user.role != 'admin':
         return redirect('dashboard')
     
-    agents = Agent.objects.all()
+    agents = Agent.objects.filter(status='active')
     
     context = {
         'agents': agents,
@@ -251,50 +260,53 @@ def admin_all_agents(request):
 
 @login_required
 def admin_new_entries(request):
-    """View New Entry loans"""
+    """View New Entry applications"""
     if request.user.role != 'admin':
         return redirect('dashboard')
     
-    loans = Loan.objects.filter(status='new_entry').select_related('assigned_employee').order_by('-created_at')
+    applications = LoanApplication.objects.filter(status='New Entry').select_related('applicant', 'assigned_employee', 'assigned_agent').order_by('-created_at')
     
     context = {
-        'loans': loans,
+        'page_title': 'New Entry Applications',
+        'applications': applications,
         'status_name': 'New Entry',
         'status_icon': 'fa-file-alt',
         'status_color': '#667eea',
     }
     
-    return render(request, 'core/admin/admin_loan_status_list.html', context)
+    return render(request, 'core/admin/applications_list.html', context)
 
 
 @login_required
 def admin_in_processing(request):
-    """View In Processing loans"""
+    """View In Processing applications"""
     if request.user.role != 'admin':
         return redirect('dashboard')
     
-    loans = Loan.objects.filter(status='in_processing').select_related('assigned_employee').order_by('-created_at')
+    applications = LoanApplication.objects.filter(status='Waiting for Processing').select_related('applicant', 'assigned_employee', 'assigned_agent').order_by('-created_at')
     
     context = {
-        'loans': loans,
+        'page_title': 'In Processing Applications',
+        'applications': applications,
         'status_name': 'In Processing',
         'status_icon': 'fa-hourglass-half',
         'status_color': '#f5576c',
     }
     
-    return render(request, 'core/admin/admin_loan_status_list.html', context)
+    return render(request, 'core/admin/applications_list.html', context)
 
 
 @login_required
 def admin_follow_ups(request):
-    """View Follow-up loans"""
+    """View Follow-up applications"""
     if request.user.role != 'admin':
         return redirect('dashboard')
     
-    loans = Loan.objects.filter(status='follow_up').select_related('assigned_employee').order_by('-created_at')
+    applications = LoanApplication.objects.filter(status='Required Follow-up').select_related('applicant', 'assigned_employee', 'assigned_agent').order_by('-created_at')
     
     context = {
-        'loans': loans,
+        'page_title': 'Follow-up Applications',
+        'applications': applications,
         'status_name': 'Follow-up',
         'status_icon': 'fa-phone',
         'status_color': '#fa709a',
@@ -305,56 +317,59 @@ def admin_follow_ups(request):
 
 @login_required
 def admin_approved(request):
-    """View Approved loans"""
+    """View Approved applications"""
     if request.user.role != 'admin':
         return redirect('dashboard')
     
-    loans = Loan.objects.filter(status='approved').select_related('assigned_employee').order_by('-created_at')
+    applications = LoanApplication.objects.filter(status='Approved').select_related('applicant', 'assigned_employee', 'assigned_agent').order_by('-created_at')
     
     context = {
-        'loans': loans,
+        'page_title': 'Approved Applications',
+        'applications': applications,
         'status_name': 'Approved',
         'status_icon': 'fa-check-circle',
         'status_color': '#30cfd0',
     }
     
-    return render(request, 'core/admin/admin_loan_status_list.html', context)
+    return render(request, 'core/admin/applications_list.html', context)
 
 
 @login_required
 def admin_rejected(request):
-    """View Rejected loans"""
+    """View Rejected applications"""
     if request.user.role != 'admin':
         return redirect('dashboard')
     
-    loans = Loan.objects.filter(status='rejected').select_related('assigned_employee').order_by('-created_at')
+    applications = LoanApplication.objects.filter(status='Rejected').select_related('applicant', 'assigned_employee', 'assigned_agent').order_by('-created_at')
     
     context = {
-        'loans': loans,
+        'page_title': 'Rejected Applications',
+        'applications': applications,
         'status_name': 'Rejected',
         'status_icon': 'fa-times-circle',
         'status_color': '#ff6b6b',
     }
     
-    return render(request, 'core/admin/admin_loan_status_list.html', context)
+    return render(request, 'core/admin/applications_list.html', context)
 
 
 @login_required
 def admin_disbursed(request):
-    """View Disbursed loans"""
+    """View Disbursed applications"""
     if request.user.role != 'admin':
         return redirect('dashboard')
     
-    loans = Loan.objects.filter(status='disbursed').select_related('assigned_employee').order_by('-created_at')
+    applications = LoanApplication.objects.filter(status='Disbursed').select_related('applicant', 'assigned_employee', 'assigned_agent').order_by('-created_at')
     
     context = {
-        'loans': loans,
+        'page_title': 'Disbursed Applications',
+        'applications': applications,
         'status_name': 'Disbursed',
         'status_icon': 'fa-money-bill-wave',
         'status_color': '#11998e',
     }
     
-    return render(request, 'core/admin/admin_loan_status_list.html', context)
+    return render(request, 'core/admin/applications_list.html', context)
 
 
 @login_required
@@ -409,24 +424,87 @@ def admin_assign_employee(request, loan_id):
 
 
 @login_required
+@login_required
 def admin_reports(request):
-    """Admin Reports page"""
+    """Admin Reports page with real data"""
     if request.user.role != 'admin':
         return redirect('dashboard')
     
-    total_loans = Loan.objects.count()
-    total_amount = Loan.objects.aggregate(Sum('loan_amount'))['loan_amount__sum'] or 0
-    approved_count = Loan.objects.filter(status='approved').count()
-    rejected_count = Loan.objects.filter(status='rejected').count()
-    
-    context = {
-        'total_loans': total_loans,
-        'total_amount': total_amount,
-        'approved_count': approved_count,
-        'rejected_count': rejected_count,
-    }
-    
-    return render(request, 'core/admin/admin_reports.html', context)
+    try:
+        # Get all applications
+        all_apps = LoanApplication.objects.all()
+        total_applications = all_apps.count()
+        
+        # Count by status
+        new_count = all_apps.filter(status='New Entry').count()
+        processing_count = all_apps.filter(status='Waiting for Processing').count()
+        followup_count = all_apps.filter(status='Required Follow-up').count()
+        approved_count = all_apps.filter(status='Approved').count()
+        rejected_count = all_apps.filter(status='Rejected').count()
+        disbursed_count = all_apps.filter(status='Disbursed').count()
+        
+        # Calculate percentages
+        new_percent = int((new_count / total_applications * 100)) if total_applications > 0 else 0
+        processing_percent = int((processing_count / total_applications * 100)) if total_applications > 0 else 0
+        followup_percent = int((followup_count / total_applications * 100)) if total_applications > 0 else 0
+        approved_percent = int((approved_count / total_applications * 100)) if total_applications > 0 else 0
+        rejected_percent = int((rejected_count / total_applications * 100)) if total_applications > 0 else 0
+        disbursed_percent = int((disbursed_count / total_applications * 100)) if total_applications > 0 else 0
+        
+        # Financial data
+        total_amount = all_apps.aggregate(Sum('applicant__loan_amount'))['applicant__loan_amount__sum'] or 0
+        approved_amount = all_apps.filter(status='Approved').aggregate(Sum('applicant__loan_amount'))['applicant__loan_amount__sum'] or 0
+        disbursed_amount = all_apps.filter(status='Disbursed').aggregate(Sum('applicant__loan_amount'))['applicant__loan_amount__sum'] or 0
+        pending_amount = (total_amount - disbursed_amount)
+        avg_loan_value = (total_amount / total_applications) if total_applications > 0 else 0
+        
+        # Team data
+        employees = User.objects.filter(role='employee')
+        total_employees = employees.count()
+        active_employees = employees.filter(is_active=True).count()
+        
+        agents = Agent.objects.all()
+        total_agents = agents.count()
+        active_agents = agents.filter(status='active').count()
+        
+        subadmins = User.objects.filter(role='subadmin')
+        total_subadmins = subadmins.count()
+        
+        context = {
+            'page_title': 'Reports & Analytics',
+            'total_applications': total_applications,
+            'new_count': new_count,
+            'processing_count': processing_count,
+            'followup_count': followup_count,
+            'approved_count': approved_count,
+            'rejected_count': rejected_count,
+            'disbursed_count': disbursed_count,
+            'new_percent': new_percent,
+            'processing_percent': processing_percent,
+            'followup_percent': followup_percent,
+            'approved_percent': approved_percent,
+            'rejected_percent': rejected_percent,
+            'disbursed_percent': disbursed_percent,
+            'total_amount': total_amount,
+            'approved_amount': approved_amount,
+            'disbursed_amount': disbursed_amount,
+            'pending_amount': pending_amount,
+            'avg_loan_value': avg_loan_value,
+            'total_employees': total_employees,
+            'active_employees': active_employees,
+            'total_agents': total_agents,
+            'active_agents': active_agents,
+            'total_subadmins': total_subadmins,
+        }
+        
+        return render(request, 'core/admin/admin_reports_enhanced.html', context)
+    except Exception as e:
+        logger.error(f"Error loading reports: {str(e)}")
+        context = {
+            'page_title': 'Reports & Analytics',
+            'error': str(e)
+        }
+        return render(request, 'core/admin/admin_reports.html', context)
 
 
 @login_required

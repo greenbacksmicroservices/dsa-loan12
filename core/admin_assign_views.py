@@ -161,6 +161,13 @@ def admin_reassign_loan(request, loan_id):
         # Reassign
         loan.assigned_employee = new_employee
         loan.assigned_at = timezone.now()
+
+        # If loan was in follow-up, move it back to waiting and reset follow-up flags
+        if loan.status == 'follow_up':
+            loan.status = 'waiting'
+            loan.requires_follow_up = False
+            loan.follow_up_triggered_at = None
+
         loan.save()
         
         # Log activity

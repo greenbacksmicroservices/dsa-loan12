@@ -1,0 +1,276 @@
+{% extends 'core/admin/admin_base.html' %}
+{% load static %}
+
+{% block title %}Team Management - Admin{% endblock %}
+
+{% block page_title %}Team Management{% endblock %}
+
+{% block content %}
+<style>
+    .management-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .management-card {
+        background: white;
+        border-radius: 12px;
+        padding: 30px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        border: 1px solid #e2e8f0;
+        text-align: center;
+        transition: all 0.3s ease;
+    }
+
+    .management-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+    }
+
+    .card-icon {
+        font-size: 48px;
+        margin-bottom: 15px;
+    }
+
+    .card-title {
+        font-size: 20px;
+        font-weight: 700;
+        color: #1a202c;
+        margin-bottom: 10px;
+    }
+
+    .card-count {
+        font-size: 32px;
+        font-weight: 700;
+        color: #3b82f6;
+        margin-bottom: 15px;
+    }
+
+    .card-description {
+        color: #718096;
+        font-size: 14px;
+        margin-bottom: 20px;
+    }
+
+    .card-link {
+        display: inline-block;
+        padding: 10px 20px;
+        background: #3b82f6;
+        color: white;
+        border-radius: 6px;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.2s;
+    }
+
+    .card-link:hover {
+        background: #2563eb;
+        transform: scale(1.05);
+    }
+
+    .table-section {
+        background: white;
+        border-radius: 12px;
+        padding: 30px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        margin-bottom: 30px;
+    }
+
+    .section-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: #1a202c;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .section-title i {
+        color: #3b82f6;
+        font-size: 22px;
+    }
+
+    .mini-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 15px;
+    }
+
+    .mini-table thead {
+        background: #f7fafc;
+        border-bottom: 2px solid #e2e8f0;
+    }
+
+    .mini-table th {
+        padding: 12px 15px;
+        text-align: left;
+        font-weight: 600;
+        color: #2d3748;
+        font-size: 12px;
+        text-transform: uppercase;
+    }
+
+    .mini-table tbody tr {
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .mini-table td {
+        padding: 12px 15px;
+        color: #2d3748;
+        font-size: 13px;
+    }
+
+    .user-cell {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .user-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 6px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 700;
+        font-size: 14px;
+    }
+
+    .view-all-link {
+        display: inline-block;
+        padding: 8px 16px;
+        background: #f0f4f8;
+        color: #3b82f6;
+        border-radius: 6px;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 13px;
+        margin-top: 10px;
+    }
+
+    .view-all-link:hover {
+        background: #e2e8f0;
+    }
+</style>
+
+<!-- Management Overview -->
+<div class="management-grid">
+    <!-- Employees Card -->
+    <div class="management-card">
+        <div class="card-icon">👨‍💼</div>
+        <div class="card-title">Employees</div>
+        <div class="card-count">{{ employees|length }}</div>
+        <div class="card-description">Active team members managing loans</div>
+        <a href="{% url 'admin_all_employees' %}" class="card-link">
+            <i class="fas fa-arrow-right"></i> View All
+        </a>
+    </div>
+
+    <!-- Agents Card -->
+    <div class="management-card">
+        <div class="card-icon">🤝</div>
+        <div class="card-title">Agents</div>
+        <div class="card-count">{{ agents|length }}</div>
+        <div class="card-description">Field agents submitting applications</div>
+        <a href="{% url 'admin_all_agents' %}" class="card-link">
+            <i class="fas fa-arrow-right"></i> View All
+        </a>
+    </div>
+
+    <!-- SubAdmins Card -->
+    <div class="management-card">
+        <div class="card-icon">🛡️</div>
+        <div class="card-title">SubAdmins</div>
+        <div class="card-count">{{ subadmins|length }}</div>
+        <div class="card-description">Administrative supervisors</div>
+        <a href="{% url 'admin_subadmin_management' %}" class="card-link">
+            <i class="fas fa-arrow-right"></i> Manage
+        </a>
+    </div>
+</div>
+
+<!-- Recent Employees Section -->
+<div class="table-section">
+    <div class="section-title">
+        <i class="fas fa-users"></i> Recent Employees
+    </div>
+    <table class="mini-table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Status</th>
+                <th>Joined</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for emp in employees|slice:":5" %}
+            <tr>
+                <td>
+                    <div class="user-cell">
+                        <div class="user-avatar">{{ emp.first_name|first|upper }}</div>
+                        <strong>{{ emp.get_full_name }}</strong>
+                    </div>
+                </td>
+                <td>{{ emp.email }}</td>
+                <td>
+                    <span style="color: {% if emp.is_active %}#10b981{% else %}#ef4444{% endif %};">
+                        {% if emp.is_active %}✓ Active{% else %}✗ Inactive{% endif %}
+                    </span>
+                </td>
+                <td>{{ emp.date_joined|date:"M d, Y" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" style="text-align: center; color: #a0aec0;">No employees yet</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <a href="{% url 'admin_all_employees' %}" class="view-all-link">View All Employees →</a>
+</div>
+
+<!-- Recent Agents Section -->
+<div class="table-section">
+    <div class="section-title">
+        <i class="fas fa-briefcase"></i> Recent Agents
+    </div>
+    <table class="mini-table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for agent in agents|slice:":5" %}
+            <tr>
+                <td>
+                    <div class="user-cell">
+                        <div class="user-avatar">{{ agent.name|first|upper }}</div>
+                        <strong>{{ agent.name }}</strong>
+                    </div>
+                </td>
+                <td>{{ agent.email|default:"-" }}</td>
+                <td>{{ agent.phone|default:"-" }}</td>
+                <td>
+                    <span style="color: {% if agent.status == 'active' %}#10b981{% else %}#ef4444{% endif %};">
+                        {% if agent.status == 'active' %}✓ Active{% else %}✗ Inactive{% endif %}
+                    </span>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" style="text-align: center; color: #a0aec0;">No agents yet</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <a href="{% url 'admin_all_agents' %}" class="view-all-link">View All Agents →</a>
+</div>
+
+{% endblock %}

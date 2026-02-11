@@ -1,0 +1,273 @@
+{% extends 'core/admin/admin_base.html' %}
+{% load static %}
+
+{% block title %}Join Requests - Admin{% endblock %}
+
+{% block page_title %}Join Requests{% endblock %}
+
+{% block content %}
+<style>
+    .requests-container {
+        background: white;
+        border-radius: 12px;
+        padding: 30px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .requests-header {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        margin-bottom: 30px;
+        padding-bottom: 20px;
+        border-bottom: 2px solid #e5e7eb;
+    }
+
+    .requests-header h2 {
+        margin: 0;
+        font-size: 24px;
+        font-weight: 700;
+        color: #1a202c;
+        flex: 1;
+    }
+
+    .requests-count {
+        background: #ef4444;
+        color: white;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 14px;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 80px 40px;
+    }
+
+    .empty-state i {
+        font-size: 64px;
+        color: #cbd5e0;
+        display: block;
+        margin-bottom: 20px;
+    }
+
+    .empty-state h3 {
+        font-size: 20px;
+        font-weight: 700;
+        color: #2d3748;
+        margin-bottom: 10px;
+    }
+
+    .empty-state p {
+        color: #718096;
+        font-size: 14px;
+        max-width: 400px;
+        margin: 0 auto;
+        line-height: 1.6;
+    }
+
+    .requests-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .requests-table thead {
+        background: linear-gradient(135deg, #1abc9c 0%, #16a085 100%);
+        color: white;
+    }
+
+    .requests-table th {
+        padding: 16px 12px;
+        text-align: left;
+        font-weight: 600;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .requests-table td {
+        padding: 14px 12px;
+        border-bottom: 1px solid #e5e7eb;
+        vertical-align: middle;
+    }
+
+    .requests-table tbody tr {
+        transition: all 0.2s ease;
+    }
+
+    .requests-table tbody tr:hover {
+        background: #f9fafb;
+    }
+
+    .user-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .user-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #f59e0b, #f97316);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 700;
+        font-size: 14px;
+    }
+
+    .request-status {
+        display: inline-block;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: capitalize;
+    }
+
+    .status-pending {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .status-approved {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .status-rejected {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 8px;
+    }
+
+    .btn-action-small {
+        padding: 6px 12px;
+        background: #f3f4f6;
+        border: 1px solid #cbd5e0;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 600;
+        transition: all 0.2s;
+    }
+
+    .btn-approve:hover {
+        background: #d1fae5;
+        border-color: #a7f3d0;
+    }
+
+    .btn-reject:hover {
+        background: #fee2e2;
+        border-color: #fca5a5;
+    }
+
+    .info-banner {
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 30px;
+        display: flex;
+        gap: 15px;
+        align-items: flex-start;
+    }
+
+    .info-banner i {
+        color: #3b82f6;
+        font-size: 20px;
+        flex-shrink: 0;
+        margin-top: 2px;
+    }
+
+    .info-banner p {
+        margin: 0;
+        color: #1e40af;
+        font-size: 14px;
+        line-height: 1.6;
+    }
+</style>
+
+<div class="requests-container">
+    <!-- Header -->
+    <div class="requests-header">
+        <h2><i class="fas fa-handshake" style="color: #f59e0b; margin-right: 12px;"></i>Join Requests</h2>
+        <span class="requests-count">{{ request_count }}</span>
+    </div>
+
+    <!-- Info Banner -->
+    <div class="info-banner">
+        <i class="fas fa-info-circle"></i>
+        <p>
+            Manage requests from users who want to join your organization as SubAdmins, Agents, or Employees. 
+            Review their details and approve or reject their requests.
+        </p>
+    </div>
+
+    <!-- Empty State -->
+    {% if not join_requests %}
+    <div class="empty-state">
+        <i class="fas fa-inbox"></i>
+        <h3>No Join Requests</h3>
+        <p>There are currently no pending join requests. When users apply to join your organization, their requests will appear here.</p>
+    </div>
+    {% else %}
+    <!-- Requests Table -->
+    <table class="requests-table">
+        <thead>
+            <tr>
+                <th>User Info</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Requested Role</th>
+                <th>Request Date</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for req in join_requests %}
+            <tr>
+                <td>
+                    <div class="user-info">
+                        <div class="user-avatar">{{ req.name|first|upper }}</div>
+                        <div>
+                            <strong style="color: #1a202c; font-size: 14px;">{{ req.name }}</strong>
+                            <br><small style="color: #718096;">{{ req.user_id }}</small>
+                        </div>
+                    </div>
+                </td>
+                <td>{{ req.email }}</td>
+                <td>{{ req.phone }}</td>
+                <td><span style="background: #ede9fe; color: #6d28d9; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 600;">{{ req.role|title }}</span></td>
+                <td>{{ req.request_date|date:"M d, Y" }}</td>
+                <td>
+                    <span class="request-status status-{{ req.status|lower }}">
+                        {{ req.status }}
+                    </span>
+                </td>
+                <td>
+                    <div class="action-buttons">
+                        <button class="btn-action-small btn-approve" title="Approve">
+                            <i class="fas fa-check"></i> Approve
+                        </button>
+                        <button class="btn-action-small btn-reject" title="Reject">
+                            <i class="fas fa-times"></i> Reject
+                        </button>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+</div>
+
+{% endblock %}

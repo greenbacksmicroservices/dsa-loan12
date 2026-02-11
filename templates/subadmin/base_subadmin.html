@@ -47,60 +47,121 @@
         }
 
         .sidebar {
-            width: 256px;
+            width: 260px;
             flex-shrink: 0;
-            background: linear-gradient(to bottom, #0f172a, #1e293b, #0f172a);
+            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
             color: white;
             overflow-y: auto;
-            border-right: 4px solid #2563eb;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4);
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.2);
         }
 
         .sidebar-header {
-            padding: 24px;
-            border-bottom: 2px solid #2563eb;
-            background: linear-gradient(to right, #1e293b, #1e3a8a);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-badge {
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 16px;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.35);
+        }
+
+        .brand-text {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: 2px;
+        }
+
+        .sidebar-profile-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            padding: 20px 20px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            text-align: center;
+        }
+
+        .profile-photo {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 2px solid rgba(255, 255, 255, 0.25);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+        }
+
+        .profile-photo img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .profile-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #f8fafc;
+        }
+
+        .profile-role {
+            font-size: 11px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .profile-email {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.7);
+            word-break: break-all;
         }
 
         .sidebar-nav {
-            padding: 16px;
+            padding: 10px 0;
             display: flex;
             flex-direction: column;
-            gap: 4px;
         }
 
         .sidebar-link {
             display: flex;
             align-items: center;
             gap: 12px;
-            padding: 12px 16px;
-            color: #cbd5e1;
+            padding: 12px 20px;
+            color: rgba(255, 255, 255, 0.8);
             text-decoration: none;
-            border-radius: 8px;
-            margin: 4px 8px;
             font-size: 14px;
             font-weight: 500;
-            cursor: pointer;
+            border-left: 3px solid transparent;
             transition: all 0.2s ease;
         }
 
         .sidebar-link:hover {
-            background-color: #1e3a8a;
+            background-color: rgba(255, 255, 255, 0.1);
             color: white;
+            border-left-color: #4f46e5;
         }
 
         .sidebar-link.active {
-            background: linear-gradient(to right, #2563eb, #06b6d4);
+            background-color: rgba(79, 70, 229, 0.2);
             color: white;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-            border-left: 4px solid #fbbf24;
-            padding-left: 12px;
+            border-left-color: #4f46e5;
+            font-weight: 600;
         }
 
         .sidebar-footer {
-            padding: 16px;
-            border-top: 1px solid #4c1d95;
+            padding: 16px 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
             margin-top: auto;
             display: flex;
             flex-direction: column;
@@ -138,35 +199,37 @@
             justify-content: center;
             gap: 8px;
             width: 100%;
-            background: linear-gradient(to right, #ef4444, #dc2626);
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
             color: white;
-            font-weight: 600;
-            padding: 8px 16px;
+            font-weight: 700;
+            padding: 10px 16px;
             border-radius: 8px;
             text-decoration: none;
             border: none;
-            transition: all 0.3s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             cursor: pointer;
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
         }
 
         .logout-btn:hover {
-            background: linear-gradient(to right, #dc2626, #b91c1c);
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(245, 158, 11, 0.3);
         }
 
         .notification-btn {
             position: relative;
             padding: 8px;
-            color: #4b5563;
+            color: #0f766e;
             background-color: transparent;
             border: none;
             border-radius: 8px;
             cursor: pointer;
-            transition: background-color 0.2s;
+            transition: all 0.2s ease;
         }
 
         .notification-btn:hover {
-            background-color: #f3f4f6;
+            background-color: #f0f4f8;
+            color: #0b5f57;
         }
 
         .profile-btn {
@@ -232,12 +295,16 @@
         <aside class="sidebar">
             <!-- Logo Section -->
             <div class="sidebar-header">
-                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-                    <i class="fas fa-crown pulse-icon" style="font-size: 28px; color: #fbbf24;"></i>
-                    <h1 style="font-size: 24px; font-weight: bold; background: linear-gradient(to right, #60a5fa, #22d3ee); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">SubAdmin</h1>
+                <div class="brand-badge">SA</div>
+                <div class="brand-text">SubAdmin</div>
+            </div>
+            <div class="sidebar-profile-section">
+                <div class="profile-photo">
+                    <img src="{% if user.profile_photo %}{{ user.profile_photo.url }}{% else %}https://via.placeholder.com/64{% endif %}" alt="Profile">
                 </div>
-                <p style="font-size: 11px; color: #cbd5e1; font-weight: 600; letter-spacing: 2px; margin-bottom: 4px;">MANAGEMENT PANEL</p>
-                <p style="font-size: 11px; color: #94a3b8;">{{ user.email }}</p>
+                <div class="profile-name">{{ user.get_full_name|default:user.username }}</div>
+                <div class="profile-role">SubAdmin</div>
+                <div class="profile-email">{{ user.email|default:"subadmin@gmail.com" }}</div>
             </div>
             
             <!-- Navigation -->
@@ -254,16 +321,16 @@
                     <span>All Loans</span>
                 </a>
                 
-                <!-- My Agent -->
+                <!-- Staff Management -->
                 <a href="{% url 'subadmin_my_agents' %}" class="sidebar-link {% if request.resolver_match.url_name == 'subadmin_my_agents' %}active{% endif %}">
                     <i class="fas fa-user-tie"></i>
-                    <span>My Agent</span>
+                    <span>Staff Management</span>
                 </a>
                 
-                <!-- My Employee -->
+                <!-- Employee Management -->
                 <a href="{% url 'subadmin_my_employees' %}" class="sidebar-link {% if request.resolver_match.url_name == 'subadmin_my_employees' %}active{% endif %}">
                     <i class="fas fa-users"></i>
-                    <span>My Employee</span>
+                    <span>Employee Management</span>
                 </a>
                 
                 <!-- Reports -->
@@ -291,7 +358,7 @@
                     <i class="fas fa-sign-out-alt"></i>
                     <span>Logout</span>
                 </a>
-                <p style="font-size: 11px; color: #666; text-align: center;">SubAdmin v1.0</p>
+                <p style="font-size: 11px; color: #1a1a1a; font-weight: 600; text-align: center;">Greenbacks Microservice Foundation</p>
             </div>
         </aside>
         

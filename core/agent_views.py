@@ -199,6 +199,7 @@ def agent_add_loan(request):
 
 
 @agent_required
+@agent_required
 def agent_sub_agents(request):
     """
     Allow agents to create and manage their sub-agents.
@@ -218,48 +219,117 @@ def agent_sub_agents(request):
 
 
 @agent_required
+def agent_add_employee(request):
+    """
+    Form page to add a new sub-agent/team member
+    """
+    agent = Agent.objects.get(user=request.user)
+    context = {
+        'agent': agent,
+        'page_title': 'Add New Team Member',
+    }
+    return render(request, 'core/agent/agent_add_employee.html', context)
+
+
+@agent_required
 @require_http_methods(["POST"])
 def create_sub_agent(request):
     """
-    Create a new sub-agent under the current agent.
+    Create a new sub-agent/team member under the current agent.
+    Accepts FormData including photo upload
     """
     try:
         parent_agent = Agent.objects.get(user=request.user)
         
-        # Create new user for sub-agent
-        username = request.POST.get('username')
-        email = request.POST.get('email')
+        # Get form data
+        full_name = request.POST.get('full_name', '').strip()
+        email = request.POST.get('email', '').strip()
+        phone = request.POST.get('phone', '').strip()
+        password = request.POST.get('password', '').strip()
+        gender = request.POST.get('gender', 'Other').strip()
+        address = request.POST.get('address', '').strip()
+        pin_code = request.POST.get('pin_code', '').strip()
+        state = request.POST.get('state', '').strip()
+        city = request.POST.get('city', '').strip()
+        profile_photo = request.FILES.get('profile_photo', None)
         
-        if User.objects.filter(username=username).exists():
-            return JsonResponse({'error': 'Username already exists'}, status=400)
+        # Validation
+        if not all([full_name, email, phone, password]):
+            return JsonResponse({
+                'success': False,
+                'error': 'Full Name, Email, Phone, and Password are required'
+            }, status=400)
         
+        # Check email uniqueness
         if User.objects.filter(email=email).exists():
-            return JsonResponse({'error': 'Email already exists'}, status=400)
+            return JsonResponse({
+                'success': False,
+                'error': 'Email already registered'
+            }, status=400)
+        
+        # Check phone uniqueness  
+        if User.objects.filter(phone=phone).exists():
+            return JsonResponse({
+                'success': False,
+                'error': 'Phone number already registered'
+            }, status=400)
+        
+        # Parse full name
+        name_parts = full_name.split(' ', 1)
+        first_name = name_parts[0]
+        last_name = name_parts[1] if len(name_parts) > 1 else ''
         
         # Create user
         user = User.objects.create_user(
-            username=username,
+            username=email.split('@')[0],  # Username from email prefix
             email=email,
-            password=request.POST.get('password'),
+            password=password,
             role='agent',
-            first_name=request.POST.get('first_name'),
-            last_name=request.POST.get('last_name'),
+            first_name=first_name,
+            last_name=last_name,
+            phone=phone,
+            gender=gender,
+            address=address,
         )
+        
+        # Handle photo upload
+        if profile_photo:
+            # Validate file size (5MB max)
+            if profile_photo.size > 5 * 1024 * 1024:
+                user.delete()
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Profile photo must be less than 5MB'
+                }, status=400)
+            
+            user.profile_photo = profile_photo
+            user.save()
         
         # Create agent
         sub_agent = Agent.objects.create(
             user=user,
-            name=f"{user.first_name} {user.last_name}",
-            phone=request.POST.get('phone', ''),
+            name=f"{first_name} {last_name}",
+            phone=phone,
+            email=email,
+            address=address if address else None,
+            city=city if city else None,
+            state=state if state else None,
+            pin_code=pin_code if pin_code else None,
+            gender=gender if gender else None,
             created_by=request.user,
         )
         
-        messages.success(request, f'Sub-agent {sub_agent.name} created successfully!')
-        return redirect('agent_sub_agents')
+        return JsonResponse({
+            'success': True,
+            'message': f'Team member {sub_agent.name} created successfully!',
+            'agent_id': sub_agent.id,
+        })
         
     except Exception as e:
-        messages.error(request, f'Error creating sub-agent: {str(e)}')
-        return redirect('agent_sub_agents')
+        return JsonResponse({
+            'success': False,
+            'error': f'Error: {str(e)}'
+        }, status=500)
 
 
 @agent_required

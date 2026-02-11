@@ -1,0 +1,690 @@
+{% extends 'core/admin/admin_base.html' %}
+{% load static %}
+
+{% block title %}SubAdmin Management - Admin{% endblock %}
+
+{% block page_title %}SubAdmin Management - Add / Edit SubAdmins{% endblock %}
+
+{% block content %}
+<style>
+    .subadmin-container {
+        display: grid;
+        grid-template-columns: 1fr 2fr;
+        gap: 30px;
+        margin-bottom: 30px;
+    }
+
+    .form-section {
+        background: white;
+        border-radius: 12px;
+        padding: 25px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .table-section {
+        background: white;
+        border-radius: 12px;
+        padding: 25px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .form-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: #1a202c;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .form-group {
+        margin-bottom: 15px;
+    }
+
+    .form-group label {
+        display: block;
+        font-weight: 600;
+        color: #2d3748;
+        margin-bottom: 8px;
+        font-size: 14px;
+    }
+
+    .form-group input,
+    .form-group select {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        font-size: 14px;
+        font-family: inherit;
+        box-sizing: border-box;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .btn-submit {
+        width: 100%;
+        padding: 12px;
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.2s;
+    }
+
+    .btn-submit:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+
+    .table-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: #1a202c;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .subadmins-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .subadmins-table thead {
+        background: #f7fafc;
+        border-bottom: 2px solid #e2e8f0;
+    }
+
+    .subadmins-table th {
+        padding: 12px 15px;
+        text-align: left;
+        font-weight: 600;
+        color: #2d3748;
+        font-size: 12px;
+        text-transform: uppercase;
+    }
+
+    .subadmins-table tbody tr {
+        border-bottom: 1px solid #e2e8f0;
+        transition: background 0.2s;
+    }
+
+    .subadmins-table tbody tr:hover {
+        background: #f7fafc;
+    }
+
+    .subadmins-table td {
+        padding: 12px 15px;
+        color: #2d3748;
+        font-size: 14px;
+    }
+
+    .user-cell {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .user-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 6px;
+        background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 700;
+        font-size: 14px;
+    }
+
+    .action-btns {
+        display: flex;
+        gap: 8px;
+    }
+
+    .btn-action {
+        padding: 6px 12px;
+        background: #f0f4f8;
+        border: 1px solid #cbd5e0;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 600;
+        transition: all 0.2s;
+    }
+
+    .btn-action:hover {
+        background: #e2e8f0;
+    }
+
+    .btn-delete {
+        color: #ef4444;
+    }
+
+    .btn-delete:hover {
+        background: #fee2e2;
+        border-color: #fca5a5;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 40px 20px;
+        color: #718096;
+    }
+
+    .empty-state i {
+        font-size: 36px;
+        color: #cbd5e0;
+        margin-bottom: 10px;
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .badge-active {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .badge-inactive {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    @media (max-width: 968px) {
+        .subadmin-container {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    /* Request to Join Styles */
+    .requests-section {
+        background: white;
+        border-radius: 12px;
+        padding: 25px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        margin-bottom: 30px;
+    }
+
+    .requests-header {
+        font-size: 18px;
+        font-weight: 700;
+        color: #1a202c;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .requests-header .badge-count {
+        background: #ef4444;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .requests-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .requests-table thead {
+        background: #f7fafc;
+        border-bottom: 2px solid #e2e8f0;
+    }
+
+    .requests-table th {
+        padding: 12px 15px;
+        text-align: left;
+        font-weight: 600;
+        color: #2d3748;
+        font-size: 12px;
+        text-transform: uppercase;
+    }
+
+    .requests-table tbody tr {
+        border-bottom: 1px solid #e2e8f0;
+        transition: background 0.2s;
+    }
+
+    .requests-table tbody tr:hover {
+        background: #f7fafc;
+    }
+
+    .requests-table td {
+        padding: 12px 15px;
+        color: #2d3748;
+        font-size: 14px;
+    }
+
+    .badge-pending {
+        background: #fef3c7;
+        color: #92400e;
+        padding: 4px 12px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .btn-approve {
+        background: #d1fae5;
+        color: #065f46;
+        border: 1px solid #a7f3d0;
+    }
+
+    .btn-approve:hover {
+        background: #a7f3d0;
+    }
+
+    .btn-reject {
+        background: #fee2e2;
+        color: #991b1b;
+        border: 1px solid #fca5a5;
+    }
+
+    .btn-reject:hover {
+        background: #fca5a5;
+    }
+
+    /* Modal Styles */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-overlay.active {
+        display: flex;
+    }
+
+    .modal-content {
+        background: white;
+        border-radius: 12px;
+        padding: 30px;
+        max-width: 500px;
+        width: 90%;
+        box-shadow: 0 20px 25px rgba(0, 0, 0, 0.2);
+    }
+
+    .modal-header {
+        font-size: 20px;
+        font-weight: 700;
+        color: #1a202c;
+        margin-bottom: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-close {
+        background: none;
+        border: none;
+        font-size: 24px;
+        cursor: pointer;
+        color: #718096;
+    }
+
+    .modal-body {
+        margin-bottom: 20px;
+    }
+
+    .modal-body p {
+        color: #4a5568;
+        margin-bottom: 15px;
+        line-height: 1.6;
+    }
+
+    .modal-footer {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+    }
+
+    .btn-modal {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        font-size: 14px;
+    }
+
+    .btn-modal-primary {
+        background: #3b82f6;
+        color: white;
+    }
+
+    .btn-modal-primary:hover {
+        background: #2563eb;
+    }
+
+    .btn-modal-secondary {
+        background: #e2e8f0;
+        color: #2d3748;
+    }
+
+    .btn-modal-secondary:hover {
+        background: #cbd5e0;
+    }
+
+</style>
+
+<div class="subadmin-container">
+    <!-- Request to Join Section -->
+    <div class="requests-section" style="grid-column: 1 / -1;">
+        <div class="requests-header">
+            <i class="fas fa-handshake" style="color: #f59e0b;"></i> 
+            Manage SubAdmin Join Requests
+            <span class="badge-count" id="requestCount">0</span>
+        </div>
+        <p style="color: #718096; margin-bottom: 20px;">Manage requests from users who want to join as SubAdmins</p>
+        
+        <table class="requests-table" id="requestsTable">
+            <thead>
+                <tr>
+                    <th>User</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Request Date</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="requestsTableBody">
+                <tr>
+                    <td colspan="6" style="text-align: center; padding: 40px; color: #718096;">
+                        <i class="fas fa-inbox" style="font-size: 24px; margin-bottom: 10px; display: block; color: #cbd5e0;"></i>
+                        No pending requests at this time.
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Add SubAdmin Form -->
+    <div class="form-section">
+        <div class="form-title">
+            <i class="fas fa-user-shield"></i> Add New SubAdmin
+        </div>
+        <form id="subadminForm" action="{% url 'add_agent' %}" method="POST" enctype="multipart/form-data">
+            {% csrf_token %}
+            
+            <!-- Hidden role field -->
+            <input type="hidden" name="role" value="subadmin">
+            
+            <div class="form-group">
+                <label>First Name *</label>
+                <input type="text" name="first_name" required placeholder="Enter first name">
+            </div>
+            
+            <div class="form-group">
+                <label>Last Name</label>
+                <input type="text" name="last_name" placeholder="Enter last name">
+            </div>
+            
+            <div class="form-group">
+                <label>Email *</label>
+                <input type="email" name="email" required placeholder="example@company.com">
+            </div>
+            
+            <div class="form-group">
+                <label>Phone *</label>
+                <input type="tel" name="phone" required placeholder="10-digit phone number" pattern="[0-9]{10,15}">
+            </div>
+            
+            <div class="form-group">
+                <label>Employee ID *</label>
+                <input type="text" name="employee_id" required placeholder="e.g., SA001">
+            </div>
+            
+            <div class="form-group">
+                <label>Username *</label>
+                <input type="text" name="username" required placeholder="Unique username">
+            </div>
+            
+            <div class="form-group">
+                <label>Password *</label>
+                <input type="password" name="password" required placeholder="Strong password (min 8 chars)" minlength="8">
+            </div>
+            
+            <div class="form-group">
+                <label>Gender</label>
+                <select name="gender">
+                    <option value="">Select Gender</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Photo</label>
+                <input type="file" name="photo" accept="image/*">
+                <small style="color: #718096; display: block; margin-top: 5px;">Optional: Upload profile photo</small>
+            </div>
+            
+            <button type="submit" class="btn-submit">
+                <i class="fas fa-user-plus"></i> Create SubAdmin
+            </button>
+        </form>
+    </div>
+
+    <!-- SubAdmins List -->
+    <div class="table-section">
+        <div class="table-title">
+            <i class="fas fa-list"></i> SubAdmins List ({{ subadmin_count }})
+        </div>
+        
+        {% if subadmins %}
+        <table class="subadmins-table">
+            <thead>
+                <tr>
+                    <th>User</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for subadmin in subadmins %}
+                <tr>
+                    <td>
+                        <div class="user-cell">
+                            <div class="user-avatar">{{ subadmin.first_name|first|upper }}</div>
+                            <div>
+                                <strong>{{ subadmin.get_full_name }}</strong>
+                                <br><small style="color: #718096;">@{{ subadmin.username }}</small>
+                            </div>
+                        </div>
+                    </td>
+                    <td>{{ subadmin.email }}</td>
+                    <td>{{ subadmin.phone|default:"-" }}</td>
+                    <td>
+                        <span class="badge {% if subadmin.is_active %}badge-active{% else %}badge-inactive{% endif %}">
+                            {% if subadmin.is_active %}Active{% else %}Inactive{% endif %}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="action-btns">
+                            <button class="btn-action" title="View" onclick="viewSubadmin({{ subadmin.id }}, '{{ subadmin.get_full_name }}', '{{ subadmin.email }}', '{{ subadmin.phone|default:'-' }}', '{{ subadmin.is_active|yesno:'Active,Inactive' }}')">
+                                <i class="fas fa-eye"></i> View
+                            </button>
+                            <button class="btn-action" title="Edit" onclick="editSubadmin({{ subadmin.id }})">
+                                <i class="fas fa-edit"></i> Edit
+                            </button>
+                            <button class="btn-action btn-delete" title="Delete" onclick="deleteSubadmin({{ subadmin.id }}, '{{ subadmin.get_full_name }}')">
+                                <i class="fas fa-trash"></i> Delete
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-user-slash"></i>
+            <h3>No SubAdmins Yet</h3>
+            <p>Add your first SubAdmin using the form on the left.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- View SubAdmin Modal -->
+<div class="modal-overlay" id="viewModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <span>SubAdmin Details</span>
+            <button class="modal-close" onclick="closeModal('viewModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p><strong>Name:</strong> <span id="viewName"></span></p>
+            <p><strong>Email:</strong> <span id="viewEmail"></span></p>
+            <p><strong>Phone:</strong> <span id="viewPhone"></span></p>
+            <p><strong>Status:</strong> <span id="viewStatus"></span></p>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-modal btn-modal-secondary" onclick="closeModal('viewModal')">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Edit SubAdmin Modal -->
+<div class="modal-overlay" id="editModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <span>Edit SubAdmin</span>
+            <button class="modal-close" onclick="closeModal('editModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p style="color: #ef4444; background: #fee2e2; padding: 10px; border-radius: 6px; margin-bottom: 15px;">
+                <i class="fas fa-info-circle"></i> Edit functionality coming soon. Please use admin panel or API.
+            </p>
+            <p><strong>SubAdmin ID:</strong> <span id="editId"></span></p>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-modal btn-modal-secondary" onclick="closeModal('editModal')">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Delete SubAdmin Modal -->
+<div class="modal-overlay" id="deleteModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <span style="color: #ef4444;">Delete SubAdmin</span>
+            <button class="modal-close" onclick="closeModal('deleteModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p><strong>Are you sure you want to delete this SubAdmin?</strong></p>
+            <p>Name: <strong id="deleteName"></strong></p>
+            <p style="color: #ef4444; background: #fee2e2; padding: 10px; border-radius: 6px;">
+                <i class="fas fa-exclamation-triangle"></i> This action cannot be undone.
+            </p>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-modal btn-modal-secondary" onclick="closeModal('deleteModal')">Cancel</button>
+            <button class="btn-modal" style="background: #ef4444; color: white;" onclick="confirmDelete()">
+                <i class="fas fa-trash"></i> Delete
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Modal Functions
+    function viewModal(id) {
+        document.getElementById(id).classList.add('active');
+    }
+
+    function closeModal(id) {
+        document.getElementById(id).classList.remove('active');
+    }
+
+    function viewSubadmin(id, name, email, phone, status) {
+        document.getElementById('viewName').textContent = name;
+        document.getElementById('viewEmail').textContent = email;
+        document.getElementById('viewPhone').textContent = phone;
+        document.getElementById('viewStatus').textContent = status;
+        viewModal('viewModal');
+    }
+
+    let currentDeleteId = null;
+
+    function editSubadmin(id) {
+        document.getElementById('editId').textContent = id;
+        viewModal('editModal');
+    }
+
+    function deleteSubadmin(id, name) {
+        currentDeleteId = id;
+        document.getElementById('deleteName').textContent = name;
+        viewModal('deleteModal');
+    }
+
+    function confirmDelete() {
+        if (currentDeleteId) {
+            fetch(`/api/admin/subadmin/${currentDeleteId}/delete/`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('SubAdmin deleted successfully!');
+                    location.reload();
+                } else {
+                    alert('Error: ' + (data.error || 'Could not delete SubAdmin'));
+                }
+                closeModal('deleteModal');
+            })
+            .catch(error => {
+                alert('Error: ' + error.message);
+                closeModal('deleteModal');
+            });
+        }
+    }
+
+    // Close modal on outside click
+    document.addEventListener('click', function(event) {
+        const viewModal = document.getElementById('viewModal');
+        const editModal = document.getElementById('editModal');
+        const deleteModal = document.getElementById('deleteModal');
+        
+        if (event.target === viewModal) closeModal('viewModal');
+        if (event.target === editModal) closeModal('editModal');
+        if (event.target === deleteModal) closeModal('deleteModal');
+    });
+</script>
+
+{% endblock %}

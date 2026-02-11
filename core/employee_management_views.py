@@ -13,6 +13,7 @@ from django.core.paginator import Paginator
 import json
 
 from .models import User, EmployeeProfile, LoanApplication
+from .decorators import admin_required
 from django.contrib.auth.models import Group
 
 
@@ -33,6 +34,20 @@ def employee_management(request):
         'page_subtitle': 'Manage internal employees & loan processors',
     }
     return render(request, 'core/admin/employee_management.html', context)
+
+
+@login_required(login_url='admin_login')
+@user_passes_test(is_admin, login_url='admin_login')
+def employee_add_new(request):
+    """
+    Form page to add a new employee - Admin Only
+    """
+    context = {
+        'page_title': 'Add New Employee',
+        'page_subtitle': 'Create a new employee account with basic details',
+    }
+    return render(request, 'core/admin/employee_add_new.html', context)
+
 
 
 @login_required(login_url='admin_login')
@@ -81,6 +96,11 @@ def api_get_employees(request):
                 'email': user.email,
                 'phone': user.phone or 'N/A',
                 'photo_url': user.profile_photo.url if user.profile_photo else '/static/images/default-avatar.png',
+                'gender': user.gender or 'Other',
+                'state': getattr(user, 'state', None) or '-',
+                'city': getattr(user, 'city', None) or '-',
+                'address': user.address or '-',
+                'pin_code': getattr(user, 'pin_code', None) or '-',
                 'role': employee_profile.get_employee_role_display() if employee_profile else 'Loan Processor',
                 'status': 'Active' if user.is_active else 'Inactive',
                 'is_active': user.is_active,
@@ -107,78 +127,139 @@ def api_get_employees(request):
             'error': str(e)
         }, status=400)
 
-
 @login_required(login_url='admin_login')
-@user_passes_test(is_admin, login_url='admin_login')
+@admin_required
 @require_http_methods(["POST"])
 def api_add_employee(request):
     """
-    API Endpoint: Add new employee
+    API Endpoint: Add new employee with photo and address details
+    Accepts FormData including file upload
     Creates User and EmployeeProfile records
     """
     try:
-        data = json.loads(request.body)
+        # Get form data and files
+        full_name = request.POST.get('full_name', '').strip()
+        email = request.POST.get('email', '').strip()
+        phone = request.POST.get('phone', '').strip()
+        password = request.POST.get('password', '').strip()
+        gender = request.POST.get('gender', 'Other').strip()
+        address = request.POST.get('address', '').strip()
+        pin_code = request.POST.get('pin_code', '').strip()
+        state = request.POST.get('state', '').strip()
+        city = request.POST.get('city', '').strip()
+        profile_photo = request.FILES.get('profile_photo', None)
         
         # Validation
-        required_fields = ['full_name', 'email', 'phone', 'password']
-        for field in required_fields:
-            if not data.get(field):
+        required_fields = {
+            'full_name': full_name,
+            'email': email,
+            'phone': phone,
+            'password': password,
+        }
+        
+        for field_name, field_value in required_fields.items():
+            if not field_value:
                 return JsonResponse({
                     'success': False,
-                    'error': f'{field.replace("_", " ").title()} is required'
+                    'error': f'{field_name.replace("_", " ").title()} is required'
                 }, status=400)
         
-        # Check email uniqueness
-        if User.objects.filter(email=data['email']).exists():
+        if len(password) < 6:
             return JsonResponse({
                 'success': False,
-                'error': 'Email already exists'
+                'error': 'Password must be at least 6 characters'
+            }, status=400)
+
+        # Check email uniqueness
+        if User.objects.filter(email=email).exists():
+            return JsonResponse({
+                'success': False,
+                'error': 'Email already registered'
+            }, status=400)
+        
+        # Check phone uniqueness
+        if User.objects.filter(phone=phone).exists():
+            return JsonResponse({
+                'success': False,
+                'error': 'Phone number already registered'
+            }, status=400)
+        
+        # Validate phone format (basic)
+        if len(phone) < 10 or len(phone) > 15:
+            return JsonResponse({
+                'success': False,
+                'error': 'Phone number must be 10-15 digits'
             }, status=400)
         
         # Parse full name
-        full_name = data['full_name'].strip().split(' ', 1)
-        first_name = full_name[0]
-        last_name = full_name[1] if len(full_name) > 1 else ''
+        name_parts = full_name.split(' ', 1)
+        first_name = name_parts[0]
+        last_name = name_parts[1] if len(name_parts) > 1 else ''
         
         # Create User
+        # Store address-related fields in address text (User model does not have city/state/pin_code columns)
+        address_parts = [address]
+        if city:
+            address_parts.append(f"City: {city}")
+        if state:
+            address_parts.append(f"State: {state}")
+        if pin_code:
+            address_parts.append(f"PIN: {pin_code}")
+        normalized_address = " | ".join([part for part in address_parts if part])
+
         user = User.objects.create_user(
-            username=data['email'].split('@')[0],  # Username from email
-            email=data['email'],
-            password=data['password'],
+            username=email.split('@')[0],  # Username from email prefix
+            email=email,
+            password=password,
             first_name=first_name,
             last_name=last_name,
-            phone=data['phone'],
+            phone=phone,
             role='employee',
-            gender=data.get('gender', 'Other'),
-            address=data.get('address', ''),
-            is_active=data.get('status', 'active') == 'active',
+            gender=gender,
+            address=normalized_address,
+            is_active=True,
         )
+        
+        # Handle photo upload
+        if profile_photo:
+            # Validate file size (5MB max)
+            if profile_photo.size > 5 * 1024 * 1024:
+                user.delete()
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Profile photo must be less than 5MB'
+                }, status=400)
+            
+            user.profile_photo = profile_photo
+            user.save()
         
         # Create EmployeeProfile
         employee_profile = EmployeeProfile.objects.create(
             user=user,
-            employee_role=data.get('role', 'loan_processor'),
-            notes=data.get('notes', ''),
+            employee_role='loan_processor',
         )
         
         return JsonResponse({
             'success': True,
             'message': 'Employee added successfully',
-            'employee_id': user.id,
+            'employee': {
+                'id': user.id,
+                'name': user.get_full_name() or user.username,
+                'email': user.email,
+                'phone': user.phone or '',
+                'gender': user.gender or 'Other',
+                'address': user.address or '',
+                'photo_url': user.profile_photo.url if user.profile_photo else '',
+                'created_at': user.date_joined.strftime('%b %d, %Y') if user.date_joined else '',
+                'status': 'active',
+            }
         }, status=201)
-    
-    except json.JSONDecodeError:
-        return JsonResponse({
-            'success': False,
-            'error': 'Invalid JSON data'
-        }, status=400)
+        
     except Exception as e:
         return JsonResponse({
             'success': False,
-            'error': str(e)
+            'error': f'Error: {str(e)}'
         }, status=500)
-
-
 @login_required(login_url='admin_login')
 @user_passes_test(is_admin, login_url='admin_login')
 @require_http_methods(["POST"])

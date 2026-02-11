@@ -1,143 +1,423 @@
-{% extends "core/admin/admin_base.html" %}
+{% extends 'core/admin/admin_base.html' %}
 {% load static %}
 
+{% block title %}Settings - Admin Panel{% endblock %}
 {% block page_title %}Settings{% endblock %}
 
-{% block page_content %}
-<div class="container-fluid mt-4">
-    <!-- Header -->
-    <div class="mb-4">
-        <div class="d-flex justify-content-between align-items-center">
-            <h2><i class="fas fa-cog" style="color: #667eea;"></i> Settings</h2>
-            <a href="{% url 'admin_all_loans' %}" class="btn text-white" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none;">
-                <i class="fas fa-arrow-left"></i> Back to Dashboard
-            </a>
-        </div>
-    </div>
+{% block content %}
+<style>
+    .settings-wrapper {
+        padding: 24px 0;
+    }
 
-    <div class="row">
-        <!-- System Settings -->
-        <div class="col-lg-6">
-            <div class="card mb-4" style="border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
-                <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none;">
-                    <h5 class="mb-0"><i class="fas fa-sliders-h"></i> System Settings</h5>
+    .settings-grid {
+        display: grid;
+        grid-template-columns: 1fr 1.2fr;
+        gap: 24px;
+    }
+
+    .settings-card {
+        background: #ffffff;
+        border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        border: 1px solid #e5e7eb;
+        overflow: hidden;
+    }
+
+    .card-header {
+        padding: 16px 20px;
+        border-bottom: 1px solid #e5e7eb;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: #f9fafb;
+    }
+
+    .card-title {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 700;
+        color: #111827;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .card-body {
+        padding: 20px;
+    }
+
+    .profile-header {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 16px;
+    }
+
+    .profile-photo {
+        width: 72px;
+        height: 72px;
+        border-radius: 16px;
+        object-fit: cover;
+        border: 2px solid #e5e7eb;
+        background: #f3f4f6;
+    }
+
+    .profile-meta h3 {
+        margin: 0 0 4px 0;
+        font-size: 18px;
+        font-weight: 700;
+        color: #1f2937;
+    }
+
+    .profile-meta p {
+        margin: 0;
+        font-size: 13px;
+        color: #6b7280;
+    }
+
+    .button-row {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        color: #fff;
+        border: none;
+        padding: 10px 16px;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .btn-secondary {
+        background: #e5e7eb;
+        color: #111827;
+        border: none;
+        padding: 10px 16px;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+    }
+
+    .form-grid.full {
+        grid-template-columns: 1fr;
+    }
+
+    .form-group label {
+        display: block;
+        font-size: 13px;
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 6px;
+    }
+
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
+        width: 100%;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        padding: 10px 12px;
+        font-size: 14px;
+    }
+
+    .form-group textarea {
+        min-height: 90px;
+        resize: vertical;
+    }
+
+    .status-message {
+        display: none;
+        padding: 10px 14px;
+        border-radius: 8px;
+        margin-bottom: 16px;
+        font-size: 13px;
+    }
+
+    .status-success {
+        background: #dcfce7;
+        color: #166534;
+        border: 1px solid #86efac;
+    }
+
+    .status-error {
+        background: #fee2e2;
+        color: #991b1b;
+        border: 1px solid #fecaca;
+    }
+
+    @media (max-width: 960px) {
+        .settings-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<div class="settings-wrapper">
+    <div id="statusMessage" class="status-message"></div>
+
+    <div class="settings-grid">
+        <div class="settings-card">
+            <div class="card-header">
+                <h2 class="card-title"><i class="fas fa-user-circle"></i> Profile</h2>
+            </div>
+            <div class="card-body">
+                <div class="profile-header">
+                    <img id="profilePhoto" class="profile-photo" src="" alt="Profile photo">
+                    <div class="profile-meta">
+                        <h3 id="profileName">Admin</h3>
+                        <p id="profileRole">Role</p>
+                        <p id="profileEmail">email@example.com</p>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <form>
-                        <div class="mb-3">
-                            <label class="form-label">Platform Name</label>
-                            <input type="text" class="form-control" value="DSA Loan Management" disabled>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Auto-escalation Time (hours)</label>
-                            <input type="number" class="form-control" value="24" min="1">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Minimum Loan Amount (₹)</label>
-                            <input type="number" class="form-control" value="10000">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Maximum Loan Amount (₹)</label>
-                            <input type="number" class="form-control" value="5000000">
-                        </div>
-                        <button type="button" class="btn text-white w-100" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none;" disabled>
-                            <i class="fas fa-save"></i> Save Settings
-                        </button>
-                    </form>
+                <div class="button-row" style="margin-bottom: 12px;">
+                    <label class="btn-secondary" for="photoInput" style="margin: 0; cursor: pointer;">
+                        <i class="fas fa-camera"></i> Upload Photo
+                    </label>
+                    <input id="photoInput" type="file" accept="image/*" style="display: none;">
                 </div>
+                <p style="font-size: 12px; color: #6b7280; margin: 0;">Supported: JPG, PNG, GIF, WebP (max 5MB)</p>
             </div>
         </div>
 
-        <!-- Email Notifications -->
-        <div class="col-lg-6">
-            <div class="card mb-4" style="border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
-                <div class="card-header" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; border: none;">
-                    <h5 class="mb-0"><i class="fas fa-envelope"></i> Email Notifications</h5>
-                </div>
-                <div class="card-body">
-                    <div class="form-check mb-3">
-                        <input class="form-check-input" type="checkbox" id="notify_new_entry" checked>
-                        <label class="form-check-label" for="notify_new_entry">
-                            Notify on New Applications
-                        </label>
-                    </div>
-                    <div class="form-check mb-3">
-                        <input class="form-check-input" type="checkbox" id="notify_assigned" checked>
-                        <label class="form-check-label" for="notify_assigned">
-                            Notify when Employee Assigned
-                        </label>
-                    </div>
-                    <div class="form-check mb-3">
-                        <input class="form-check-input" type="checkbox" id="notify_followup" checked>
-                        <label class="form-check-label" for="notify_followup">
-                            Notify on Follow-up Required
-                        </label>
-                    </div>
-                    <div class="form-check mb-3">
-                        <input class="form-check-input" type="checkbox" id="notify_status_change" checked>
-                        <label class="form-check-label" for="notify_status_change">
-                            Notify on Status Changes
-                        </label>
-                    </div>
-                    <button type="button" class="btn text-white w-100" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border: none;" disabled>
-                        <i class="fas fa-save"></i> Save Preferences
-                    </button>
-                </div>
+        <div class="settings-card">
+            <div class="card-header">
+                <h2 class="card-title"><i class="fas fa-id-card"></i> Profile Details</h2>
             </div>
-        </div>
-    </div>
-
-    <!-- Security Settings -->
-    <div class="row">
-        <div class="col-lg-6">
-            <div class="card mb-4" style="border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
-                <div class="card-header" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); color: white; border: none;">
-                    <h5 class="mb-0"><i class="fas fa-lock"></i> Security</h5>
-                </div>
-                <div class="card-body">
-                    <div class="form-check mb-3">
-                        <input class="form-check-input" type="checkbox" id="two_factor" checked>
-                        <label class="form-check-label" for="two_factor">
-                            Enable Two-Factor Authentication
-                        </label>
+            <div class="card-body">
+                <form id="profileForm">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>First Name</label>
+                            <input type="text" id="firstName" name="first_name" placeholder="First name">
+                        </div>
+                        <div class="form-group">
+                            <label>Last Name</label>
+                            <input type="text" id="lastName" name="last_name" placeholder="Last name">
+                        </div>
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input type="email" id="email" name="email" placeholder="Email">
+                        </div>
+                        <div class="form-group">
+                            <label>Phone</label>
+                            <input type="tel" id="phone" name="phone" placeholder="Phone number">
+                        </div>
                     </div>
-                    <div class="form-check mb-3">
-                        <input class="form-check-input" type="checkbox" id="session_timeout" checked>
-                        <label class="form-check-label" for="session_timeout">
-                            Session Timeout (30 minutes)
-                        </label>
+                    <div class="form-grid full" style="margin-top: 16px;">
+                        <div class="form-group">
+                            <label>Address</label>
+                            <textarea id="address" name="address" placeholder="Address"></textarea>
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Change Password</label>
-                        <button type="button" class="btn text-white w-100" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); border: none;" disabled>
-                            <i class="fas fa-key"></i> Change Password
-                        </button>
+                    <div class="form-grid" style="margin-top: 16px;">
+                        <div class="form-group">
+                            <label>Gender</label>
+                            <select id="gender" name="gender">
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Username</label>
+                            <input type="text" id="username" name="username" disabled>
+                        </div>
                     </div>
-                </div>
+                    <div class="button-row" style="margin-top: 18px; justify-content: flex-end;">
+                        <button type="submit" class="btn-primary" id="saveProfileBtn">Save Changes</button>
+                    </div>
+                </form>
             </div>
         </div>
 
-        <!-- Backup & Maintenance -->
-        <div class="col-lg-6">
-            <div class="card mb-4" style="border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
-                <div class="card-header" style="background: linear-gradient(135deg, #30cfd0 0%, #330867 100%); color: white; border: none;">
-                    <h5 class="mb-0"><i class="fas fa-database"></i> Backup & Maintenance</h5>
-                </div>
-                <div class="card-body">
-                    <p class="text-muted small mb-3">Last Backup: <strong>Today at 2:30 PM</strong></p>
-                    <div class="mb-3">
-                        <button type="button" class="btn text-white w-100" style="background: linear-gradient(135deg, #30cfd0 0%, #330867 100%); border: none;" disabled>
-                            <i class="fas fa-download"></i> Create Backup Now
-                        </button>
+        <div class="settings-card">
+            <div class="card-header">
+                <h2 class="card-title"><i class="fas fa-key"></i> Change Password</h2>
+            </div>
+            <div class="card-body">
+                <form id="passwordForm">
+                    <div class="form-grid full">
+                        <div class="form-group">
+                            <label>Current Password</label>
+                            <input type="password" id="currentPassword" name="current_password" placeholder="Current password">
+                        </div>
+                        <div class="form-group">
+                            <label>New Password</label>
+                            <input type="password" id="newPassword" name="new_password" placeholder="New password">
+                        </div>
+                        <div class="form-group">
+                            <label>Confirm New Password</label>
+                            <input type="password" id="confirmPassword" name="confirm_password" placeholder="Confirm new password">
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <button type="button" class="btn text-white w-100" style="background: #ff6b6b; border: none;" disabled>
-                            <i class="fas fa-trash"></i> Clear Old Logs
-                        </button>
+                    <div class="button-row" style="margin-top: 18px; justify-content: flex-end;">
+                        <button type="submit" class="btn-primary" id="changePasswordBtn">Update Password</button>
                     </div>
-                </div>
+                </form>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+function showMessage(message, type) {
+    const box = document.getElementById('statusMessage');
+    if (!box) return;
+    box.textContent = message;
+    box.className = `status-message ${type === 'error' ? 'status-error' : 'status-success'}`;
+    box.style.display = 'block';
+    setTimeout(() => {
+        box.style.display = 'none';
+    }, 4000);
+}
+
+async function loadProfile() {
+    try {
+        const response = await fetch('/api/profile/');
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+            throw new Error(data.error || 'Failed to load profile');
+        }
+        const profile = data.profile || {};
+        document.getElementById('profilePhoto').src = profile.photo_url || '';
+        document.getElementById('profileName').textContent = `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.username || 'User';
+        document.getElementById('profileRole').textContent = profile.role || '';
+        document.getElementById('profileEmail').textContent = profile.email || '';
+
+        document.getElementById('firstName').value = profile.first_name || '';
+        document.getElementById('lastName').value = profile.last_name || '';
+        document.getElementById('email').value = profile.email || '';
+        document.getElementById('phone').value = profile.phone || '';
+        document.getElementById('address').value = profile.address || '';
+        document.getElementById('gender').value = profile.gender || 'Other';
+        document.getElementById('username').value = profile.username || '';
+    } catch (error) {
+        console.error('Profile load error:', error);
+        showMessage(error.message || 'Error loading profile', 'error');
+    }
+}
+
+const profileForm = document.getElementById('profileForm');
+if (profileForm) {
+    profileForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const payload = {
+            first_name: document.getElementById('firstName').value.trim(),
+            last_name: document.getElementById('lastName').value.trim(),
+            email: document.getElementById('email').value.trim(),
+            phone: document.getElementById('phone').value.trim(),
+            address: document.getElementById('address').value.trim(),
+            gender: document.getElementById('gender').value
+        };
+
+        try {
+            const response = await fetch('/api/profile/update/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify(payload)
+            });
+            const data = await response.json();
+            if (!response.ok || !data.success) {
+                throw new Error(data.error || 'Failed to update profile');
+            }
+            showMessage(data.message || 'Profile updated', 'success');
+            loadProfile();
+        } catch (error) {
+            console.error('Profile update error:', error);
+            showMessage(error.message || 'Error updating profile', 'error');
+        }
+    });
+}
+
+const photoInput = document.getElementById('photoInput');
+if (photoInput) {
+    photoInput.addEventListener('change', async (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+        const formData = new FormData();
+        formData.append('photo', file);
+
+        try {
+            const response = await fetch('/api/profile/upload-photo/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: formData
+            });
+            const data = await response.json();
+            if (!response.ok || !data.success) {
+                throw new Error(data.error || 'Failed to upload photo');
+            }
+            document.getElementById('profilePhoto').src = data.photo_url;
+            showMessage(data.message || 'Photo updated', 'success');
+        } catch (error) {
+            console.error('Photo upload error:', error);
+            showMessage(error.message || 'Error uploading photo', 'error');
+        }
+    });
+}
+
+const passwordForm = document.getElementById('passwordForm');
+if (passwordForm) {
+    passwordForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const payload = {
+            current_password: document.getElementById('currentPassword').value,
+            new_password: document.getElementById('newPassword').value,
+            confirm_password: document.getElementById('confirmPassword').value
+        };
+
+        try {
+            const response = await fetch('/api/profile/change-password/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify(payload)
+            });
+            const data = await response.json();
+            if (!response.ok || !data.success) {
+                throw new Error(data.error || 'Failed to change password');
+            }
+            passwordForm.reset();
+            showMessage(data.message || 'Password changed', 'success');
+        } catch (error) {
+            console.error('Password change error:', error);
+            showMessage(error.message || 'Error changing password', 'error');
+        }
+    });
+}
+
+loadProfile();
+</script>
 {% endblock %}

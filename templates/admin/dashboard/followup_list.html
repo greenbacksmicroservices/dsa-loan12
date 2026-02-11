@@ -1,66 +1,282 @@
-{% extends "core/admin/admin_base.html" %}
+{% extends 'core/admin/admin_base.html' %}
 {% load static %}
 
-{% block title %}Follow-up Loans - Admin Dashboard{% endblock %}
-
-{% block page_title %}Loans Requiring Follow-up{% endblock %}
+{% block title %}Required Follow-ups - Admin Panel{% endblock %}
 
 {% block content %}
-<div class="space-y-6">
-    <!-- Header -->
-    <div class="flex justify-between items-center">
-        <h1 class="text-3xl font-bold text-gray-800">Follow-up Required</h1>
-    </div>
+<style>
+    .followup-container {
+        background: #f8f9fa;
+        min-height: calc(100vh - 100px);
+        padding: 30px 0;
+    }
+    
+    .followup-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+        padding: 20px 0;
+    }
+    
+    .followup-title {
+        font-size: 28px;
+        font-weight: 700;
+        color: #1f2937;
+    }
+    
+    .followup-count {
+        font-size: 14px;
+        color: #6b7280;
+        font-weight: 600;
+        margin-left: 15px;
+    }
+    
+    .search-bar {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        margin-bottom: 30px;
+    }
+    
+    .search-bar input {
+        border-radius: 8px;
+        border: 1px solid #e0e0e0;
+        padding: 12px 15px;
+        font-size: 14px;
+        width: 100%;
+    }
+    
+    .followup-table-container {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        padding: 25px;
+        overflow-x: auto;
+    }
+    
+    .followup-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+    }
+    
+    .followup-table thead {
+        background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+        color: white;
+    }
+    
+    .followup-table th {
+        padding: 16px 12px;
+        text-align: left;
+        font-weight: 600;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        white-space: nowrap;
+    }
+    
+    .followup-table td {
+        padding: 14px 12px;
+        border-bottom: 1px solid #e5e7eb;
+        vertical-align: middle;
+    }
+    
+    .followup-table tbody tr:hover {
+        background: #f9fafb;
+        transition: all 0.2s ease;
+    }
+    
+    .applicant-name {
+        font-weight: 600;
+        color: #1f2937;
+    }
+    
+    .priority-badge {
+        display: inline-block;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+    
+    .priority-critical {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+    
+    .priority-high {
+        background: #fef3c7;
+        color: #92400e;
+    }
+    
+    .priority-normal {
+        background: #dbeafe;
+        color: #0c4a6e;
+    }
+    
+    .delay-text {
+        color: #666;
+        font-size: 13px;
+    }
+    
+    .delay-critical {
+        color: #dc2626;
+        font-weight: 700;
+    }
+    
+    .assigned-badge {
+        background: #e0e7ff;
+        color: #4338ca;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 12px;
+    }
+    
+    .no-followups {
+        text-align: center;
+        padding: 60px 20px;
+        color: #9ca3af;
+    }
+    
+    .no-followups i {
+        font-size: 48px;
+        color: #d1d5db;
+        margin-bottom: 15px;
+        display: block;
+    }
+    
+    .action-button {
+        background: #1abc9c;
+        color: white;
+        border: none;
+        padding: 8px 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 11px;
+        transition: all 0.2s;
+        text-decoration: none;
+        display: inline-block;
+    }
+    
+    .action-button:hover {
+        background: #16a085;
+        transform: scale(1.05);
+    }
+    
+    @media (max-width: 1024px) {
+        .followup-table { font-size: 12px; }
+        .followup-table th { padding: 12px 8px; }
+        .followup-table td { padding: 10px 8px; }
+    }
+</style>
 
-    <!-- Loans Table -->
-    <div class="card">
-        <div class="card-header flex justify-between items-center">
-            <h2 class="text-lg font-semibold text-gray-800">Loans Requiring Follow-up</h2>
-            <span class="text-sm text-gray-600">{{ loans|length }} pending</span>
+<div class="followup-container">
+    <div class="container-fluid">
+        <!-- Header -->
+        <div class="followup-header">
+            <div>
+                <h1 class="followup-title">Required Follow-ups</h1>
+                <span class="followup-count">Total: {{ applications|length }} Follow-ups</span>
+            </div>
         </div>
-        <div class="card-body table-responsive">
-            {% if loans %}
-            <table>
+        
+        <!-- Search Bar -->
+        <div class="search-bar">
+            <form method="GET" class="row g-3">
+                <div class="col-md-12">
+                    <input type="text" name="q" placeholder="Search by applicant name, email, or phone..." 
+                           value="{{ search_query }}" class="form-control w-100" id="searchInput" onkeyup="filterTable()">
+                </div>
+            </form>
+        </div>
+        
+        <!-- Follow-ups Table -->
+        <div class="followup-table-container">
+            {% if applications %}
+            <table class="followup-table">
                 <thead>
                     <tr>
-                        <th>Loan ID</th>
-                        <th>Applicant</th>
-                        <th>Phone</th>
-                        <th>Loan Amount</th>
-                        <th>Last Follow-up</th>
-                        <th>Priority</th>
-                        <th>Action</th>
+                        <th style="width: 10%;">Applicant</th>
+                        <th style="width: 12%;">Email</th>
+                        <th style="width: 10%;">Phone</th>
+                        <th style="width: 12%;">Assigned To</th>
+                        <th style="width: 12%;">Loan Amount</th>
+                        <th style="width: 10%;">Delay (Hours)</th>
+                        <th style="width: 10%;">Priority</th>
+                        <th style="width: 14%;">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for loan in loans %}
-                    <tr>
-                        <td class="font-mono text-sm"><strong>{{ loan.loan_id }}</strong></td>
-                        <td class="font-medium">{{ loan.applicant_name }}</td>
-                        <td class="text-sm">{{ loan.phone_number }}</td>
-                        <td class="font-semibold text-orange-600">₹{{ loan.loan_amount }}</td>
-                        <td class="text-sm">{{ loan.last_followup_date|date:"M d, Y"|default:"-" }}</td>
+                    {% for item in applications %}
+                    <tr data-search="{{ item.obj.applicant.full_name|lower }},{{ item.obj.applicant.email|lower }},{{ item.obj.applicant.mobile|lower }}">
+                        <td><span class="applicant-name">{{ item.obj.applicant.full_name }}</span></td>
+                        <td><span style="color: #1f2937;">{{ item.obj.applicant.email|default:"-" }}</span></td>
+                        <td><span style="color: #1f2937;">{{ item.obj.applicant.mobile|default:"-" }}</span></td>
                         <td>
-                            <span class="badge badge-warning">Follow-up</span>
+                            <span class="assigned-badge">
+                                {% if item.obj.assigned_employee %}
+                                    {{ item.obj.assigned_employee.get_full_name }}
+                                {% elif item.obj.assigned_agent %}
+                                    {{ item.obj.assigned_agent.name }}
+                                {% else %}
+                                    Unassigned
+                                {% endif %}
+                            </span>
                         </td>
-                        <td class="text-center">
-                            <div class="flex items-center justify-center gap-2">
-                                <a href="{% url 'admin:core_loanapplication_change' loan.id %}" class="text-blue-600 hover:text-blue-800 font-medium text-sm" title="View Details">
-                                    <i class="fas fa-eye"></i>
-                                </a>
-                            </div>
+                        <td><span style="color: #2d5016; font-weight: 600;">₹{{ item.obj.applicant.loan_amount|default:"-" }}</span></td>
+                        <td>
+                            <span class="delay-text {% if item.delay_hours > 24 %}delay-critical{% endif %}">
+                                {{ item.delay_hours }}h
+                            </span>
+                        </td>
+                        <td>
+                            <span class="priority-badge 
+                                {% if item.delay_hours > 48 %}priority-critical
+                                {% elif item.delay_hours > 24 %}priority-high
+                                {% else %}priority-normal{% endif %}">
+                                {% if item.delay_hours > 48 %}🔴 Critical
+                                {% elif item.delay_hours > 24 %}🟡 High
+                                {% else %}🔵 Normal{% endif %}
+                            </span>
+                        </td>
+                        <td>
+                            <a href="{% url 'required_followup_detail' item.obj.applicant.id %}" class="action-button">
+                                📞 Follow Up
+                            </a>
                         </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
             {% else %}
-            <div class="text-center py-12">
-                <i class="fas fa-phone-alt text-gray-300 text-5xl mb-4"></i>
-                <p class="text-gray-500">No follow-up required</p>
+            <div class="no-followups">
+                <i class="fas fa-check-circle"></i>
+                <p>No follow-ups required</p>
+                <p style="font-size: 13px; color: #d1d5db;">All applications are up to date!</p>
             </div>
             {% endif %}
         </div>
     </div>
 </div>
+
+<script>
+function filterTable() {
+    const input = document.getElementById('searchInput').value.toLowerCase();
+    const rows = document.querySelectorAll('.followup-table tbody tr');
+    
+    rows.forEach(row => {
+        const searchText = row.getAttribute('data-search') || '';
+        if (searchText.includes(input)) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+</script>
+
 {% endblock %}

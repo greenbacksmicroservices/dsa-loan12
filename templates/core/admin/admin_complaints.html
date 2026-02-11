@@ -2,322 +2,609 @@
 {% load static %}
 
 {% block title %}Complaints Management - DSA Admin{% endblock %}
+{% block page_title %}Complaints & Issues{% endblock %}
 
 {% block content %}
 <style>
-    .page-header {
-        margin-bottom: 30px;
-        padding-bottom: 20px;
-        border-bottom: 2px solid #e5e7eb;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
+    .complaints-wrapper {
+        padding: 24px 0;
     }
 
-    .page-header h2 {
-        margin: 0;
-        font-size: 24px;
-        font-weight: 600;
-        color: #1f2937;
-    }
-
-    .complaints-grid {
+    .controls-row {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-        gap: 20px;
-        margin-bottom: 40px;
-    }
-
-    .complaint-card {
-        background: white;
-        border-radius: 12px;
-        padding: 20px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        border: 1px solid #e5e7eb;
-        border-left: 4px solid #ff6b6b;
-        transition: all 0.3s ease;
-    }
-
-    .complaint-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-    }
-
-    .complaint-id {
-        display: inline-block;
-        background: #fee2e2;
-        color: #dc2626;
-        padding: 4px 10px;
-        border-radius: 4px;
-        font-size: 11px;
-        font-weight: 600;
-        margin-bottom: 10px;
-    }
-
-    .complaint-type {
-        display: inline-block;
-        background: #dbeafe;
-        color: #1e40af;
-        padding: 4px 10px;
-        border-radius: 4px;
-        font-size: 11px;
-        font-weight: 600;
-        margin-bottom: 10px;
-        margin-left: 8px;
-    }
-
-    .complaint-subject {
-        font-size: 16px;
-        font-weight: 700;
-        color: #1f2937;
-        margin: 10px 0;
-    }
-
-    .complaint-description {
-        font-size: 13px;
-        color: #6b7280;
-        margin: 10px 0;
-        line-height: 1.5;
-    }
-
-    .complaint-meta {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin: 15px 0;
-        padding: 10px 0;
-        border-top: 1px solid #f3f4f6;
-        border-bottom: 1px solid #f3f4f6;
-    }
-
-    .complaint-badge {
-        display: inline-block;
-        padding: 4px 10px;
-        border-radius: 4px;
-        font-size: 11px;
-        font-weight: 600;
-    }
-
-    .badge-open {
-        background: #fef3c7;
-        color: #92400e;
-    }
-
-    .badge-in-progress {
-        background: #dbeafe;
-        color: #1e40af;
-    }
-
-    .badge-resolved {
-        background: #dcfce7;
-        color: #166534;
-    }
-
-    .badge-closed {
-        background: #f3f4f6;
-        color: #374151;
-    }
-
-    .badge-low {
-        background: #dcfce7;
-        color: #166534;
-    }
-
-    .badge-medium {
-        background: #dbeafe;
-        color: #1e40af;
-    }
-
-    .badge-high {
-        background: #fed7aa;
-        color: #92400e;
-    }
-
-    .badge-urgent {
-        background: #fecaca;
-        color: #991b1b;
-    }
-
-    .complaint-date {
-        font-size: 12px;
-        color: #9ca3af;
-    }
-
-    .complaint-actions {
-        display: flex;
-        gap: 10px;
-        margin-top: 15px;
-    }
-
-    .btn-action {
-        flex: 1;
-        padding: 8px 12px;
-        border: 1px solid #d1d5db;
-        border-radius: 6px;
-        background: white;
-        cursor: pointer;
-        font-size: 12px;
-        font-weight: 600;
-        transition: all 0.2s;
-        text-decoration: none;
-        text-align: center;
-    }
-
-    .btn-view {
-        color: #2563eb;
-        border-color: #2563eb;
-    }
-
-    .btn-view:hover {
-        background: #2563eb;
-        color: white;
-    }
-
-    .btn-update {
-        color: #f59e0b;
-        border-color: #f59e0b;
-    }
-
-    .btn-update:hover {
-        background: #f59e0b;
-        color: white;
-    }
-
-    .empty-state {
-        text-align: center;
-        padding: 80px 20px;
-        color: #6b7280;
-    }
-
-    .empty-state-icon {
-        font-size: 64px;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 12px;
         margin-bottom: 20px;
-        opacity: 0.5;
     }
 
-    .stat-boxes {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-        gap: 15px;
-        margin-bottom: 30px;
-    }
-
-    .stat-box {
-        background: white;
-        padding: 15px;
+    .controls-row input,
+    .controls-row select {
+        padding: 10px 12px;
+        border: 1px solid #d1d5db;
         border-radius: 8px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        border-left: 4px solid #ff6b6b;
-        text-align: center;
+        font-size: 14px;
+        background: white;
     }
 
-    .stat-value {
-        font-size: 24px;
-        font-weight: 700;
-        color: #1f2937;
-        margin: 5px 0;
+    .stats-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+
+    .stat-card {
+        background: white;
+        border-radius: 10px;
+        padding: 16px;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
     }
 
     .stat-label {
         font-size: 12px;
         color: #6b7280;
+        font-weight: 600;
         text-transform: uppercase;
+    }
+
+    .stat-value {
+        font-size: 22px;
+        font-weight: 700;
+        color: #111827;
+        margin-top: 4px;
+    }
+
+    .table-card {
+        background: white;
+        border-radius: 12px;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        overflow: hidden;
+    }
+
+    .table-card table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .table-card thead {
+        background: #f9fafb;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .table-card th,
+    .table-card td {
+        padding: 12px 14px;
+        text-align: left;
+        font-size: 13px;
+        color: #374151;
+    }
+
+    .table-card tbody tr {
+        border-bottom: 1px solid #f3f4f6;
+    }
+
+    .table-card tbody tr:hover {
+        background: #f9fafb;
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: capitalize;
+    }
+
+    .badge-open { background: #fef3c7; color: #92400e; }
+    .badge-in_progress { background: #dbeafe; color: #1e40af; }
+    .badge-resolved { background: #dcfce7; color: #166534; }
+    .badge-closed { background: #e5e7eb; color: #374151; }
+
+    .badge-low { background: #dcfce7; color: #166534; }
+    .badge-medium { background: #dbeafe; color: #1e40af; }
+    .badge-high { background: #fed7aa; color: #92400e; }
+    .badge-urgent { background: #fecaca; color: #991b1b; }
+
+    .action-buttons {
+        display: inline-flex;
+        gap: 8px;
+    }
+
+    .btn-action {
+        padding: 6px 10px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        border: 1px solid #d1d5db;
+        background: white;
+        cursor: pointer;
+    }
+
+    .btn-view { color: #2563eb; border-color: #2563eb; }
+    .btn-view:hover { background: #2563eb; color: white; }
+
+    .btn-update { color: #f59e0b; border-color: #f59e0b; }
+    .btn-update:hover { background: #f59e0b; color: white; }
+
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.6);
+        z-index: 3000;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    }
+
+    .modal-card {
+        background: white;
+        border-radius: 12px;
+        width: 100%;
+        max-width: 720px;
+        box-shadow: 0 20px 45px rgba(0, 0, 0, 0.2);
+        overflow: hidden;
+    }
+
+    .modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 20px;
+        border-bottom: 1px solid #e5e7eb;
+        background: #f9fafb;
+    }
+
+    .modal-title {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 700;
+        color: #111827;
+    }
+
+    .modal-body {
+        padding: 20px;
+    }
+
+    .modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        padding: 16px 20px;
+        border-top: 1px solid #e5e7eb;
+        background: #f9fafb;
+    }
+
+    .btn-primary {
+        background: #2563eb;
+        color: white;
+        border: none;
+        padding: 10px 16px;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .btn-secondary {
+        background: #e5e7eb;
+        color: #111827;
+        border: none;
+        padding: 10px 16px;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .modal-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+
+    .modal-grid.full {
+        grid-template-columns: 1fr;
+    }
+
+    .modal-grid label {
+        display: block;
+        font-size: 12px;
+        font-weight: 600;
+        color: #6b7280;
+        margin-bottom: 6px;
+    }
+
+    .modal-grid input,
+    .modal-grid select,
+    .modal-grid textarea {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 8px;
+        border: 1px solid #d1d5db;
+        font-size: 14px;
+    }
+
+    .modal-grid textarea {
+        min-height: 100px;
+        resize: vertical;
+    }
+
+    @media (max-width: 768px) {
+        .modal-grid {
+            grid-template-columns: 1fr;
+        }
     }
 </style>
 
-<div class="page-header" style="padding: 30px;">
-    <h2 style="font-size: 28px;">🔔 Complaints & Issues</h2>
-</div>
+<div class="complaints-wrapper">
+    <div class="controls-row">
+        <select id="filterStatus">
+            <option value="">All Status</option>
+            <option value="open">Open</option>
+            <option value="in_progress">In Progress</option>
+            <option value="resolved">Resolved</option>
+            <option value="closed">Closed</option>
+        </select>
+        <select id="filterPriority">
+            <option value="">All Priority</option>
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+            <option value="urgent">Urgent</option>
+        </select>
+        <select id="filterType">
+            <option value="">All Types</option>
+            <option value="service">Service Issue</option>
+            <option value="payment">Payment Issue</option>
+            <option value="documentation">Documentation Issue</option>
+            <option value="other">Other</option>
+        </select>
+        <input type="text" id="filterSearch" placeholder="Search by customer, ID, filer...">
+        <button class="btn-secondary" type="button" onclick="loadComplaints()">Refresh</button>
+    </div>
 
-<!-- Stats -->
-<div style="padding: 0 30px;">
-    <div class="stat-boxes">
-        <div class="stat-box">
-            <div class="stat-label">Total Complaints</div>
-            <div class="stat-value">{{ complaints|length }}</div>
+    <div class="stats-row">
+        <div class="stat-card">
+            <div class="stat-label">Total</div>
+            <div class="stat-value" id="statTotal">0</div>
         </div>
-        <div class="stat-box">
+        <div class="stat-card">
             <div class="stat-label">Open</div>
-            <div class="stat-value" id="open-count">0</div>
+            <div class="stat-value" id="statOpen">0</div>
         </div>
-        <div class="stat-box">
+        <div class="stat-card">
             <div class="stat-label">In Progress</div>
-            <div class="stat-value" id="progress-count">0</div>
+            <div class="stat-value" id="statProgress">0</div>
         </div>
-        <div class="stat-box">
+        <div class="stat-card">
             <div class="stat-label">Resolved</div>
-            <div class="stat-value" id="resolved-count">0</div>
+            <div class="stat-value" id="statResolved">0</div>
+        </div>
+    </div>
+
+    <div class="table-card">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Customer</th>
+                    <th>Type</th>
+                    <th>Priority</th>
+                    <th>Status</th>
+                    <th>Filed By</th>
+                    <th>Created</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="complaintsTableBody">
+                <tr>
+                    <td colspan="8" style="padding: 30px; text-align: center; color: #6b7280;">Loading complaints...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div id="viewModal" class="modal-overlay">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h2 class="modal-title">Complaint Details</h2>
+            <button type="button" onclick="closeViewModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #6b7280;">&times;</button>
+        </div>
+        <div class="modal-body" id="viewModalBody">
+            <p style="color: #6b7280;">Loading...</p>
+        </div>
+        <div class="modal-actions">
+            <button type="button" class="btn-secondary" onclick="closeViewModal()">Close</button>
         </div>
     </div>
 </div>
 
-<!-- Complaints Grid -->
-<div style="padding: 0 30px;">
-    {% if complaints %}
-    <div class="complaints-grid">
-        {% for complaint in complaints %}
-        <div class="complaint-card">
-            <div style="display: flex; gap: 8px; margin-bottom: 10px;">
-                <span class="complaint-id">#{{ complaint.id }}</span>
-                <span class="complaint-type">{{ complaint.filed_by.role|default:"User"|title }}</span>
-            </div>
-            
-            <div class="complaint-subject">{{ complaint.subject|default:"Complaint"|truncatechars:30 }}</div>
-            
-            <div class="complaint-description">{{ complaint.description|default:"No description"|truncatechars:60 }}</div>
-            
-            <div class="complaint-meta">
+<div id="updateModal" class="modal-overlay">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h2 class="modal-title">Update Complaint</h2>
+            <button type="button" onclick="closeUpdateModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #6b7280;">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="modal-grid">
                 <div>
-                    <span class="complaint-badge badge-{% if complaint.priority == 'urgent' %}urgent{% elif complaint.priority == 'high' %}high{% elif complaint.priority == 'medium' %}medium{% else %}low{% endif %}">
-                        {{ complaint.priority|default:"Medium"|title }}
-                    </span>
+                    <label>Status</label>
+                    <select id="updateStatus">
+                        <option value="open">Open</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="resolved">Resolved</option>
+                        <option value="closed">Closed</option>
+                    </select>
                 </div>
-                <span class="complaint-badge badge-{% if complaint.status == 'open' %}open{% elif complaint.status == 'in_progress' %}in-progress{% elif complaint.status == 'resolved' %}resolved{% else %}closed{% endif %}">
-                    {{ complaint.status|default:"Open"|title }}
-                </span>
+                <div>
+                    <label>Priority</label>
+                    <select id="updatePriority">
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                        <option value="urgent">Urgent</option>
+                    </select>
+                </div>
             </div>
-            
-            <div class="complaint-date">
-                📅 {{ complaint.created_at|date:"M d, Y" }}
-            </div>
-            
-            <div class="complaint-actions">
-                <button class="btn-action btn-view" onclick="alert('View functionality coming soon')">
-                    👁️ View
-                </button>
-                <button class="btn-action btn-update" onclick="alert('Update functionality coming soon')">
-                    ✏️ Update
-                </button>
+            <div class="modal-grid full">
+                <div>
+                    <label>Add Comment (optional)</label>
+                    <textarea id="updateComment" placeholder="Add a note for this update"></textarea>
+                </div>
             </div>
         </div>
-        {% endfor %}
+        <div class="modal-actions">
+            <button type="button" class="btn-secondary" onclick="closeUpdateModal()">Cancel</button>
+            <button type="button" class="btn-primary" onclick="saveComplaintUpdate()">Save</button>
+        </div>
     </div>
-    {% else %}
-    <div class="empty-state">
-        <div class="empty-state-icon">📭</div>
-        <h3 style="color: #1f2937; margin-bottom: 10px; font-size: 18px;">No Complaints</h3>
-        <p>No complaints have been filed yet.</p>
-    </div>
-    {% endif %}
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const complaints = {{ complaints|safe }};
-    let openCount = 0, progressCount = 0, resolvedCount = 0;
-    
-    // Count complaints by status
-    const statuses = document.querySelectorAll('.complaint-badge.badge-open, .complaint-badge.badge-in-progress, .complaint-badge.badge-resolved');
-    statuses.forEach(badge => {
-        if (badge.classList.contains('badge-open')) openCount++;
-        else if (badge.classList.contains('badge-in-progress')) progressCount++;
-        else if (badge.classList.contains('badge-resolved')) resolvedCount++;
-    });
-    
-    document.getElementById('open-count').textContent = openCount;
-    document.getElementById('progress-count').textContent = progressCount;
-    document.getElementById('resolved-count').textContent = resolvedCount;
-});
-</script>
+let complaintsData = [];
+let currentComplaintId = null;
 
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+function formatDate(value) {
+    if (!value) return '-';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+function getFiledBy(complaint) {
+    return complaint.filed_by_employee_name || complaint.filed_by_agent_name || (complaint.created_by ? `User #${complaint.created_by}` : 'System');
+}
+
+function applyFilters() {
+    const search = document.getElementById('filterSearch').value.trim().toLowerCase();
+    let filtered = [...complaintsData];
+
+    if (search) {
+        filtered = filtered.filter(item => {
+            const haystack = [
+                item.complaint_id,
+                item.customer_name,
+                item.description,
+                getFiledBy(item)
+            ].join(' ').toLowerCase();
+            return haystack.includes(search);
+        });
+    }
+
+    renderTable(filtered);
+    updateStats(filtered);
+}
+
+function updateStats(list) {
+    const total = list.length;
+    const open = list.filter(item => item.status === 'open').length;
+    const progress = list.filter(item => item.status === 'in_progress').length;
+    const resolved = list.filter(item => item.status === 'resolved').length;
+
+    document.getElementById('statTotal').textContent = total;
+    document.getElementById('statOpen').textContent = open;
+    document.getElementById('statProgress').textContent = progress;
+    document.getElementById('statResolved').textContent = resolved;
+}
+
+function renderTable(list) {
+    const tbody = document.getElementById('complaintsTableBody');
+    if (!tbody) return;
+
+    if (!list.length) {
+        tbody.innerHTML = '<tr><td colspan="8" style="padding: 30px; text-align: center; color: #6b7280;">No complaints found</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = list.map(item => {
+        const statusClass = `badge-${item.status}`;
+        const priorityClass = `badge-${item.priority}`;
+        return `
+            <tr>
+                <td>${item.complaint_id || item.id}</td>
+                <td>${item.customer_name || '-'}</td>
+                <td>${item.complaint_type || '-'}</td>
+                <td><span class="badge ${priorityClass}">${item.priority || '-'}</span></td>
+                <td><span class="badge ${statusClass}">${item.status || '-'}</span></td>
+                <td>${getFiledBy(item)}</td>
+                <td>${formatDate(item.created_at)}</td>
+                <td>
+                    <div class="action-buttons">
+                        <button class="btn-action btn-view" onclick="openViewModal('${item.id}')">View</button>
+                        <button class="btn-action btn-update" onclick="openUpdateModal('${item.id}')">Update</button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+async function loadComplaints() {
+    const status = document.getElementById('filterStatus').value;
+    const priority = document.getElementById('filterPriority').value;
+    const type = document.getElementById('filterType').value;
+
+    const params = new URLSearchParams();
+    if (status) params.append('status', status);
+    if (priority) params.append('priority', priority);
+    if (type) params.append('complaint_type', type);
+
+    const tbody = document.getElementById('complaintsTableBody');
+    if (tbody) {
+        tbody.innerHTML = '<tr><td colspan="8" style="padding: 30px; text-align: center; color: #6b7280;">Loading complaints...</td></tr>';
+    }
+
+    try {
+        const response = await fetch(`/api/admin/complaints/?${params.toString()}`);
+        const data = await response.json();
+        complaintsData = data.results || [];
+        applyFilters();
+    } catch (error) {
+        console.error('Error loading complaints:', error);
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="8" style="padding: 30px; text-align: center; color: #991b1b;">Failed to load complaints</td></tr>';
+        }
+    }
+}
+
+function openViewModal(id) {
+    const modal = document.getElementById('viewModal');
+    const body = document.getElementById('viewModalBody');
+    const complaint = complaintsData.find(item => String(item.id) === String(id));
+
+    if (!modal || !body || !complaint) return;
+
+    body.innerHTML = `
+        <div class="modal-grid">
+            <div><label>Complaint ID</label><input value="${complaint.complaint_id || complaint.id}" disabled></div>
+            <div><label>Customer</label><input value="${complaint.customer_name || '-'}" disabled></div>
+            <div><label>Type</label><input value="${complaint.complaint_type || '-'}" disabled></div>
+            <div><label>Filed By</label><input value="${getFiledBy(complaint)}" disabled></div>
+            <div><label>Status</label><input value="${complaint.status || '-'}" disabled></div>
+            <div><label>Priority</label><input value="${complaint.priority || '-'}" disabled></div>
+        </div>
+        <div class="modal-grid full">
+            <div>
+                <label>Description</label>
+                <textarea disabled>${complaint.description || ''}</textarea>
+            </div>
+        </div>
+    `;
+
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+function closeViewModal() {
+    const modal = document.getElementById('viewModal');
+    if (modal) {
+        modal.style.display = 'none';
+        document.body.style.overflow = 'auto';
+    }
+}
+
+function openUpdateModal(id) {
+    const modal = document.getElementById('updateModal');
+    const complaint = complaintsData.find(item => String(item.id) === String(id));
+    if (!modal || !complaint) return;
+
+    currentComplaintId = id;
+    document.getElementById('updateStatus').value = complaint.status || 'open';
+    document.getElementById('updatePriority').value = complaint.priority || 'medium';
+    document.getElementById('updateComment').value = '';
+
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+function closeUpdateModal() {
+    const modal = document.getElementById('updateModal');
+    if (modal) {
+        modal.style.display = 'none';
+        document.body.style.overflow = 'auto';
+    }
+    currentComplaintId = null;
+}
+
+async function saveComplaintUpdate() {
+    if (!currentComplaintId) return;
+
+    const payload = {
+        status: document.getElementById('updateStatus').value,
+        priority: document.getElementById('updatePriority').value
+    };
+
+    try {
+        const response = await fetch(`/api/complaints/${currentComplaintId}/`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify(payload)
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.error || 'Failed to update complaint');
+        }
+
+        const comment = document.getElementById('updateComment').value.trim();
+        if (comment) {
+            await fetch(`/api/complaints/${currentComplaintId}/add_comment/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ comment })
+            });
+        }
+
+        closeUpdateModal();
+        loadComplaints();
+    } catch (error) {
+        console.error('Update error:', error);
+        alert(error.message || 'Error updating complaint');
+    }
+}
+
+['filterStatus', 'filterPriority', 'filterType'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('change', loadComplaints);
+});
+
+const searchInput = document.getElementById('filterSearch');
+if (searchInput) {
+    searchInput.addEventListener('input', applyFilters);
+}
+
+window.addEventListener('click', (event) => {
+    if (event.target.id === 'viewModal') closeViewModal();
+    if (event.target.id === 'updateModal') closeUpdateModal();
+});
+
+window.addEventListener('load', loadComplaints);
+</script>
 {% endblock %}

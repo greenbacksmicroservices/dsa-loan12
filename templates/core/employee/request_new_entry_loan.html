@@ -609,7 +609,7 @@
         <p style="color: #999; margin-top: 1rem;">Loading loans...</p>
     </div>
 
-    <table class="loans-table" id="loans-table" style="display: none;">
+    <table class="loans-table table-grid" id="loans-table" style="display: none;">
         <thead>
             <tr>
                 <th>Applicant</th>
@@ -777,15 +777,15 @@
     }
 
     function updateDashboardStats() {
-        fetch('/api/employee-dashboard-stats/')
+        fetch('/api/employee/dashboard-stats-new/')
             .then(response => {
                 if (!response.ok) throw new Error('Failed to load stats');
                 return response.json();
             })
             .then(data => {
                 if (data.success) {
-                    document.getElementById('stat-total').textContent = data.total_assigned || 0;
-                    document.getElementById('stat-processing').textContent = data.processing || 0;
+                    document.getElementById('stat-total').textContent = data.total_loans || 0;
+                    document.getElementById('stat-processing').textContent = data.in_processing || 0;
                     document.getElementById('stat-approved').textContent = data.approved || 0;
                     document.getElementById('stat-rejected').textContent = data.rejected || 0;
                     document.getElementById('stat-disbursed').textContent = data.disbursed || 0;

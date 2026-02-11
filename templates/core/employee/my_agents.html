@@ -4,16 +4,13 @@
 {% block title %}My Agents - DSA Loan Management System{% endblock %}
 
 {% block content %}
-<!-- Header with Back Button -->
-<div class="dashboard-header bg-white p-3 mb-4 border-bottom shadow-sm" style="background: linear-gradient(135deg, #667eea 0%, #09186f 100%); border: none; border-radius: 0 0 16px 16px;">
-    <div class="container-fluid d-flex justify-content-between align-items-center">
+<div class="container-fluid">
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-3">
         <div>
-            <h2 class="fw-bold mb-0 text-white" style="font-size: 28px; letter-spacing: 0.5px;">
-                <i class="bi bi-people me-2" style="font-size: 24px;"></i>My Agents
-            </h2>
-            <p class="text-white-50 mb-0 mt-1" style="font-size: 13px;">Manage and view all your agents</p>
+            <h2 class="h5 fw-bold mb-1">My Agents</h2>
+            <p class="text-muted mb-0" style="font-size: 13px;">Manage and view all your agents</p>
         </div>
-        <button class="btn btn-light fw-semibold rounded-pill shadow-sm" id="add-agent-btn" style="padding: 8px 18px; font-size: 13px;">
+        <button class="btn btn-outline-primary btn-sm" id="add-agent-btn">
             <i class="bi bi-plus-circle"></i> Add New Agent
         </button>
     </div>
@@ -144,6 +141,93 @@
     </div>
 </div>
 
+<!-- View Agent Modal -->
+<div class="modal fade" id="viewAgentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Agent Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p><strong>Name:</strong> <span id="viewAgentName">-</span></p>
+                <p><strong>Email:</strong> <span id="viewAgentEmail">-</span></p>
+                <p><strong>Phone:</strong> <span id="viewAgentPhone">-</span></p>
+                <p><strong>City:</strong> <span id="viewAgentCity">-</span></p>
+                <p><strong>State:</strong> <span id="viewAgentState">-</span></p>
+                <p><strong>Status:</strong> <span id="viewAgentStatus">-</span></p>
+                <p><strong>Total Loans:</strong> <span id="viewAgentLoans">0</span></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Agent Modal -->
+<div class="modal fade" id="editAgentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Agent</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Name</label>
+                        <input type="text" class="form-control" id="editAgentName">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-control" id="editAgentEmail">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Phone</label>
+                        <input type="text" class="form-control" id="editAgentPhone">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">City</label>
+                        <input type="text" class="form-control" id="editAgentCity">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">State</label>
+                        <input type="text" class="form-control" id="editAgentState">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Status</label>
+                        <select class="form-select" id="editAgentStatus">
+                            <option value="active">Active</option>
+                            <option value="blocked">Blocked</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-primary" type="button" onclick="submitEditAgent()">Save Changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Agent Modal -->
+<div class="modal fade" id="deleteAgentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Delete Agent</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to remove this agent?</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-danger" type="button" onclick="submitDeleteAgent()">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block extra_css %}
@@ -223,6 +307,7 @@
 </style>
 {% endblock %}
 
+{% block extra_js %}
 <script>
     function getCookie(name) {
         let cookieValue = null;
@@ -241,18 +326,19 @@
 
     async function loadAgents() {
         try {
-            const response = await fetch('/api/employee/my-agents/', {
-                headers: {
-                    'X-CSRFToken': getCookie('csrftoken')
-                },
-                credentials: 'same-origin'
-            });
+        const response = await fetch('/api/employee/agents/', {
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            credentials: 'same-origin'
+        });
 
             if (!response.ok) throw new Error('Failed to load agents');
 
             const data = await response.json();
             const agents = data.agents || [];
             const container = document.getElementById('agents-container');
+            AGENTS_CACHE = agents;
 
             if (agents.length === 0) {
                 container.innerHTML = `
@@ -271,30 +357,47 @@
 
             container.innerHTML = `
                 <div class="table-responsive">
-                    <table class="table">
+                    <table class="table table-grid">
                         <thead>
                             <tr>
+                                <th style="width: 60px;">Photo</th>
                                 <th>Agent Name</th>
                                 <th>Email</th>
                                 <th>Phone</th>
-                                <th>Total Loans</th>
-                                <th>Approved</th>
-                                <th>Rejected</th>
+                                <th>City</th>
                                 <th>Status</th>
+                                <th>Total Loans</th>
+                                <th>Created By</th>
+                                <th>Action</th>
                             </tr>
                         </thead>
                         <tbody>
-                            ${agents.map(agent => `
-                                <tr>
-                                    <td><span class="agent-name">${agent.agent_name || 'N/A'}</span></td>
-                                    <td>${agent.email || 'N/A'}</td>
-                                    <td>${agent.phone || 'N/A'}</td>
-                                    <td><strong>${agent.total_loans || 0}</strong></td>
-                                    <td><span class="badge bg-success">${agent.approved_loans || 0}</span></td>
-                                    <td><span class="badge bg-danger">${agent.rejected_loans || 0}</span></td>
-                                    <td><span class="badge ${agent.is_active ? 'bg-success' : 'bg-secondary'}">${agent.is_active ? 'Active' : 'Inactive'}</span></td>
-                                </tr>
-                            `).join('')}
+                            ${agents.map(agent => {
+                                const initial = (agent.name || 'A').charAt(0).toUpperCase();
+                                const photoCell = agent.photo_url
+                                    ? `<div class="table-avatar"><img src="${agent.photo_url}" alt="${agent.name || 'Agent'}"></div>`
+                                    : `<div class="table-avatar-fallback">${initial}</div>`;
+
+                                return `
+                                    <tr>
+                                        <td>${photoCell}</td>
+                                        <td><span class="agent-name">${agent.name || 'N/A'}</span></td>
+                                        <td>${agent.email || 'N/A'}</td>
+                                        <td>${agent.phone || 'N/A'}</td>
+                                        <td>${agent.city || 'N/A'}</td>
+                                        <td><span class="badge ${agent.status === 'active' ? 'bg-success' : 'bg-secondary'}">${agent.status || 'N/A'}</span></td>
+                                        <td><strong>${agent.total_loans || 0}</strong></td>
+                                        <td>${agent.created_by || 'N/A'}</td>
+                                        <td>
+                                            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                                                <button class="btn btn-sm btn-success" onclick="openViewAgent(${agent.id})">View</button>
+                                                <button class="btn btn-sm btn-warning" onclick="openEditAgent(${agent.id})">Edit</button>
+                                                <button class="btn btn-sm btn-danger" onclick="confirmDeleteAgent(${agent.id})">Delete</button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                `;
+                            }).join('')}
                         </tbody>
                     </table>
                 </div>
@@ -345,7 +448,7 @@
                 formData.append('photo', photo);
             }
             
-            const response = await fetch('/api/employee/add-agent/', {
+            const response = await fetch('/api/employee/agent/add/', {
                 method: 'POST',
                 headers: {
                     'X-CSRFToken': getCookie('csrftoken')
@@ -379,6 +482,9 @@
         }
     }
 
+    let AGENTS_CACHE = [];
+    let CURRENT_AGENT_ID = null;
+
     // Initialize
     document.addEventListener('DOMContentLoaded', function() {
         loadAgents();
@@ -402,4 +508,88 @@
 
         document.getElementById('addAgentForm').addEventListener('submit', submitAddAgent);
     });
+
+    async function openViewAgent(agentId) {
+        const agent = AGENTS_CACHE.find(a => a.id === agentId);
+        if (!agent) return;
+
+        document.getElementById('viewAgentName').textContent = agent.name || 'N/A';
+        document.getElementById('viewAgentEmail').textContent = agent.email || 'N/A';
+        document.getElementById('viewAgentPhone').textContent = agent.phone || 'N/A';
+        document.getElementById('viewAgentCity').textContent = agent.city || 'N/A';
+        document.getElementById('viewAgentState').textContent = agent.state || 'N/A';
+        document.getElementById('viewAgentStatus').textContent = agent.status || 'N/A';
+        document.getElementById('viewAgentLoans').textContent = agent.total_loans || 0;
+
+        const modal = new bootstrap.Modal(document.getElementById('viewAgentModal'));
+        modal.show();
+    }
+
+    function openEditAgent(agentId) {
+        const agent = AGENTS_CACHE.find(a => a.id === agentId);
+        if (!agent) return;
+
+        CURRENT_AGENT_ID = agentId;
+        document.getElementById('editAgentName').value = agent.name || '';
+        document.getElementById('editAgentEmail').value = agent.email || '';
+        document.getElementById('editAgentPhone').value = agent.phone || '';
+        document.getElementById('editAgentCity').value = agent.city || '';
+        document.getElementById('editAgentState').value = agent.state || '';
+        document.getElementById('editAgentStatus').value = agent.status || 'active';
+
+        const modal = new bootstrap.Modal(document.getElementById('editAgentModal'));
+        modal.show();
+    }
+
+    async function submitEditAgent() {
+        if (!CURRENT_AGENT_ID) return;
+
+        const payload = new FormData();
+        payload.append('name', document.getElementById('editAgentName').value);
+        payload.append('email', document.getElementById('editAgentEmail').value);
+        payload.append('phone', document.getElementById('editAgentPhone').value);
+        payload.append('city', document.getElementById('editAgentCity').value);
+        payload.append('state', document.getElementById('editAgentState').value);
+        payload.append('status', document.getElementById('editAgentStatus').value);
+
+        const res = await fetch(`/api/employee/agents/${CURRENT_AGENT_ID}/update/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCookie('csrftoken') },
+            body: payload,
+            credentials: 'same-origin'
+        });
+
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.success) {
+            await loadAgents();
+            bootstrap.Modal.getInstance(document.getElementById('editAgentModal')).hide();
+        } else {
+            alert(data.error || 'Failed to update agent');
+        }
+    }
+
+    function confirmDeleteAgent(agentId) {
+        CURRENT_AGENT_ID = agentId;
+        const modal = new bootstrap.Modal(document.getElementById('deleteAgentModal'));
+        modal.show();
+    }
+
+    async function submitDeleteAgent() {
+        if (!CURRENT_AGENT_ID) return;
+
+        const res = await fetch(`/api/employee/agents/${CURRENT_AGENT_ID}/delete/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCookie('csrftoken') },
+            credentials: 'same-origin'
+        });
+
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.success) {
+            await loadAgents();
+            bootstrap.Modal.getInstance(document.getElementById('deleteAgentModal')).hide();
+        } else {
+            alert(data.error || 'Failed to delete agent');
+        }
+    }
 </script>
+{% endblock %}

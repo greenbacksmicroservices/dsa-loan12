@@ -430,7 +430,7 @@
             const data = await response.json();
             if (!data.success) throw new Error(data.error || 'Unknown error');
 
-            loanData = data.loan;
+            loanData = normalizeLoanData(data.loan || data);
             displayLoanDetails();
             setupActionButtons();
 
@@ -442,6 +442,36 @@
             document.getElementById('error-container').style.display = 'block';
             document.getElementById('error-message').textContent = error.message;
         }
+    }
+
+    function normalizeLoanData(payload) {
+        if (!payload) return {};
+        if (payload.applicant) {
+            return {
+                applicant_name: payload.applicant.full_name,
+                mobile: payload.applicant.mobile_number,
+                email: payload.applicant.email,
+                city: payload.applicant.city,
+                state: payload.applicant.state,
+                pin_code: payload.applicant.pin_code,
+                permanent_address: payload.applicant.permanent_address || '-',
+                current_address: payload.applicant.current_address || '-',
+                loan_type: payload.loan_details?.type || '-',
+                loan_amount: payload.loan_details?.amount || 0,
+                loan_purpose: payload.loan_details?.purpose || '-',
+                tenure_months: payload.loan_details?.tenure_months || 0,
+                interest_rate: payload.loan_details?.interest_rate || 0,
+                emi: payload.loan_details?.emi || 0,
+                bank_name: payload.bank_details?.bank_name || '-',
+                bank_type: payload.bank_details?.type || '-',
+                account_number: payload.bank_details?.account_number || '-',
+                ifsc_code: payload.bank_details?.ifsc_code || '-',
+                status: payload.status_display || payload.status || '-',
+                assigned_date: payload.assigned_date || '-',
+                assigned_by_name: payload.assigned_by_name || 'System'
+            };
+        }
+        return payload;
     }
 
     function displayLoanDetails() {

@@ -1,4 +1,4 @@
-{% extends 'core/base.html' %}
+{% extends 'core/admin/admin_base.html' %}
 {% load static %}
 
 {% block title %}Add New Loan Application - Comprehensive Form{% endblock %}
@@ -159,9 +159,176 @@
         z-index: 100;
         box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
+
+    /* Recent Applications Table Styles */
+    .page-header {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        padding: 30px 20px;
+        border-radius: 8px;
+        margin-bottom: 30px;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+    }
+
+    .page-header-icon {
+        font-size: 32px;
+    }
+
+    .page-header-content h1 {
+        margin: 0;
+        font-size: 28px;
+        font-weight: 700;
+    }
+
+    .page-header-content p {
+        margin: 5px 0 0 0;
+        font-size: 14px;
+        opacity: 0.95;
+    }
+
+    .recent-applications-section {
+        background: white;
+        border-radius: 8px;
+        padding: 25px;
+        margin-bottom: 40px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        border: 1px solid #e5e7eb;
+    }
+
+    .recent-applications-title {
+        font-size: 20px;
+        font-weight: 700;
+        color: #1f2937;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .applications-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .applications-table thead {
+        background: #f9fafb;
+        border-bottom: 2px solid #e5e7eb;
+    }
+
+    .applications-table th {
+        padding: 12px 15px;
+        text-align: left;
+        font-weight: 700;
+        color: #374151;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .applications-table tbody tr {
+        border-bottom: 1px solid #e5e7eb;
+        transition: all 0.2s ease;
+    }
+
+    .applications-table tbody tr:hover {
+        background: #f9fafb;
+    }
+
+    .applications-table td {
+        padding: 12px 15px;
+        font-size: 13px;
+        color: #374151;
+    }
+
+    .applicant-name {
+        font-weight: 600;
+        color: #1f2937;
+    }
+
+    .phone-badge {
+        background: #dbeafe;
+        color: #1e40af;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+
+    .loan-amount-badge {
+        background: #fef3c7;
+        color: #92400e;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+
+    .status-new {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .status-waiting {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .status-approved {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .table-actions {
+        display: flex;
+        gap: 5px;
+    }
+
+    .btn-action {
+        background: #1abc9c;
+        color: white;
+        border: none;
+        padding: 6px 10px;
+        border-radius: 4px;
+        font-size: 11px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .btn-action:hover {
+        background: #16a085;
+        transform: scale(1.05);
+    }
+
+    .empty-message {
+        text-align: center;
+        padding: 40px 20px;
+        color: #6b7280;
+    }
 </style>
 
 <div class="form-container">
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="page-header-icon">
+            <i class="bi bi-plus-circle"></i>
+        </div>
+        <div class="page-header-content">
+            <h1>Add New Loan Application</h1>
+            <p>Fill in all the required details to submit a new loan application</p>
+        </div>
+    </div>
+
     <!-- Django Messages Display -->
     {% if messages %}
     <div style="margin-bottom: 20px;">
@@ -175,7 +342,59 @@
     </div>
     {% endif %}
 
-    <!-- Page Header Hidden -->
+    <!-- Recent Applications Section -->
+    {% if recent_loans %}
+    <div class="recent-applications-section">
+        <div class="recent-applications-title">
+            <i class="bi bi-clock-history"></i> Recent Loan Applications
+        </div>
+        <table class="applications-table table-grid">
+            <thead>
+                <tr>
+                    <th>Applicant Name</th>
+                    <th>Phone</th>
+                    <th>Loan Amount</th>
+                    <th>Loan Type</th>
+                    <th>Created Date</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for loan in recent_loans %}
+                <tr>
+                    <td class="applicant-name">{{ loan.applicant_name }}</td>
+                    <td><span class="phone-badge">{{ loan.phone }}</span></td>
+                    <td><span class="loan-amount-badge">₹ {% if loan.loan_amount_required %}{{ loan.loan_amount_required|floatformat:"0" }}{% else %}—{% endif %}</span></td>
+                    <td>{{ loan.service_required|default:"—" }}</td>
+                    <td>{{ loan.created_date|date:"d M Y" }}</td>
+                    <td>
+                        {% if loan.status == "new_entry" %}
+                            <span class="status-badge status-new">NEW ENTRY</span>
+                        {% elif loan.status == "waiting" %}
+                            <span class="status-badge status-waiting">WAITING</span>
+                        {% elif loan.status == "approved" %}
+                            <span class="status-badge status-approved">APPROVED</span>
+                        {% else %}
+                            <span class="status-badge">{{ loan.status|upper }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="table-actions">
+                            <button class="btn-action" title="View Details">View</button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-message">
+        <p><i class="bi bi-inbox" style="font-size: 24px;"></i></p>
+        <p>No applications yet. Start adding new loan applications below.</p>
+    </div>
+    {% endif %}
 
     <form id="loanForm" method="post" enctype="multipart/form-data" novalidate>
         {% csrf_token %}
@@ -946,4 +1165,3 @@
 </script>
 
 {% endblock %}
- 

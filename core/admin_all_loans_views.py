@@ -28,10 +28,28 @@ logger = logging.getLogger(__name__)
 def admin_all_loans(request):
     """
     Main All Loans page - Master view of entire loan database
+    Displays all loans in comprehensive table format
     """
+    from .models import Loan
+    
+    # Get all loans ordered by creation date (newest first)
+    loans = Loan.objects.all().order_by('-created_at')
+    
+    # Apply search filter if provided
+    search_query = request.GET.get('q', '').strip()
+    if search_query:
+        loans = loans.filter(
+            Q(full_name__icontains=search_query) |
+            Q(email__icontains=search_query) |
+            Q(mobile_number__icontains=search_query) |
+            Q(user_id__icontains=search_query)
+        )
+    
     context = {
         'page_title': 'All Loans - Master Database',
-        'status_filter': request.GET.get('status', 'all')
+        'loans': loans,
+        'search_query': search_query,
+        'total_loans': Loan.objects.count(),
     }
     return render(request, 'core/admin/all_loans.html', context)
 

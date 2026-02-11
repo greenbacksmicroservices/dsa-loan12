@@ -10,6 +10,7 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404
 from django.db.models import Q, Count, Sum, F
 from django.utils import timezone
+from django.utils.crypto import get_random_string
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -997,3 +998,264 @@ def api_create_agent(request):
             'success': False,
             'error': str(e)
         }, status=400)
+
+
+@login_required(login_url='admin_login')
+@admin_required
+@require_POST
+def api_add_agent(request):
+    """
+    API Endpoint: Add new agent with photo and address details (FormData)
+    Admin only
+    """
+    try:
+        name = request.POST.get('name', '').strip()
+        email = request.POST.get('email', '').strip()
+        phone = request.POST.get('phone', '').strip()
+        gender = request.POST.get('gender', 'Other').strip()
+        address = request.POST.get('address', '').strip()
+        password = request.POST.get('password', '').strip()
+        profile_photo = request.FILES.get('profile_photo', None)
+
+        # Validation
+        if not name or not email or not phone or not password:
+            return JsonResponse({
+                'success': False,
+                'error': 'Name, Email, Phone, and Password are required'
+            }, status=400)
+
+        # Check email uniqueness
+        if User.objects.filter(email=email).exists():
+            return JsonResponse({
+                'success': False,
+                'error': 'Email already registered'
+            }, status=400)
+
+        # Check phone uniqueness
+        if User.objects.filter(phone=phone).exists() or Agent.objects.filter(phone=phone).exists():
+            return JsonResponse({
+                'success': False,
+                'error': 'Phone number already registered'
+            }, status=400)
+
+        # Validate phone format (basic)
+        phone_digits = phone.replace('+', '')
+        if not phone_digits.isdigit() or len(phone_digits) < 10 or len(phone_digits) > 15:
+            return JsonResponse({
+                'success': False,
+                'error': 'Phone number must be 10-15 digits'
+            }, status=400)
+
+        if len(password) < 6:
+            return JsonResponse({
+                'success': False,
+                'error': 'Password must be at least 6 characters'
+            }, status=400)
+
+        # Generate username from email
+        base_username = email.split('@')[0]
+        username = base_username
+        counter = 1
+        while User.objects.filter(username=username).exists():
+            username = f"{base_username}{counter}"
+            counter += 1
+
+        # Parse full name
+        name_parts = name.split(' ', 1)
+        first_name = name_parts[0]
+        last_name = name_parts[1] if len(name_parts) > 1 else ''
+
+        # Create User
+        user = User.objects.create_user(
+            username=username,
+            email=email,
+            password=password,
+            first_name=first_name,
+            last_name=last_name,
+            role='agent',
+            phone=phone,
+            gender=gender,
+            address=address,
+            is_active=True,
+        )
+
+        if profile_photo:
+            # Validate file size (5MB max)
+            if profile_photo.size > 5 * 1024 * 1024:
+                user.delete()
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Profile photo must be less than 5MB'
+                }, status=400)
+            user.profile_photo = profile_photo
+            user.save()
+
+        # Create Agent profile
+        agent = Agent.objects.create(
+            user=user,
+            name=name,
+            email=email,
+            phone=phone,
+            address=address,
+            gender=gender,
+            status='active',
+            created_by=request.user
+        )
+
+        # Reuse user photo if available
+        if user.profile_photo:
+            agent.profile_photo = user.profile_photo
+            agent.save()
+        elif profile_photo:
+            agent.profile_photo = profile_photo
+            agent.save()
+
+        return JsonResponse({
+            'success': True,
+            'message': 'Agent added successfully',
+            'agent': {
+                'id': agent.id,
+                'name': agent.name,
+                'email': agent.email or '',
+                'phone': agent.phone or '',
+                'status': agent.status,
+                'photo_url': agent.profile_photo.url if agent.profile_photo else '',
+                'created_at': agent.created_at.strftime('%b %d, %Y') if agent.created_at else '',
+            }
+        }, status=201)
+
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'Error: {str(e)}'
+        }, status=500)
+
+
+@login_required(login_url='admin_login')
+@admin_required
+@require_GET
+def api_get_agent(request, agent_id):
+    """API Endpoint: Get single agent details"""
+    try:
+        agent = get_object_or_404(Agent, id=agent_id)
+        return JsonResponse({
+            'success': True,
+            'agent': {
+                'id': agent.id,
+                'name': agent.name,
+                'email': agent.email or '',
+                'phone': agent.phone or '',
+                'address': agent.address or '',
+                'gender': agent.gender or 'Other',
+                'status': agent.status or 'active',
+                'photo_url': agent.profile_photo.url if agent.profile_photo else '',
+            }
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=400)
+
+
+@login_required(login_url='admin_login')
+@admin_required
+@require_POST
+def api_update_agent(request, agent_id):
+    """API Endpoint: Update agent details"""
+    try:
+        agent = get_object_or_404(Agent, id=agent_id)
+        data = json.loads(request.body)
+
+        name = data.get('name', '').strip()
+        email = data.get('email', '').strip()
+        phone = data.get('phone', '').strip()
+        address = data.get('address', '').strip()
+        gender = data.get('gender', '').strip()
+        status_val = data.get('status', '').strip()
+
+        # Validate required fields
+        if not name or not email or not phone:
+            return JsonResponse({
+                'success': False,
+                'error': 'Name, Email, and Phone are required'
+            }, status=400)
+
+        # Email uniqueness (exclude current user)
+        if User.objects.filter(email=email).exclude(id=getattr(agent.user, 'id', None)).exists():
+            return JsonResponse({
+                'success': False,
+                'error': 'Email already exists'
+            }, status=400)
+
+        # Phone uniqueness
+        if User.objects.filter(phone=phone).exclude(id=getattr(agent.user, 'id', None)).exists():
+            return JsonResponse({
+                'success': False,
+                'error': 'Phone number already exists'
+            }, status=400)
+
+        # Update agent fields
+        agent.name = name
+        agent.email = email
+        agent.phone = phone
+        agent.address = address
+        if gender:
+            agent.gender = gender
+        if status_val in ['active', 'blocked']:
+            agent.status = status_val
+        agent.save()
+
+        # Update linked user if exists
+        if agent.user:
+            name_parts = name.split(' ', 1)
+            agent.user.first_name = name_parts[0]
+            agent.user.last_name = name_parts[1] if len(name_parts) > 1 else ''
+            agent.user.email = email
+            agent.user.phone = phone
+            agent.user.address = address
+            if gender:
+                agent.user.gender = gender
+            if status_val in ['active', 'blocked']:
+                agent.user.is_active = status_val == 'active'
+            agent.user.save()
+
+        return JsonResponse({
+            'success': True,
+            'message': 'Agent updated successfully'
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': 'Invalid JSON data'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+@login_required(login_url='admin_login')
+@admin_required
+@require_POST
+def api_delete_agent(request, agent_id):
+    """API Endpoint: Delete (soft block) agent"""
+    try:
+        agent = get_object_or_404(Agent, id=agent_id)
+        agent.status = 'blocked'
+        agent.save()
+
+        if agent.user:
+            agent.user.is_active = False
+            agent.user.save()
+
+        return JsonResponse({
+            'success': True,
+            'message': 'Agent deleted successfully'
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)

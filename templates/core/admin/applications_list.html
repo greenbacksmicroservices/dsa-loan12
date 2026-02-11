@@ -1,0 +1,392 @@
+{% extends 'core/admin/admin_base.html' %}
+{% load static %}
+
+{% block title %}{{ status_name }} Applications - Admin{% endblock %}
+
+{% block page_title %}{{ status_name }} Applications{% endblock %}
+
+{% block content %}
+<style>
+    .status-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 30px 0;
+        margin-bottom: 30px;
+        border-radius: 8px;
+    }
+
+    .status-icon {
+        font-size: 28px;
+        margin-right: 15px;
+    }
+
+    .header-content h1 {
+        margin: 0;
+        font-size: 28px;
+        font-weight: 700;
+    }
+
+    .header-content p {
+        margin: 5px 0 0 0;
+        opacity: 0.95;
+        font-size: 14px;
+    }
+
+    .applications-table {
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        margin-bottom: 30px;
+    }
+
+    .table {
+        margin: 0;
+        width: 100%;
+    }
+
+    .table thead {
+        background: #f7fafc;
+        border-bottom: 2px solid #e2e8f0;
+    }
+
+    .table th {
+        padding: 15px 20px;
+        font-weight: 600;
+        color: #2d3748;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .table tbody tr {
+        border-bottom: 1px solid #e2e8f0;
+        transition: background 0.2s ease;
+    }
+
+    .table tbody tr:hover {
+        background: #f7fafc;
+    }
+
+    .table td {
+        padding: 15px 20px;
+        font-size: 14px;
+        color: #2d3748;
+    }
+
+    .applicant-name {
+        font-weight: 600;
+        color: #1a202c;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .badge-new-entry {
+        background: #eef2ff;
+        color: #3730a3;
+    }
+
+    .badge-processing {
+        background: #fed7aa;
+        color: #92400e;
+    }
+
+    .badge-follow-up {
+        background: #e9d5ff;
+        color: #581c87;
+    }
+
+    .badge-approved {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .badge-rejected {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .badge-disbursed {
+        background: #cffafe;
+        color: #164e63;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+
+    .btn-sm {
+        padding: 6px 12px;
+        font-size: 12px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.2s;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        white-space: nowrap;
+    }
+
+    .btn-sm i {
+        font-size: 11px;
+        margin-right: 2px;
+    }
+        border-radius: 6px;
+        background: white;
+        color: #2d3748;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .btn-sm:hover {
+        background: #f7fafc;
+        border-color: #cbd5e0;
+    }
+
+    .btn-primary {
+        background: #3b82f6;
+        color: white;
+        border-color: #3b82f6;
+    }
+
+    .btn-primary:hover {
+        background: #2563eb;
+        border-color: #2563eb;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #718096;
+    }
+
+    .empty-state-icon {
+        font-size: 48px;
+        margin-bottom: 15px;
+        color: #cbd5e0;
+    }
+
+    .empty-state h3 {
+        color: #2d3748;
+        margin-bottom: 10px;
+    }
+
+    .filter-section {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .filter-row {
+        display: flex;
+        gap: 15px;
+        align-items: flex-end;
+    }
+
+    .filter-group {
+        flex: 1;
+    }
+
+    .filter-group label {
+        font-weight: 600;
+        color: #2d3748;
+        margin-bottom: 8px;
+        display: block;
+        font-size: 13px;
+    }
+
+    .filter-group input {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        font-size: 14px;
+    }
+
+    .btn-search {
+        padding: 10px 20px;
+        background: #3b82f6;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+    }
+
+    .btn-search:hover {
+        background: #2563eb;
+    }
+
+    .application-count {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 15px 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        font-weight: 600;
+    }
+
+    @media (max-width: 768px) {
+        .filter-row {
+            flex-direction: column;
+        }
+
+        .table {
+            font-size: 12px;
+        }
+
+        .table th,
+        .table td {
+            padding: 10px 12px;
+        }
+
+        .action-buttons {
+            flex-direction: column;
+        }
+
+        .btn-sm {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+</style>
+
+<div class="container-fluid" style="padding: 30px 0;">
+    <!-- Status Header -->
+    <div class="status-header">
+        <div class="container-fluid">
+            <div class="header-content">
+                <h1>
+                    <i class="fas {{ status_icon }} status-icon" style="color: {{ status_color }};"></i>
+                    {{ status_name }}
+                </h1>
+                <p>Total Applications: <strong>{{ applications|length }}</strong></p>
+            </div>
+        </div>
+    </div>
+
+    <div class="container-fluid">
+        <!-- Application Count Summary -->
+        {% if applications %}
+        <div class="application-count">
+            <i class="fas fa-list-ul"></i> Total {{ status_name }} Applications: {{ applications|length }}
+        </div>
+        {% endif %}
+
+        <!-- Filter Section -->
+        <div class="filter-section">
+            <form method="GET" class="filter-row">
+                <div class="filter-group" style="flex: 2;">
+                    <label>Search by Applicant Name or Email</label>
+                    <input type="text" name="search" placeholder="Search..." value="{{ request.GET.search }}">
+                </div>
+                <div>
+                    <button type="submit" class="btn-search">
+                        <i class="fas fa-search"></i> Search
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Applications Table -->
+        {% if applications %}
+        <div class="applications-table">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Applicant Name</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Status</th>
+                        <th>Assigned To</th>
+                        <th>Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for app in applications %}
+                    <tr>
+                        <td class="applicant-name">{{ app.applicant.full_name }}</td>
+                        <td>{{ app.applicant.email }}</td>
+                        <td>{{ app.applicant.phone_number }}</td>
+                        <td>
+                            <span class="status-badge badge-{% if app.status == 'New Entry' %}new-entry{% elif app.status == 'Waiting for Processing' %}processing{% elif app.status == 'Required Follow-up' %}follow-up{% elif app.status == 'Approved' %}approved{% elif app.status == 'Rejected' %}rejected{% elif app.status == 'Disbursed' %}disbursed{% endif %}">
+                                {{ app.status }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if app.assigned_employee %}
+                                <span style="color: #3b82f6; font-weight: 600;">{{ app.assigned_employee.get_full_name }}</span>
+                            {% elif app.assigned_agent %}
+                                <span style="color: #10b981; font-weight: 600;">{{ app.assigned_agent.name }}</span>
+                            {% else %}
+                                <span style="color: #a0aec0;">Unassigned</span>
+                            {% endif %}
+                        </td>
+                        <td style="font-size: 12px; color: #718096;">
+                            {{ app.created_at|date:"M d, Y" }}
+                        </td>
+                        <td>
+                            <div class="action-buttons">
+                                <a href="{% url 'application_detail' app.applicant.id %}" class="btn-sm btn-primary">
+                                    <i class="fas fa-eye"></i> View
+                                </a>
+                                <a href="{% url 'admin_edit_application' app.id %}" class="btn-sm btn-primary" style="background: #0891b2; border-color: #0891b2;">
+                                    <i class="fas fa-edit"></i> Edit
+                                </a>
+                                <a href="{% url 'assign_application' app.id %}" class="btn-sm btn-primary" style="background: #7c3aed; border-color: #7c3aed;">
+                                    <i class="fas fa-user-check"></i> Assign
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <!-- Empty State -->
+        <div class="applications-table">
+            <div class="empty-state">
+                <div class="empty-state-icon">
+                    <i class="fas fa-inbox"></i>
+                </div>
+                <h3>No {{ status_name }} Applications</h3>
+                <p>There are currently no applications with {{ status_name }} status.</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    // Add any dynamic functionality here
+    document.querySelectorAll('.btn-sm').forEach(btn => {
+        btn.addEventListener('mouseenter', function() {
+            this.style.opacity = '0.8';
+        });
+        btn.addEventListener('mouseleave', function() {
+            this.style.opacity = '1';
+        });
+    });
+</script>
+{% endblock %}
