@@ -1,7 +1,7 @@
 {% extends 'core/base.html' %}
 {% load static %}
 
-{% block title %}My Records - Agent{% endblock %}
+{% block title %}My Applications - Agent{% endblock %}
 
 {% block content %}
 <style>
@@ -13,6 +13,7 @@
     .status-disbursed { border-left: 4px solid #007bff; }
     
     .badge-new_entry { background-color: #cce5ff; color: #0c5aa0; }
+    .badge-draft { background-color: #e2e8f0; color: #334155; }
     .badge-waiting { background-color: #fff3cd; color: #856404; }
     .badge-follow_up { background-color: #ffe0cc; color: #b35806; }
     .badge-approved { background-color: #d4edda; color: #155724; }
@@ -23,6 +24,29 @@
         max-height: 700px;
         overflow-y: auto;
     }
+
+    .recent-strip {
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        background: #f8fafc;
+    }
+
+    .recent-strip .table td,
+    .recent-strip .table th {
+        white-space: nowrap;
+    }
+
+    .stage-badge {
+        font-size: 0.72rem;
+        padding: 0.3rem 0.55rem;
+        border-radius: 999px;
+        font-weight: 600;
+    }
+
+    .focus-row {
+        background: #fff7cc !important;
+        outline: 2px solid #facc15;
+    }
 </style>
 
 <div class="container-fluid mt-4">
@@ -30,7 +54,7 @@
     <div class="row mb-4">
         <div class="col-12">
             <h1 class="h3 text-gray-800 mb-0">
-                <i class="bi bi-file-earmark"></i> My Records
+                <i class="bi bi-file-earmark"></i> My Applications
             </h1>
             <p class="text-muted mt-2 mb-0">View all your loans - approved, rejected, active, and disbursed</p>
         </div>
@@ -102,9 +126,10 @@
                             <label class="form-label small fw-600">Filter by Status</label>
                             <select id="status-filter" class="form-select form-select-sm" onchange="filterByStatus(this.value)">
                                 <option value="">All Loans</option>
+                                <option value="draft">Draft</option>
                                 <option value="new_entry">New Entry</option>
                                 <option value="waiting">Processing</option>
-                                <option value="follow_up">Follow Up</option>
+                                <option value="follow_up">Bank Stage</option>
                                 <option value="approved">Approved</option>
                                 <option value="rejected">Rejected</option>
                                 <option value="disbursed">Disbursed</option>
@@ -121,6 +146,72 @@
                             </button>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Submitted Applications -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="recent-strip p-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="mb-0 fw-bold">
+                        <i class="bi bi-clock-history"></i> Recently Submitted Applications
+                    </h6>
+                    <small class="text-muted">Latest 10 entries with current stage</small>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Applicant</th>
+                                <th>Amount</th>
+                                <th>Stage</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for loan in recent_submitted %}
+                            <tr>
+                                <td>#{{ loan.id }}</td>
+                                <td>{{ loan.full_name }}</td>
+                                <td>&#8377;{{ loan.loan_amount|floatformat:0|default:"0" }}</td>
+                                <td>
+                                    {% if loan.status == 'draft' %}
+                                        <span class="stage-badge bg-secondary text-white">Draft</span>
+                                    {% elif loan.status == 'new_entry' %}
+                                        <span class="stage-badge bg-primary text-white">New Entry</span>
+                                    {% elif loan.status == 'waiting' %}
+                                        <span class="stage-badge bg-warning text-dark">Processing</span>
+                                    {% elif loan.status == 'follow_up' %}
+                                        <span class="stage-badge bg-info text-dark">Bank Stage</span>
+                                    {% elif loan.status == 'approved' %}
+                                        <span class="stage-badge bg-success text-white">Completed</span>
+                                    {% elif loan.status == 'rejected' %}
+                                        <span class="stage-badge bg-danger text-white">Closed</span>
+                                    {% elif loan.status == 'disbursed' %}
+                                        <span class="stage-badge bg-dark text-white">Disbursed</span>
+                                    {% else %}
+                                        <span class="stage-badge bg-secondary text-white">{{ loan.status|title }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge badge-{{ loan.status }} small">
+                                        {{ loan.get_status_display|default:loan.status }}
+                                    </span>
+                                </td>
+                                <td>{{ loan.created_at|date:"d M, Y" }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center text-muted py-3">No recent submissions yet</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -146,16 +237,17 @@
                                     <th style="width: 12%"><small class="fw-600">Loan Amount</small></th>
                                     <th style="width: 12%"><small class="fw-600">Loan Type</small></th>
                                     <th style="width: 12%"><small class="fw-600">Status</small></th>
+                                    <th style="width: 12%"><small class="fw-600">Stage</small></th>
                                     <th style="width: 15%"><small class="fw-600">Created Date</small></th>
                                     <th style="width: 22%"><small class="fw-600">Actions</small></th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for loan in loans %}
-                                <tr class="status-{{ loan.status }}" data-status="{{ loan.status }}">
+                                <tr id="loan-row-{{ loan.id }}" class="status-{{ loan.status }} {% if focus_loan_id and focus_loan_id == loan.id|stringformat:'s' %}focus-row{% endif %}" data-status="{{ loan.status }}">
                                     <td class="fw-600 align-middle">{{ loan.full_name }}</td>
                                     <td class="align-middle"><a href="tel:{{ loan.mobile_number }}">{{ loan.mobile_number }}</a></td>
-                                    <td class="fw-bold align-middle text-primary">₹{{ loan.loan_amount|floatformat:0|default:"0" }}</td>
+                                    <td class="fw-bold align-middle text-primary">&#8377;{{ loan.loan_amount|floatformat:0|default:"0" }}</td>
                                     <td class="align-middle">
                                         <span class="badge bg-info text-dark small">
                                             {{ loan.get_loan_type_display|default:loan.loan_type }}
@@ -163,15 +255,35 @@
                                     </td>
                                     <td class="align-middle">
                                         <span class="badge badge-{{ loan.status }} small">
-                                            {% if loan.status == 'new_entry' %} New Entry
+                                            {% if loan.status == 'draft' %} Draft
+                                            {% elif loan.status == 'new_entry' %} New Entry
                                             {% elif loan.status == 'waiting' %} Processing
-                                            {% elif loan.status == 'follow_up' %} Follow Up
+                                            {% elif loan.status == 'follow_up' %} Bank Stage
                                             {% elif loan.status == 'approved' %} Approved
                                             {% elif loan.status == 'rejected' %} Rejected
                                             {% elif loan.status == 'disbursed' %} Disbursed
                                             {% else %} {{ loan.get_status_display }}
                                             {% endif %}
                                         </span>
+                                    </td>
+                                    <td class="align-middle">
+                                        {% if loan.status == 'draft' %}
+                                            <span class="stage-badge bg-secondary text-white">Draft</span>
+                                        {% elif loan.status == 'new_entry' %}
+                                            <span class="stage-badge bg-primary text-white">New Entry</span>
+                                        {% elif loan.status == 'waiting' %}
+                                            <span class="stage-badge bg-warning text-dark">Processing</span>
+                                        {% elif loan.status == 'follow_up' %}
+                                            <span class="stage-badge bg-info text-dark">Bank Stage</span>
+                                        {% elif loan.status == 'approved' %}
+                                            <span class="stage-badge bg-success text-white">Completed</span>
+                                        {% elif loan.status == 'rejected' %}
+                                            <span class="stage-badge bg-danger text-white">Closed</span>
+                                        {% elif loan.status == 'disbursed' %}
+                                            <span class="stage-badge bg-dark text-white">Disbursed</span>
+                                        {% else %}
+                                            <span class="stage-badge bg-secondary text-white">{{ loan.status|title }}</span>
+                                        {% endif %}
                                     </td>
                                     <td class="align-middle"><small class="text-muted">{{ loan.created_at|date:"d M, Y" }}</small></td>
                                     <td class="align-middle">
@@ -260,18 +372,20 @@ function viewLoanDetails(loanId, loanName) {
     .then(response => response.json())
     .then(loan => {
         const statusColor = {
+            'draft': 'secondary',
             'new_entry': 'info',
             'waiting': 'warning',
-            'follow_up': 'orange',
+            'follow_up': 'info',
             'approved': 'success',
             'rejected': 'danger',
             'disbursed': 'primary'
         }[loan.status] || 'secondary';
         
         const statusText = {
+            'draft': 'Draft',
             'new_entry': 'New Entry',
             'waiting': 'Processing',
-            'follow_up': 'Follow Up',
+            'follow_up': 'Bank Stage',
             'approved': 'Approved',
             'rejected': 'Rejected',
             'disbursed': 'Disbursed'
@@ -297,7 +411,7 @@ function viewLoanDetails(loanId, loanName) {
                 </div>
                 <div class="col-md-6 mb-3">
                     <label class="form-label small text-muted">Loan Amount</label>
-                    <p class="form-control-plaintext fw-bold text-primary">₹${parseFloat(loan.loan_amount).toLocaleString('en-IN')}</p>
+                    <p class="form-control-plaintext fw-bold text-primary">&#8377;${parseFloat(loan.loan_amount).toLocaleString('en-IN')}</p>
                 </div>
                 <div class="col-md-6 mb-3">
                     <label class="form-label small text-muted">Loan Type</label>
@@ -343,5 +457,23 @@ function getCookie(name) {
     }
     return cookieValue;
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    const currentFilter = '{{ status_filter|default:"" }}';
+    const filterSelect = document.getElementById('status-filter');
+    if (filterSelect && currentFilter) {
+        filterSelect.value = currentFilter;
+    }
+
+    const focusedLoanId = '{{ focus_loan_id|default:"" }}';
+    if (focusedLoanId) {
+        const row = document.getElementById(`loan-row-${focusedLoanId}`);
+        if (row) {
+            row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }
+});
 </script>
 {% endblock %}
+
+

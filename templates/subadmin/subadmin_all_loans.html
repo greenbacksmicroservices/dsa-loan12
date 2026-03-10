@@ -6,130 +6,153 @@
 
 {% block content %}
 <div class="space-y-6">
-    <!-- Header -->
-    <div class="flex justify-between items-center">
-        <div>
-            <h1 class="text-3xl font-bold text-gray-900">💼 All Loans</h1>
-            <p class="text-gray-600 mt-1">Complete view of all loans in your organization</p>
+    {% if messages %}
+    <div class="space-y-2">
+        {% for message in messages %}
+        <div class="px-4 py-3 rounded-lg {% if message.tags == 'success' %}bg-green-100 text-green-800{% elif message.tags == 'error' %}bg-red-100 text-red-800{% else %}bg-blue-100 text-blue-800{% endif %}">
+            {{ message }}
         </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <h1 class="text-2xl font-bold text-gray-900">All Loan Applications</h1>
+        <p class="text-sm text-gray-600 mt-1">Scoped view of loans under your subadmin team.</p>
     </div>
 
-    <!-- Search and Filter -->
-    <div class="bg-white rounded-lg shadow-md p-4">
-        <div class="flex gap-4 flex-wrap">
-            <input type="text" placeholder="Search by applicant name, loan ID..." 
-                   class="flex-1 min-w-xs px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-purple-500">
-            <select class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-purple-500">
-                <option>All Statuses</option>
-                <option>New Entry</option>
-                <option>Processing</option>
-                <option>Approved</option>
-                <option>Rejected</option>
-                <option>Disbursed</option>
+    <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-7 gap-4">
+        <a href="{% url 'subadmin_all_loans' %}?status=all" class="bg-slate-700 text-white rounded-lg p-4">
+            <p class="text-xs uppercase">Total</p>
+            <p class="text-2xl font-bold mt-1">{{ stats.total|default:0 }}</p>
+        </a>
+        <a href="{% url 'subadmin_all_loans' %}?status=new_entry" class="bg-blue-600 text-white rounded-lg p-4">
+            <p class="text-xs uppercase">New Entry</p>
+            <p class="text-2xl font-bold mt-1">{{ stats.new_entry|default:0 }}</p>
+        </a>
+        <a href="{% url 'subadmin_all_loans' %}?status=waiting" class="bg-amber-500 text-white rounded-lg p-4">
+            <p class="text-xs uppercase">In Processing</p>
+            <p class="text-2xl font-bold mt-1">{{ stats.processing|default:0 }}</p>
+        </a>
+        <a href="{% url 'subadmin_all_loans' %}?status=follow_up" class="bg-cyan-600 text-white rounded-lg p-4">
+            <p class="text-xs uppercase">Bank Processing</p>
+            <p class="text-2xl font-bold mt-1">{{ stats.follow_up|default:0 }}</p>
+        </a>
+        <a href="{% url 'subadmin_all_loans' %}?status=approved" class="bg-emerald-600 text-white rounded-lg p-4">
+            <p class="text-xs uppercase">Approved</p>
+            <p class="text-2xl font-bold mt-1">{{ stats.approved|default:0 }}</p>
+        </a>
+        <a href="{% url 'subadmin_all_loans' %}?status=rejected" class="bg-rose-600 text-white rounded-lg p-4">
+            <p class="text-xs uppercase">Rejected</p>
+            <p class="text-2xl font-bold mt-1">{{ stats.rejected|default:0 }}</p>
+        </a>
+        <a href="{% url 'subadmin_all_loans' %}?status=disbursed" class="bg-indigo-600 text-white rounded-lg p-4">
+            <p class="text-xs uppercase">Disbursed</p>
+            <p class="text-2xl font-bold mt-1">{{ stats.disbursed|default:0 }}</p>
+        </a>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <form method="get" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-7 gap-3">
+            <input type="text" name="q" value="{{ search_query }}" placeholder="Search name, mobile, email, loan ID"
+                   class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 xl:col-span-2">
+
+            <select name="status" class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500">
+                <option value="all" {% if status_filter == 'all' or not status_filter %}selected{% endif %}>All Status</option>
+                <option value="new_entry" {% if status_filter == 'new_entry' %}selected{% endif %}>New Entry</option>
+                <option value="waiting" {% if status_filter == 'waiting' %}selected{% endif %}>In Processing</option>
+                <option value="follow_up" {% if status_filter == 'follow_up' %}selected{% endif %}>Bank Processing</option>
+                <option value="approved" {% if status_filter == 'approved' %}selected{% endif %}>Approved</option>
+                <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>Rejected</option>
+                <option value="disbursed" {% if status_filter == 'disbursed' %}selected{% endif %}>Disbursed</option>
             </select>
-            <select class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-purple-500">
-                <option>All Loan Types</option>
-                <option>Personal Loan</option>
-                <option>Business Loan</option>
-                <option>Home Loan</option>
-                <option>Education Loan</option>
+
+            <select name="agent" class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500">
+                <option value="">All Agents</option>
+                {% for agent in agents %}
+                <option value="{{ agent.id }}" {% if agent_filter == agent.id|stringformat:'s' %}selected{% endif %}>{{ agent.name }}</option>
+                {% endfor %}
             </select>
-            <button class="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">Search</button>
-        </div>
+
+            <select name="employee" class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500">
+                <option value="">All Employees</option>
+                {% for employee in employees %}
+                <option value="{{ employee.id }}" {% if employee_filter == employee.id|stringformat:'s' %}selected{% endif %}>{{ employee.first_name }} {{ employee.last_name }}</option>
+                {% endfor %}
+            </select>
+
+            <input type="date" name="date_from" value="{{ date_from }}" class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500">
+            <input type="date" name="date_to" value="{{ date_to }}" class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500">
+
+            <div class="xl:col-span-7 flex gap-2 justify-end">
+                <a href="{% url 'subadmin_all_loans' %}" class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">Reset</a>
+                <button type="submit" class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700">Apply Filters</button>
+            </div>
+        </form>
     </div>
 
-    <!-- Status Summary -->
-    <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <div class="bg-white rounded-lg shadow-md p-4 text-center">
-            <p class="text-gray-600 text-sm">Total Loans</p>
-            <p class="text-2xl font-bold text-gray-900 mt-1">{{ stats.total }}</p>
-        </div>
-        <div class="bg-white rounded-lg shadow-md p-4 text-center">
-            <p class="text-gray-600 text-sm">New Entry</p>
-            <p class="text-2xl font-bold text-blue-600 mt-1">{{ stats.new_entry }}</p>
-        </div>
-        <div class="bg-white rounded-lg shadow-md p-4 text-center">
-            <p class="text-gray-600 text-sm">Processing</p>
-            <p class="text-2xl font-bold text-yellow-600 mt-1">{{ stats.processing }}</p>
-        </div>
-        <div class="bg-white rounded-lg shadow-md p-4 text-center">
-            <p class="text-gray-600 text-sm">Approved</p>
-            <p class="text-2xl font-bold text-green-600 mt-1">{{ stats.approved }}</p>
-        </div>
-        <div class="bg-white rounded-lg shadow-md p-4 text-center">
-            <p class="text-gray-600 text-sm">Disbursed</p>
-            <p class="text-2xl font-bold text-purple-600 mt-1">{{ stats.disbursed }}</p>
-        </div>
-    </div>
-
-    <!-- Loans Table -->
-    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         <div class="overflow-x-auto">
-            <table class="w-full">
+            <table class="w-full min-w-[1200px]">
                 <thead class="bg-gray-50 border-b border-gray-200">
                     <tr>
-                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Loan ID</th>
-                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Applicant Name</th>
-                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Email</th>
-                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Loan Type</th>
-                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Amount</th>
-                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Status</th>
-                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Assigned To</th>
-                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Created</th>
-                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Actions</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Loan ID</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Customer</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Contact</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Loan Type</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Amount</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Status</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Created Under</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Assigned To</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Assigned By</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Created</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Actions</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-200">
                     {% if loans %}
                         {% for loan in loans %}
-                        <tr class="hover:bg-gray-50 transition-colors">
-                            <td class="px-6 py-4 text-sm font-semibold text-gray-900">LOAN-{{ loan.id|stringformat:"06d" }}</td>
-                            <td class="px-6 py-4 text-sm text-gray-600">{{ loan.applicant_name }}</td>
-                            <td class="px-6 py-4 text-sm text-gray-600">{{ loan.email }}</td>
-                            <td class="px-6 py-4 text-sm">
-                                <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-semibold">
-                                    {{ loan.loan_type }}
-                                </span>
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-4 py-3 text-sm font-semibold text-gray-900">{{ loan.loan_id }}</td>
+                            <td class="px-4 py-3 text-sm text-gray-800">{{ loan.applicant_name }}</td>
+                            <td class="px-4 py-3 text-sm text-gray-700">
+                                <div>{{ loan.phone|default:'-' }}</div>
+                                <div class="text-xs text-gray-500">{{ loan.email|default:'-' }}</div>
                             </td>
-                            <td class="px-6 py-4 text-sm font-semibold text-gray-900">Rs. {{ loan.amount|default:"0" }}</td>
-                            <td class="px-6 py-4 text-sm">
-                                {% with status=loan.status %}
-                                    {% if status == "New Entry" %}
-                                        <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-semibold">New</span>
-                                    {% elif status == "Waiting for Processing" %}
-                                        <span class="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-semibold">Processing</span>
-                                    {% elif status == "Approved" %}
-                                        <span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-semibold">Approved</span>
-                                    {% elif status == "Rejected" %}
-                                        <span class="px-3 py-1 bg-red-100 text-red-800 rounded-full text-xs font-semibold">Rejected</span>
-                                    {% elif status == "Disbursed" %}
-                                        <span class="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-xs font-semibold">Disbursed</span>
-                                    {% endif %}
-                                {% endwith %}
+                            <td class="px-4 py-3 text-sm text-gray-700">{{ loan.loan_type }}</td>
+                            <td class="px-4 py-3 text-sm font-semibold text-gray-900">Rs. {{ loan.amount|default:0 }}</td>
+                            <td class="px-4 py-3 text-sm">
+                                {% if loan.status == 'new_entry' %}
+                                    <span class="px-2 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">{{ loan.status_display }}</span>
+                                {% elif loan.status == 'waiting' %}
+                                    <span class="px-2 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">{{ loan.status_display }}</span>
+                                {% elif loan.status == 'follow_up' %}
+                                    <span class="px-2 py-1 rounded-full text-xs font-semibold bg-cyan-100 text-cyan-800">{{ loan.status_display }}</span>
+                                {% elif loan.status == 'approved' %}
+                                    <span class="px-2 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">{{ loan.status_display }}</span>
+                                {% elif loan.status == 'rejected' %}
+                                    <span class="px-2 py-1 rounded-full text-xs font-semibold bg-rose-100 text-rose-800">{{ loan.status_display }}</span>
+                                {% elif loan.status == 'disbursed' %}
+                                    <span class="px-2 py-1 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-800">{{ loan.status_display }}</span>
+                                {% else %}
+                                    <span class="px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-800">{{ loan.status_display }}</span>
+                                {% endif %}
                             </td>
-                            <td class="px-6 py-4 text-sm text-gray-600">{{ loan.assigned_to|default:"Unassigned" }}</td>
-                            <td class="px-6 py-4 text-sm text-gray-600">{{ loan.created_date|date:"M d, Y" }}</td>
-                            <td class="px-6 py-4 text-sm">
-                                <div class="flex gap-2">
-                                    <button class="text-blue-600 hover:text-blue-800 font-medium" title="View Details">
-                                        <i class="fas fa-eye"></i>
-                                    </button>
-                                    <button class="text-green-600 hover:text-green-800 font-medium" title="Edit">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button class="text-orange-600 hover:text-orange-800 font-medium" title="More Options">
-                                        <i class="fas fa-ellipsis-v"></i>
-                                    </button>
+                            <td class="px-4 py-3 text-sm text-gray-700">{{ loan.created_under }}</td>
+                            <td class="px-4 py-3 text-sm text-gray-700">{{ loan.assigned_to }}</td>
+                            <td class="px-4 py-3 text-sm text-gray-700">{{ loan.assigned_by }}</td>
+                            <td class="px-4 py-3 text-sm text-gray-700">{{ loan.created_date|date:"M d, Y H:i" }}</td>
+                            <td class="px-4 py-3 text-sm">
+                                <div class="flex flex-wrap gap-2">
+                                    <button type="button" onclick="openLoanDetailsModal({{ loan.id }})" class="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700">View</button>
+                                    <button type="button" onclick="openAssignModal({{ loan.id }}, '{{ loan.applicant_name|escapejs }}')" class="px-2 py-1 bg-emerald-600 text-white rounded text-xs hover:bg-emerald-700">Assign</button>
                                 </div>
                             </td>
                         </tr>
                         {% endfor %}
                     {% else %}
                     <tr>
-                        <td colspan="9" class="px-6 py-8 text-center text-gray-500">
-                            <i class="fas fa-inbox text-4xl mb-3"></i>
-                            <p class="mt-2">No loans found</p>
-                        </td>
+                        <td colspan="11" class="px-6 py-10 text-center text-gray-500">No loan records found.</td>
                     </tr>
                     {% endif %}
                 </tbody>
@@ -137,21 +160,237 @@
         </div>
     </div>
 
-    <!-- Pagination -->
     {% if is_paginated %}
     <div class="flex justify-center gap-2">
         {% if page_obj.has_previous %}
-            <a href="?page=1" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">First</a>
-            <a href="?page={{ page_obj.previous_page_number }}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Previous</a>
+            <a href="?page=1&q={{ search_query }}&status={{ status_filter }}&agent={{ agent_filter }}&employee={{ employee_filter }}&date_from={{ date_from }}&date_to={{ date_to }}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">First</a>
+            <a href="?page={{ page_obj.previous_page_number }}&q={{ search_query }}&status={{ status_filter }}&agent={{ agent_filter }}&employee={{ employee_filter }}&date_from={{ date_from }}&date_to={{ date_to }}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Previous</a>
         {% endif %}
-        
+
         <span class="px-4 py-2 text-gray-600">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
-        
+
         {% if page_obj.has_next %}
-            <a href="?page={{ page_obj.next_page_number }}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Next</a>
-            <a href="?page={{ page_obj.paginator.num_pages }}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Last</a>
+            <a href="?page={{ page_obj.next_page_number }}&q={{ search_query }}&status={{ status_filter }}&agent={{ agent_filter }}&employee={{ employee_filter }}&date_from={{ date_from }}&date_to={{ date_to }}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Next</a>
+            <a href="?page={{ page_obj.paginator.num_pages }}&q={{ search_query }}&status={{ status_filter }}&agent={{ agent_filter }}&employee={{ employee_filter }}&date_from={{ date_from }}&date_to={{ date_to }}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Last</a>
         {% endif %}
     </div>
     {% endif %}
 </div>
+
+<div id="assign-modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-lg w-full max-w-lg p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-gray-900">Assign Employee</h3>
+            <button type="button" onclick="closeAssignModal()" class="text-gray-500 hover:text-gray-700"><i class="fas fa-times"></i></button>
+        </div>
+        <p id="assign-loan-name" class="text-sm text-gray-600 mb-3"></p>
+        <input type="hidden" id="assign-loan-id">
+
+        <div class="space-y-3">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Employee</label>
+                <select id="assign-employee-id" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-emerald-500">
+                    <option value="">Select Employee</option>
+                    {% for employee in employees_for_assign %}
+                    <option value="{{ employee.id }}">{{ employee.get_full_name|default:employee.username }}{% if employee.employee_id %} ({{ employee.employee_id }}){% endif %}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Remark</label>
+                <textarea id="assign-remarks" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-emerald-500" placeholder="Optional remark"></textarea>
+            </div>
+            <div class="flex justify-end gap-2">
+                <button type="button" onclick="closeAssignModal()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
+                <button type="button" onclick="submitAssignment()" class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700">Assign</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="loan-details-modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-lg w-full max-w-6xl max-h-[90vh] overflow-hidden shadow-xl">
+        <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-900">Loan Full Details</h3>
+            <button type="button" onclick="closeLoanDetailsModal()" class="text-gray-500 hover:text-gray-700"><i class="fas fa-times"></i></button>
+        </div>
+        <div id="loan-details-content" class="p-6 overflow-y-auto max-h-[75vh]"></div>
+    </div>
+</div>
+
+<script>
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+const csrftoken = getCookie('csrftoken');
+
+function openAssignModal(loanId, applicantName) {
+    document.getElementById('assign-loan-id').value = loanId;
+    document.getElementById('assign-loan-name').textContent = `Loan: ${applicantName}`;
+    document.getElementById('assign-employee-id').value = '';
+    document.getElementById('assign-remarks').value = '';
+
+    const modal = document.getElementById('assign-modal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function closeAssignModal() {
+    const modal = document.getElementById('assign-modal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+}
+
+function submitAssignment() {
+    const loanId = document.getElementById('assign-loan-id').value;
+    const employeeId = document.getElementById('assign-employee-id').value;
+    const remarks = document.getElementById('assign-remarks').value;
+
+    if (!employeeId) {
+        alert('Please select employee.');
+        return;
+    }
+
+    fetch(`/subadmin/loan/${loanId}/assign/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrftoken,
+        },
+        body: JSON.stringify({ employee_id: employeeId, remarks: remarks }),
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) {
+                alert(data.error || 'Assignment failed');
+                return;
+            }
+            closeAssignModal();
+            window.location.reload();
+        })
+        .catch(() => {
+            alert('Assignment failed');
+        });
+}
+
+function loanDetailsSection(title, rows) {
+    return `
+        <div class="border border-gray-200 rounded-lg p-4">
+            <h4 class="font-semibold text-gray-900 mb-3">${title}</h4>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                ${rows.map(item => `<div><span class="text-gray-500">${item.label}:</span> <span class="text-gray-900">${item.value || '-'}</span></div>`).join('')}
+            </div>
+        </div>
+    `;
+}
+
+function openLoanDetailsModal(loanId) {
+    const modal = document.getElementById('loan-details-modal');
+    const container = document.getElementById('loan-details-content');
+    container.innerHTML = '<div class="py-10 text-center text-gray-500">Loading full details...</div>';
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+
+    fetch(`/api/subadmin/loan/${loanId}/details/`)
+        .then(response => response.json())
+        .then(payload => {
+            if (!payload.success) {
+                container.innerHTML = `<div class="py-10 text-center text-red-600">${payload.error || 'Failed to load details.'}</div>`;
+                return;
+            }
+            const data = payload.data || {};
+            const docs = data.documents || [];
+            const history = data.status_timeline || [];
+
+            const docsHtml = docs.length
+                ? `<div class="overflow-x-auto"><table class="w-full text-sm border border-gray-200"><thead class="bg-gray-50"><tr><th class="px-3 py-2 text-left">Document</th><th class="px-3 py-2 text-left">Source</th><th class="px-3 py-2 text-left">Uploaded</th><th class="px-3 py-2 text-left">File</th></tr></thead><tbody>${docs.map(doc => `<tr class="border-t border-gray-200"><td class="px-3 py-2">${doc.name || '-'}</td><td class="px-3 py-2">${doc.source || '-'}</td><td class="px-3 py-2">${doc.uploaded_at || '-'}</td><td class="px-3 py-2"><a href="${doc.url}" target="_blank" class="text-blue-600 hover:text-blue-800">Open</a></td></tr>`).join('')}</tbody></table></div>`
+                : '<p class="text-sm text-gray-500">No documents uploaded.</p>';
+
+            const historyHtml = history.length
+                ? `<div class="overflow-x-auto"><table class="w-full text-sm border border-gray-200"><thead class="bg-gray-50"><tr><th class="px-3 py-2 text-left">From</th><th class="px-3 py-2 text-left">To</th><th class="px-3 py-2 text-left">By</th><th class="px-3 py-2 text-left">Date</th><th class="px-3 py-2 text-left">Remark</th></tr></thead><tbody>${history.map(row => `<tr class="border-t border-gray-200"><td class="px-3 py-2">${row.from_status || '-'}</td><td class="px-3 py-2">${row.to_status || '-'}</td><td class="px-3 py-2">${row.changed_by || '-'}</td><td class="px-3 py-2">${row.changed_at || '-'}</td><td class="px-3 py-2">${row.reason || '-'}</td></tr>`).join('')}</tbody></table></div>`
+                : '<p class="text-sm text-gray-500">No status history found.</p>';
+
+            container.innerHTML = `
+                <div class="space-y-4">
+                    ${loanDetailsSection('Application Info', [
+                        { label: 'Loan ID', value: data.loan_id },
+                        { label: 'Status', value: data.status_display },
+                        { label: 'Created Under', value: data.created_under },
+                        { label: 'Assigned Employee', value: data.assigned_employee },
+                        { label: 'Assigned Agent', value: data.assigned_agent },
+                        { label: 'Assigned By', value: data.assigned_by },
+                        { label: 'Created At', value: data.created_at },
+                        { label: 'Updated At', value: data.updated_at },
+                    ])}
+
+                    ${loanDetailsSection('Customer Details', [
+                        { label: 'Name', value: data.full_name },
+                        { label: 'Mobile', value: data.mobile_number },
+                        { label: 'Email', value: data.email },
+                        { label: 'City', value: data.city },
+                        { label: 'State', value: data.state },
+                        { label: 'Pin Code', value: data.pin_code },
+                        { label: 'Permanent Address', value: data.permanent_address },
+                        { label: 'Current Address', value: data.current_address },
+                    ])}
+
+                    ${loanDetailsSection('Loan and Bank Details', [
+                        { label: 'Loan Type', value: data.loan_type },
+                        { label: 'Loan Amount', value: data.loan_amount ? `Rs. ${Number(data.loan_amount).toLocaleString('en-IN')}` : '-' },
+                        { label: 'Tenure', value: data.tenure_months },
+                        { label: 'Interest Rate', value: data.interest_rate !== '-' ? `${data.interest_rate}%` : '-' },
+                        { label: 'EMI', value: data.emi !== '-' ? `Rs. ${Number(data.emi).toLocaleString('en-IN')}` : '-' },
+                        { label: 'Purpose', value: data.loan_purpose },
+                        { label: 'Bank Name', value: data.bank_name },
+                        { label: 'Account Number', value: data.bank_account_number },
+                        { label: 'IFSC', value: data.bank_ifsc_code },
+                        { label: 'Bank Type', value: data.bank_type },
+                        { label: 'Bank Remark', value: data.bank_remark },
+                        { label: 'Internal Remark', value: data.remarks },
+                    ])}
+
+                    ${loanDetailsSection('Co-applicant and Guarantor', [
+                        { label: 'Co-applicant Name', value: data.co_applicant_name },
+                        { label: 'Co-applicant Phone', value: data.co_applicant_phone },
+                        { label: 'Co-applicant Email', value: data.co_applicant_email },
+                        { label: 'Guarantor Name', value: data.guarantor_name },
+                        { label: 'Guarantor Phone', value: data.guarantor_phone },
+                        { label: 'Guarantor Email', value: data.guarantor_email },
+                    ])}
+
+                    <div class="border border-gray-200 rounded-lg p-4">
+                        <h4 class="font-semibold text-gray-900 mb-3">Documents</h4>
+                        ${docsHtml}
+                    </div>
+
+                    <div class="border border-gray-200 rounded-lg p-4">
+                        <h4 class="font-semibold text-gray-900 mb-3">Status History</h4>
+                        ${historyHtml}
+                    </div>
+                </div>
+            `;
+        })
+        .catch(() => {
+            container.innerHTML = '<div class="py-10 text-center text-red-600">Failed to load details.</div>';
+        });
+}
+
+function closeLoanDetailsModal() {
+    const modal = document.getElementById('loan-details-modal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+}
+</script>
 {% endblock %}

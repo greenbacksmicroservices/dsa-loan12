@@ -12,7 +12,7 @@ from django.db.models import Q, Count, Sum
 from django.core.paginator import Paginator
 import json
 
-from .models import User, EmployeeProfile, LoanApplication
+from .models import User, EmployeeProfile, LoanApplication, Loan
 from .decorators import admin_required
 from django.contrib.auth.models import Group
 
@@ -345,11 +345,134 @@ def api_get_employee(request, employee_id):
     try:
         user = get_object_or_404(User, id=employee_id, role='employee')
         profile = getattr(user, 'employee_profile', None)
-        
-        assigned_loans = LoanApplication.objects.filter(
-            assigned_employee=user
-        ).count()
-        
+
+        loans_submitted_qs = Loan.objects.filter(created_by=user)
+        loans_assigned_qs = Loan.objects.filter(assigned_employee=user)
+        loans_qs = Loan.objects.filter(
+            Q(created_by=user) | Q(assigned_employee=user)
+        ).select_related(
+            'created_by',
+            'assigned_employee',
+            'assigned_agent',
+        ).order_by('-created_at').distinct()
+
+        status_map = {
+            'new_entry': 'New Entry',
+            'waiting': 'Waiting for Processing',
+            'follow_up': 'Banking Processing',
+            'approved': 'Approved',
+            'rejected': 'Rejected',
+            'disbursed': 'Disbursed',
+            'forclose': 'For Close',
+            'draft': 'Draft',
+            'disputed': 'Disputed',
+        }
+
+        def get_owner_display(loan_obj):
+            owner = loan_obj.created_by
+            if not owner:
+                return 'System', '-'
+            role_label = {
+                'admin': 'Admin',
+                'subadmin': 'SubAdmin',
+                'employee': 'Employee',
+                'agent': 'Agent',
+                'dsa': 'DSA',
+            }.get(owner.role, owner.role.title() if owner.role else 'User')
+            owner_name = owner.get_full_name() or owner.username or '-'
+            return role_label, owner_name
+
+        def latest_bank_remark(loan_obj):
+            remarks = []
+            if loan_obj.remarks:
+                remarks.append(str(loan_obj.remarks).strip())
+
+            related_app = None
+            if loan_obj.email and loan_obj.mobile_number:
+                related_app = LoanApplication.objects.filter(
+                    applicant__email__iexact=loan_obj.email,
+                    applicant__mobile=loan_obj.mobile_number,
+                ).first()
+            if not related_app and loan_obj.full_name and loan_obj.mobile_number:
+                related_app = LoanApplication.objects.filter(
+                    applicant__full_name__iexact=loan_obj.full_name,
+                    applicant__mobile=loan_obj.mobile_number,
+                ).first()
+
+            if related_app:
+                if related_app.approval_notes:
+                    remarks.append(str(related_app.approval_notes).strip())
+                if related_app.rejection_reason:
+                    remarks.append(str(related_app.rejection_reason).strip())
+                reasons = list(
+                    related_app.status_history.exclude(reason__isnull=True)
+                    .exclude(reason__exact='')
+                    .values_list('reason', flat=True)[:5]
+                )
+                remarks.extend([str(r).strip() for r in reasons if r])
+
+            seen = set()
+            unique = []
+            for item in remarks:
+                clean = (item or '').strip()
+                if not clean:
+                    continue
+                key = clean.lower()
+                if key in seen:
+                    continue
+                seen.add(key)
+                unique.append(clean)
+            return " | ".join(unique)[:500] if unique else '-'
+
+        customers = []
+        for loan in loans_qs[:250]:
+            owner_role, owner_name = get_owner_display(loan)
+            source = 'Submitted' if loan.created_by_id == user.id else 'Assigned'
+            assigned_to = '-'
+            if loan.assigned_employee:
+                assigned_to = f"Employee - {loan.assigned_employee.get_full_name() or loan.assigned_employee.username}"
+            elif loan.assigned_agent:
+                assigned_to = f"Agent - {loan.assigned_agent.name}"
+
+            customers.append({
+                'loan_id': loan.id,
+                'loan_uid': loan.user_id or f'LOAN-{loan.id}',
+                'customer_name': loan.full_name or '-',
+                'mobile': loan.mobile_number or '-',
+                'email': loan.email or '-',
+                'loan_type': loan.get_loan_type_display() if hasattr(loan, 'get_loan_type_display') else (loan.loan_type or '-'),
+                'loan_amount': float(loan.loan_amount or 0),
+                'status': loan.status,
+                'status_display': status_map.get(loan.status, loan.status),
+                'source': source,
+                'assigned_to': assigned_to,
+                'under_whom': f"{owner_role} - {owner_name}",
+                'owner_role': owner_role,
+                'owner_name': owner_name,
+                'bank_remark': latest_bank_remark(loan),
+                'created_at': loan.created_at.strftime('%Y-%m-%d %H:%M') if loan.created_at else '',
+            })
+
+        assigned_loans = loans_assigned_qs.count()
+        total_applications = loans_qs.count()
+        approved_count = loans_qs.filter(status='approved').count()
+        rejected_count = loans_qs.filter(status='rejected').count()
+        followup_count = loans_qs.filter(status='follow_up').count()
+        waiting_count = loans_qs.filter(status='waiting').count()
+        disbursed_count = loans_qs.filter(status='disbursed').count()
+
+        summary = {
+            'total_submitted_applications': loans_submitted_qs.count(),
+            'total_assigned_applications': assigned_loans,
+            'total_applications': total_applications,
+            'approved': approved_count,
+            'rejected': rejected_count,
+            'banking_processing': followup_count,
+            'waiting': waiting_count,
+            'disbursed': disbursed_count,
+            'total_customers': total_applications,
+        }
+
         return JsonResponse({
             'success': True,
             'employee': {
@@ -370,6 +493,9 @@ def api_get_employee(request, employee_id):
                 'assigned_loans': assigned_loans,
                 'notes': profile.notes if profile else '',
             }
+            ,
+            'summary': summary,
+            'customers': customers,
         })
     
     except Exception as e:

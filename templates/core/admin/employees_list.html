@@ -422,13 +422,13 @@
                         <td><span class="date-text">{{ employee.date_joined|date:"M d, Y" }}</span></td>
                         <td>
                             <div class="action-buttons">
-                                <button onclick="viewEmployee('{{ employee.id }}', '{{ employee.get_full_name }}', '{{ employee.email }}', '{{ employee.phone|default:'' }}')" class="btn-action btn-view" title="View Employee">
+                                <button onclick="viewEmployee('{{ employee.id }}', '{{ employee.get_full_name|escapejs }}', '{{ employee.email|default:''|escapejs }}', '{{ employee.phone|default:''|escapejs }}')" class="btn-action btn-view" title="View Employee">
                                     <i class="fas fa-eye"></i> View
                                 </button>
                                 <button onclick="editEmployee('{{ employee.id }}')" class="btn-action btn-edit" title="Edit Employee">
                                     <i class="fas fa-edit"></i> Edit
                                 </button>
-                                <button onclick="deleteEmployee('{{ employee.id }}', '{{ employee.get_full_name }}')" class="btn-action btn-delete" title="Delete Employee">
+                                <button onclick="deleteEmployee('{{ employee.id }}', '{{ employee.get_full_name|escapejs }}')" class="btn-action btn-delete" title="Delete Employee">
                                     <i class="fas fa-trash"></i> Delete
                                 </button>
                             </div>
@@ -718,37 +718,155 @@ function insertEmployeeRow(employee) {
     }
 }
 
-// View Employee Modal
-function viewEmployee(id, name, email, phone) {
-    const modalHtml = `
-        <div id="viewModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 2000;">
-            <div style="background: white; border-radius: 12px; padding: 30px; max-width: 500px; width: 90%; box-shadow: 0 20px 25px rgba(0,0,0,0.2);">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #e5e7eb; padding-bottom: 15px;">
-                    <h2 style="margin: 0; color: #1f2937; font-size: 20px; font-weight: 700;">Employee Details</h2>
-                    <button onclick="closeViewModal()" style="background: none; border: none; font-size: 28px; cursor: pointer; color: #6b7280;">&times;</button>
-                </div>
-                <div style="margin-bottom: 20px;">
-                    <p style="color: #718096; font-size: 12px; margin: 0 0 5px 0; text-transform: uppercase; font-weight: 600;">Name</p>
-                    <p style="color: #1f2937; font-size: 16px; font-weight: 600; margin: 0 0 20px 0;">${name}</p>
-                    
-                    <p style="color: #718096; font-size: 12px; margin: 0 0 5px 0; text-transform: uppercase; font-weight: 600;">Email</p>
-                    <p style="color: #1f2937; font-size: 14px; margin: 0 0 20px 0;">${email}</p>
-                    
-                    <p style="color: #718096; font-size: 12px; margin: 0 0 5px 0; text-transform: uppercase; font-weight: 600;">Phone</p>
-                    <p style="color: #1f2937; font-size: 14px; margin: 0 0 20px 0;">${phone || 'N/A'}</p>
-                </div>
-                <div style="display: flex; gap: 10px; justify-content: flex-end;">
-                    <button onclick="closeViewModal()" style="padding: 10px 20px; background: #e2e8f0; color: #2d3748; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">Close</button>
-                </div>
-            </div>
-        </div>
-    `;
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
+function formatINR(value) {
+    const amount = Number(value || 0);
+    if (Number.isNaN(amount)) return '0';
+    return amount.toLocaleString('en-IN', { maximumFractionDigits: 0 });
 }
 
 function closeViewModal() {
     const modal = document.getElementById('viewModal');
     if (modal) modal.remove();
+    document.body.style.overflow = 'auto';
+}
+
+function showEmployeeLoadingModal(title) {
+    const modalHtml = `
+        <div id="viewModal" style="position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 3000;">
+            <div style="background: white; border-radius: 12px; padding: 24px; max-width: 420px; width: 92%; box-shadow: 0 20px 25px rgba(0,0,0,0.2);">
+                <h3 style="margin: 0 0 10px 0; color: #1f2937; font-size: 18px; font-weight: 700;">${escapeHtml(title)}</h3>
+                <p style="margin: 0; color: #6b7280; font-size: 14px;">Loading full details...</p>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    document.body.style.overflow = 'hidden';
+}
+
+function renderEmployeeViewModal(employee, summary, customers) {
+    const safeCustomers = Array.isArray(customers) ? customers : [];
+    const rowsHtml = safeCustomers.length ? safeCustomers.map((item, idx) => `
+        <tr>
+            <td style="padding: 10px; border-bottom: 1px solid #eef2f7;">${idx + 1}</td>
+            <td style="padding: 10px; border-bottom: 1px solid #eef2f7;">#${escapeHtml(item.loan_uid || item.loan_id || '-')}</td>
+            <td style="padding: 10px; border-bottom: 1px solid #eef2f7;">${escapeHtml(item.customer_name || '-')}</td>
+            <td style="padding: 10px; border-bottom: 1px solid #eef2f7;">${escapeHtml(item.mobile || '-')}</td>
+            <td style="padding: 10px; border-bottom: 1px solid #eef2f7;">₹${formatINR(item.loan_amount)}</td>
+            <td style="padding: 10px; border-bottom: 1px solid #eef2f7;">${escapeHtml(item.status_display || item.status || '-')}</td>
+            <td style="padding: 10px; border-bottom: 1px solid #eef2f7;">${escapeHtml(item.source || '-')}</td>
+            <td style="padding: 10px; border-bottom: 1px solid #eef2f7;">${escapeHtml(item.under_whom || '-')}</td>
+            <td style="padding: 10px; border-bottom: 1px solid #eef2f7; max-width: 260px;">${escapeHtml(item.bank_remark || '-')}</td>
+        </tr>
+    `).join('') : `
+        <tr>
+            <td colspan="9" style="padding: 20px; text-align: center; color: #6b7280;">No customer/application data found.</td>
+        </tr>
+    `;
+
+    const modalHtml = `
+        <div id="viewModal" style="position: fixed; inset: 0; background: rgba(0,0,0,0.55); display: flex; align-items: center; justify-content: center; z-index: 3000; padding: 20px;">
+            <div style="background: white; border-radius: 14px; width: min(1200px, 96vw); max-height: 92vh; overflow: auto; box-shadow: 0 25px 40px rgba(0,0,0,0.25);">
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:18px 22px; border-bottom:1px solid #e5e7eb; position: sticky; top: 0; background: white;">
+                    <div>
+                        <h2 style="margin:0; font-size:20px; color:#111827;">Employee Full Details</h2>
+                        <p style="margin:4px 0 0 0; color:#6b7280; font-size:13px;">${escapeHtml((employee.first_name || '') + ' ' + (employee.last_name || '')) || '-'} | ${escapeHtml(employee.email || '-')}</p>
+                    </div>
+                    <button onclick="closeViewModal()" style="background:none; border:none; font-size:28px; color:#6b7280; cursor:pointer;">&times;</button>
+                </div>
+
+                <div style="padding:20px 22px;">
+                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:10px; margin-bottom:16px;">
+                        <div style="background:#eff6ff; border:1px solid #dbeafe; border-radius:8px; padding:10px;">
+                            <div style="font-size:12px; color:#1d4ed8;">Application Forms</div>
+                            <div style="font-size:20px; font-weight:700; color:#1e3a8a;">${summary.total_submitted_applications || 0}</div>
+                        </div>
+                        <div style="background:#ecfeff; border:1px solid #a5f3fc; border-radius:8px; padding:10px;">
+                            <div style="font-size:12px; color:#0e7490;">Total Linked Applications</div>
+                            <div style="font-size:20px; font-weight:700; color:#155e75;">${summary.total_applications || 0}</div>
+                        </div>
+                        <div style="background:#ecfdf5; border:1px solid #bbf7d0; border-radius:8px; padding:10px;">
+                            <div style="font-size:12px; color:#047857;">Approved</div>
+                            <div style="font-size:20px; font-weight:700; color:#065f46;">${summary.approved || 0}</div>
+                        </div>
+                        <div style="background:#fef2f2; border:1px solid #fecaca; border-radius:8px; padding:10px;">
+                            <div style="font-size:12px; color:#b91c1c;">Rejected</div>
+                            <div style="font-size:20px; font-weight:700; color:#991b1b;">${summary.rejected || 0}</div>
+                        </div>
+                        <div style="background:#fff7ed; border:1px solid #fed7aa; border-radius:8px; padding:10px;">
+                            <div style="font-size:12px; color:#c2410c;">Banking Processing</div>
+                            <div style="font-size:20px; font-weight:700; color:#9a3412;">${summary.banking_processing || 0}</div>
+                        </div>
+                        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px;">
+                            <div style="font-size:12px; color:#334155;">Total Customers</div>
+                            <div style="font-size:20px; font-weight:700; color:#0f172a;">${summary.total_customers || 0}</div>
+                        </div>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:10px; margin-bottom:18px;">
+                        <div><strong>Phone:</strong> ${escapeHtml(employee.phone || '-')}</div>
+                        <div><strong>Employee ID:</strong> ${escapeHtml(employee.employee_id || '-')}</div>
+                        <div><strong>Status:</strong> ${escapeHtml(employee.status || '-')}</div>
+                        <div><strong>Assigned Apps:</strong> ${summary.total_assigned_applications || 0}</div>
+                    </div>
+
+                    <div style="border:1px solid #e5e7eb; border-radius:10px; overflow:auto;">
+                        <table style="width:100%; border-collapse:collapse; font-size:12px; min-width:980px;">
+                            <thead style="background:#f8fafc; color:#334155;">
+                                <tr>
+                                    <th style="padding:10px; text-align:left;">#</th>
+                                    <th style="padding:10px; text-align:left;">Loan ID</th>
+                                    <th style="padding:10px; text-align:left;">Customer</th>
+                                    <th style="padding:10px; text-align:left;">Mobile</th>
+                                    <th style="padding:10px; text-align:left;">Amount</th>
+                                    <th style="padding:10px; text-align:left;">Status</th>
+                                    <th style="padding:10px; text-align:left;">Type</th>
+                                    <th style="padding:10px; text-align:left;">Under Whom</th>
+                                    <th style="padding:10px; text-align:left;">Bank Remark</th>
+                                </tr>
+                            </thead>
+                            <tbody>${rowsHtml}</tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    closeViewModal();
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    document.body.style.overflow = 'hidden';
+}
+
+async function viewEmployee(id, name, email, phone) {
+    showEmployeeLoadingModal(name || 'Employee Details');
+    try {
+        const response = await fetch(`/api/employees/${id}/`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+            throw new Error(data.error || 'Failed to load employee details');
+        }
+        renderEmployeeViewModal(data.employee || {}, data.summary || {}, data.customers || []);
+    } catch (error) {
+        console.error('View employee error:', error);
+        renderEmployeeViewModal(
+            {
+                first_name: name || '',
+                last_name: '',
+                email: email || '-',
+                phone: phone || '-',
+                status: '-',
+                employee_id: id
+            },
+            {},
+            []
+        );
+    }
 }
 
 // Edit Employee

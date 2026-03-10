@@ -1,67 +1,88 @@
 """
-Signals for automatic workflow management
-- Auto-trigger follow-up after 24 hours
-- Track status changes
+Signals for workflow automation and model synchronization.
 """
-from django.db.models.signals import post_save, post_delete
+from datetime import timedelta
+
+from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils import timezone
-from datetime import timedelta
-from .models import LoanApplication, ActivityLog
+
+from .models import ActivityLog, Loan, LoanApplication
+from .loan_sync import (
+    find_related_loan_application,
+    sync_application_to_loan,
+    sync_loan_to_application,
+)
+
 
 @receiver(post_save, sender=LoanApplication)
-def handle_loan_application_status_change(sender, instance, created, **kwargs):
+def ensure_assigned_at_for_waiting(sender, instance, created, **kwargs):
     """
-    Handle loan application status changes and track assignment time
+    Keep waiting/banking-process records timestamped for aging logic.
     """
-    if not created and instance.status == 'Waiting for Processing':
-        # If status changed to 'Waiting for Processing', ensure assigned_at is set
-        if not instance.assigned_at:
-            instance.assigned_at = timezone.now()
-            instance.save(update_fields=['assigned_at'])
+    if created:
+        if instance.status in ["Waiting for Processing", "Required Follow-up"] and not instance.assigned_at:
+            assigned_at = timezone.now()
+            instance.assigned_at = assigned_at
+            LoanApplication.objects.filter(id=instance.id).update(assigned_at=assigned_at)
+        return
+
+    if instance.status in ["Waiting for Processing", "Required Follow-up"] and not instance.assigned_at:
+        assigned_at = timezone.now()
+        instance.assigned_at = assigned_at
+        LoanApplication.objects.filter(id=instance.id).update(assigned_at=assigned_at)
+
+
+@receiver(post_save, sender=LoanApplication)
+def mirror_application_to_loan(sender, instance, created, **kwargs):
+    """
+    Keep the legacy Loan table aligned with workflow updates done on LoanApplication.
+    """
+    if getattr(instance, "_skip_sync_to_loan", False):
+        return
+
+    try:
+        sync_application_to_loan(instance)
+    except Exception:
+        return
+
+
+@receiver(post_save, sender=Loan)
+def mirror_loan_to_application(sender, instance, created, **kwargs):
+    """
+    Ensure every Loan created by any role also appears in LoanApplication (New Entry workflow).
+    """
+    existing_app = find_related_loan_application(instance)
+    loan_app = sync_loan_to_application(instance, create_if_missing=True)
+
+    if created and loan_app and not existing_app:
+        ActivityLog.objects.create(
+            action="status_updated",
+            description=f"Workflow entry created from Loan #{instance.id} for {loan_app.applicant.full_name} ({loan_app.status})",
+            user=instance.created_by if instance.created_by else None,
+        )
+
 
 def check_and_trigger_followups():
     """
-    Check all waiting loan applications and move to follow-up if 24 hours have passed
-    This should be run periodically (via celery beat or cron job)
+    Move overdue waiting applications to Banking Process (stored as Required Follow-up).
     """
-    now = timezone.now()
-    cutoff_time = now - timedelta(hours=24)
-    
-    # Find overdue applications that are still waiting
+    cutoff_time = timezone.now() - timedelta(hours=24)
     overdue_applications = LoanApplication.objects.filter(
-        status='Waiting for Processing',
+        status="Waiting for Processing",
         assigned_at__lte=cutoff_time,
         approved_at__isnull=True,
         rejected_at__isnull=True,
     )
-    
+
     count = 0
     for app in overdue_applications:
-        try:
-            # Use the trigger_follow_up method from the model
-            app.trigger_follow_up()
-            
-            # Log activity
-            ActivityLog.objects.create(
-                action='auto_followup_triggered',
-                description=f'Automatic follow-up triggered for {app.applicant.full_name} after 24 hours without action',
-            )
-            
-            count += 1
-        except Exception as e:
-            print(f'Error triggering follow-up for {app.applicant.full_name}: {str(e)}')
-    
-    return count
+        app.trigger_follow_up()
+        ActivityLog.objects.create(
+            action="status_updated",
+            description=f"Auto moved to Banking Process for {app.applicant.full_name} after 24h wait",
+            user=None,
+        )
+        count += 1
 
-                description=f'Auto follow-up triggered for {loan.full_name} (24 hours without action)',
-                applicant_id=loan.id
-            )
-            
-            count += 1
-        except Exception as e:
-            print(f'Error triggering follow-up for loan {loan.id}: {str(e)}')
-    
     return count
-
-# Import this in apps.py and call periodically

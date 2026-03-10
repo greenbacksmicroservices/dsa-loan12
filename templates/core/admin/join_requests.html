@@ -2,272 +2,410 @@
 {% load static %}
 
 {% block title %}Join Requests - Admin{% endblock %}
-
 {% block page_title %}Join Requests{% endblock %}
 
 {% block content %}
 <style>
-    .requests-container {
-        background: white;
-        border-radius: 12px;
-        padding: 30px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    }
+    .jr-wrap { background:#fff; border-radius:12px; padding:22px; box-shadow:0 2px 8px rgba(0,0,0,.08); }
+    .jr-head { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:14px; }
+    .jr-title { margin:0; font-size:1.25rem; font-weight:700; color:#1f2937; }
+    .jr-meta { display:flex; gap:8px; align-items:center; }
+    .jr-count { background:#ef4444; color:#fff; border-radius:999px; padding:4px 10px; font-weight:700; font-size:12px; }
+    .jr-btn { border:1px solid #cbd5e1; background:#f8fafc; color:#334155; border-radius:8px; padding:7px 11px; font-size:12px; font-weight:700; cursor:pointer; }
+    .jr-btn:hover { background:#eef2f7; }
+    .jr-btn.approve { border-color:#10b981; background:#ecfdf5; color:#065f46; }
+    .jr-btn.approve:hover { background:#d1fae5; }
+    .jr-btn.reject { border-color:#f59e0b; background:#fffbeb; color:#92400e; }
+    .jr-btn.reject:hover { background:#fef3c7; }
+    .jr-btn.delete { border-color:#ef4444; background:#fef2f2; color:#b91c1c; }
+    .jr-btn.delete:hover { background:#fee2e2; }
+    .jr-actions { display:flex; flex-wrap:wrap; gap:6px; }
+    .jr-note { margin:0 0 12px 0; color:#64748b; font-size:13px; }
+    .jr-message { margin:0 0 10px 0; border-radius:8px; padding:8px 10px; font-size:12px; font-weight:700; display:none; }
+    .jr-message.ok { display:block; background:#dcfce7; color:#166534; border:1px solid #86efac; }
+    .jr-message.err { display:block; background:#fee2e2; color:#991b1b; border:1px solid #fecaca; }
+    .jr-table-wrap { overflow:auto; border:1px solid #e2e8f0; border-radius:10px; }
+    .jr-table { width:100%; min-width:1360px; border-collapse:collapse; }
+    .jr-table thead { background:linear-gradient(135deg,#1abc9c,#16a085); color:#fff; }
+    .jr-table th { text-align:left; padding:12px 10px; font-size:11px; text-transform:uppercase; letter-spacing:.3px; }
+    .jr-table td { padding:10px; border-bottom:1px solid #eef2f7; font-size:13px; color:#1f2937; }
+    .jr-table tbody tr:hover { background:#f8fafc; }
+    .role-badge { border-radius:999px; padding:2px 9px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.3px; }
+    .role-agent { background:#ede9fe; color:#5b21b6; }
+    .role-employee { background:#dbeafe; color:#1d4ed8; }
+    .st-badge { border-radius:6px; padding:3px 8px; font-size:11px; font-weight:700; background:#fef3c7; color:#92400e; }
+    .user-box { display:flex; align-items:center; gap:8px; }
+    .avatar { width:34px; height:34px; border-radius:8px; background:#0ea5e9; color:#fff; font-weight:700; display:flex; align-items:center; justify-content:center; }
+    .empty { text-align:center; padding:34px 10px; color:#64748b; }
 
-    .requests-header {
-        display: flex;
-        align-items: center;
-        gap: 15px;
-        margin-bottom: 30px;
-        padding-bottom: 20px;
-        border-bottom: 2px solid #e5e7eb;
-    }
+    .jr-modal-overlay { display:none; position:fixed; inset:0; background:rgba(15,23,42,.45); z-index:1100; align-items:center; justify-content:center; }
+    .jr-modal-overlay.active { display:flex; }
+    .jr-modal { width:min(980px,96vw); max-height:92vh; overflow:auto; background:#fff; border-radius:12px; padding:18px; }
+    .jr-modal-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+    .jr-close { border:none; background:none; font-size:22px; cursor:pointer; color:#64748b; }
+    .jr-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+    .jr-item { border:1px solid #e2e8f0; border-radius:8px; padding:8px; background:#f8fafc; }
+    .jr-item small { display:block; font-size:10px; text-transform:uppercase; color:#64748b; font-weight:700; }
+    .jr-item strong { display:block; font-size:13px; color:#0f172a; word-break:break-word; }
+    .jr-sec { margin-top:12px; border:1px solid #e2e8f0; border-radius:10px; padding:10px; }
+    .jr-sec h4 { margin:0 0 8px 0; font-size:13px; font-weight:800; color:#0f172a; }
+    .jr-docs { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+    .jr-doc { border:1px solid #dbeafe; border-radius:8px; padding:8px; background:#eff6ff; }
+    .jr-doc a { font-size:12px; font-weight:700; text-decoration:none; margin-right:8px; }
 
-    .requests-header h2 {
-        margin: 0;
-        font-size: 24px;
-        font-weight: 700;
-        color: #1a202c;
-        flex: 1;
-    }
-
-    .requests-count {
-        background: #ef4444;
-        color: white;
-        padding: 8px 16px;
-        border-radius: 20px;
-        font-weight: 600;
-        font-size: 14px;
-    }
-
-    .empty-state {
-        text-align: center;
-        padding: 80px 40px;
-    }
-
-    .empty-state i {
-        font-size: 64px;
-        color: #cbd5e0;
-        display: block;
-        margin-bottom: 20px;
-    }
-
-    .empty-state h3 {
-        font-size: 20px;
-        font-weight: 700;
-        color: #2d3748;
-        margin-bottom: 10px;
-    }
-
-    .empty-state p {
-        color: #718096;
-        font-size: 14px;
-        max-width: 400px;
-        margin: 0 auto;
-        line-height: 1.6;
-    }
-
-    .requests-table {
-        width: 100%;
-        border-collapse: collapse;
-    }
-
-    .requests-table thead {
-        background: linear-gradient(135deg, #1abc9c 0%, #16a085 100%);
-        color: white;
-    }
-
-    .requests-table th {
-        padding: 16px 12px;
-        text-align: left;
-        font-weight: 600;
-        font-size: 12px;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-
-    .requests-table td {
-        padding: 14px 12px;
-        border-bottom: 1px solid #e5e7eb;
-        vertical-align: middle;
-    }
-
-    .requests-table tbody tr {
-        transition: all 0.2s ease;
-    }
-
-    .requests-table tbody tr:hover {
-        background: #f9fafb;
-    }
-
-    .user-info {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-
-    .user-avatar {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, #f59e0b, #f97316);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-weight: 700;
-        font-size: 14px;
-    }
-
-    .request-status {
-        display: inline-block;
-        padding: 6px 12px;
-        border-radius: 20px;
-        font-size: 12px;
-        font-weight: 600;
-        text-transform: capitalize;
-    }
-
-    .status-pending {
-        background: #fef3c7;
-        color: #92400e;
-    }
-
-    .status-approved {
-        background: #d1fae5;
-        color: #065f46;
-    }
-
-    .status-rejected {
-        background: #fee2e2;
-        color: #991b1b;
-    }
-
-    .action-buttons {
-        display: flex;
-        gap: 8px;
-    }
-
-    .btn-action-small {
-        padding: 6px 12px;
-        background: #f3f4f6;
-        border: 1px solid #cbd5e0;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 12px;
-        font-weight: 600;
-        transition: all 0.2s;
-    }
-
-    .btn-approve:hover {
-        background: #d1fae5;
-        border-color: #a7f3d0;
-    }
-
-    .btn-reject:hover {
-        background: #fee2e2;
-        border-color: #fca5a5;
-    }
-
-    .info-banner {
-        background: #eff6ff;
-        border: 1px solid #bfdbfe;
-        border-radius: 8px;
-        padding: 20px;
-        margin-bottom: 30px;
-        display: flex;
-        gap: 15px;
-        align-items: flex-start;
-    }
-
-    .info-banner i {
-        color: #3b82f6;
-        font-size: 20px;
-        flex-shrink: 0;
-        margin-top: 2px;
-    }
-
-    .info-banner p {
-        margin: 0;
-        color: #1e40af;
-        font-size: 14px;
-        line-height: 1.6;
-    }
+    @media (max-width: 900px) { .jr-grid { grid-template-columns:1fr 1fr; } .jr-docs { grid-template-columns:1fr; } }
+    @media (max-width: 700px) { .jr-grid { grid-template-columns:1fr; } }
 </style>
 
-<div class="requests-container">
-    <!-- Header -->
-    <div class="requests-header">
-        <h2><i class="fas fa-handshake" style="color: #f59e0b; margin-right: 12px;"></i>Join Requests</h2>
-        <span class="requests-count">{{ request_count }}</span>
+<div class="jr-wrap">
+    <div id="jrMessage" class="jr-message"></div>
+    <div class="jr-head">
+        <h2 class="jr-title">Join Requests</h2>
+        <div class="jr-meta">
+            <span class="jr-count" id="jrCount">{{ request_count|default:0 }}</span>
+            <button class="jr-btn" onclick="loadJoinRequests()">Refresh</button>
+        </div>
     </div>
+    <p class="jr-note">Login page registrations (Employee/Agent) appear here in realtime with full application summary.</p>
 
-    <!-- Info Banner -->
-    <div class="info-banner">
-        <i class="fas fa-info-circle"></i>
-        <p>
-            Manage requests from users who want to join your organization as SubAdmins, Agents, or Employees. 
-            Review their details and approve or reject their requests.
-        </p>
+    <div class="jr-table-wrap">
+        <table class="jr-table">
+            <thead>
+                <tr>
+                    <th>Applicant</th>
+                    <th>Role</th>
+                    <th>Contact</th>
+                    <th>Location</th>
+                    <th>Loan Request</th>
+                    <th>Bank</th>
+                    <th>Docs</th>
+                    <th>Request Date</th>
+                    <th>Status</th>
+                    <th>Assignment</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="jrBody">
+                <tr><td colspan="11" class="empty">Loading join requests...</td></tr>
+            </tbody>
+        </table>
     </div>
-
-    <!-- Empty State -->
-    {% if not join_requests %}
-    <div class="empty-state">
-        <i class="fas fa-inbox"></i>
-        <h3>No Join Requests</h3>
-        <p>There are currently no pending join requests. When users apply to join your organization, their requests will appear here.</p>
-    </div>
-    {% else %}
-    <!-- Requests Table -->
-    <table class="requests-table">
-        <thead>
-            <tr>
-                <th>User Info</th>
-                <th>Email</th>
-                <th>Phone</th>
-                <th>Requested Role</th>
-                <th>Request Date</th>
-                <th>Status</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for req in join_requests %}
-            <tr>
-                <td>
-                    <div class="user-info">
-                        <div class="user-avatar">{{ req.name|first|upper }}</div>
-                        <div>
-                            <strong style="color: #1a202c; font-size: 14px;">{{ req.name }}</strong>
-                            <br><small style="color: #718096;">{{ req.user_id }}</small>
-                        </div>
-                    </div>
-                </td>
-                <td>{{ req.email }}</td>
-                <td>{{ req.phone }}</td>
-                <td><span style="background: #ede9fe; color: #6d28d9; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 600;">{{ req.role|title }}</span></td>
-                <td>{{ req.request_date|date:"M d, Y" }}</td>
-                <td>
-                    <span class="request-status status-{{ req.status|lower }}">
-                        {{ req.status }}
-                    </span>
-                </td>
-                <td>
-                    <div class="action-buttons">
-                        <button class="btn-action-small btn-approve" title="Approve">
-                            <i class="fas fa-check"></i> Approve
-                        </button>
-                        <button class="btn-action-small btn-reject" title="Reject">
-                            <i class="fas fa-times"></i> Reject
-                        </button>
-                    </div>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% endif %}
 </div>
 
+<div class="jr-modal-overlay" id="jrModalOverlay">
+    <div class="jr-modal">
+        <div class="jr-modal-head">
+            <h3 style="margin:0; font-size:18px; font-weight:800; color:#0f172a;">Join Request Details</h3>
+            <button class="jr-close" onclick="closeJoinModal()">&times;</button>
+        </div>
+        <div id="jrModalBody"></div>
+    </div>
+</div>
+
+<script>
+let joinRows = [];
+let joinTimer = null;
+
+function esc(v) {
+    return String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function inr(v) {
+    const n = Number(v || 0);
+    if (Number.isNaN(n)) return '0';
+    return n.toLocaleString('en-IN', { maximumFractionDigits: 0 });
+}
+
+function getCookie(name) {
+    const cookies = document.cookie ? document.cookie.split(';') : [];
+    for (const rawCookie of cookies) {
+        const cookie = rawCookie.trim();
+        if (cookie.startsWith(`${name}=`)) return decodeURIComponent(cookie.slice(name.length + 1));
+    }
+    return '';
+}
+
+function showJoinMessage(type, text) {
+    const box = document.getElementById('jrMessage');
+    if (!box) return;
+    box.className = `jr-message ${type === 'error' ? 'err' : 'ok'}`;
+    box.textContent = text;
+    setTimeout(() => {
+        box.className = 'jr-message';
+        box.textContent = '';
+    }, 4200);
+}
+
+async function loadJoinRequests() {
+    try {
+        const res = await fetch('/api/admin/join-requests/', {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            credentials: 'same-origin',
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) throw new Error(data.error || 'Failed to load join requests');
+        joinRows = data.requests || [];
+        renderJoinRows();
+        const countEl = document.getElementById('jrCount');
+        if (countEl) countEl.textContent = data.count || 0;
+    } catch (err) {
+        document.getElementById('jrBody').innerHTML = `<tr><td colspan="11" class="empty">${esc(err.message)}</td></tr>`;
+    }
+}
+
+function renderJoinRows() {
+    const body = document.getElementById('jrBody');
+    if (!joinRows.length) {
+        body.innerHTML = '<tr><td colspan="11" class="empty">No join requests found.</td></tr>';
+        return;
+    }
+
+    body.innerHTML = joinRows.map((row) => `
+        <tr>
+            <td>
+                <div class="user-box">
+                    <div class="avatar">${esc((row.applicant_name || '?').charAt(0).toUpperCase())}</div>
+                    <div>
+                        <div style="font-weight:700;">${esc(row.applicant_name || '-')}</div>
+                        <div style="font-size:11px; color:#64748b;">${esc(row.username || '-')}</div>
+                    </div>
+                </div>
+            </td>
+            <td><span class="role-badge role-${esc(row.role)}">${esc(row.role || '-')}</span></td>
+            <td>${esc(row.mobile || '-')}<br><span style="font-size:11px;color:#64748b;">${esc(row.email || '-')}</span></td>
+            <td>${esc(row.city || '-')}<br><span style="font-size:11px;color:#64748b;">${esc(row.state || '-')} - ${esc(row.pin_code || '-')}</span></td>
+            <td>${esc(row.loan_type || '-')}<br><span style="font-size:11px;color:#065f46;">Rs ${inr(row.loan_amount)}</span></td>
+            <td>${esc(row.bank_name || '-')}<br><span style="font-size:11px;color:#64748b;">${esc(row.account_number || '-')}</span></td>
+            <td>${esc(row.documents_count || 0)}</td>
+            <td>${esc(row.request_date || '-')}</td>
+            <td><span class="st-badge">${esc(row.status || '-')}</span></td>
+            <td>${esc(row.assigned_employee || '-')}<br><span style="font-size:11px;color:#64748b;">${esc(row.assigned_agent || '-')}</span></td>
+            <td>
+                <div class="jr-actions">
+                    <button class="jr-btn" onclick="openJoinModal(${Number(row.id)})">View Full Form</button>
+                    ${row.can_approve ? `<button class="jr-btn approve" onclick="runJoinAction(${Number(row.id)}, 'approve')">Approve</button>` : ''}
+                    ${row.can_reject ? `<button class="jr-btn reject" onclick="runJoinAction(${Number(row.id)}, 'reject')">Reject</button>` : ''}
+                    ${row.can_delete ? `<button class="jr-btn delete" onclick="runJoinAction(${Number(row.id)}, 'delete')">Delete</button>` : ''}
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function renderStackRows(items, kind) {
+    if (!Array.isArray(items) || !items.length) {
+        return '<div class="empty" style="padding:12px;">No data available.</div>';
+    }
+    if (kind === 'existing') {
+        return items.map((loan, idx) => `
+            <div class="jr-item" style="margin-bottom:8px;">
+                <small>Loan #${idx + 1}</small>
+                <strong>${esc(loan.bank_name || '-')}</strong>
+                <div style="font-size:12px; margin-top:4px; color:#334155;">
+                    Amount Taken: Rs ${inr(loan.amount_taken)} | EMI Left: ${esc(loan.emi_left || '-')} | Amount Left: Rs ${inr(loan.amount_left)}<br>
+                    Years/Months: ${esc(loan.tenure || '-')} | EMI Amount: Rs ${inr(loan.emi_amount)} | Any Bounce: ${esc(loan.any_bounce || '-')} | Cleared: ${loan.cleared ? 'Yes' : 'No'}
+                </div>
+            </div>
+        `).join('');
+    }
+    return items.map((ref, idx) => `
+        <div class="jr-item" style="margin-bottom:8px;">
+            <small>Reference #${idx + 1}</small>
+            <strong>${esc(ref.name || '-')}</strong>
+            <div style="font-size:12px; margin-top:4px; color:#334155;">
+                Mobile: ${esc(ref.mobile_number || '-')}<br>
+                Address: ${esc(ref.address || '-')}
+            </div>
+        </div>
+    `).join('');
+}
+
+function renderDocs(docs) {
+    if (!Array.isArray(docs) || !docs.length) {
+        return '<div class="empty" style="padding:12px;">No documents uploaded.</div>';
+    }
+    return docs.map(doc => `
+        <div class="jr-doc">
+            <div style="font-size:12px;font-weight:700;color:#0f172a;margin-bottom:6px;">${esc(doc.name || 'Document')}</div>
+            <a href="${esc(doc.url || '#')}" target="_blank">View</a>
+            <a href="${esc(doc.url || '#')}" download>Download</a>
+        </div>
+    `).join('');
+}
+
+async function openJoinModal(applicationId) {
+    const overlay = document.getElementById('jrModalOverlay');
+    const body = document.getElementById('jrModalBody');
+    overlay.classList.add('active');
+    body.innerHTML = '<div class="empty" style="padding:30px;">Loading full application details...</div>';
+
+    try {
+        const res = await fetch(`/api/admin/join-requests/${applicationId}/detail/`, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            credentials: 'same-origin',
+        });
+        const payload = await res.json();
+        if (!res.ok || !payload.success) throw new Error(payload.error || 'Failed to load details');
+        const row = payload.data || {};
+
+        body.innerHTML = `
+            <div class="jr-sec">
+                <h4>REQUEST TRACKING</h4>
+                <div class="jr-grid">
+                    <div class="jr-item"><small>Application ID</small><strong>${esc(row.application_id || '-')}</strong></div>
+                    <div class="jr-item"><small>Request Date</small><strong>${esc(row.request_date || '-')}</strong></div>
+                    <div class="jr-item"><small>Last Updated</small><strong>${esc(row.updated_at || '-')}</strong></div>
+                    <div class="jr-item"><small>Status</small><strong>${esc(row.status || '-')}</strong></div>
+                    <div class="jr-item"><small>Assigned Employee</small><strong>${esc(row.assigned_employee || '-')}</strong></div>
+                    <div class="jr-item"><small>Assigned Agent</small><strong>${esc(row.assigned_agent || '-')}</strong></div>
+                    <div class="jr-item"><small>Assigned By</small><strong>${esc(row.assigned_by || '-')}</strong></div>
+                    <div class="jr-item"><small>Assigned At</small><strong>${esc(row.assigned_at || '-')}</strong></div>
+                </div>
+            </div>
+
+            <div class="jr-sec">
+                <h4>SECTION 1: APPLICANT INFORMATION</h4>
+                <p style="margin:0 0 8px 0; color:#64748b; font-size:12px;">Provide accurate personal information. This will be verified during processing.</p>
+                <div class="jr-grid">
+                    <div class="jr-item"><small>Name *</small><strong>${esc(row.applicant_name || '-')}</strong></div>
+                    <div class="jr-item"><small>Mobile Number *</small><strong>${esc(row.mobile || '-')}</strong></div>
+                    <div class="jr-item"><small>Alternate Mobile</small><strong>${esc(row.alternate_mobile || '-')}</strong></div>
+                    <div class="jr-item"><small>Email ID *</small><strong>${esc(row.email || '-')}</strong></div>
+                    <div class="jr-item"><small>Father's Name *</small><strong>${esc(row.father_name || '-')}</strong></div>
+                    <div class="jr-item"><small>Mother's Name *</small><strong>${esc(row.mother_name || '-')}</strong></div>
+                    <div class="jr-item"><small>Date of Birth *</small><strong>${esc(row.date_of_birth || '-')}</strong></div>
+                    <div class="jr-item"><small>Gender *</small><strong>${esc(row.gender || '-')}</strong></div>
+                    <div class="jr-item"><small>Marital Status</small><strong>${esc(row.marital_status || '-')}</strong></div>
+                </div>
+                <h4 style="margin-top:10px;">Permanent Address</h4>
+                <div class="jr-grid">
+                    <div class="jr-item"><small>Address</small><strong>${esc(row.permanent_address || '-')}</strong></div>
+                    <div class="jr-item"><small>Landmark</small><strong>${esc(row.permanent_landmark || '-')}</strong></div>
+                    <div class="jr-item"><small>City</small><strong>${esc(row.permanent_city || '-')}</strong></div>
+                    <div class="jr-item"><small>PIN Code</small><strong>${esc(row.permanent_pin || '-')}</strong></div>
+                </div>
+                <h4 style="margin-top:10px;">Present Address</h4>
+                <div class="jr-grid">
+                    <div class="jr-item"><small>Same as Permanent Address</small><strong>${esc(row.present_same_as_permanent || '-')}</strong></div>
+                    <div class="jr-item"><small>Address</small><strong>${esc(row.present_address || '-')}</strong></div>
+                    <div class="jr-item"><small>Landmark</small><strong>${esc(row.present_landmark || '-')}</strong></div>
+                    <div class="jr-item"><small>City</small><strong>${esc(row.present_city || '-')}</strong></div>
+                    <div class="jr-item"><small>PIN Code</small><strong>${esc(row.present_pin || '-')}</strong></div>
+                </div>
+            </div>
+
+            <div class="jr-sec">
+                <h4>SECTION 2: OCCUPATION & INCOME DETAILS</h4>
+                <div class="jr-grid">
+                    <div class="jr-item"><small>Occupation *</small><strong>${esc(row.occupation || '-')}</strong></div>
+                    <div class="jr-item"><small>Date of Joining *</small><strong>${esc(row.employment_date || '-')}</strong></div>
+                    <div class="jr-item"><small>Year of Experience *</small><strong>${esc(row.experience_years || '-')}</strong></div>
+                    <div class="jr-item"><small>Additional Income (if any)</small><strong>${esc(row.additional_income || '-')}</strong></div>
+                    <div class="jr-item" style="grid-column:1 / -1;"><small>Extra Income Details</small><strong>${esc(row.extra_income_details || '-')}</strong></div>
+                </div>
+            </div>
+
+            <div class="jr-sec">
+                <h4>SECTION 3: EXISTING LOAN DETAILS</h4>
+                <p style="margin:0 0 8px 0; color:#64748b; font-size:12px;">Provide details of all existing loans or EMI commitments.</p>
+                ${renderStackRows(row.existing_loans, 'existing')}
+            </div>
+
+            <div class="jr-sec">
+                <h4>SECTION 4: LOAN REQUEST</h4>
+                <div class="jr-grid">
+                    <div class="jr-item"><small>Service Required *</small><strong>${esc(row.loan_type || '-')}</strong></div>
+                    <div class="jr-item"><small>Loan Amount Required *</small><strong>Rs ${inr(row.loan_amount)}</strong></div>
+                    <div class="jr-item"><small>Loan Tenure (Months) *</small><strong>${esc(row.tenure_months || '-')}</strong></div>
+                    <div class="jr-item"><small>Any Charges or Fee *</small><strong>${esc(row.charges_applicable || '-')}</strong></div>
+                    <div class="jr-item" style="grid-column:1 / -1;"><small>Loan Purpose</small><strong>${esc(row.loan_purpose || '-')}</strong></div>
+                </div>
+                <p style="margin:8px 0 0 0; color:#b45309; font-size:12px;">As per RBI guidelines, no processing fee or other charges to be taken from client.</p>
+            </div>
+
+            <div class="jr-sec">
+                <h4>SECTION 5: REFERENCES</h4>
+                <p style="margin:0 0 8px 0; color:#64748b; font-size:12px;">Provide contact details of two reliable references. They will not be contacted unless necessary.</p>
+                ${renderStackRows(row.references, 'references')}
+            </div>
+
+            <div class="jr-sec">
+                <h4>SECTION 6: FINANCIAL & BANK DETAILS</h4>
+                <p style="margin:0 0 8px 0; color:#64748b; font-size:12px;">Provide your financial and bank details for verification and loan disbursement.</p>
+                <div class="jr-grid">
+                    <div class="jr-item"><small>CIBIL Score *</small><strong>${esc(row.cibil_score || '-')}</strong></div>
+                    <div class="jr-item"><small>Aadhar Number *</small><strong>${esc(row.aadhar_number || '-')}</strong></div>
+                    <div class="jr-item"><small>PAN Number *</small><strong>${esc(row.pan_number || '-')}</strong></div>
+                    <div class="jr-item"><small>Bank Name *</small><strong>${esc(row.bank_name || '-')}</strong></div>
+                    <div class="jr-item"><small>Account Number *</small><strong>${esc(row.account_number || '-')}</strong></div>
+                    <div class="jr-item"><small>IFSC Code *</small><strong>${esc(row.ifsc_code || '-')}</strong></div>
+                    <div class="jr-item"><small>Bank Type</small><strong>${esc(row.bank_type || '-')}</strong></div>
+                    <div class="jr-item" style="grid-column:1 / -1;"><small>Remarks / Suggestions (if any)</small><strong>${esc(row.remarks || '-')}</strong></div>
+                </div>
+                <div class="jr-item" style="margin-top:8px;">
+                    <small>Declaration</small>
+                    <strong>${esc(row.declaration || 'I hereby declare that the above information given by me is true and correct.')}</strong>
+                </div>
+            </div>
+
+            <div class="jr-sec">
+                <h4>SECTION 7: DOCUMENTS</h4>
+                <div class="jr-docs">${renderDocs(row.documents)}</div>
+            </div>
+        `;
+    } catch (err) {
+        body.innerHTML = `<div class="empty" style="padding:20px;">${esc(err.message)}</div>`;
+    }
+}
+
+function closeJoinModal() {
+    document.getElementById('jrModalOverlay').classList.remove('active');
+}
+
+async function runJoinAction(applicationId, action) {
+    let reason = '';
+    if (action === 'approve' && !confirm('Approve this join request? User will be added under Admin panel.')) return;
+    if (action === 'reject') {
+        reason = prompt('Enter rejection reason:', 'Rejected by admin') || '';
+        if (!reason.trim()) return;
+    }
+    if (action === 'delete' && !confirm('Delete this join request permanently?')) return;
+
+    try {
+        const res = await fetch(`/api/admin/join-requests/${applicationId}/action/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({ action, reason }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) throw new Error(data.error || data.message || 'Action failed');
+
+        let successText = data.message || 'Action completed successfully';
+        if (data.temporary_password) {
+            successText += ` | Username: ${data.username} | Temp Password: ${data.temporary_password}`;
+        }
+        showJoinMessage('ok', successText);
+        closeJoinModal();
+        await loadJoinRequests();
+    } catch (err) {
+        showJoinMessage('error', err.message);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadJoinRequests();
+    joinTimer = setInterval(loadJoinRequests, 20000);
+    document.getElementById('jrModalOverlay').addEventListener('click', function(e) {
+        if (e.target === this) closeJoinModal();
+    });
+});
+
+window.addEventListener('beforeunload', function() {
+    if (joinTimer) clearInterval(joinTimer);
+});
+</script>
 {% endblock %}

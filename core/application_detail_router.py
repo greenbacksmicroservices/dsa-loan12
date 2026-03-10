@@ -23,7 +23,7 @@ from django.http import Http404, JsonResponse
 from django.utils import timezone
 from datetime import timedelta
 
-from .models import LoanApplication, Applicant, User, Agent, ActivityLog
+from .models import LoanApplication, Applicant, User, Agent, ActivityLog, Loan
 from .decorators import admin_required
 
 
@@ -170,6 +170,27 @@ def application_detail_router(request, applicant_id):
             'approved_by', 'rejected_by'
         ).get(applicant__id=applicant_id)
     except LoanApplication.DoesNotExist:
+        # Compatibility fallback:
+        # some UIs send Loan.id here; route them to role-safe pages instead of 404.
+        fallback_loan = Loan.objects.filter(id=applicant_id).select_related(
+            'assigned_agent', 'created_by'
+        ).first()
+        if fallback_loan:
+            if request.user.role == 'agent':
+                try:
+                    user_agent = request.user.agent_profile
+                except Exception:
+                    user_agent = None
+                if fallback_loan.created_by_id == request.user.id or (
+                    user_agent and fallback_loan.assigned_agent_id == user_agent.id
+                ):
+                    return redirect(f"/agent/my-applications/?loan_id={fallback_loan.id}")
+            if request.user.role == 'admin':
+                return redirect(f"/admin/all-loans/?q={fallback_loan.id}")
+            if request.user.role == 'subadmin':
+                return redirect(f"/subadmin/all-loans/?q={fallback_loan.id}")
+            if request.user.role == 'employee':
+                return redirect(f"/employee/all-loans/?q={fallback_loan.id}")
         raise Http404("Application not found")
     
     # Role-based permission checks

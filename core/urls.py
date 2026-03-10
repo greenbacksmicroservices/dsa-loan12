@@ -1,5 +1,6 @@
-﻿from django.urls import path, include
+from django.urls import path, include
 from django.views.generic import RedirectView
+from django.contrib.auth import views as auth_views
 from rest_framework.routers import DefaultRouter
 from . import views
 from . import admin_views
@@ -38,6 +39,34 @@ urlpatterns = [
     path('login/', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
     path('dashboard/', views.dashboard, name='dashboard'),
+    path(
+        'password-reset/',
+        auth_views.PasswordResetView.as_view(
+            template_name='core/auth/password_reset_form.html',
+            email_template_name='core/auth/password_reset_email.html',
+            subject_template_name='core/auth/password_reset_subject.txt',
+            success_url='/password-reset/done/'
+        ),
+        name='password_reset'
+    ),
+    path(
+        'password-reset/done/',
+        auth_views.PasswordResetDoneView.as_view(template_name='core/auth/password_reset_done.html'),
+        name='password_reset_done'
+    ),
+    path(
+        'reset/<uidb64>/<token>/',
+        auth_views.PasswordResetConfirmView.as_view(
+            template_name='core/auth/password_reset_confirm.html',
+            success_url='/reset/done/'
+        ),
+        name='password_reset_confirm'
+    ),
+    path(
+        'reset/done/',
+        auth_views.PasswordResetCompleteView.as_view(template_name='core/auth/password_reset_complete.html'),
+        name='password_reset_complete'
+    ),
     
     # Registration Wizard
     path('register/<str:role>/step/<int:step>/', views.registration_wizard, name='registration_wizard'),
@@ -53,8 +82,12 @@ urlpatterns = [
     path('admin/all-agents/', views.admin_all_agents, name='admin_all_agents'),
     path('admin/add-agent/', admin_views.add_agent, name='add_agent'),
     path('admin/join-requests/', admin_views.admin_join_requests, name='admin_join_requests'),
+    path('api/admin/join-requests/', admin_views.api_admin_join_requests, name='api_admin_join_requests'),
+    path('api/admin/join-requests/<int:application_id>/detail/', admin_views.api_admin_join_request_detail, name='api_admin_join_request_detail'),
+    path('api/admin/join-requests/<int:application_id>/action/', admin_views.api_admin_join_request_action, name='api_admin_join_request_action'),
     path('admin/team-management/', admin_views.team_management, name='team_management'),
     path('admin/subadmin-management/', admin_views.admin_subadmin_management, name='admin_subadmin_management'),
+    path('api/admin/subadmin/<int:subadmin_id>/full-details/', admin_views.api_admin_subadmin_full_details, name='api_admin_subadmin_full_details'),
     path('admin/profile/', views.admin_profile, name='admin_profile'),
     
     # Admin Loan Status Pages
@@ -82,6 +115,8 @@ urlpatterns = [
     # SubAdmin Dashboard & Views
     path('subadmin/dashboard/', subadmin_views.subadmin_dashboard, name='subadmin_dashboard'),
     path('api/subadmin/dashboard-stats/', subadmin_views.api_subadmin_dashboard_stats, name='api_subadmin_dashboard_stats'),
+    path('api/subadmin/recent-loans/', subadmin_views.api_subadmin_recent_loans, name='api_subadmin_recent_loans'),
+    path('api/subadmin/loan/<int:loan_id>/details/', subadmin_views.api_subadmin_loan_details, name='api_subadmin_loan_details'),
     path('subadmin/add-loan/', subadmin_views.subadmin_add_loan, name='subadmin_add_loan'),
     path('subadmin/all-loans/', subadmin_views.subadmin_all_loans, name='subadmin_all_loans'),
     path('subadmin/loan/<int:loan_id>/detail/', subadmin_views.subadmin_loan_detail, name='subadmin_loan_detail'),
@@ -125,12 +160,12 @@ urlpatterns = [
     path('employee/settings/', employee_views.employee_settings, name='employee_settings'),
     
     # Employee Assigned Loans API
-    path('api/employee/assigned-loans/', employee_views.api_get_assigned_loans, name='api_get_assigned_loans'),
+    path('api/employee/assigned-loans/', views.employee_assigned_loans_list, name='api_get_assigned_loans'),
     path('api/employee/loan-action/', employee_views.employee_loan_action, name='employee_loan_action'),
     
     # Employee Panel - New Pages (Fintech UI)
-    path('employee/new-entry-request/', employee_views.employee_new_entry_request_page, name='employee_new_entry_request'),
-    path('employee/new-entries/', employee_views.employee_new_entry_request_page, name='employee_new_entries'),
+    path('employee/new-entry-request/', views.employee_request_new_entry_loan, name='employee_new_entry_request'),
+    path('employee/new-entries/', views.employee_request_new_entry_loan, name='employee_new_entries'),
     path('employee/all-loans/', employee_views.employee_all_loans, name='employee_all_loans'),
     path('employee/loans/total/', employee_views.employee_loan_status_list, {'status_key': 'total'}, name='employee_loans_total'),
     path('employee/loans/awaiting/', employee_views.employee_loan_status_list, {'status_key': 'awaiting'}, name='employee_loans_awaiting'),
@@ -138,7 +173,9 @@ urlpatterns = [
     path('employee/loans/rejected/', employee_views.employee_loan_status_list, {'status_key': 'rejected'}, name='employee_loans_rejected'),
     path('employee/loans/follow-up/', employee_views.employee_loan_status_list, {'status_key': 'follow_up'}, name='employee_loans_followup'),
     path('employee/loans/disbursed/', employee_views.employee_loan_status_list, {'status_key': 'disbursed'}, name='employee_loans_disbursed'),
+    path('employee/bank-processing/', views.employee_bank_processing_queue, name='employee_bank_processing'),
     path('employee/loan/<int:loan_id>/detail/', employee_views_new.employee_loan_detail_page, name='employee_loan_detail'),
+    path('employee/loan/<int:loan_id>/bank-processing/', employee_views_new.employee_bank_processing_page, name='employee_bank_processing_detail'),
     path('employee/my-agents/', employee_views_new.employee_my_agents_page, name='employee_my_agents_page'),
     
     # Employee Panel - New APIs (Fintech UI)
@@ -146,12 +183,13 @@ urlpatterns = [
     path('api/employee/monthly-loans/', employee_views.employee_monthly_loans_api, name='api_employee_monthly_loans'),
     path('api/employee/assigned-loans-list/', employee_views.employee_assigned_loans_list_api, name='api_employee_assigned_loans_list'),
     path('api/employee/all-processed-loans/', employee_views.employee_all_processed_loans_api, name='api_employee_all_processed_loans'),
-    path('api/employee/loan/<int:loan_id>/detail/', employee_views_new.employee_loan_detail_api, name='api_employee_loan_detail'),
+    path('api/employee/loan/<int:loan_id>/detail/', views.employee_assigned_loan_detail, name='api_employee_loan_detail'),
     path('api/employee/my-agents/', employee_views_new.employee_my_agents_api, name='api_employee_my_agents'),
     path('api/employee/add-agent/', employee_views_new.employee_add_agent_api, name='api_employee_add_agent'),
-    path('api/employee/loan/<int:loan_id>/approve/', employee_views_new.employee_approve_loan_api, name='api_employee_approve_loan'),
-    path('api/employee/loan/<int:loan_id>/reject/', employee_views_new.employee_reject_loan_api, name='api_employee_reject_loan'),
-    path('api/employee/loan/<int:loan_id>/disburse/', employee_views_new.employee_disburse_loan_api, name='api_employee_disburse_loan'),
+    path('api/employee/loan/<int:loan_id>/collect/', views.employee_collect_for_banking, name='api_employee_collect_loan'),
+    path('api/employee/loan/<int:loan_id>/approve/', views.employee_approve_loan, name='api_employee_approve_loan'),
+    path('api/employee/loan/<int:loan_id>/reject/', views.employee_reject_loan, name='api_employee_reject_loan'),
+    path('api/employee/loan/<int:loan_id>/disburse/', views.employee_disburse_loan, name='api_employee_disburse_loan'),
     path('api/employee/upload-profile-photo/', employee_views_new.employee_upload_profile_photo, name='api_employee_upload_profile_photo'),
     
     # New Entries Management
@@ -189,7 +227,8 @@ urlpatterns = [
     path('api/dashboard-stats/', views.dashboard_stats, name='dashboard_stats'),
     path('api/admin/new-entries/', views.api_admin_new_entries, name='api_admin_new_entries'),
     path('api/admin-all-loans/', admin_views.api_admin_all_loans, name='api_admin_all_loans'),
-    path('api/admin/create-subadmin/', views.api_create_subadmin, name='api_create_subadmin'),
+    path('api/admin/create-subadmin/', admin_views.api_create_subadmin, name='api_create_subadmin'),
+    path('api/admin/subadmin/<int:subadmin_id>/delete/', admin_views.api_delete_subadmin, name='api_delete_subadmin'),
     path('api/admin/get-subadmins/', admin_views.api_get_subadmins, name='api_get_subadmins'),
     path('api/subadmin/<int:subadmin_id>/toggle-status/', views.api_toggle_subadmin_status, name='api_toggle_subadmin_status'),
     
@@ -451,7 +490,7 @@ urlpatterns = [
     
     # ========== EMPLOYEE PANEL - NEW IMPLEMENTATION ==========
     # Employee Dashboard & All Loans
-    path('api/employee/dashboard-stats-new/', employee_views_new.employee_dashboard_stats, name='api_employee_dashboard_stats_new'),
+    path('api/employee/dashboard-stats-new/', views.employee_dashboard_stats, name='api_employee_dashboard_stats_new'),
     path('api/employee/all-loans/', employee_views_new.employee_all_loans_api, name='api_employee_all_loans'),
     path('api/employee/new-entry-requests/', employee_views_new.employee_new_entry_requests_api, name='api_employee_new_entry_requests'),
     path('api/employee/loan/<int:loan_id>/update/', employee_views_new.employee_update_loan_api, name='api_employee_update_loan'),
@@ -474,6 +513,8 @@ urlpatterns = [
     path('api/admin/loan/<int:loan_id>/reassign/', admin_assign_views.admin_reassign_loan, name='api_admin_reassign_loan'),
     path('api/admin/loan/<int:loan_id>/assignment-status/', admin_assign_views.admin_get_assignment_status, name='api_admin_assignment_status'),
 ]
+
+
 
 
 

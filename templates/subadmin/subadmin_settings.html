@@ -4,240 +4,290 @@
 {% block title %}Settings - SubAdmin{% endblock %}
 {% block page_title %}Settings{% endblock %}
 
+{% block extra_css %}
+<style>
+    [x-cloak] { display: none !important; }
+    .settings-tab {
+        padding: 10px 18px;
+        border-bottom: 2px solid transparent;
+        color: #4b5563;
+        font-weight: 600;
+        transition: all 0.2s ease;
+    }
+    .settings-tab.active {
+        border-bottom-color: #16a34a;
+        color: #16a34a;
+    }
+    .settings-alert {
+        border-radius: 10px;
+        padding: 12px 14px;
+        font-size: 14px;
+        display: none;
+    }
+    .settings-alert.success {
+        background: #dcfce7;
+        color: #166534;
+        border: 1px solid #bbf7d0;
+    }
+    .settings-alert.error {
+        background: #fee2e2;
+        color: #991b1b;
+        border: 1px solid #fecaca;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="space-y-6">
-    <!-- Header -->
+<div x-data="{ activeTab: 'profile' }" class="space-y-6">
     <div>
-        <h1 class="text-3xl font-bold text-gray-900">⚙️ Settings</h1>
-        <p class="text-gray-600 mt-1">Manage your account and system settings</p>
+        <h1 class="text-3xl font-bold text-gray-900">Settings</h1>
+        <p class="text-gray-600 mt-1">Manage profile details, password, and preferences.</p>
     </div>
 
-    <!-- Settings Tabs -->
-    <div class="flex gap-2 border-b border-gray-200" x-data="{ activeTab: 'profile' }">
-        <button @click="activeTab = 'profile'" :class="activeTab === 'profile' ? 'border-b-2 border-green-600 text-green-600' : 'text-gray-600 hover:text-gray-900'" 
-                class="px-6 py-3 font-medium transition-colors">
-            <i class="fas fa-user mr-2"></i>Profile
-        </button>
-        <button @click="activeTab = 'account'" :class="activeTab === 'account' ? 'border-b-2 border-green-600 text-green-600' : 'text-gray-600 hover:text-gray-900'" 
-                class="px-6 py-3 font-medium transition-colors">
-            <i class="fas fa-lock mr-2"></i>Account
-        </button>
-        <button @click="activeTab = 'system'" :class="activeTab === 'system' ? 'border-b-2 border-green-600 text-green-600' : 'text-gray-600 hover:text-gray-900'" 
-                class="px-6 py-3 font-medium transition-colors">
-            <i class="fas fa-sliders-h mr-2"></i>System
-        </button>
-        <button @click="activeTab = 'notifications'" :class="activeTab === 'notifications' ? 'border-b-2 border-green-600 text-green-600' : 'text-gray-600 hover:text-gray-900'" 
-                class="px-6 py-3 font-medium transition-colors">
-            <i class="fas fa-bell mr-2"></i>Notifications
-        </button>
-    </div>
-
-    <!-- Profile Settings -->
-    <div x-show="activeTab === 'profile'" class="bg-white rounded-lg shadow-md p-6 space-y-6">
-        <h3 class="text-xl font-bold text-gray-900">Profile Settings</h3>
-        
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <!-- Profile Picture -->
-            <div class="md:col-span-1">
-                <div class="flex flex-col items-center">
-                    {% if user.profile_photo %}
-                        <img src="{{ user.profile_photo.url }}" alt="Profile" class="w-32 h-32 rounded-full object-cover mb-4">
-                    {% else %}
-                        <div class="w-32 h-32 rounded-full bg-green-200 flex items-center justify-center text-4xl font-bold text-green-600 mb-4">
-                            {{ user.get_full_name|first|upper }}
-                        </div>
-                    {% endif %}
-                    <button class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-                        <i class="fas fa-camera mr-2"></i>Change Photo
-                    </button>
-                </div>
-            </div>
-
-            <!-- Profile Form -->
-            <div class="md:col-span-2 space-y-4">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">First Name</label>
-                        <input type="text" value="{{ user.first_name }}" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
-                        <input type="text" value="{{ user.last_name }}" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500">
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
-                    <input type="email" value="{{ user.email }}" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500">
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
-                    <input type="tel" value="{{ user.phone|default:'' }}" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500">
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Bio</label>
-                    <textarea rows="3" placeholder="Tell us about yourself..." class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500"></textarea>
-                </div>
-
-                <button class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-                    <i class="fas fa-save mr-2"></i>Save Changes
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Account Settings -->
-    <div x-show="activeTab === 'account'" class="bg-white rounded-lg shadow-md p-6 space-y-6">
-        <h3 class="text-xl font-bold text-gray-900">Account Security</h3>
-
-        <div class="border-b border-gray-200 pb-6">
-            <h4 class="text-lg font-semibold text-gray-900 mb-4">Change Password</h4>
-            <div class="space-y-4 max-w-md">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Current Password</label>
-                    <input type="password" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">New Password</label>
-                    <input type="password" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Confirm Password</label>
-                    <input type="password" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500">
-                </div>
-                <button class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-                    <i class="fas fa-key mr-2"></i>Update Password
-                </button>
-            </div>
-        </div>
-
-        <div class="border-b border-gray-200 pb-6">
-            <h4 class="text-lg font-semibold text-gray-900 mb-4">Two-Factor Authentication</h4>
-            <p class="text-gray-600 mb-4">Add an extra layer of security to your account</p>
-            <button class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                <i class="fas fa-shield-alt mr-2"></i>Enable 2FA
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 px-4">
+        <div class="flex gap-2 border-b border-gray-200 overflow-x-auto">
+            <button @click="activeTab = 'profile'" :class="activeTab === 'profile' ? 'settings-tab active' : 'settings-tab'" class="settings-tab whitespace-nowrap">
+                <i class="fas fa-user mr-2"></i>Profile
+            </button>
+            <button @click="activeTab = 'account'" :class="activeTab === 'account' ? 'settings-tab active' : 'settings-tab'" class="settings-tab whitespace-nowrap">
+                <i class="fas fa-lock mr-2"></i>Account
+            </button>
+            <button @click="activeTab = 'notifications'" :class="activeTab === 'notifications' ? 'settings-tab active' : 'settings-tab'" class="settings-tab whitespace-nowrap">
+                <i class="fas fa-bell mr-2"></i>Notifications
             </button>
         </div>
+    </div>
 
-        <div>
-            <h4 class="text-lg font-semibold text-gray-900 mb-4">Active Sessions</h4>
-            <div class="space-y-3">
-                <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div>
-                        <p class="font-medium text-gray-900">Chrome on Windows</p>
-                        <p class="text-sm text-gray-600">Current device</p>
+    <div id="settings-message" class="settings-alert"></div>
+
+    <section x-show="activeTab === 'profile'" x-cloak class="bg-white rounded-lg shadow-md p-6 space-y-6">
+        <h3 class="text-xl font-bold text-gray-900">Profile Settings</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="md:col-span-1">
+                <div class="flex flex-col items-center text-center p-4 rounded-lg border border-gray-200 bg-gray-50">
+                    <img id="subadmin-profile-preview"
+                         src="{% if user.profile_photo %}{{ user.profile_photo.url }}{% else %}https://via.placeholder.com/160x160?text={{ user.get_full_name|first|upper|default:'U' }}{% endif %}"
+                         alt="Profile"
+                         class="w-40 h-40 rounded-full object-cover border border-gray-200 shadow-sm mb-4">
+                    <input type="file" id="subadmin-photo-input" name="profile_photo" accept="image/*" class="hidden">
+                    <button type="button" id="subadmin-photo-btn" class="px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                        <i class="fas fa-camera mr-2"></i>Upload Photo
+                    </button>
+                    <p class="text-xs text-gray-500 mt-3">Accepted: JPG, PNG, WEBP. Max size 5MB.</p>
+                </div>
+            </div>
+
+            <div class="md:col-span-2">
+                <form id="profile-settings-form" class="space-y-4">
+                    {% csrf_token %}
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">First Name</label>
+                            <input type="text" name="first_name" value="{{ user.first_name }}" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
+                            <input type="text" name="last_name" value="{{ user.last_name }}" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500">
+                        </div>
                     </div>
-                    <button class="text-red-600 hover:text-red-800">Logout</button>
-                </div>
-                <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                     <div>
-                        <p class="font-medium text-gray-900">Safari on Mac</p>
-                        <p class="text-sm text-gray-600">Last active 2 days ago</p>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+                        <input type="email" name="email" value="{{ user.email }}" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500">
                     </div>
-                    <button class="text-red-600 hover:text-red-800">Logout</button>
-                </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
+                        <input type="tel" name="phone" value="{{ user.phone|default:'' }}" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500">
+                    </div>
+                    <button type="submit" id="profile-save-btn" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                        <i class="fas fa-save mr-2"></i>Save Profile
+                    </button>
+                </form>
             </div>
         </div>
-    </div>
+    </section>
 
-    <!-- System Settings -->
-    <div x-show="activeTab === 'system'" class="bg-white rounded-lg shadow-md p-6 space-y-6">
-        <h3 class="text-xl font-bold text-gray-900">System Settings</h3>
-
-        <div class="space-y-4">
-            <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                <div>
-                    <p class="font-medium text-gray-900">Language</p>
-                    <p class="text-sm text-gray-600">Choose your preferred language</p>
-                </div>
-                <select class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500">
-                    <option>English</option>
-                    <option>Urdu</option>
-                    <option>Hindi</option>
-                </select>
+    <section x-show="activeTab === 'account'" x-cloak class="bg-white rounded-lg shadow-md p-6 space-y-6">
+        <h3 class="text-xl font-bold text-gray-900">Account Security</h3>
+        <form id="password-settings-form" class="space-y-4 max-w-lg">
+            {% csrf_token %}
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Current Password</label>
+                <input type="password" name="old_password" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500">
             </div>
-
-            <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                <div>
-                    <p class="font-medium text-gray-900">Timezone</p>
-                    <p class="text-sm text-gray-600">Set your local timezone</p>
-                </div>
-                <select class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500">
-                    <option>Pakistan Time (GMT+5)</option>
-                    <option>UTC</option>
-                    <option>Eastern Time</option>
-                </select>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">New Password</label>
+                <input type="password" name="new_password" required minlength="6" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500">
             </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Confirm New Password</label>
+                <input type="password" name="confirm_password" required minlength="6" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500">
+            </div>
+            <button type="submit" id="password-save-btn" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                <i class="fas fa-key mr-2"></i>Update Password
+            </button>
+        </form>
+    </section>
 
-            <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                <div>
-                    <p class="font-medium text-gray-900">Date Format</p>
-                    <p class="text-sm text-gray-600">Choose date format preference</p>
-                </div>
-                <select class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500">
-                    <option>DD/MM/YYYY</option>
-                    <option>MM/DD/YYYY</option>
-                    <option>YYYY-MM-DD</option>
-                </select>
+    <section x-show="activeTab === 'notifications'" x-cloak class="bg-white rounded-lg shadow-md p-6 space-y-4">
+        <h3 class="text-xl font-bold text-gray-900">Notifications</h3>
+        <p class="text-sm text-gray-600">Notification preferences are enabled by default for critical workflow updates.</p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div class="p-4 rounded-lg border border-gray-200 bg-gray-50">
+                <p class="font-medium text-gray-900">Email Alerts</p>
+                <p class="text-sm text-gray-600 mt-1">Loan status changes and important account alerts.</p>
+            </div>
+            <div class="p-4 rounded-lg border border-gray-200 bg-gray-50">
+                <p class="font-medium text-gray-900">Dashboard Live Updates</p>
+                <p class="text-sm text-gray-600 mt-1">Auto refresh on dashboard to keep counters real-time.</p>
             </div>
         </div>
-    </div>
-
-    <!-- Notification Settings -->
-    <div x-show="activeTab === 'notifications'" class="bg-white rounded-lg shadow-md p-6 space-y-6">
-        <h3 class="text-xl font-bold text-gray-900">Notification Preferences</h3>
-
-        <div class="space-y-4">
-            <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                <div>
-                    <p class="font-medium text-gray-900">Email Notifications</p>
-                    <p class="text-sm text-gray-600">Receive updates via email</p>
-                </div>
-                <label class="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" class="sr-only peer" checked>
-                    <div class="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
-                </label>
-            </div>
-
-            <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                <div>
-                    <p class="font-medium text-gray-900">Loan Updates</p>
-                    <p class="text-sm text-gray-600">Get notified about loan status changes</p>
-                </div>
-                <label class="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" class="sr-only peer" checked>
-                    <div class="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
-                </label>
-            </div>
-
-            <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                <div>
-                    <p class="font-medium text-gray-900">Staff Updates</p>
-                    <p class="text-sm text-gray-600">Notifications about your team</p>
-                </div>
-                <label class="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" class="sr-only peer">
-                    <div class="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
-                </label>
-            </div>
-
-            <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                <div>
-                    <p class="font-medium text-gray-900">Complaint Alerts</p>
-                    <p class="text-sm text-gray-600">Alerts for new complaints</p>
-                </div>
-                <label class="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" class="sr-only peer" checked>
-                    <div class="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
-                </label>
-            </div>
-        </div>
-
-        <button class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-            <i class="fas fa-save mr-2"></i>Save Preferences
-        </button>
-    </div>
+    </section>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+const settingsCsrfToken = getCookie('csrftoken');
+
+function showSettingsMessage(message, type = 'success') {
+    const messageBox = document.getElementById('settings-message');
+    if (!messageBox) return;
+    messageBox.classList.remove('success', 'error');
+    messageBox.classList.add(type === 'error' ? 'error' : 'success');
+    messageBox.textContent = message;
+    messageBox.style.display = 'block';
+    setTimeout(() => {
+        messageBox.style.display = 'none';
+    }, 3500);
+}
+
+function updateSubadminPhotoEverywhere(photoUrl) {
+    const preview = document.getElementById('subadmin-profile-preview');
+    if (preview) {
+        preview.src = photoUrl;
+    }
+    document.querySelectorAll('img[alt="Profile"]').forEach((img) => {
+        img.src = photoUrl;
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const photoInput = document.getElementById('subadmin-photo-input');
+    const photoBtn = document.getElementById('subadmin-photo-btn');
+    const profileForm = document.getElementById('profile-settings-form');
+    const passwordForm = document.getElementById('password-settings-form');
+
+    if (photoBtn && photoInput) {
+        photoBtn.addEventListener('click', () => photoInput.click());
+        photoInput.addEventListener('change', async () => {
+            if (!photoInput.files || !photoInput.files[0]) return;
+            const formData = new FormData();
+            formData.append('action', 'upload_photo');
+            formData.append('profile_photo', photoInput.files[0]);
+            photoBtn.disabled = true;
+            photoBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Uploading...';
+            try {
+                const response = await fetch('{% url "subadmin_settings" %}', {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': settingsCsrfToken },
+                    body: formData,
+                });
+                const data = await response.json();
+                if (!response.ok || !data.success) {
+                    throw new Error(data.message || data.error || 'Photo upload failed');
+                }
+                if (data.photo_url) {
+                    updateSubadminPhotoEverywhere(`${data.photo_url}?t=${Date.now()}`);
+                }
+                showSettingsMessage(data.message || 'Photo uploaded successfully');
+            } catch (error) {
+                showSettingsMessage(error.message || 'Unable to upload photo', 'error');
+            } finally {
+                photoBtn.disabled = false;
+                photoBtn.innerHTML = '<i class="fas fa-camera mr-2"></i>Upload Photo';
+            }
+        });
+    }
+
+    if (profileForm) {
+        profileForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const saveBtn = document.getElementById('profile-save-btn');
+            const formData = new FormData(profileForm);
+            formData.append('action', 'update_profile');
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Saving...';
+            try {
+                const response = await fetch('{% url "subadmin_settings" %}', {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': settingsCsrfToken },
+                    body: formData,
+                });
+                const data = await response.json();
+                if (!response.ok || !data.success) {
+                    throw new Error(data.message || data.error || 'Unable to save profile');
+                }
+                showSettingsMessage(data.message || 'Profile updated successfully');
+            } catch (error) {
+                showSettingsMessage(error.message || 'Unable to save profile', 'error');
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<i class="fas fa-save mr-2"></i>Save Profile';
+            }
+        });
+    }
+
+    if (passwordForm) {
+        passwordForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const saveBtn = document.getElementById('password-save-btn');
+            const formData = new FormData(passwordForm);
+            const newPassword = (formData.get('new_password') || '').toString();
+            const confirmPassword = (formData.get('confirm_password') || '').toString();
+
+            if (newPassword !== confirmPassword) {
+                showSettingsMessage('New password and confirm password do not match', 'error');
+                return;
+            }
+
+            formData.append('action', 'change_password');
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Updating...';
+            try {
+                const response = await fetch('{% url "subadmin_settings" %}', {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': settingsCsrfToken },
+                    body: formData,
+                });
+                const data = await response.json();
+                if (!response.ok || !data.success) {
+                    throw new Error(data.message || data.error || 'Unable to update password');
+                }
+                passwordForm.reset();
+                showSettingsMessage(data.message || 'Password updated successfully');
+            } catch (error) {
+                showSettingsMessage(error.message || 'Unable to update password', 'error');
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<i class="fas fa-key mr-2"></i>Update Password';
+            }
+        });
+    }
+});
+</script>
 {% endblock %}

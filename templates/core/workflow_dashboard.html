@@ -1,4 +1,4 @@
-{% extends 'core/base.html' %}
+﻿{% extends 'core/base.html' %}
 {% load static %}
 
 {% block title %}Workflow Dashboard{% endblock %}
@@ -185,7 +185,7 @@
         </div>
         <div class="stat-box">
             <div class="stat-number">{{ stats.follow_up_count }}</div>
-            <div class="stat-label">Follow-up</div>
+            <div class="stat-label">Banking Processing</div>
         </div>
         <div class="stat-box">
             <div class="stat-number">{{ stats.approved_count }}</div>
@@ -225,7 +225,7 @@
                     <tr>
                         <td>{{ app.applicant.full_name }}</td>
                         <td>{{ app.applicant.get_loan_type_display }}</td>
-                        <td>₹{{ app.applicant.loan_amount }}</td>
+                        <td>â‚¹{{ app.applicant.loan_amount }}</td>
                         <td><span class="status-badge badge-new">{{ app.status }}</span></td>
                         <td>{{ app.created_at|date:"M d, Y" }}</td>
                         <td>
@@ -305,7 +305,7 @@
                                 </a>
                                 {% if item.requires_follow_up %}
                                     <button class="btn btn-sm btn-warning" onclick="triggerFollowUp({{ item.app.applicant.id }})">
-                                        <i class="fas fa-bell"></i> Trigger Follow-up
+                                        <i class="fas fa-bell"></i> Move to Banking Processing
                                     </button>
                                 {% endif %}
                             </div>
@@ -322,9 +322,9 @@
         </div>
     {% endif %}
     
-    <!-- Required Follow-up (Admin Only) -->
+    <!-- Banking Processing (Admin Only) -->
     <div class="section-header">
-        <span><i class="fas fa-bell"></i> Required Follow-up <a href="{% url 'follow_up_applications' %}" class="btn btn-sm btn-light ml-2" style="margin-left: 10px;">View All</a></span>
+        <span><i class="fas fa-bell"></i> Banking Processing <a href="{% url 'follow_up_applications' %}" class="btn btn-sm btn-light ml-2" style="margin-left: 10px;">View All</a></span>
         <span class="section-count">{{ stats.follow_up_count }}</span>
     </div>
     
@@ -335,7 +335,7 @@
                     <tr>
                         <th>Applicant</th>
                         <th>Assigned To</th>
-                        <th>Follow-up Triggered</th>
+                        <th>Banking Processing Triggered</th>
                         <th>Count</th>
                         <th>Status</th>
                         <th>Actions</th>
@@ -408,7 +408,7 @@
                         <td>{{ app.applicant.full_name }}</td>
                         <td>{{ app.approved_by.first_name }}</td>
                         <td>{{ app.approved_at|date:"M d, Y" }}</td>
-                        <td>₹{{ app.applicant.loan_amount }}</td>
+                        <td>â‚¹{{ app.applicant.loan_amount }}</td>
                         <td><span class="status-badge badge-approved">{{ app.status }}</span></td>
                     </tr>
                     {% endfor %}
@@ -586,7 +586,7 @@ function triggerFollowUp(applicantId) {
 }
 
 function changeStatus(applicantId) {
-    const newStatus = prompt('Enter new status:\n1. Waiting for Processing\n2. Required Follow-up\n3. Approved\n4. Rejected\n5. Disbursed');
+    const newStatus = prompt('Enter new status:\n1. Waiting for Processing\n2. Banking Processing\n3. Approved\n4. Rejected\n5. Disbursed');
     
     const statusMap = {
         '1': 'Waiting for Processing',
@@ -623,3 +623,4 @@ function getCSRFToken() {
 }
 </script>
 {% endblock %}
+

@@ -1,0 +1,16 @@
+/* Subadmin panel custom overrides (matches templates/subadmin/base_subadmin.html) */
+
+.sidebar {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+/* Links in sidebar use class="sidebar-link" (not bootstrap nav-link) */
+.sidebar .sidebar-link {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.sidebar .sidebar-link.active,
+.sidebar .sidebar-link:hover {
+    background-color: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
+}

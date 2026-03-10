@@ -1,4 +1,4 @@
-{% extends 'core/base.html' %}
+﻿{% extends 'core/base.html' %}
 
 {% block title %}Reports - DSA Loan Management System{% endblock %}
 
@@ -25,7 +25,7 @@
                 <option value="">All Status</option>
                 <option value="new_entry">New Entry</option>
                 <option value="waiting">Waiting</option>
-                <option value="follow_up">Follow-up</option>
+                <option value="follow_up">Banking Processing</option>
                 <option value="approved">Approved</option>
                 <option value="rejected">Rejected</option>
                 <option value="disbursed">Disbursed</option>
@@ -68,7 +68,7 @@
                 <span class="stat-card-title">Total Amount</span>
                 <i class="bi bi-currency-rupee stat-card-icon"></i>
             </div>
-            <div class="stat-card-value" id="report-total-amount">₹0</div>
+            <div class="stat-card-value" id="report-total-amount">â‚¹0</div>
         </div>
     </div>
     <div class="col-md-3">
@@ -86,7 +86,7 @@
                 <span class="stat-card-title">Disbursed Amount</span>
                 <i class="bi bi-cash-coin stat-card-icon"></i>
             </div>
-            <div class="stat-card-value" id="report-disbursed-amount">₹0</div>
+            <div class="stat-card-value" id="report-disbursed-amount">â‚¹0</div>
         </div>
     </div>
 </div>
@@ -215,7 +215,7 @@
                     <td>${loan.customer_name}</td>
                     <td>${loan.mobile_number}</td>
                     <td><span class="badge bg-info">${loan.loan_type}</span></td>
-                    <td>₹${parseFloat(loan.loan_amount).toLocaleString('en-IN')}</td>
+                    <td>â‚¹${parseFloat(loan.loan_amount).toLocaleString('en-IN')}</td>
                     <td>${loan.bank_name}</td>
                     <td>${loan.assigned_agent_name || 'N/A'}</td>
                     <td><span class="badge bg-${getStatusColor(loan.status)}">${loan.status.replace('_', ' ')}</span></td>
@@ -243,9 +243,9 @@
         const approvalRate = totalLoans > 0 ? ((approved / totalLoans) * 100).toFixed(1) : 0;
         
         document.getElementById('report-total-loans').textContent = totalLoans;
-        document.getElementById('report-total-amount').textContent = `₹${totalAmount.toLocaleString('en-IN')}`;
+        document.getElementById('report-total-amount').textContent = `â‚¹${totalAmount.toLocaleString('en-IN')}`;
         document.getElementById('report-approval-rate').textContent = `${approvalRate}%`;
-        document.getElementById('report-disbursed-amount').textContent = `₹${disbursedAmount.toLocaleString('en-IN')}`;
+        document.getElementById('report-disbursed-amount').textContent = `â‚¹${disbursedAmount.toLocaleString('en-IN')}`;
     }
 
     // Update Charts
@@ -392,5 +392,6 @@
     });
 </script>
 {% endblock %}
+
 
 

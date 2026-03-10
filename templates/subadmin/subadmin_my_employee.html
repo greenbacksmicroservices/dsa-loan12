@@ -6,18 +6,27 @@
 
 {% block content %}
 <div class="space-y-6">
-    <!-- Header -->
     <div class="flex justify-between items-center">
         <div>
             <h1 class="text-3xl font-bold text-gray-900">Employee Management</h1>
-            <p class="text-gray-600 mt-1">Add and manage employees. Login uses Email and password.</p>
+            <p class="text-gray-600 mt-1">Manage employees working under your subadmin panel.</p>
         </div>
         <button type="button" id="toggle-employee-form" class="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all hover:shadow-lg flex items-center gap-2">
             <i class="fas fa-plus"></i> Add New Employee
         </button>
     </div>
 
-    <!-- Add Employee Form (Hidden by default) -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <p class="text-xs uppercase text-gray-500">Total Employees</p>
+            <p class="text-2xl font-bold text-gray-900 mt-1">{{ total_employees|default:0 }}</p>
+        </div>
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <p class="text-xs uppercase text-gray-500">Active Employees</p>
+            <p class="text-2xl font-bold text-emerald-600 mt-1">{{ active_employees|default:0 }}</p>
+        </div>
+    </div>
+
     <div id="employee-form" class="bg-white rounded-lg shadow-md p-6 hidden">
         <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg font-semibold text-gray-900">Add New Employee</h2>
@@ -27,23 +36,19 @@
             {% csrf_token %}
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                <input type="text" name="name" required
-                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500">
+                <input type="text" name="name" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500">
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Employee ID</label>
-                <input type="text" name="employee_id" required
-                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500">
+                <input type="text" name="employee_id" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500">
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <input type="email" name="email" required
-                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500">
+                <input type="email" name="email" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500">
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                <input type="text" name="phone" required
-                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500">
+                <input type="text" name="phone" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500">
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Gender</label>
@@ -56,32 +61,25 @@
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                <input type="password" name="password" required
-                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500">
+                <input type="password" name="password" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500">
             </div>
             <div class="md:col-span-2">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Address</label>
-                <textarea name="address" rows="2"
-                          class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"></textarea>
+                <textarea name="address" rows="2" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"></textarea>
             </div>
             <div class="md:col-span-2">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Profile Photo</label>
-                <input type="file" name="profile_photo" accept="image/*"
-                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500">
+                <input type="file" name="profile_photo" accept="image/*" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500">
             </div>
             <div class="md:col-span-2">
-                <button type="submit" class="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold">
-                    Save Employee
-                </button>
+                <button type="submit" class="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold">Save Employee</button>
             </div>
         </form>
     </div>
 
-    <!-- Search and Filter -->
     <div class="bg-white rounded-lg shadow-md p-4">
-        <form method="get" class="flex gap-4">
-            <input type="text" name="q" value="{{ search_query }}" placeholder="Search by name, email, phone, or employee ID..." 
-                   class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500">
+        <form method="get" class="flex gap-4 flex-wrap">
+            <input type="text" name="q" value="{{ search_query }}" placeholder="Search by name, email, phone, or employee ID..." class="flex-1 min-w-[240px] px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500">
             <select name="status" class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500">
                 <option value="" {% if not status_filter %}selected{% endif %}>All Statuses</option>
                 <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
@@ -91,76 +89,63 @@
         </form>
     </div>
 
-    <!-- Employee Table -->
     <div class="bg-white rounded-lg shadow-md overflow-hidden">
         <div class="overflow-x-auto">
-            <table class="w-full">
+            <table class="w-full min-w-[1320px]">
                 <thead class="bg-gray-50 border-b border-gray-200">
                     <tr>
-                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Employee ID</th>
-                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Name</th>
-                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Email</th>
-                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Phone</th>
-                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Gender</th>
-                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Address</th>
-                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Assigned Loans</th>
-                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Status</th>
-                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Joined</th>
-                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Actions</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Employee ID</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Photo</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Name</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Email</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Phone</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Assigned</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Approved</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Rejected</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Status</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Joined</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Actions</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-200">
                     {% if employees %}
                         {% for employee in employees %}
-                        <tr class="hover:bg-gray-50 transition-colors">
-                            <td class="px-6 py-4 text-sm text-gray-700 font-semibold">{{ employee.employee_id }}</td>
-                            <td class="px-6 py-4 text-sm">
-                                <div class="flex items-center gap-3">
-                                    {% if employee.photo_url %}
-                                        <img src="{{ employee.photo_url }}" alt="{{ employee.name }}" 
-                                             class="w-8 h-8 rounded-full object-cover">
-                                    {% else %}
-                                        <div class="w-8 h-8 rounded-full bg-blue-200 flex items-center justify-center text-sm font-semibold">
-                                            {{ employee.name|first|upper }}
-                                        </div>
-                                    {% endif %}
-                                    <span class="font-medium text-gray-900">{{ employee.name }}</span>
-                                </div>
-                            </td>
-                            <td class="px-6 py-4 text-sm text-gray-600">{{ employee.email }}</td>
-                            <td class="px-6 py-4 text-sm text-gray-600">{{ employee.phone }}</td>
-                            <td class="px-6 py-4 text-sm text-gray-600">{{ employee.gender }}</td>
-                            <td class="px-6 py-4 text-sm text-gray-600">{{ employee.address }}</td>
-                            <td class="px-6 py-4 text-sm font-semibold text-gray-900">{{ employee.assigned_loans }}</td>
-                            <td class="px-6 py-4 text-sm">
-                                {% if employee.status == 'Active' %}
-                                    <span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-semibold">Active</span>
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-4 py-3 text-sm font-semibold text-gray-900">{{ employee.employee_id }}</td>
+                            <td class="px-4 py-3 text-sm">
+                                {% if employee.photo_url %}
+                                    <img src="{{ employee.photo_url }}" alt="{{ employee.name }}" class="w-10 h-10 rounded-full object-cover border border-gray-200 shadow-sm" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                    <div class="w-10 h-10 rounded-full bg-slate-200 text-slate-700 font-semibold hidden items-center justify-center">{{ employee.name|first|upper }}</div>
                                 {% else %}
-                                    <span class="px-3 py-1 bg-red-100 text-red-800 rounded-full text-xs font-semibold">Inactive</span>
+                                    <div class="w-10 h-10 rounded-full bg-slate-200 text-slate-700 font-semibold flex items-center justify-center">{{ employee.name|first|upper }}</div>
                                 {% endif %}
                             </td>
-                            <td class="px-6 py-4 text-sm text-gray-600">{{ employee.created_date }}</td>
-                            <td class="px-6 py-4 text-sm">
+                            <td class="px-4 py-3 text-sm text-gray-900">{{ employee.name }}</td>
+                            <td class="px-4 py-3 text-sm text-gray-700">{{ employee.email }}</td>
+                            <td class="px-4 py-3 text-sm text-gray-700">{{ employee.phone }}</td>
+                            <td class="px-4 py-3 text-sm font-semibold text-gray-900">{{ employee.assigned_loans|default:0 }}</td>
+                            <td class="px-4 py-3 text-sm font-semibold text-emerald-600">{{ employee.approved|default:0 }}</td>
+                            <td class="px-4 py-3 text-sm font-semibold text-rose-600">{{ employee.rejected|default:0 }}</td>
+                            <td class="px-4 py-3 text-sm">
+                                {% if employee.status == 'Active' %}
+                                    <span class="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-semibold">Active</span>
+                                {% else %}
+                                    <span class="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs font-semibold">Inactive</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-4 py-3 text-sm text-gray-700">{{ employee.created_date }}</td>
+                            <td class="px-4 py-3 text-sm">
                                 <div class="flex gap-2">
-                                    <button type="button" class="text-blue-600 hover:text-blue-800 font-medium" title="View Details" onclick="openEmployeeModal('view', {{ employee.id }})">
-                                        <i class="fas fa-eye"></i>
-                                    </button>
-                                    <button type="button" class="text-green-600 hover:text-green-800 font-medium" title="Edit" onclick="openEmployeeModal('edit', {{ employee.id }})">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button type="button" class="text-red-600 hover:text-red-800 font-medium" title="Delete" onclick="deleteEmployee({{ employee.id }})">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
+                                    <button type="button" class="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700" onclick="openEmployeeModal('view', {{ employee.id }})">View</button>
+                                    <button type="button" class="px-2 py-1 bg-emerald-600 text-white rounded text-xs hover:bg-emerald-700" onclick="openEmployeeModal('edit', {{ employee.id }})">Edit</button>
+                                    <button type="button" class="px-2 py-1 bg-rose-600 text-white rounded text-xs hover:bg-rose-700" onclick="deleteEmployee({{ employee.id }})">Deactivate</button>
                                 </div>
                             </td>
                         </tr>
                         {% endfor %}
                     {% else %}
                     <tr>
-                        <td colspan="10" class="px-6 py-8 text-center text-gray-500">
-                            <i class="fas fa-inbox text-4xl mb-3"></i>
-                            <p class="mt-2">No employees found</p>
-                        </td>
+                        <td colspan="11" class="px-6 py-8 text-center text-gray-500">No employees found.</td>
                     </tr>
                     {% endif %}
                 </tbody>
@@ -168,16 +153,15 @@
         </div>
     </div>
 
-    <!-- Pagination -->
     {% if is_paginated %}
     <div class="flex justify-center gap-2">
         {% if page_obj.has_previous %}
             <a href="?page=1" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">First</a>
             <a href="?page={{ page_obj.previous_page_number }}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Previous</a>
         {% endif %}
-        
+
         <span class="px-4 py-2 text-gray-600">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
-        
+
         {% if page_obj.has_next %}
             <a href="?page={{ page_obj.next_page_number }}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Next</a>
             <a href="?page={{ page_obj.paginator.num_pages }}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Last</a>
@@ -186,65 +170,108 @@
     {% endif %}
 </div>
 
-<!-- Employee Modal -->
-<div id="employee-modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
-    <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl p-6">
-        <div class="flex items-center justify-between mb-4">
+<div id="employee-modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[92vh] overflow-hidden">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
             <h3 id="employee-modal-title" class="text-lg font-semibold text-gray-900">Employee Details</h3>
-            <button type="button" class="text-gray-500 hover:text-gray-700" onclick="closeEmployeeModal()">
-                <i class="fas fa-times"></i>
-            </button>
+            <button type="button" class="text-gray-500 hover:text-gray-700" onclick="closeEmployeeModal()"><i class="fas fa-times"></i></button>
         </div>
-        <form id="employee-modal-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <input type="hidden" id="employee-modal-id">
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                <input type="text" id="employee-modal-name" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+
+        <div class="p-6 overflow-y-auto max-h-[80vh] space-y-6">
+            <form id="employee-modal-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input type="hidden" id="employee-modal-id">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                    <input type="text" id="employee-modal-name" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Employee ID</label>
+                    <input type="text" id="employee-modal-employee-id" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <input type="email" id="employee-modal-email" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                    <input type="text" id="employee-modal-phone" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Gender</label>
+                    <select id="employee-modal-gender" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                    <select id="employee-modal-status" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                    </select>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                    <textarea id="employee-modal-address" rows="2" class="w-full px-4 py-2 border border-gray-300 rounded-lg"></textarea>
+                </div>
+                <div class="md:col-span-2" id="employee-modal-password-wrapper">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Password (leave blank to keep)</label>
+                    <input type="password" id="employee-modal-password" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="********">
+                </div>
+                <div class="md:col-span-2" id="employee-modal-photo-wrapper">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Profile Photo</label>
+                    <input type="file" id="employee-modal-photo" class="w-full px-4 py-2 border border-gray-300 rounded-lg" accept="image/*">
+                </div>
+                <div class="md:col-span-2 hidden" id="employee-modal-photo-preview-wrapper">
+                    <img id="employee-modal-photo-preview" src="" alt="Profile" class="w-20 h-20 rounded-full object-cover border">
+                </div>
+            </form>
+
+            <div id="employee-modal-summary" class="space-y-4 hidden">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div class="bg-slate-100 rounded-lg p-3"><p class="text-xs text-gray-500">Submitted</p><p id="emp-sum-submitted" class="text-xl font-bold text-gray-900">0</p></div>
+                    <div class="bg-slate-100 rounded-lg p-3"><p class="text-xs text-gray-500">Assigned</p><p id="emp-sum-assigned" class="text-xl font-bold text-gray-900">0</p></div>
+                    <div class="bg-emerald-100 rounded-lg p-3"><p class="text-xs text-emerald-700">Approved</p><p id="emp-sum-approved" class="text-xl font-bold text-emerald-700">0</p></div>
+                    <div class="bg-rose-100 rounded-lg p-3"><p class="text-xs text-rose-700">Rejected</p><p id="emp-sum-rejected" class="text-xl font-bold text-rose-700">0</p></div>
+                    <div class="bg-cyan-100 rounded-lg p-3"><p class="text-xs text-cyan-700">Bank Processing</p><p id="emp-sum-banking" class="text-xl font-bold text-cyan-700">0</p></div>
+                    <div class="bg-amber-100 rounded-lg p-3"><p class="text-xs text-amber-700">In Processing</p><p id="emp-sum-waiting" class="text-xl font-bold text-amber-700">0</p></div>
+                    <div class="bg-indigo-100 rounded-lg p-3"><p class="text-xs text-indigo-700">Disbursed</p><p id="emp-sum-disbursed" class="text-xl font-bold text-indigo-700">0</p></div>
+                    <div class="bg-gray-100 rounded-lg p-3"><p class="text-xs text-gray-600">Total Customers</p><p id="emp-sum-customers" class="text-xl font-bold text-gray-900">0</p></div>
+                </div>
+
+                <div class="border border-gray-200 rounded-lg overflow-hidden">
+                    <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
+                        <h4 class="text-sm font-semibold text-gray-800">Customer and Application Details</h4>
+                    </div>
+                    <div class="overflow-x-auto max-h-[360px]">
+                        <table class="w-full min-w-[1300px] text-sm">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-3 py-2 text-left">Loan ID</th>
+                                    <th class="px-3 py-2 text-left">Customer</th>
+                                    <th class="px-3 py-2 text-left">Mobile</th>
+                                    <th class="px-3 py-2 text-left">Type</th>
+                                    <th class="px-3 py-2 text-left">Amount</th>
+                                    <th class="px-3 py-2 text-left">Status</th>
+                                    <th class="px-3 py-2 text-left">Source</th>
+                                    <th class="px-3 py-2 text-left">Assigned To</th>
+                                    <th class="px-3 py-2 text-left">Under</th>
+                                    <th class="px-3 py-2 text-left">Assigned By</th>
+                                    <th class="px-3 py-2 text-left">Bank Remark</th>
+                                    <th class="px-3 py-2 text-left">Created</th>
+                                </tr>
+                            </thead>
+                            <tbody id="employee-customers-body" class="divide-y divide-gray-200">
+                                <tr><td colspan="12" class="px-3 py-6 text-center text-gray-500">No data.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Employee ID</label>
-                <input type="text" id="employee-modal-employee-id" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <input type="email" id="employee-modal-email" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                <input type="text" id="employee-modal-phone" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Gender</label>
-                <select id="employee-modal-gender" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                    <option value="Other">Other</option>
-                </select>
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                <select id="employee-modal-status" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                </select>
-            </div>
-            <div class="md:col-span-2">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Address</label>
-                <textarea id="employee-modal-address" rows="2" class="w-full px-4 py-2 border border-gray-300 rounded-lg"></textarea>
-            </div>
-            <div class="md:col-span-2" id="employee-modal-password-wrapper">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Password (leave blank to keep)</label>
-                <input type="password" id="employee-modal-password" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="********">
-            </div>
-            <div class="md:col-span-2" id="employee-modal-photo-wrapper">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Profile Photo</label>
-                <input type="file" id="employee-modal-photo" class="w-full px-4 py-2 border border-gray-300 rounded-lg" accept="image/*">
-            </div>
-            <div class="md:col-span-2 hidden" id="employee-modal-photo-preview-wrapper">
-                <img id="employee-modal-photo-preview" src="" alt="Profile" class="w-20 h-20 rounded-full object-cover border">
-            </div>
-        </form>
-        <div class="flex justify-end gap-3 mt-6">
+        </div>
+
+        <div class="flex justify-end gap-3 p-4 border-t border-gray-200 bg-gray-50">
             <button type="button" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg" onclick="closeEmployeeModal()">Close</button>
             <button type="button" id="employee-modal-save" class="px-4 py-2 bg-blue-600 text-white rounded-lg" onclick="saveEmployeeChanges()">Save Changes</button>
         </div>
@@ -252,9 +279,10 @@
 </div>
 
 <script>
-    const employeeForm = document.getElementById('employee-form');
-    const toggleEmployeeForm = document.getElementById('toggle-employee-form');
+const employeeForm = document.getElementById('employee-form');
+const toggleEmployeeForm = document.getElementById('toggle-employee-form');
 
+if (toggleEmployeeForm) {
     toggleEmployeeForm.addEventListener('click', () => {
         const isHidden = employeeForm.classList.contains('hidden');
         if (isHidden) {
@@ -266,146 +294,186 @@
             toggleEmployeeForm.innerHTML = '<i class="fas fa-plus"></i> Add New Employee';
         }
     });
+}
 
-    function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
             }
         }
-        return cookieValue;
+    }
+    return cookieValue;
+}
+
+const csrftoken = getCookie('csrftoken');
+
+function setEmployeeSummary(summary, customers) {
+    document.getElementById('emp-sum-submitted').textContent = summary.total_submitted_applications || 0;
+    document.getElementById('emp-sum-assigned').textContent = summary.total_assigned_applications || 0;
+    document.getElementById('emp-sum-approved').textContent = summary.approved || 0;
+    document.getElementById('emp-sum-rejected').textContent = summary.rejected || 0;
+    document.getElementById('emp-sum-banking').textContent = summary.banking_processing || 0;
+    document.getElementById('emp-sum-waiting').textContent = summary.waiting || 0;
+    document.getElementById('emp-sum-disbursed').textContent = summary.disbursed || 0;
+    document.getElementById('emp-sum-customers').textContent = summary.total_customers || 0;
+
+    const tbody = document.getElementById('employee-customers-body');
+    if (!customers || customers.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="12" class="px-3 py-6 text-center text-gray-500">No customer records found.</td></tr>';
+        return;
     }
 
-    const csrftoken = getCookie('csrftoken');
+    tbody.innerHTML = customers.map(item => `
+        <tr>
+            <td class="px-3 py-2 font-semibold text-gray-900">${item.loan_uid || item.loan_id || '-'}</td>
+            <td class="px-3 py-2 text-gray-700">${item.customer_name || '-'}</td>
+            <td class="px-3 py-2 text-gray-700">${item.mobile || '-'}</td>
+            <td class="px-3 py-2 text-gray-700">${item.loan_type || '-'}</td>
+            <td class="px-3 py-2 text-gray-900 font-semibold">Rs. ${Number(item.loan_amount || 0).toLocaleString('en-IN')}</td>
+            <td class="px-3 py-2 text-gray-700">${item.status_display || '-'}</td>
+            <td class="px-3 py-2 text-gray-700">${item.source || '-'}</td>
+            <td class="px-3 py-2 text-gray-700">${item.assigned_to || '-'}</td>
+            <td class="px-3 py-2 text-gray-700">${item.under_whom || '-'}</td>
+            <td class="px-3 py-2 text-gray-700">${item.assigned_by || '-'}</td>
+            <td class="px-3 py-2 text-gray-700">${item.bank_remark || '-'}</td>
+            <td class="px-3 py-2 text-gray-700">${item.created_at || '-'}</td>
+        </tr>
+    `).join('');
+}
 
-    function openEmployeeModal(mode, employeeId) {
-        fetch(`/subadmin/employees/${employeeId}/`)
-            .then(response => response.json())
-            .then(data => {
-                if (!data.success) {
-                    alert(data.error || 'Failed to load employee');
-                    return;
-                }
-                const employee = data.employee;
-                document.getElementById('employee-modal-id').value = employee.id;
-                document.getElementById('employee-modal-name').value = employee.name || '';
-                document.getElementById('employee-modal-employee-id').value = employee.employee_id || '';
-                document.getElementById('employee-modal-email').value = employee.email || '';
-                document.getElementById('employee-modal-phone').value = employee.phone || '';
-                document.getElementById('employee-modal-gender').value = employee.gender || 'Other';
-                document.getElementById('employee-modal-status').value = employee.status || 'active';
-                document.getElementById('employee-modal-address').value = employee.address || '';
-                document.getElementById('employee-modal-password').value = '';
-
-                const preview = document.getElementById('employee-modal-photo-preview');
-                const previewWrapper = document.getElementById('employee-modal-photo-preview-wrapper');
-                if (employee.photo_url) {
-                    preview.src = employee.photo_url;
-                    previewWrapper.classList.remove('hidden');
-                } else {
-                    preview.src = '';
-                    previewWrapper.classList.add('hidden');
-                }
-
-                setEmployeeModalMode(mode);
-                document.getElementById('employee-modal').classList.remove('hidden');
-                document.getElementById('employee-modal').classList.add('flex');
-            })
-            .catch(() => alert('Failed to load employee'));
-    }
-
-    function setEmployeeModalMode(mode) {
-        const isView = mode === 'view';
-        document.getElementById('employee-modal-title').textContent = isView ? 'Employee Details' : 'Edit Employee';
-        document.getElementById('employee-modal-save').classList.toggle('hidden', isView);
-        document.getElementById('employee-modal-password-wrapper').classList.toggle('hidden', isView);
-        document.getElementById('employee-modal-photo-wrapper').classList.toggle('hidden', isView);
-
-        const fields = [
-            'employee-modal-name',
-            'employee-modal-employee-id',
-            'employee-modal-email',
-            'employee-modal-phone',
-            'employee-modal-gender',
-            'employee-modal-status',
-            'employee-modal-address',
-            'employee-modal-password',
-            'employee-modal-photo'
-        ];
-        fields.forEach(id => {
-            const el = document.getElementById(id);
-            if (el) {
-                el.disabled = isView;
+function openEmployeeModal(mode, employeeId) {
+    fetch(`/subadmin/employees/${employeeId}/`)
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) {
+                alert(data.error || 'Failed to load employee');
+                return;
             }
-        });
-    }
 
-    function closeEmployeeModal() {
-        const modal = document.getElementById('employee-modal');
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
-    }
+            const employee = data.employee || {};
+            document.getElementById('employee-modal-id').value = employee.id || '';
+            document.getElementById('employee-modal-name').value = employee.name || '';
+            document.getElementById('employee-modal-employee-id').value = employee.employee_id || '';
+            document.getElementById('employee-modal-email').value = employee.email || '';
+            document.getElementById('employee-modal-phone').value = employee.phone || '';
+            document.getElementById('employee-modal-gender').value = employee.gender || 'Other';
+            document.getElementById('employee-modal-status').value = employee.status || 'active';
+            document.getElementById('employee-modal-address').value = employee.address || '';
+            document.getElementById('employee-modal-password').value = '';
 
-    function saveEmployeeChanges() {
-        const employeeId = document.getElementById('employee-modal-id').value;
-        const formData = new FormData();
-        formData.append('name', document.getElementById('employee-modal-name').value);
-        formData.append('employee_id', document.getElementById('employee-modal-employee-id').value);
-        formData.append('email', document.getElementById('employee-modal-email').value);
-        formData.append('phone', document.getElementById('employee-modal-phone').value);
-        formData.append('gender', document.getElementById('employee-modal-gender').value);
-        formData.append('status', document.getElementById('employee-modal-status').value);
-        formData.append('address', document.getElementById('employee-modal-address').value);
+            const preview = document.getElementById('employee-modal-photo-preview');
+            const previewWrapper = document.getElementById('employee-modal-photo-preview-wrapper');
+            if (employee.photo_url) {
+                preview.src = employee.photo_url;
+                previewWrapper.classList.remove('hidden');
+            } else {
+                preview.src = '';
+                previewWrapper.classList.add('hidden');
+            }
 
-        const password = document.getElementById('employee-modal-password').value;
-        if (password) {
-            formData.append('password', password);
-        }
+            setEmployeeSummary(data.summary || {}, data.customers || []);
+            setEmployeeModalMode(mode);
 
-        const photoInput = document.getElementById('employee-modal-photo');
-        if (photoInput.files && photoInput.files[0]) {
-            formData.append('profile_photo', photoInput.files[0]);
-        }
-
-        fetch(`/subadmin/employees/${employeeId}/update/`, {
-            method: 'POST',
-            headers: { 'X-CSRFToken': csrftoken },
-            body: formData
+            const modal = document.getElementById('employee-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
         })
-            .then(response => response.json())
-            .then(data => {
-                if (!data.success) {
-                    alert(data.error || 'Failed to update employee');
-                    return;
-                }
-                window.location.reload();
-            })
-            .catch(() => alert('Failed to update employee'));
+        .catch(() => alert('Failed to load employee'));
+}
+
+function setEmployeeModalMode(mode) {
+    const isView = mode === 'view';
+    document.getElementById('employee-modal-title').textContent = isView ? 'Employee Details' : 'Edit Employee';
+    document.getElementById('employee-modal-save').classList.toggle('hidden', isView);
+    document.getElementById('employee-modal-password-wrapper').classList.toggle('hidden', isView);
+    document.getElementById('employee-modal-photo-wrapper').classList.toggle('hidden', isView);
+    document.getElementById('employee-modal-summary').classList.toggle('hidden', !isView);
+
+    const fields = [
+        'employee-modal-name',
+        'employee-modal-employee-id',
+        'employee-modal-email',
+        'employee-modal-phone',
+        'employee-modal-gender',
+        'employee-modal-status',
+        'employee-modal-address',
+        'employee-modal-password',
+        'employee-modal-photo',
+    ];
+    fields.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.disabled = isView;
+        }
+    });
+}
+
+function closeEmployeeModal() {
+    const modal = document.getElementById('employee-modal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+}
+
+function saveEmployeeChanges() {
+    const employeeId = document.getElementById('employee-modal-id').value;
+    const formData = new FormData();
+    formData.append('name', document.getElementById('employee-modal-name').value);
+    formData.append('employee_id', document.getElementById('employee-modal-employee-id').value);
+    formData.append('email', document.getElementById('employee-modal-email').value);
+    formData.append('phone', document.getElementById('employee-modal-phone').value);
+    formData.append('gender', document.getElementById('employee-modal-gender').value);
+    formData.append('status', document.getElementById('employee-modal-status').value);
+    formData.append('address', document.getElementById('employee-modal-address').value);
+
+    const password = document.getElementById('employee-modal-password').value;
+    if (password) {
+        formData.append('password', password);
     }
 
-    function deleteEmployee(employeeId) {
-        if (!confirm('Are you sure you want to delete this employee?')) {
-            return;
-        }
-        fetch(`/subadmin/employees/${employeeId}/delete/`, {
-            method: 'POST',
-            headers: { 'X-CSRFToken': csrftoken }
-        })
-            .then(response => response.json())
-            .then(data => {
-                if (!data.success) {
-                    alert(data.error || 'Failed to delete employee');
-                    return;
-                }
-                window.location.reload();
-            })
-            .catch(() => alert('Failed to delete employee'));
+    const photoInput = document.getElementById('employee-modal-photo');
+    if (photoInput.files && photoInput.files[0]) {
+        formData.append('profile_photo', photoInput.files[0]);
     }
+
+    fetch(`/subadmin/employees/${employeeId}/update/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrftoken },
+        body: formData,
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) {
+                alert(data.error || 'Failed to update employee');
+                return;
+            }
+            window.location.reload();
+        })
+        .catch(() => alert('Failed to update employee'));
+}
+
+function deleteEmployee(employeeId) {
+    if (!confirm('Are you sure you want to deactivate this employee?')) {
+        return;
+    }
+    fetch(`/subadmin/employees/${employeeId}/delete/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrftoken },
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) {
+                alert(data.error || 'Failed to delete employee');
+                return;
+            }
+            window.location.reload();
+        })
+        .catch(() => alert('Failed to delete employee'));
+}
 </script>
 {% endblock %}

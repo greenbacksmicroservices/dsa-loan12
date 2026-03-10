@@ -1,4 +1,4 @@
-{% extends 'core/base.html' %}
+﻿{% extends 'core/base.html' %}
 {% load static %}
 
 {% block title %}Admin Dashboard - DSA Loan Management System{% endblock %}
@@ -60,14 +60,14 @@
         </div>
     </div>
 
-    <!-- Required Follow-up Card -->
+    <!-- Banking Processing Card -->
     <div class="col-lg-2 col-md-4 col-sm-6">
         <div class="summary-card summary-card-followup" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); color: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(254, 225, 64, 0.2); cursor: pointer; transition: transform 0.3s ease;" onclick="filterByStatus('follow_up')">
             <div class="card-icon" style="font-size: 32px; margin-bottom: 12px;">
                 <i class="fas fa-phone-alt"></i>
             </div>
             <div class="card-content">
-                <div class="card-label" style="font-size: 13px; opacity: 0.9; margin-bottom: 8px;">Follow-up</div>
+                <div class="card-label" style="font-size: 13px; opacity: 0.9; margin-bottom: 8px;">Banking Processing</div>
                 <div class="card-count" id="stat-follow-up" style="font-size: 28px; font-weight: 700;">0</div>
             </div>
         </div>
@@ -316,7 +316,7 @@
         pieChartInstance = new Chart(ctx, {
             type: 'pie',
             data: {
-                labels: ['Approved', 'Waiting', 'Rejected', 'Disbursed', 'New Entry', 'Follow-up'],
+                labels: ['Approved', 'Waiting', 'Rejected', 'Disbursed', 'New Entry', 'Banking Processing'],
                 datasets: [{
                     data: chartData,
                     backgroundColor: [
@@ -325,7 +325,7 @@
                         '#ef4444',  // Red - Rejected
                         '#3b82f6',  // Blue - Disbursed
                         '#6366f1',  // Indigo - New Entry
-                        '#f97316'   // Orange - Follow-up
+                        '#f97316'   // Orange - Banking Processing
                     ],
                     borderWidth: 2,
                     borderColor: '#fff'
@@ -474,14 +474,14 @@
             throw new Error('Failed to create loan entry');
         })
         .then(data => {
-            showAlert('success', `✓ Loan entry created successfully! Loan ID: ${data.id}`);
+            showAlert('success', `âœ“ Loan entry created successfully! Loan ID: ${data.id}`);
             document.getElementById('quickLoanForm').reset();
             bootstrap.Modal.getInstance(document.getElementById('quickLoanModal')).hide();
             loadAdminDashboardStats();
         })
         .catch(error => {
             console.error('Error:', error);
-            showAlert('danger', '✗ Failed to create loan entry. Please try again.');
+            showAlert('danger', 'âœ— Failed to create loan entry. Please try again.');
         });
     }
 
@@ -627,3 +627,4 @@
 </script>
 <script src="{% static 'js/admin-data-manager.js' %}"></script>
 {% endblock %}
+

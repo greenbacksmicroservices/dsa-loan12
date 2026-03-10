@@ -16,8 +16,13 @@ from rest_framework import status
 import json
 import logging
 
-from .models import Loan, User, ActivityLog
+from .models import Loan, User, ActivityLog, LoanStatusHistory
 from .decorators import admin_required
+from .loan_sync import (
+    application_status_to_loan_status,
+    find_related_loan_application,
+    sync_loan_to_application,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -90,10 +95,33 @@ def admin_assign_loan_to_employee(request):
             }, status=status.HTTP_400_BAD_REQUEST)
         
         # ===== PERFORM ASSIGNMENT =====
+        related_application = find_related_loan_application(loan)
+        previous_app_status_key = application_status_to_loan_status(related_application.status) if related_application else None
+        previous_assigned_employee_id = related_application.assigned_employee_id if related_application else None
+
         loan.assigned_employee = employee
         loan.assigned_at = timezone.now()
         loan.status = 'waiting'  # Change status to WAITING
+        assignment_line = f"Assigned By Admin: {request.user.get_full_name() or request.user.username} -> Employee: {employee.get_full_name() or employee.username}"
+        loan.remarks = f"{loan.remarks}\n{assignment_line}".strip() if loan.remarks else assignment_line
         loan.save()
+
+        synced_application = sync_loan_to_application(
+            loan,
+            assigned_by_user=request.user,
+            create_if_missing=True,
+        )
+        if synced_application:
+            current_app_status_key = application_status_to_loan_status(synced_application.status)
+            if previous_app_status_key != current_app_status_key or previous_assigned_employee_id != employee.id:
+                LoanStatusHistory.objects.create(
+                    loan_application=synced_application,
+                    from_status=previous_app_status_key,
+                    to_status=current_app_status_key,
+                    changed_by=request.user,
+                    reason=f'Assigned to {employee.get_full_name() or employee.username} by admin',
+                    is_auto_triggered=False,
+                )
         
         # Log activity
         ActivityLog.objects.create(
@@ -157,6 +185,9 @@ def admin_reassign_loan(request, loan_id):
         
         # Store old assignment info for log
         old_employee = loan.assigned_employee
+        related_application = find_related_loan_application(loan)
+        previous_app_status_key = application_status_to_loan_status(related_application.status) if related_application else None
+        previous_assigned_employee_id = related_application.assigned_employee_id if related_application else None
         
         # Reassign
         loan.assigned_employee = new_employee
@@ -168,7 +199,26 @@ def admin_reassign_loan(request, loan_id):
             loan.requires_follow_up = False
             loan.follow_up_triggered_at = None
 
+        assignment_line = f"Assigned By Admin: {request.user.get_full_name() or request.user.username} -> Employee: {new_employee.get_full_name() or new_employee.username}"
+        loan.remarks = f"{loan.remarks}\n{assignment_line}".strip() if loan.remarks else assignment_line
         loan.save()
+
+        synced_application = sync_loan_to_application(
+            loan,
+            assigned_by_user=request.user,
+            create_if_missing=True,
+        )
+        if synced_application:
+            current_app_status_key = application_status_to_loan_status(synced_application.status)
+            if previous_app_status_key != current_app_status_key or previous_assigned_employee_id != new_employee.id:
+                LoanStatusHistory.objects.create(
+                    loan_application=synced_application,
+                    from_status=previous_app_status_key,
+                    to_status=current_app_status_key,
+                    changed_by=request.user,
+                    reason=f'Reassigned to {new_employee.get_full_name() or new_employee.username} by admin',
+                    is_auto_triggered=False,
+                )
         
         # Log activity
         old_emp_name = old_employee.get_full_name() if old_employee else 'None'

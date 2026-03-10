@@ -152,12 +152,12 @@
         </div>
 
         <div class="col-lg-2 col-md-4 col-sm-6 col-12">
-            <a href="/admin/all-loans/?status=follow_up" class="stat-card card-secondary" title="View Follow-ups">
+            <a href="/admin/all-loans/?status=follow_up" class="stat-card card-secondary" title="View Banking Processing">
                 <div class="stat-card-content">
                     <i class="fas fa-phone-volume stat-icon"></i>
-                    <h3>Follow-up</h3>
+                    <h3>Banking Processing</h3>
                     <div class="number" id="stat-followup">{{ followup_count }}</div>
-                    <p>Need Follow-up</p>
+                    <p>Banking Processing Queue</p>
                     <span class="view-link">View Details →</span>
                 </div>
             </a>
@@ -329,7 +329,7 @@
             statusChart = new Chart(ctx2, {
                 type: 'doughnut',
                 data: {
-                    labels: ['New Entry', 'In Processing', 'Follow-up', 'Approved', 'Rejected', 'Disbursed'],
+                    labels: ['New Entry', 'In Processing', 'Banking Processing', 'Approved', 'Rejected', 'Disbursed'],
                     datasets: [
                         {
                             data: [1, 0, 0, 2, 1, 1],

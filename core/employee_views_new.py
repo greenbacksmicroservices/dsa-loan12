@@ -24,7 +24,7 @@ import json
 from decimal import Decimal
 from datetime import timedelta
 
-from .models import User, Loan, Agent, ActivityLog, LoanDocument
+from .models import User, Loan, LoanApplication, Agent, ActivityLog, LoanDocument
 
 # ============================================================
 # EMPLOYEE DASHBOARD
@@ -118,7 +118,24 @@ def employee_all_loans_api(request):
     - limit: Records per page
     """
     if request.user.role != 'employee':
-        return Response({'error': 'Only employees can access'}, status=status.HTTP_403_FORBIDDEN)
+        return Response({
+            'success': False,
+            'role_mismatch': True,
+            'message': 'Employee context not active',
+            'summary': {
+                'total_loans': 0,
+                'approved': 0,
+                'rejected': 0,
+                'disbursed': 0,
+            },
+            'loans': [],
+            'pagination': {
+                'current_page': 1,
+                'total_pages': 0,
+                'total_items': 0,
+                'items_per_page': 0,
+            }
+        }, status=status.HTTP_200_OK)
     
     try:
         # Get filter parameters
@@ -126,59 +143,112 @@ def employee_all_loans_api(request):
         status_filter = request.GET.get('status', '').strip()
         page = int(request.GET.get('page', 1))
         limit = int(request.GET.get('limit', 20))
-        
-        # Base queryset: ONLY loans assigned to this employee
+
+        # Primary source: Loan table
         queryset = Loan.objects.filter(
             assigned_employee=request.user
         ).select_related('assigned_agent', 'created_by').order_by('-created_at')
-        
-        # Apply filters
-        if search:
-            queryset = queryset.filter(
-                Q(full_name__icontains=search) |
-                Q(mobile_number__icontains=search) |
-                Q(email__icontains=search)
-            )
-        
-        if status_filter:
-            queryset = queryset.filter(status=status_filter)
-        
-        # Get summary counts from SAME queryset
-        total_loans = queryset.count()
-        approved_count = queryset.filter(status='approved').count()
-        rejected_count = queryset.filter(status='rejected').count()
-        disbursed_count = queryset.filter(status='disbursed').count()
-        
-        # Pagination
-        from django.core.paginator import Paginator
-        paginator = Paginator(queryset, limit)
-        page_obj = paginator.get_page(page)
-        
-        # Build loan data
-        loans_data = []
-        for loan in page_obj:
-            submitted_by = 'Unknown'
-            if loan.assigned_agent:
-                submitted_by = loan.assigned_agent.name or loan.assigned_agent.user.get_full_name() if loan.assigned_agent.user else 'Unknown'
-            
-            hours_pending = loan.get_hours_since_assignment() if hasattr(loan, 'get_hours_since_assignment') else 0
-            
-            loans_data.append({
-                'id': loan.id,
-                'loan_id': f'LOAN-{loan.id:06d}',
-                'applicant_name': loan.full_name or 'N/A',
-                'mobile': loan.mobile_number or '',
-                'loan_type': loan.loan_type or 'N/A',
-                'loan_amount': float(loan.loan_amount) if loan.loan_amount else 0,
-                'tenure_months': loan.tenure_months or 0,
-                'remarks': loan.remarks or '',
-                'submitted_by': submitted_by,
-                'assigned_date': loan.assigned_at.strftime('%Y-%m-%d') if loan.assigned_at else '-',
-                'created_date': loan.created_at.strftime('%Y-%m-%d') if loan.created_at else '-',
-                'created_time': loan.created_at.strftime('%H:%M') if loan.created_at else '',
-                'status': loan.status,
-                'status_display': loan.get_status_display(),
-            })
+
+        # If no legacy loans, fallback to LoanApplication workflow table
+        if not queryset.exists():
+            workflow_status_map = {
+                'new_entry': 'New Entry',
+                'waiting': 'Waiting for Processing',
+                'follow_up': 'Required Follow-up',
+                'approved': 'Approved',
+                'rejected': 'Rejected',
+                'disbursed': 'Disbursed',
+            }
+            reverse_workflow_status_map = {v: k for k, v in workflow_status_map.items()}
+
+            app_qs = LoanApplication.objects.filter(
+                assigned_employee=request.user
+            ).select_related('applicant', 'assigned_agent', 'assigned_by').order_by('-created_at')
+
+            if search:
+                app_qs = app_qs.filter(
+                    Q(applicant__full_name__icontains=search) |
+                    Q(applicant__mobile__icontains=search) |
+                    Q(applicant__email__icontains=search)
+                )
+
+            if status_filter:
+                mapped_status = workflow_status_map.get(status_filter)
+                if mapped_status:
+                    app_qs = app_qs.filter(status=mapped_status)
+
+            total_loans = app_qs.count()
+            approved_count = app_qs.filter(status='Approved').count()
+            rejected_count = app_qs.filter(status='Rejected').count()
+            disbursed_count = app_qs.filter(status='Disbursed').count()
+
+            from django.core.paginator import Paginator
+            paginator = Paginator(app_qs, limit)
+            page_obj = paginator.get_page(page)
+
+            loans_data = []
+            for app in page_obj:
+                applicant = app.applicant
+                submitted_by = app.assigned_agent.name if app.assigned_agent else 'Unknown'
+                compact_status = reverse_workflow_status_map.get(app.status, status_filter or 'waiting')
+                loans_data.append({
+                    'id': app.id,
+                    'loan_id': f'APP-{app.id:06d}',
+                    'applicant_name': applicant.full_name or 'N/A',
+                    'mobile': applicant.mobile or '',
+                    'loan_type': applicant.loan_type or 'N/A',
+                    'loan_amount': float(applicant.loan_amount) if applicant.loan_amount else 0,
+                    'tenure_months': applicant.tenure_months or 0,
+                    'remarks': app.approval_notes or app.rejection_reason or '',
+                    'submitted_by': submitted_by,
+                    'assigned_date': app.assigned_at.strftime('%Y-%m-%d') if app.assigned_at else '-',
+                    'created_date': app.created_at.strftime('%Y-%m-%d') if app.created_at else '-',
+                    'created_time': app.created_at.strftime('%H:%M') if app.created_at else '',
+                    'status': compact_status,
+                    'status_display': app.status,
+                })
+        else:
+            if search:
+                queryset = queryset.filter(
+                    Q(full_name__icontains=search) |
+                    Q(mobile_number__icontains=search) |
+                    Q(email__icontains=search)
+                )
+
+            if status_filter:
+                queryset = queryset.filter(status=status_filter)
+
+            total_loans = queryset.count()
+            approved_count = queryset.filter(status='approved').count()
+            rejected_count = queryset.filter(status='rejected').count()
+            disbursed_count = queryset.filter(status='disbursed').count()
+
+            from django.core.paginator import Paginator
+            paginator = Paginator(queryset, limit)
+            page_obj = paginator.get_page(page)
+
+            loans_data = []
+            for loan in page_obj:
+                submitted_by = 'Unknown'
+                if loan.assigned_agent:
+                    submitted_by = loan.assigned_agent.name or loan.assigned_agent.user.get_full_name() if loan.assigned_agent.user else 'Unknown'
+
+                loans_data.append({
+                    'id': loan.id,
+                    'loan_id': f'LOAN-{loan.id:06d}',
+                    'applicant_name': loan.full_name or 'N/A',
+                    'mobile': loan.mobile_number or '',
+                    'loan_type': loan.loan_type or 'N/A',
+                    'loan_amount': float(loan.loan_amount) if loan.loan_amount else 0,
+                    'tenure_months': loan.tenure_months or 0,
+                    'remarks': loan.remarks or '',
+                    'submitted_by': submitted_by,
+                    'assigned_date': loan.assigned_at.strftime('%Y-%m-%d') if loan.assigned_at else '-',
+                    'created_date': loan.created_at.strftime('%Y-%m-%d') if loan.created_at else '-',
+                    'created_time': loan.created_at.strftime('%H:%M') if loan.created_at else '',
+                    'status': loan.status,
+                    'status_display': loan.get_status_display(),
+                })
         
         return Response({
             'success': True,
@@ -298,20 +368,47 @@ def employee_new_entry_requests_api(request):
 # EMPLOYEE LOAN DETAIL PAGE
 # ============================================================
 
+def _employee_has_assigned_loan(user, loan_id):
+    """Check assignment in both LoanApplication and legacy Loan tables."""
+    return (
+        LoanApplication.objects.filter(id=loan_id, assigned_employee=user).exists()
+        or Loan.objects.filter(id=loan_id, assigned_employee=user).exists()
+    )
+
+
 @login_required
 @require_http_methods(["GET"])
 def employee_loan_detail_page(request, loan_id):
     """Render loan detail page for employee"""
     if request.user.role != 'employee':
         return redirect('dashboard')
-    
-    try:
-        # Verify loan is assigned to this employee
-        loan = Loan.objects.get(id=loan_id, assigned_employee=request.user)
-        return render(request, 'core/employee/loan_detail.html', {'loan_id': loan_id})
-    except Loan.DoesNotExist:
+
+    if not _employee_has_assigned_loan(request.user, loan_id):
         messages.error(request, 'Loan not found or not assigned to you')
         return redirect('employee_new_entry_request')
+
+    return render(request, 'core/employee/loan_detail.html', {'loan_id': loan_id})
+
+
+@login_required
+@require_http_methods(["GET"])
+def employee_bank_processing_page(request, loan_id):
+    """Dedicated bank processing page for an assigned loan."""
+    if request.user.role != 'employee':
+        return redirect('dashboard')
+
+    if not _employee_has_assigned_loan(request.user, loan_id):
+        messages.error(request, 'Loan not found or not assigned to you')
+        return redirect('employee_new_entry_request')
+
+    return render(
+        request,
+        'core/employee/loan_detail.html',
+        {
+            'loan_id': loan_id,
+            'is_bank_processing_page': True,
+        },
+    )
 
 
 @api_view(['GET'])

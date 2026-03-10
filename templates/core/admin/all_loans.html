@@ -332,11 +332,22 @@
 
 <div class="loans-container">
     <div class="container-fluid">
+        {% if messages %}
+        <div class="mb-3">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
         <!-- Header -->
         <div class="loans-header">
             <div>
         <h1 class="loans-title">All Loans{% if status_filter %} - {{ status_filter|title }}{% endif %}</h1>
-                <span class="loans-count">Total: {{ loans|length }} Loans</span>
+                <span class="loans-count" id="loansCountText">Total: {{ loans|length }} Loans</span>
             </div>
         </div>
         
@@ -358,17 +369,20 @@
                     <tr>
                         <th style="width: 6%;">Photo</th>
                         <th style="width: 10%;">Loan ID</th>
-                        <th style="width: 18%;">Applicant</th>
-                        <th style="width: 12%;">Type</th>
-                        <th style="width: 12%;">Amount</th>
-                        <th style="width: 12%;">Status</th>
-                        <th style="width: 12%;">Date</th>
-                        <th style="width: 18%;">Action</th>
+                        <th style="width: 14%;">Applicant</th>
+                        <th style="width: 10%;">Type</th>
+                        <th style="width: 10%;">Amount</th>
+                        <th style="width: 10%;">Status</th>
+                        <th style="width: 14%;">Created Under</th>
+                        <th style="width: 14%;">Assigned To</th>
+                        <th style="width: 14%;">Assigned By</th>
+                        <th style="width: 8%;">Date</th>
+                        <th style="width: 16%;">Action</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for loan in loans %}
-                    <tr data-search="{{ loan.full_name|lower }},{{ loan.email|lower }},{{ loan.mobile_number }}">
+                    <tr data-search="{{ loan.full_name|lower }},{{ loan.email|lower }},{{ loan.mobile_number }}" data-loan-id="{{ loan.id }}">
                         <td>
                             <div class="borrower-photo" title="{{ loan.full_name }}">
                                 {{ loan.full_name|first|upper }}
@@ -387,25 +401,28 @@
                                 {{ loan.get_status_display }}
                             </span>
                         </td>
+                        <td><span class="date-text">{{ loan.created_under_display|default:"-" }}</span></td>
+                        <td><span class="date-text">{{ loan.assigned_to_display|default:"-" }}</span></td>
+                        <td><span class="date-text">{{ loan.assigned_by_display|default:"-" }}</span></td>
                         <td><span class="date-text">{{ loan.created_at|date:"M d, Y" }}</span></td>
                         <td>
                             <div class="action-buttons">
-                                <a href="#" class="btn-action btn-view" title="View Loan Details" onclick="viewLoanDetail({{ loan.id }}, '{{ loan.full_name }}', '{{ loan.email }}', '{{ loan.mobile_number }}', '{{ loan.loan_type }}', '{{ loan.loan_amount }}', '{{ loan.status }}')">
+                                <a href="#" class="btn-action btn-view" title="View Loan Details" onclick="viewLoanDetail({{ loan.id }}, '{{ loan.full_name|escapejs }}', '{{ loan.email|default:''|escapejs }}', '{{ loan.mobile_number|default:''|escapejs }}', '{{ loan.loan_type|default:''|escapejs }}', '{{ loan.loan_amount|default:'0'|escapejs }}', '{{ loan.status|default:''|escapejs }}'); return false;">
                                     <i class="fas fa-eye"></i> View
                                 </a>
                                 {% if loan.status == 'new_entry' %}
-                                <a href="#" class="btn-action btn-assign" title="Assign to Employee" onclick="openAssignModal({{ loan.id }}, '{{ loan.full_name|escapejs }}', 'assign')">
+                                <a href="#" class="btn-action btn-assign" title="Assign to Employee" onclick="openAssignModal({{ loan.id }}, '{{ loan.full_name|escapejs }}', 'assign'); return false;">
                                     <i class="fas fa-user-plus"></i> Assign
                                 </a>
                                 {% elif loan.status == 'follow_up' %}
-                                <a href="#" class="btn-action btn-reassign" title="Reassign to Employee" onclick="openAssignModal({{ loan.id }}, '{{ loan.full_name|escapejs }}', 'reassign')">
+                                <a href="#" class="btn-action btn-reassign" title="Reassign to Employee" onclick="openAssignModal({{ loan.id }}, '{{ loan.full_name|escapejs }}', 'reassign'); return false;">
                                     <i class="fas fa-user-clock"></i> Reassign
                                 </a>
                                 {% endif %}
-                                <a href="#" class="btn-action btn-edit" title="Edit Loan" onclick="editLoan({{ loan.id }})">
+                                <a href="#" class="btn-action btn-edit" title="Edit Loan" onclick="editLoan({{ loan.id }}); return false;">
                                     <i class="fas fa-edit"></i> Edit
                                 </a>
-                                <a href="#" class="btn-action btn-delete" title="Delete Loan" onclick="deleteLoan({{ loan.id }}, '{{ loan.full_name }}')">
+                                <a href="#" class="btn-action btn-delete" title="Delete Loan" onclick="deleteLoan({{ loan.id }}, '{{ loan.full_name|escapejs }}'); return false;">
                                     <i class="fas fa-trash"></i> Delete
                                 </a>
                             </div>
@@ -434,10 +451,39 @@
             <h2 style="margin: 0; color: #1a202c; font-size: 24px; font-weight: 700;">Loan Applicant Details</h2>
             <button onclick="closeLoanModal()" style="background: none; border: none; font-size: 28px; cursor: pointer; color: #718096;">&times;</button>
         </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 25px; padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px; background: #f8fafc;">
+            <div>
+                <p style="color: #64748b; font-size: 10px; text-transform: uppercase; margin: 0 0 4px 0;">Loan ID</p>
+                <p style="margin: 0; font-weight: 700; color: #0f172a;" id="detailLoanUid">-</p>
+            </div>
+            <div>
+                <p style="color: #64748b; font-size: 10px; text-transform: uppercase; margin: 0 0 4px 0;">Status</p>
+                <p style="margin: 0; font-weight: 700; color: #0f172a;" id="detailStatusText">-</p>
+            </div>
+            <div>
+                <p style="color: #64748b; font-size: 10px; text-transform: uppercase; margin: 0 0 4px 0;">Created Under</p>
+                <p style="margin: 0; font-weight: 700; color: #0f172a;" id="detailCreatedBy">-</p>
+            </div>
+            <div>
+                <p style="color: #64748b; font-size: 10px; text-transform: uppercase; margin: 0 0 4px 0;">Assigned Employee</p>
+                <p style="margin: 0; font-weight: 700; color: #0f172a;" id="detailAssignedEmployee">-</p>
+            </div>
+            <div>
+                <p style="color: #64748b; font-size: 10px; text-transform: uppercase; margin: 0 0 4px 0;">Assigned Agent</p>
+                <p style="margin: 0; font-weight: 700; color: #0f172a;" id="detailAssignedAgent">-</p>
+            </div>
+            <div>
+                <p style="color: #64748b; font-size: 10px; text-transform: uppercase; margin: 0 0 4px 0;">Assigned By</p>
+                <p style="margin: 0; font-weight: 700; color: #0f172a;" id="detailAssignedBy">-</p>
+            </div>
+        </div>
         
-        <!-- SECTION 1: Name & Contact Details -->
+        <!-- SECTION 1: APPLICANT INFORMATION -->
         <div style="margin-bottom: 30px;">
-            <h3 style="color: #1abc9c; font-size: 16px; font-weight: 700; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #e5e7eb;">SECTION 1: NAME & CONTACT DETAILS</h3>
+            <h3 style="color: #1abc9c; font-size: 16px; font-weight: 700; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid #e5e7eb;">SECTION 1: APPLICANT INFORMATION</h3>
+            <p style="margin: 0 0 14px 0; color: #475569; font-size: 13px;">Provide accurate personal information. This will be verified during processing.</p>
+            <p style="color: #64748b; font-size: 11px; margin: 0 0 12px 0; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Name & Contact Details</p>
             
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px; margin-bottom: 20px;">
                 <div>
@@ -536,9 +582,10 @@
             </div>
         </div>
         
-        <!-- SECTION 2: Occupation & Income Details -->
+        <!-- SECTION 2: OCCUPATION & INCOME DETAILS -->
         <div style="margin-bottom: 30px;">
-            <h3 style="color: #1abc9c; font-size: 16px; font-weight: 700; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #e5e7eb;">SECTION 2: OCCUPATION & INCOME DETAILS</h3>
+            <h3 style="color: #1abc9c; font-size: 16px; font-weight: 700; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid #e5e7eb;">SECTION 2: OCCUPATION & INCOME DETAILS</h3>
+            <p style="color: #64748b; font-size: 11px; margin: 0 0 12px 0; text-transform: uppercase; font-weight: 700;">Employment Information</p>
             
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px; margin-bottom: 20px;">
                 <div>
@@ -570,21 +617,21 @@
             </div>
         </div>
         
-        <!-- SECTION 3: Existing Loan Details -->
+        <!-- SECTION 3: EXISTING LOAN DETAILS -->
         <div style="margin-bottom: 30px;">
-            <h3 style="color: #1abc9c; font-size: 16px; font-weight: 700; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #e5e7eb;">SECTION 3: EXISTING LOAN DETAILS</h3>
-            <p style="color: #666; font-size: 13px; margin-bottom: 15px;">Provide details of all existing loans or EMI commitments.</p>
+            <h3 style="color: #1abc9c; font-size: 16px; font-weight: 700; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid #e5e7eb;">SECTION 3: EXISTING LOAN DETAILS</h3>
+            <p style="margin: 0 0 14px 0; color: #475569; font-size: 13px;">Provide details of all existing loans or EMI commitments.</p>
             
             <div id="existingLoansContainer">
                 <p style="color: #999; text-align: center; padding: 20px;">No existing loans reported</p>
             </div>
         </div>
         
-        <!-- SECTION 4: Loan Request -->
+        <!-- SECTION 4: LOAN REQUEST -->
         <div style="margin-bottom: 30px;">
-            <h3 style="color: #1abc9c; font-size: 16px; font-weight: 700; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #e5e7eb;">SECTION 4: LOAN REQUEST</h3>
+            <h3 style="color: #1abc9c; font-size: 16px; font-weight: 700; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid #e5e7eb;">SECTION 4: LOAN REQUEST</h3>
             
-            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 25px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 25px;">
                 <div>
                     <p style="color: #718096; font-size: 11px; margin: 0 0 8px 0; text-transform: uppercase; font-weight: 700;">Service Required *</p>
                     <p style="color: #1a202c; font-size: 14px; font-weight: 600; margin: 0;" id="detailServiceType">-</p>
@@ -597,28 +644,33 @@
                     <p style="color: #718096; font-size: 11px; margin: 0 0 8px 0; text-transform: uppercase; font-weight: 700;">Loan Tenure (Months) *</p>
                     <p style="color: #1a202c; font-size: 14px; font-weight: 600; margin: 0;" id="detailTenure">-</p>
                 </div>
+                <div>
+                    <p style="color: #718096; font-size: 11px; margin: 0 0 8px 0; text-transform: uppercase; font-weight: 700;">Loan Purpose</p>
+                    <p style="color: #1a202c; font-size: 14px; font-weight: 600; margin: 0;" id="detailLoanPurpose">-</p>
+                </div>
             </div>
             
             <div style="margin-top: 20px;">
-                <p style="color: #718096; font-size: 11px; margin: 0 0 8px 0; text-transform: uppercase; font-weight: 700;">Any Charges or Fees *</p>
+                <p style="color: #718096; font-size: 11px; margin: 0 0 8px 0; text-transform: uppercase; font-weight: 700;">Any Charges or Fee *</p>
                 <p style="color: #1a202c; font-size: 14px; font-weight: 600; margin: 0;" id="detailCharges">-</p>
-                <p style="color: #666; font-size: 12px; margin-top: 8px; font-style: italic;">As per RBI guidelines, no processing fee or other charges to be taken from client</p>
+                <p style="color: #9a3412; font-size: 12px; margin: 8px 0 0 0;">As per RBI guidelines, no processing fee or other charges to be taken from client.</p>
             </div>
         </div>
         
-        <!-- SECTION 5: References -->
+        <!-- SECTION 5: REFERENCES -->
         <div style="margin-bottom: 30px;">
-            <h3 style="color: #1abc9c; font-size: 16px; font-weight: 700; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #e5e7eb;">SECTION 5: REFERENCES</h3>
-            <p style="color: #666; font-size: 13px; margin-bottom: 15px;">Provide contact details of two reliable references. They will not be contacted unless necessary.</p>
+            <h3 style="color: #1abc9c; font-size: 16px; font-weight: 700; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid #e5e7eb;">SECTION 5: REFERENCES</h3>
+            <p style="margin: 0 0 14px 0; color: #475569; font-size: 13px;">Provide contact details of two reliable references. They will not be contacted unless necessary.</p>
             
             <div id="referencesContainer">
                 <p style="color: #999; text-align: center; padding: 20px;">No references provided</p>
             </div>
         </div>
         
-        <!-- SECTION 6: Financial & Bank Details -->
+        <!-- SECTION 6: FINANCIAL & BANK DETAILS -->
         <div style="margin-bottom: 30px;">
-            <h3 style="color: #1abc9c; font-size: 16px; font-weight: 700; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #e5e7eb;">SECTION 6: FINANCIAL & BANK DETAILS</h3>
+            <h3 style="color: #1abc9c; font-size: 16px; font-weight: 700; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid #e5e7eb;">SECTION 6: FINANCIAL & BANK DETAILS</h3>
+            <p style="margin: 0 0 14px 0; color: #475569; font-size: 13px;">Provide your financial and bank details for verification and loan disbursement.</p>
             
             <div style="background: #fffbf0; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #f97316;">
                 <p style="color: #718096; font-size: 11px; margin: 0 0 8px 0; text-transform: uppercase; font-weight: 700;">Credit & Identity Details</p>
@@ -666,11 +718,16 @@
                 <p style="color: #718096; font-size: 11px; margin: 0 0 8px 0; text-transform: uppercase; font-weight: 700;">Remarks / Suggestions (if any)</p>
                 <p style="color: #1a202c; font-size: 14px; font-weight: 600; margin: 0; background: #f3f4f6; padding: 12px; border-radius: 6px;" id="detailRemarks">-</p>
             </div>
+            <div style="margin-top: 16px;">
+                <p style="color: #718096; font-size: 11px; margin: 0 0 8px 0; text-transform: uppercase; font-weight: 700;">Processing / Action Notes</p>
+                <pre id="detailProcessingRemarks" style="white-space: pre-wrap; margin: 0; color: #1a202c; font-size: 13px; font-family: inherit; font-weight: 600; background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0;">-</pre>
+            </div>
         </div>
         
-        <!-- SECTION 7: Documents -->
+        <!-- SECTION 7: DOCUMENTS -->
         <div style="margin-bottom: 30px;">
-            <h3 style="color: #1abc9c; font-size: 16px; font-weight: 700; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #e5e7eb;">SECTION 7: DOCUMENTS</h3>
+            <h3 style="color: #1abc9c; font-size: 16px; font-weight: 700; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid #e5e7eb;">SECTION 7: DOCUMENTS</h3>
+            <p style="margin: 0 0 14px 0; color: #475569; font-size: 13px;">Each document has two actions: View and Download.</p>
             
             <div id="documentsContainer">
                 <p style="color: #999; text-align: center; padding: 20px;">No documents attached</p>
@@ -680,7 +737,7 @@
         <!-- Declaration -->
         <div style="background: #ecfdf5; padding: 15px; border-radius: 8px; margin-bottom: 30px; border-left: 4px solid #10b981;">
             <p style="color: #1a202c; font-size: 13px; margin: 0; font-weight: 600;" id="detailDeclaration">
-                ✓ I hereby declare that the above information given by me is true and correct.
+                &#10003; I hereby declare that the above information given by me is true and correct.
             </p>
         </div>
         
@@ -1090,6 +1147,20 @@ function viewLoanDetail(id, name, email, phone, loanType, amount, status) {
 
 // Populate Detail Modal with data
 function populateDetailModal(data) {
+    const loanUidEl = document.getElementById('detailLoanUid');
+    const statusTextEl = document.getElementById('detailStatusText');
+    const createdByEl = document.getElementById('detailCreatedBy');
+    const assignedEmployeeEl = document.getElementById('detailAssignedEmployee');
+    const assignedAgentEl = document.getElementById('detailAssignedAgent');
+    const assignedByEl = document.getElementById('detailAssignedBy');
+
+    if (loanUidEl) loanUidEl.textContent = data.user_id || data.id || '-';
+    if (statusTextEl) statusTextEl.textContent = data.status || data.status_display || '-';
+    if (createdByEl) createdByEl.textContent = data.created_by_display || '-';
+    if (assignedEmployeeEl) assignedEmployeeEl.textContent = data.assigned_employee_name || '-';
+    if (assignedAgentEl) assignedAgentEl.textContent = data.assigned_agent_name || '-';
+    if (assignedByEl) assignedByEl.textContent = data.assigned_by_display || '-';
+
     // Section 1: Name & Contact Details
     document.getElementById('detailName').textContent = data.full_name || '-';
     document.getElementById('detailPhone').textContent = data.mobile_number || '-';
@@ -1152,8 +1223,12 @@ function populateDetailModal(data) {
     
     // Section 4: Loan Request
     document.getElementById('detailServiceType').textContent = data.loan_type || '-';
-    document.getElementById('detailLoanAmount').textContent = '₹' + (data.loan_amount || '0').toLocaleString('en-IN');
+    document.getElementById('detailLoanAmount').textContent = 'Rs ' + Number(data.loan_amount || 0).toLocaleString('en-IN');
     document.getElementById('detailTenure').textContent = (data.tenure_months || '-') + ' months';
+    const loanPurposeEl = document.getElementById('detailLoanPurpose');
+    if (loanPurposeEl) {
+        loanPurposeEl.textContent = data.loan_purpose || '-';
+    }
     document.getElementById('detailCharges').textContent = data.charges_applicable || 'No charges';
     
     // Section 5: References
@@ -1175,6 +1250,14 @@ function populateDetailModal(data) {
         bankTypeEl.textContent = data.bank_type || '-';
     }
     document.getElementById('detailRemarks').textContent = data.remarks || '-';
+    const processingRemarksEl = document.getElementById('detailProcessingRemarks');
+    if (processingRemarksEl) {
+        processingRemarksEl.textContent = data.processing_remarks || '-';
+    }
+    const declarationEl = document.getElementById('detailDeclaration');
+    if (declarationEl) {
+        declarationEl.textContent = data.declaration || 'I hereby declare that the above information given by me is true and correct.';
+    }
     
     // Section 7: Documents
     const documentsHtml = generateDocumentsHtml(data.documents);
@@ -1183,11 +1266,27 @@ function populateDetailModal(data) {
 
 // Fallback for basic info
 function populateDetailModalFallback(name, email, phone, loanType, amount, status) {
+    const loanUidEl = document.getElementById('detailLoanUid');
+    const statusTextEl = document.getElementById('detailStatusText');
+    if (loanUidEl) loanUidEl.textContent = currentLoanId || '-';
+    if (statusTextEl) statusTextEl.textContent = status || '-';
     document.getElementById('detailName').textContent = name || '-';
     document.getElementById('detailEmail').textContent = email || '-';
     document.getElementById('detailPhone').textContent = phone || '-';
     document.getElementById('detailServiceType').textContent = loanType || '-';
-    document.getElementById('detailLoanAmount').textContent = '₹' + (amount || '0').toLocaleString('en-IN');
+    document.getElementById('detailLoanAmount').textContent = 'Rs ' + Number(amount || 0).toLocaleString('en-IN');
+    const loanPurposeEl = document.getElementById('detailLoanPurpose');
+    if (loanPurposeEl) {
+        loanPurposeEl.textContent = '-';
+    }
+    const declarationEl = document.getElementById('detailDeclaration');
+    if (declarationEl) {
+        declarationEl.textContent = 'I hereby declare that the above information given by me is true and correct.';
+    }
+    const processingRemarksEl = document.getElementById('detailProcessingRemarks');
+    if (processingRemarksEl) {
+        processingRemarksEl.textContent = '-';
+    }
 }
 
 // Generate HTML for existing loans
@@ -1204,15 +1303,15 @@ function generateExistingLoansHtml(loans) {
                 </div>
                 <div>
                     <p style="color: #666; font-size: 12px; margin: 0 0 4px 0;">Amount Taken</p>
-                    <p style="color: #1a202c; font-weight: 600; margin: 0;">₹${(loan.amount_taken || 0).toLocaleString('en-IN')}</p>
+                    <p style="color: #1a202c; font-weight: 600; margin: 0;">Rs ${(loan.amount_taken || 0).toLocaleString('en-IN')}</p>
                 </div>
                 <div>
                     <p style="color: #666; font-size: 12px; margin: 0 0 4px 0;">EMI Left</p>
                     <p style="color: #1a202c; font-weight: 600; margin: 0;">${loan.emi_left || '-'}</p>
                 </div>
                 <div>
-                    <p style="color: #666; font-size: 12px; margin: 0 0 4px 0;">Amount Remaining</p>
-                    <p style="color: #1a202c; font-weight: 600; margin: 0;">₹${(loan.amount_left || 0).toLocaleString('en-IN')}</p>
+                    <p style="color: #666; font-size: 12px; margin: 0 0 4px 0;">Amount Left</p>
+                    <p style="color: #1a202c; font-weight: 600; margin: 0;">Rs ${(loan.amount_left || 0).toLocaleString('en-IN')}</p>
                 </div>
                 <div>
                     <p style="color: #666; font-size: 12px; margin: 0 0 4px 0;">Years/Months</p>
@@ -1220,7 +1319,7 @@ function generateExistingLoansHtml(loans) {
                 </div>
                 <div>
                     <p style="color: #666; font-size: 12px; margin: 0 0 4px 0;">EMI Amount</p>
-                    <p style="color: #1a202c; font-weight: 600; margin: 0;">₹${(loan.emi_amount || 0).toLocaleString('en-IN')}</p>
+                    <p style="color: #1a202c; font-weight: 600; margin: 0;">Rs ${(loan.emi_amount || 0).toLocaleString('en-IN')}</p>
                 </div>
                 <div>
                     <p style="color: #666; font-size: 12px; margin: 0 0 4px 0;">Any Bounce</p>
@@ -1267,11 +1366,16 @@ function generateDocumentsHtml(documents) {
     return `
         <div style="display: grid; grid-template-columns: 1fr; gap: 10px;">
             ${documents.map(doc => `
-                <a href="${doc.file}" target="_blank" download style="display: flex; align-items: center; gap: 10px; padding: 12px; background: #f3f4f6; border-radius: 6px; text-decoration: none; color: #1abc9c; font-weight: 600; transition: all 0.2s; border: 1px solid #e5e7eb;">
-                    <i class="fas fa-file-download"></i>
-                    <span>${doc.document_type || 'Document'}</span>
-                    <span style="font-size: 12px; color: #999; margin-left: auto;">Download</span>
-                </a>
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px; background: #f3f4f6; border-radius: 6px; border: 1px solid #e5e7eb;">
+                    <div style="display: flex; align-items: center; gap: 10px; min-width: 0;">
+                        <i class="fas fa-file-alt" style="color: #1abc9c;"></i>
+                        <span style="font-weight: 600; color: #1f2937; overflow-wrap: anywhere;">${doc.document_type || doc.type || 'Document'}</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+                        <a href="${doc.file || doc.file_url || '#'}" target="_blank" style="padding: 6px 10px; border-radius: 6px; border: 1px solid #3b82f6; color: #2563eb; font-size: 12px; font-weight: 600; text-decoration: none; background: #eff6ff;">View</a>
+                        <a href="${doc.file || doc.file_url || '#'}" download style="padding: 6px 10px; border-radius: 6px; border: 1px solid #16a34a; color: #15803d; font-size: 12px; font-weight: 600; text-decoration: none; background: #f0fdf4;">Download</a>
+                    </div>
+                </div>
             `).join('')}
         </div>
     `;
@@ -1325,7 +1429,7 @@ function openEditModal() {
     .then(payload => {
         const data = payload && payload.data ? payload.data : payload;
         document.getElementById('editBorrowerName').textContent = data.full_name || '-';
-        document.getElementById('editLoanAmount').textContent = '?' + (data.loan_amount || '0').toLocaleString('en-IN');
+        document.getElementById('editLoanAmount').textContent = 'Rs ' + Number(data.loan_amount || 0).toLocaleString('en-IN');
         document.getElementById('editCurrentStatus').textContent = data.status || '-';
         
         resetActionSelection();
@@ -1336,7 +1440,7 @@ function openEditModal() {
     .catch(error => {
         console.error('Error fetching edit details:', error);
         const fallbackName = document.getElementById('detailName')?.textContent || '-';
-        const fallbackAmount = document.getElementById('detailLoanAmount')?.textContent || '?0';
+        const fallbackAmount = document.getElementById('detailLoanAmount')?.textContent || 'Rs 0';
         const fallbackStatus = document.getElementById('detailStatus')?.textContent
             || document.getElementById('detailStatusText')?.textContent
             || '-';
@@ -1531,18 +1635,29 @@ function deleteLoan(loanId, borrowerName) {
         if (result.success) {
             closeLoanModal();
             showSuccessMessage('Loan deleted successfully');
-            
-            setTimeout(() => {
-                location.reload();
-            }, 2000);
+
+            const removedRow = document.querySelector(`tr[data-loan-id="${currentLoanId}"]`);
+            if (removedRow) {
+                removedRow.remove();
+                refreshLoanCount();
+            } else {
+                setTimeout(() => location.reload(), 800);
+            }
         } else {
-            alert('Error: ' + (result.message || 'Failed to delete loan'));
+            alert('Error: ' + (result.error || result.message || 'Failed to delete loan'));
         }
     })
     .catch(error => {
         console.error('Error:', error);
         alert('Error deleting loan');
     });
+}
+
+function refreshLoanCount() {
+    const countLabel = document.getElementById('loansCountText');
+    if (!countLabel) return;
+    const rows = document.querySelectorAll('table.loans-table tbody tr[data-loan-id]').length;
+    countLabel.textContent = `Total: ${rows} Loans`;
 }
 
 // Get CSRF token helper
@@ -1607,3 +1722,7 @@ document.head.appendChild(style);
 </script>
 
 {% endblock %}
+
+
+
+

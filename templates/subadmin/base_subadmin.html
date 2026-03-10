@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}SubAdmin Panel{% endblock %}</title>
     
-    <!-- Tailwind CSS CDN -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- Alpine.js -->
@@ -14,6 +14,9 @@
     
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Subadmin Custom CSS -->
+    <link rel="stylesheet" href="{% static 'css/subadmin.css' %}">
     
     <style>
         * {
@@ -358,7 +361,7 @@
                     <i class="fas fa-sign-out-alt"></i>
                     <span>Logout</span>
                 </a>
-                <p style="font-size: 11px; color: #1a1a1a; font-weight: 600; text-align: center;">Greenbacks Microservice Foundation</p>
+                <p style="font-size: 11px; color: rgba(255,255,255,0.82); font-weight: 600; text-align: center;">&copy; Greenbacks Micro Services</p>
             </div>
         </aside>
         

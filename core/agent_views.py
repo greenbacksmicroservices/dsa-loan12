@@ -3,19 +3,29 @@ Agent-specific views for role-based loan management dashboard
 Includes: New Entries, Add Loans, Sub-Agents, Reports, Complaints
 """
 from django.shortcuts import render, redirect
-from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_http_methods
-from django.db.models import Count, Sum, Q
+from django.db.models import Sum, Q
 from django.utils import timezone
+from django.urls import reverse
 from datetime import datetime, timedelta
 import csv
-from io import BytesIO
 from openpyxl import Workbook
 
 from .models import Loan, Agent, Complaint, User
 from .role_decorators import agent_required
+
+
+def get_agent_loan_queryset(user, agent):
+    """
+    Unified queryset for agent-owned data:
+    - Loans created by this agent user
+    - Loans currently assigned to this agent profile
+    """
+    return Loan.objects.filter(
+        Q(created_by=user) | Q(assigned_agent=agent)
+    ).distinct()
 
 
 @agent_required
@@ -25,24 +35,24 @@ def agent_dashboard(request):
     Shows assigned loans, pending applications, and quick stats.
     """
     agent = Agent.objects.get(user=request.user)
-    
-    # Get assigned loans for this agent
-    assigned_loans = Loan.objects.filter(assigned_agent=agent)
-    
+
+    # Include both created and assigned loans for a reliable live dashboard view
+    agent_loans = get_agent_loan_queryset(request.user, agent)
+
     # Real-time dashboard statistics
     dashboard_data = {
-        'total_assigned': assigned_loans.count(),
-        'processing': assigned_loans.filter(status='waiting_for_processing').count(),
-        'approved': assigned_loans.filter(status='approved').count(),
-        'rejected': assigned_loans.filter(status='rejected').count(),
-        'disbursed': assigned_loans.filter(status='disbursed').count(),
-        'total_amount': assigned_loans.aggregate(Sum('loan_amount'))['loan_amount__sum'] or 0,
+        'total_assigned': agent_loans.count(),
+        'processing': agent_loans.filter(status__in=['new_entry', 'waiting', 'follow_up']).count(),
+        'approved': agent_loans.filter(status='approved').count(),
+        'rejected': agent_loans.filter(status='rejected').count(),
+        'disbursed': agent_loans.filter(status='disbursed').count(),
+        'total_amount': agent_loans.aggregate(Sum('loan_amount'))['loan_amount__sum'] or 0,
     }
-    
+
     context = {
         'agent': agent,
         'dashboard': dashboard_data,
-        'recent_loans': assigned_loans.order_by('-created_at')[:5],
+        'recent_loans': agent_loans.order_by('-created_at')[:10],
     }
     return render(request, 'core/agent/dashboard.html', context)
 
@@ -60,7 +70,7 @@ def agent_new_entries(request):
     new_entries = Loan.objects.filter(
         assigned_agent=agent,
         status='new_entry'
-    ).select_related('applicant').order_by('-created_at')
+    ).order_by('-created_at')
     
     context = {
         'new_entries': new_entries,
@@ -79,24 +89,17 @@ def agent_add_loan(request):
     """
     if request.method == 'POST':
         try:
-            # Validate required fields first
-            required_fields = ['name', 'mobile_no', 'email_id', 'fathers_name', 'mothers_name', 'dob', 'gender']
-            missing_fields = [field for field in required_fields if not request.POST.get(field, '').strip()]
-            
-            if missing_fields:
-                messages.error(request, f'Please fill all required fields: {", ".join(missing_fields[:5])}' + 
-                              (f' and {len(missing_fields)-5} more' if len(missing_fields) > 5 else ''))
-                return redirect('agent_add_loan')
-            
             # Validate mobile number
             mobile = request.POST.get('mobile_no', '').strip()
-            if not mobile or len(mobile) < 10:
-                messages.error(request, 'Please provide a valid 10-digit mobile number')
+            if not mobile:
+                mobile = '9999999999'
+            if len(mobile) < 9:
+                messages.error(request, 'Please provide a valid mobile number')
                 return redirect('agent_add_loan')
             
-            # Validate email
+            # Validate email only if provided
             email = request.POST.get('email_id', '').strip()
-            if '@' not in email:
+            if email and '@' not in email:
                 messages.error(request, 'Please provide a valid email address')
                 return redirect('agent_add_loan')
             
@@ -105,6 +108,25 @@ def agent_add_loan(request):
             
             # Create loan with comprehensive details
             agent = Agent.objects.get(user=request.user)
+
+            loan_type_map = {
+                'personal': 'personal',
+                'personal loan': 'personal',
+                'home': 'home',
+                'home loan': 'home',
+                'lap': 'lap',
+                'loan against property': 'lap',
+                'business': 'business',
+                'business loan': 'business',
+                'education': 'education',
+                'education loan': 'education',
+                'car': 'car',
+                'car loan': 'car',
+                'credit card': 'other',
+                'other': 'other',
+            }
+            raw_loan_type = request.POST.get('service_required', 'personal').strip().lower()
+            mapped_loan_type = loan_type_map.get(raw_loan_type, 'other')
             
             # Extract city and pin code with fallback
             city = request.POST.get('permanent_city', '').strip() or request.POST.get('city', '').strip() or 'Unknown'
@@ -120,7 +142,7 @@ def agent_add_loan(request):
             
             loan = Loan.objects.create(
                 # Applicant Information - CORRECTED FIELD NAMES FROM FORM
-                full_name=request.POST.get('name', 'Unknown').strip(),
+                full_name=request.POST.get('name', '').strip() or 'Unknown Applicant',
                 mobile_number=mobile,  # CRITICAL: MUST NOT BE NULL!
                 email=email,
                 
@@ -128,11 +150,11 @@ def agent_add_loan(request):
                 permanent_address=request.POST.get('permanent_address', '').strip(),
                 current_address=request.POST.get('present_address', '').strip(),
                 city=city,
-                state=request.POST.get('permanent_city', '').strip() or 'Unknown',
+                state=request.POST.get('state', '').strip() or 'Unknown',
                 pin_code=pin_code,
                 
                 # Loan Details
-                loan_type=request.POST.get('service_required', 'personal').lower(),
+                loan_type=mapped_loan_type,
                 loan_amount=float(request.POST.get('loan_amount_required', 0) or 0),
                 tenure_months=int(request.POST.get('loan_tenure', 0) or 0),
                 interest_rate=float(request.POST.get('interest_rate', 0) or 0),
@@ -158,16 +180,14 @@ def agent_add_loan(request):
             extra_info = f"\n\nADDITIONAL INFO:\n"
             extra_info += f"PAN: {request.POST.get('pan_number')}\n"
             extra_info += f"Aadhar: {request.POST.get('aadhar_number')}\n"
-            extra_info += f"DOB: {request.POST.get('date_of_birth')}\n"
+            extra_info += f"DOB: {request.POST.get('dob')}\n"
             extra_info += f"Gender: {request.POST.get('gender')}\n"
-            extra_info += f"Employment Type: {request.POST.get('employment_type')}\n"
-            extra_info += f"Employer: {request.POST.get('employer_name')}\n"
+            extra_info += f"Occupation: {request.POST.get('occupation')}\n"
+            extra_info += f"Employer: {request.POST.get('company_name')}\n"
             extra_info += f"Annual Income: {request.POST.get('annual_income')}\n"
-            extra_info += f"Account Type: {request.POST.get('account_type')}\n"
-            extra_info += f"Collateral: {request.POST.get('collateral_details')}\n"
-            extra_info += f"Collateral Value: {request.POST.get('collateral_value')}\n"
-            extra_info += f"Existing Loans: {request.POST.get('existing_loans')}\n"
-            extra_info += f"Credit Score: {request.POST.get('credit_score')}"
+            extra_info += f"Bank Account No: {request.POST.get('account_number')}\n"
+            extra_info += f"CIBIL Score: {request.POST.get('cibil_score')}\n"
+            extra_info += f"Service Required: {request.POST.get('service_required')}"
             
             if loan.remarks:
                 loan.remarks += extra_info
@@ -340,25 +360,30 @@ def agent_my_applications(request):
     """
     agent = Agent.objects.get(user=request.user)
     
-    # Get all loans assigned to this agent
-    all_loans = Loan.objects.filter(
-        assigned_agent=agent
-    ).order_by('-created_at')
+    # Show both created and assigned applications
+    all_loans = get_agent_loan_queryset(request.user, agent).order_by('-created_at')
     
     # Filter by status if provided
     status_filter = request.GET.get('status')
-    if status_filter:
-        loans = all_loans.filter(status=status_filter)
+    status_alias_map = {
+        'waiting_for_processing': 'waiting',
+        'processing': 'waiting',
+        'bank': 'follow_up',
+    }
+    normalized_status = status_alias_map.get(status_filter, status_filter) if status_filter else None
+    if normalized_status:
+        loans = all_loans.filter(status=normalized_status)
     else:
         loans = all_loans
     
     # Get counts by status
     total_count = all_loans.count()
-    processing_count = all_loans.filter(status__in=['new_entry', 'waiting']).count()
+    processing_count = all_loans.filter(status__in=['new_entry', 'waiting', 'follow_up']).count()
     approved_count = all_loans.filter(status='approved').count()
     rejected_count = all_loans.filter(status='rejected').count()
     disbursed_count = all_loans.filter(status='disbursed').count()
     active_count = all_loans.exclude(status__in=['rejected', 'disbursed']).count()
+    focus_loan_id = request.GET.get('loan_id', '').strip()
     
     context = {
         'loans': loans,
@@ -368,14 +393,17 @@ def agent_my_applications(request):
         'rejected_count': rejected_count,
         'disbursed_count': disbursed_count,
         'active_count': active_count,
-        'status_filter': status_filter,
+        'status_filter': normalized_status,
+        'recent_submitted': all_loans[:10],
+        'focus_loan_id': focus_loan_id,
         'statuses': [
+            ('draft', 'Draft'),
             ('new_entry', 'New Entry'),
             ('waiting', 'Processing'),
+            ('follow_up', 'Bank Stage'),
             ('approved', 'Approved'),
             ('rejected', 'Rejected'),
             ('disbursed', 'Disbursed'),
-            ('follow_up', 'Follow Up'),
         ]
     }
     return render(request, 'core/agent/my_applications.html', context)
@@ -390,23 +418,40 @@ def agent_reports(request):
     agent = Agent.objects.get(user=request.user)
     
     period = request.GET.get('period', '1month')
-    
+
     # Calculate date range
     today = timezone.now()
-    if period == '1month':
+    from_date = request.GET.get('from_date')
+    to_date = request.GET.get('to_date')
+    if from_date and to_date:
+        try:
+            start_date = timezone.make_aware(datetime.strptime(from_date, '%Y-%m-%d'))
+            end_of_day = datetime.strptime(to_date, '%Y-%m-%d') + timedelta(days=1)
+            end_date = timezone.make_aware(end_of_day)
+            period = 'custom'
+        except ValueError:
+            messages.error(request, 'Invalid custom date range. Showing last 1 month.')
+            start_date = today - timedelta(days=30)
+            end_date = today
+            period = '1month'
+    elif period == '1month':
         start_date = today - timedelta(days=30)
+        end_date = today
     elif period == '6months':
         start_date = today - timedelta(days=180)
+        end_date = today
     elif period == '1year':
         start_date = today - timedelta(days=365)
+        end_date = today
     else:
         start_date = today - timedelta(days=30)
-    
+        end_date = today
+
     # Get loans in period
-    loans = Loan.objects.filter(
-        assigned_agent=agent,
-        created_at__gte=start_date
-    ).select_related('applicant')
+    loans = get_agent_loan_queryset(request.user, agent).filter(
+        created_at__gte=start_date,
+        created_at__lt=end_date
+    ).order_by('-created_at')
     
     # Handle download
     if request.GET.get('download'):
@@ -419,9 +464,15 @@ def agent_reports(request):
     context = {
         'loans': loans,
         'period': period,
+        'from_date': from_date,
+        'to_date': to_date,
         'total_loans': loans.count(),
         'total_amount': loans.aggregate(Sum('loan_amount'))['loan_amount__sum'] or 0,
         'approved_count': loans.filter(status='approved').count(),
+        'approved_loans': loans.filter(status='approved').count(),
+        'disbursed_loans': loans.filter(status='disbursed').count(),
+        'rejected_loans': loans.filter(status='rejected').count(),
+        'generated_reports': [],
     }
     return render(request, 'core/agent/reports.html', context)
 
@@ -433,21 +484,40 @@ def agent_complaints(request):
     Shows real-time updates and allows viewing complaint details.
     """
     agent = Agent.objects.get(user=request.user)
-    
-    complaints = Complaint.objects.filter(
+
+    base_complaints = Complaint.objects.filter(
         filed_by_agent=agent
     ).select_related('loan', 'assigned_admin').order_by('-created_at')
     
+    user_loans = get_agent_loan_queryset(request.user, agent).order_by('-created_at')
+    
     # Filter by status
     status_filter = request.GET.get('status')
+    complaints = base_complaints
     if status_filter:
         complaints = complaints.filter(status=status_filter)
+
+    complaints = list(complaints)
+
+    # Subject is stored in description first line for compatibility with model fields
+    for complaint in complaints:
+        raw_description = (complaint.description or '').strip()
+        if '\n\n' in raw_description:
+            subject_line, body_text = raw_description.split('\n\n', 1)
+        else:
+            subject_line = raw_description.split('\n', 1)[0]
+            body_text = raw_description
+
+        fallback_subject = f"{complaint.get_complaint_type_display()} Issue"
+        complaint.subject_text = (subject_line or fallback_subject)[:100]
+        complaint.body_text = body_text
     
     context = {
         'complaints': complaints,
-        'total': complaints.count(),
-        'open': complaints.filter(status__in=['open', 'in_review']).count(),
-        'resolved': complaints.filter(status='resolved').count(),
+        'user_loans': user_loans,
+        'total': base_complaints.count(),
+        'open': base_complaints.filter(status__in=['open', 'in_progress']).count(),
+        'resolved': base_complaints.filter(status='resolved').count(),
         'status_filter': status_filter,
     }
     return render(request, 'core/agent/complaints.html', context)
@@ -462,15 +532,53 @@ def file_complaint(request):
     """
     try:
         agent = Agent.objects.get(user=request.user)
-        loan_id = request.POST.get('loan_id')
-        
-        loan = Loan.objects.get(id=loan_id, assigned_agent=agent)
-        
-        complaint = Complaint.objects.create(
+        loan_id = (request.POST.get('loan_id') or '').strip()
+        subject = (request.POST.get('subject') or '').strip()
+        description = (request.POST.get('description') or '').strip()
+        priority = (request.POST.get('priority') or 'medium').strip().lower()
+        raw_type = (request.POST.get('complaint_type') or 'other').strip().lower()
+
+        if not loan_id:
+            messages.error(request, 'Please select a loan first.')
+            return redirect('agent_complaints')
+        if not description:
+            messages.error(request, 'Please enter complaint description.')
+            return redirect('agent_complaints')
+
+        loan = get_agent_loan_queryset(request.user, agent).filter(id=loan_id).first()
+        if not loan:
+            messages.error(request, 'Selected loan was not found in your scope.')
+            return redirect('agent_complaints')
+
+        complaint_type_map = {
+            'processing_delay': 'service',
+            'communication': 'service',
+            'service_quality': 'service',
+            'approval_issue': 'service',
+            'disbursement': 'payment',
+            'documentation': 'documentation',
+            'other': 'other',
+            'service': 'service',
+            'payment': 'payment',
+        }
+        complaint_type = complaint_type_map.get(raw_type, 'other')
+        if priority == 'normal':
+            priority = 'medium'
+        if priority not in {'low', 'medium', 'high', 'urgent'}:
+            priority = 'medium'
+
+        if subject:
+            full_description = f"{subject}\n\n{description}"
+        else:
+            full_description = description
+
+        Complaint.objects.create(
+            customer_name=loan.full_name or 'Unknown',
             loan=loan,
             filed_by_agent=agent,
-            subject=request.POST.get('subject'),
-            description=request.POST.get('description'),
+            complaint_type=complaint_type,
+            priority=priority,
+            description=full_description,
             status='open',
             created_by=request.user,
         )
@@ -552,15 +660,18 @@ def api_agent_dashboard_stats(request):
     Returns JSON data for live count updates.
     """
     agent = Agent.objects.get(user=request.user)
-    assigned_loans = Loan.objects.filter(assigned_agent=agent)
+    agent_loans = get_agent_loan_queryset(request.user, agent)
     
     data = {
-        'total_assigned': assigned_loans.count(),
-        'processing': assigned_loans.filter(status='waiting_for_processing').count(),
-        'approved': assigned_loans.filter(status='approved').count(),
-        'rejected': assigned_loans.filter(status='rejected').count(),
-        'disbursed': assigned_loans.filter(status='disbursed').count(),
-        'total_amount': float(assigned_loans.aggregate(Sum('loan_amount'))['loan_amount__sum'] or 0),
+        'total_assigned': agent_loans.count(),
+        'processing': agent_loans.filter(status__in=['new_entry', 'waiting', 'follow_up']).count(),
+        'approved': agent_loans.filter(status='approved').count(),
+        'rejected': agent_loans.filter(status='rejected').count(),
+        'disbursed': agent_loans.filter(status='disbursed').count(),
+        'total_amount': float(agent_loans.aggregate(Sum('loan_amount'))['loan_amount__sum'] or 0),
+        'new_entry': agent_loans.filter(status='new_entry').count(),
+        'waiting': agent_loans.filter(status='waiting').count(),
+        'bank_stage': agent_loans.filter(status='follow_up').count(),
         'timestamp': timezone.now().isoformat(),
     }
     
@@ -575,48 +686,43 @@ def agent_notifications(request):
     """
     agent = Agent.objects.get(user=request.user)
     assigned_loans = Loan.objects.filter(assigned_agent=agent)
-    
-    # Get recent status changes
+
     notifications = []
-    
-    # Check for new approvals
+
     approved_loans = assigned_loans.filter(status='approved').order_by('-updated_at')[:3]
     for loan in approved_loans:
         notifications.append({
             'id': f'approved_{loan.id}',
-            'title': '✅ Loan Approved',
-            'message': f'{loan.full_name} - ₹{loan.loan_amount}',
+            'title': 'Loan Approved',
+            'message': f'{loan.full_name} - Rs {loan.loan_amount}',
             'created_at': loan.updated_at.isoformat(),
             'type': 'approved'
         })
-    
-    # Check for new complaints
+
     complaints = Complaint.objects.filter(filed_by_agent=agent).order_by('-created_at')[:2]
     for complaint in complaints:
         notifications.append({
             'id': f'complaint_{complaint.id}',
-            'title': '🔔 Complaint Filed',
+            'title': 'Complaint Update',
             'message': complaint.subject,
             'created_at': complaint.created_at.isoformat(),
             'type': 'complaint'
         })
-    
-    # Check for new entries assigned
+
     new_entries = assigned_loans.filter(status='new_entry').order_by('-created_at')[:2]
     for entry in new_entries:
         notifications.append({
             'id': f'new_entry_{entry.id}',
-            'title': '📋 New Entry Assigned',
-            'message': f'{entry.full_name} - ₹{entry.loan_amount}',
+            'title': 'New Entry Assigned',
+            'message': f'{entry.full_name} - Rs {entry.loan_amount}',
             'created_at': entry.created_at.isoformat(),
             'type': 'new_entry'
         })
-    
-    # Sort by date (newest first)
+
     notifications.sort(key=lambda x: x['created_at'], reverse=True)
-    
+
     return JsonResponse({
-        'notifications': notifications[:5]  # Return top 5 notifications
+        'notifications': notifications[:5]
     })
 
 
@@ -628,6 +734,29 @@ def agent_profile(request):
     except Agent.DoesNotExist:
         messages.error(request, "Agent profile not found!")
         return redirect('agent_dashboard')
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'change_password':
+            old_password = request.POST.get('old_password', '')
+            new_password = request.POST.get('new_password', '')
+            confirm_password = request.POST.get('confirm_password', '')
+
+            if not request.user.check_password(old_password):
+                messages.error(request, "Old password is incorrect.")
+            elif new_password != confirm_password:
+                messages.error(request, "New passwords do not match.")
+            elif len(new_password) < 6:
+                messages.error(request, "Password must be at least 6 characters.")
+            else:
+                request.user.set_password(new_password)
+                request.user.save()
+                messages.success(request, "Password changed successfully. Please log in again.")
+                return redirect('login')
+
+        elif action == 'notification_settings':
+            messages.success(request, "Notification settings updated successfully.")
     
     context = {
         'agent': agent,
@@ -678,42 +807,8 @@ def agent_edit_profile(request):
 
 @agent_required
 def agent_settings(request):
-    """Agent settings page"""
-    try:
-        agent = Agent.objects.get(user=request.user)
-    except Agent.DoesNotExist:
-        messages.error(request, "Agent profile not found!")
-        return redirect('agent_dashboard')
-    
-    if request.method == 'POST':
-        action = request.POST.get('action')
-        
-        if action == 'change_password':
-            old_password = request.POST.get('old_password')
-            new_password = request.POST.get('new_password')
-            confirm_password = request.POST.get('confirm_password')
-            
-            if not request.user.check_password(old_password):
-                messages.error(request, "Old password is incorrect!")
-            elif new_password != confirm_password:
-                messages.error(request, "New passwords do not match!")
-            elif len(new_password) < 6:
-                messages.error(request, "Password must be at least 6 characters!")
-            else:
-                request.user.set_password(new_password)
-                request.user.save()
-                messages.success(request, "Password changed successfully!")
-                return redirect('login')
-        
-        elif action == 'notification_settings':
-            # Settings can be extended based on requirements
-            messages.success(request, "Notification settings updated!")
-    
-    context = {
-        'agent': agent,
-        'page_title': 'Settings',
-    }
-    return render(request, 'core/agent/settings.html', context)
+    """Legacy settings route now merged into profile page."""
+    return redirect('agent_profile')
 
 
 @agent_required
@@ -729,10 +824,11 @@ def api_agent_recent_entries(request):
         # Get limit from query params
         limit = int(request.GET.get('limit', 10))
         
-        # Get loans created by this agent (created_by = request.user)
-        recent_loans = Loan.objects.filter(
-            created_by=request.user
-        ).select_related('assigned_employee', 'assigned_agent').order_by('-created_at')[:limit]
+        # Use same scope as dashboard cards so table and cards always match
+        recent_loans_qs = get_agent_loan_queryset(request.user, agent).select_related(
+            'assigned_employee', 'assigned_agent'
+        ).order_by('-created_at')
+        recent_loans = recent_loans_qs[:limit]
         
         # Format response data
         loans_data = []
@@ -744,17 +840,25 @@ def api_agent_recent_entries(request):
                 'loan_type': loan.loan_type or 'N/A',
                 'loan_amount': float(loan.loan_amount or 0),
                 'status': loan.status,
+                'status_label': get_status_label(loan.status),
+                'stage': get_stage_label(loan.status),
                 'created_at': loan.created_at.strftime('%Y-%m-%d %H:%M:%S'),
                 'assigned_date': loan.updated_at.strftime('%Y-%m-%d') if loan.updated_at else 'N/A',
-                'assigned_employee': loan.assigned_employee.user.get_full_name() if loan.assigned_employee else 'Pending',
-                'assigned_agent': loan.assigned_agent.user.get_full_name() if loan.assigned_agent else 'N/A',
+                'assigned_employee': loan.assigned_employee.get_full_name() if loan.assigned_employee else 'Pending',
+                'assigned_agent': (
+                    loan.assigned_agent.user.get_full_name()
+                    if loan.assigned_agent and loan.assigned_agent.user
+                    else (loan.assigned_agent.name if loan.assigned_agent else 'N/A')
+                ),
                 'status_badge': get_status_badge(loan.status),
+                # Open directly in My Applications to avoid applicant-id route mismatch
+                'detail_url': f"{reverse('agent_my_applications')}?loan_id={loan.id}",
             }
             loans_data.append(loan_data)
         
         return JsonResponse({
             'success': True,
-            'total': Loan.objects.filter(created_by=request.user).count(),
+            'total': recent_loans_qs.count(),
             'recent_entries': loans_data,
         })
     
@@ -770,6 +874,7 @@ def get_status_badge(status):
         'draft': 'secondary',
         'new_entry': 'primary',
         'waiting_for_processing': 'warning',
+        'waiting': 'warning',
         'processing': 'info',
         'approved': 'success',
         'rejected': 'danger',
@@ -777,3 +882,32 @@ def get_status_badge(status):
         'follow_up': 'warning',
     }
     return badges.get(status, 'secondary')
+
+
+def get_status_label(status):
+    labels = {
+        'draft': 'Draft',
+        'new_entry': 'New Entry',
+        'waiting': 'Processing',
+        'waiting_for_processing': 'Processing',
+        'follow_up': 'Bank Stage',
+        'approved': 'Approved',
+        'rejected': 'Rejected',
+        'disbursed': 'Disbursed',
+    }
+    return labels.get(status, status.replace('_', ' ').title())
+
+
+def get_stage_label(status):
+    stage_map = {
+        'draft': 'Draft',
+        'new_entry': 'New Entry',
+        'waiting': 'Processing',
+        'waiting_for_processing': 'Processing',
+        'follow_up': 'Bank Stage',
+        'approved': 'Completed',
+        'rejected': 'Closed',
+        'disbursed': 'Disbursed',
+    }
+    return stage_map.get(status, 'Processing')
+

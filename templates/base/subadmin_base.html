@@ -1,28 +1,36 @@
 {% extends "base/base.html" %}
+{% load static %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'css/subadmin.css' %}">
+{% endblock %}
 
 {% block navbar_title %}SubAdmin Dashboard{% endblock %}
 
 {% block sidebar %}
-    <div class="sidebar" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding-top: 70px;">
+    <div class="sidebar">
         <div class="p-3">
             <h5 class="text-white mb-3">SubAdmin Menu</h5>
             <nav class="nav flex-column">
-                <a href="{% url 'subadmin_dashboard' %}" class="nav-link text-light {% if request.resolver_match.url_name == 'subadmin_dashboard' %}active bg-white text-primary{% endif %}">
+                <a href="{% url 'subadmin_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'subadmin_dashboard' %}active{% endif %}">
                     <i class="fas fa-chart-line"></i> Dashboard
                 </a>
-                <a href="{% url 'subadmin_all_loans' %}" class="nav-link text-light {% if request.resolver_match.url_name == 'subadmin_all_loans' %}active bg-white text-primary{% endif %}">
+                <a href="{% url 'subadmin_all_loans' %}" class="nav-link {% if request.resolver_match.url_name == 'subadmin_all_loans' %}active{% endif %}">
                     <i class="fas fa-file-alt"></i> All Loans
                 </a>
-                <a href="{% url 'subadmin_all_agents' %}" class="nav-link text-light">
+                <a href="{% url 'subadmin_all_agents' %}" class="nav-link">
                     <i class="fas fa-user-tie"></i> My Agents
                 </a>
-                <a href="{% url 'subadmin_profile' %}" class="nav-link text-light">
+                <a href="{% url 'subadmin_profile' %}" class="nav-link">
                     <i class="fas fa-user-circle"></i> Profile
                 </a>
                 <hr class="border-light">
                 <a href="{% url 'logout' %}" class="nav-link text-danger">
                     <i class="fas fa-sign-out-alt"></i> Logout
                 </a>
+                <div class="text-center mt-3" style="font-size: 11px; color: rgba(255,255,255,0.78);">
+                    &copy; Greenbacks Micro Services
+                </div>
             </nav>
         </div>
     </div>

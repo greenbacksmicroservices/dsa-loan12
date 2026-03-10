@@ -5,7 +5,7 @@
 
 {% block content %}
 <div class="container-fluid">
-    <div class="d-flex flex-wrap align-items-center justify-content-between mb-3">
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 employee-dashboard-heading">
         <div>
             <h1 class="h4 mb-1 text-dark fw-bold">Employee Dashboard</h1>
             <p class="text-muted mb-0" style="font-size: 13px;">Overview of your assigned loan pipeline</p>
@@ -77,7 +77,7 @@
                     <span>Status Breakdown</span>
                 </div>
                 <div class="employee-chart-body">
-                    <canvas id="statusChart" height="220"></canvas>
+                    <canvas id="statusChart" height="150"></canvas>
                 </div>
             </div>
         </div>
@@ -87,7 +87,7 @@
                     <span>Monthly Assigned Loans</span>
                 </div>
                 <div class="employee-chart-body">
-                    <canvas id="monthlyChart" height="220"></canvas>
+                    <canvas id="monthlyChart" height="150"></canvas>
                 </div>
             </div>
         </div>
@@ -168,6 +168,15 @@
 </div>
 
 <style>
+    .employee-dashboard-heading {
+        position: sticky;
+        top: 68px;
+        z-index: 20;
+        background: #f8fafc;
+        padding: 10px 0 14px;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
     .employee-stat-grid {
         display: grid;
         grid-template-columns: repeat(6, minmax(170px, 1fr));
@@ -187,7 +196,21 @@
         text-decoration: none;
         box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18);
         transition: transform 0.2s ease, box-shadow 0.2s ease;
-        min-height: 120px;
+        min-height: 112px;
+        position: relative;
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .stat-card::after {
+        content: "";
+        position: absolute;
+        right: -26px;
+        top: -28px;
+        width: 90px;
+        height: 90px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.16);
     }
 
     .stat-card:hover {
@@ -252,11 +275,11 @@
     }
 
     .employee-chart-header {
-        padding: 16px 20px;
+        padding: 12px 16px;
         background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
         color: #ffffff;
         font-weight: 700;
-        font-size: 14px;
+        font-size: 13px;
     }
 
     .employee-chart-header-alt {
@@ -264,8 +287,13 @@
     }
 
     .employee-chart-body {
-        padding: 20px;
+        padding: 12px 16px;
         background: #ffffff;
+        height: 190px;
+    }
+
+    .employee-chart-body canvas {
+        max-height: 150px !important;
     }
 
     .employee-table-card {
@@ -323,6 +351,27 @@
     let allLoans = [];
     let statusChartInstance = null;
     let monthlyChartInstance = null;
+    let dashboardRefreshTimer = null;
+    let authRedirectInProgress = false;
+
+    function stopDashboardRefresh() {
+        if (dashboardRefreshTimer) {
+            clearInterval(dashboardRefreshTimer);
+            dashboardRefreshTimer = null;
+        }
+    }
+
+    function redirectToLogin() {
+        if (authRedirectInProgress) return;
+        authRedirectInProgress = true;
+        stopDashboardRefresh();
+        const nextUrl = encodeURIComponent(window.location.pathname + window.location.search);
+        window.location.href = `/login/?next=${nextUrl}`;
+    }
+
+    function isUnauthorizedResponse(response) {
+        return response.status === 401 || response.status === 403 || response.redirected;
+    }
 
     document.addEventListener('DOMContentLoaded', function() {
         loadEmployeeDashboardStats();
@@ -330,7 +379,7 @@
         loadMonthlyChart();
         
         // Auto-refresh every 30 seconds for real-time updates
-        setInterval(function() {
+        dashboardRefreshTimer = setInterval(function() {
             loadEmployeeDashboardStats();
             loadAllLoansHistory();
             loadMonthlyChart();
@@ -380,7 +429,13 @@
                 'X-CSRFToken': getCookie('csrftoken')
             }
         })
-        .then(response => response.json())
+        .then(response => {
+            if (isUnauthorizedResponse(response)) {
+                redirectToLogin();
+                throw new Error('Session expired');
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 document.getElementById('stat-total').textContent = data.total_loans || 0;
@@ -445,7 +500,13 @@
                 'X-CSRFToken': getCookie('csrftoken')
             }
         })
-        .then(response => response.json())
+        .then(response => {
+            if (isUnauthorizedResponse(response)) {
+                redirectToLogin();
+                throw new Error('Session expired');
+            }
+            return response.json();
+        })
         .then(data => {
             const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
             const values = data.monthly_data || data.data || data.monthly || [];
@@ -501,7 +562,13 @@
                 'X-CSRFToken': getCookie('csrftoken')
             }
         })
-        .then(response => response.json())
+        .then(response => {
+            if (isUnauthorizedResponse(response)) {
+                redirectToLogin();
+                throw new Error('Session expired');
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 allLoans = data.loans || [];
@@ -603,6 +670,10 @@
         }
         return cookieValue;
     }
+
+    window.addEventListener('beforeunload', function () {
+        stopDashboardRefresh();
+    });
 </script>
 
 {% endblock %}

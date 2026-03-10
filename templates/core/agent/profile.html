@@ -1,164 +1,147 @@
 {% extends "core/base.html" %}
 {% load static %}
 
-{% block title %}Agent Profile | DSA{% endblock %}
+{% block title %}My Profile | DSA{% endblock %}
 
 {% block content %}
 <div class="container-fluid mt-4">
-    <!-- Header -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center">
-                <h1 class="mb-0">
-                    <i class="fas fa-user-circle"></i> My Profile
-                </h1>
-                <a href="{% url 'agent_edit_profile' %}" class="btn btn-primary">
-                    <i class="fas fa-edit"></i> Edit Profile
-                </a>
-            </div>
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+        <div>
+            <h1 class="mb-1"><i class="fas fa-user-circle"></i> My Profile</h1>
+            <p class="text-muted mb-0">Profile and settings are available on this single page.</p>
         </div>
+        <a href="{% url 'agent_edit_profile' %}" class="btn btn-primary">
+            <i class="fas fa-edit"></i> Edit Basic Profile
+        </a>
     </div>
 
-    <!-- Profile Card -->
-    <div class="row">
-        <div class="col-lg-8 offset-lg-2">
-            <div class="card shadow-sm border-0 rounded-lg">
-                <div class="card-header bg-gradient text-white py-4" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="row g-4">
+        <div class="col-lg-7">
+            <div class="card shadow-sm border-0 rounded-lg h-100">
+                <div class="card-header profile-head text-white py-4">
                     <h5 class="mb-0">Agent Information</h5>
                 </div>
                 <div class="card-body p-4">
-                    <!-- Profile Photo Section -->
                     {% if agent.profile_photo %}
                     <div class="text-center mb-4">
-                        <img src="{{ agent.profile_photo.url }}" alt="{{ agent.name }}" 
-                             class="rounded-circle" style="width: 150px; height: 150px; object-fit: cover; border: 4px solid #667eea;">
-                    </div>
-                    {% else %}
-                    <div class="text-center mb-4">
-                        <div class="rounded-circle d-inline-flex align-items-center justify-content-center" 
-                             style="width: 150px; height: 150px; background: #f0f0f0; border: 4px solid #667eea;">
-                            <i class="fas fa-user" style="font-size: 60px; color: #667eea;"></i>
-                        </div>
+                        <img src="{{ agent.profile_photo.url }}" alt="{{ agent.name }}"
+                             class="rounded-circle" style="width: 130px; height: 130px; object-fit: cover; border: 4px solid #38bdf8;">
                     </div>
                     {% endif %}
 
-                    <!-- Profile Details -->
-                    <table class="table table-borderless">
-                        <tbody>
-                            <!-- Agent ID -->
-                            <tr>
-                                <td class="fw-bold text-muted" style="width: 30%;">
-                                    <i class="fas fa-id-card text-primary"></i> Agent ID
-                                </td>
-                                <td>
-                                    <span class="badge bg-primary">{{ agent.agent_id|default:"N/A" }}</span>
-                                </td>
-                            </tr>
-                            
-                            <!-- Name -->
-                            <tr>
-                                <td class="fw-bold text-muted">
-                                    <i class="fas fa-user text-success"></i> Name
-                                </td>
-                                <td>
-                                    <strong>{{ agent.name }}</strong>
-                                </td>
-                            </tr>
-                            
-                            <!-- Email -->
-                            <tr>
-                                <td class="fw-bold text-muted">
-                                    <i class="fas fa-envelope text-info"></i> Email
-                                </td>
-                                <td>
-                                    <a href="mailto:{{ agent.email }}">{{ agent.email }}</a>
-                                </td>
-                            </tr>
-                            
-                            <!-- Phone -->
-                            <tr>
-                                <td class="fw-bold text-muted">
-                                    <i class="fas fa-phone text-warning"></i> Phone
-                                </td>
-                                <td>
-                                    <a href="tel:{{ agent.phone }}">{{ agent.phone }}</a>
-                                </td>
-                            </tr>
-                            
-                            <!-- Address -->
-                            <tr>
-                                <td class="fw-bold text-muted">
-                                    <i class="fas fa-map-marker-alt text-danger"></i> Address
-                                </td>
-                                <td>
-                                    {{ agent.address|default:"Not specified" }}
-                                </td>
-                            </tr>
-                            
-                            <!-- Status -->
-                            <tr>
-                                <td class="fw-bold text-muted">
-                                    <i class="fas fa-check-circle"></i> Status
-                                </td>
-                                <td>
-                                    {% if agent.status == 'active' %}
-                                        <span class="badge bg-success">Active</span>
-                                    {% else %}
-                                        <span class="badge bg-danger">Inactive</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            
-                            <!-- Created Date -->
-                            <tr>
-                                <td class="fw-bold text-muted">
-                                    <i class="fas fa-calendar-plus"></i> Joined
-                                </td>
-                                <td>
-                                    {{ agent.created_at|date:"d M, Y" }}
-                                </td>
-                            </tr>
-                            
-                            <!-- Last Updated -->
-                            <tr>
-                                <td class="fw-bold text-muted">
-                                    <i class="fas fa-sync-alt"></i> Last Updated
-                                </td>
-                                <td>
-                                    {{ agent.updated_at|date:"d M, Y H:i" }}
-                                </td>
-                            </tr>
-                            
-                            <!-- Created By -->
-                            {% if agent.created_by %}
-                            <tr>
-                                <td class="fw-bold text-muted">
-                                    <i class="fas fa-user-tie"></i> Created By
-                                </td>
-                                <td>
-                                    {{ agent.created_by.get_full_name|default:agent.created_by.username }}
-                                </td>
-                            </tr>
-                            {% endif %}
-                        </tbody>
-                    </table>
+                    <div class="table-responsive">
+                        <table class="table table-borderless profile-table mb-0">
+                            <tbody>
+                                <tr>
+                                    <td class="label-col"><i class="fas fa-id-card text-primary"></i> Agent ID</td>
+                                    <td><span class="badge bg-primary">{{ agent.agent_id|default:"N/A" }}</span></td>
+                                </tr>
+                                <tr>
+                                    <td class="label-col"><i class="fas fa-user text-success"></i> Name</td>
+                                    <td><strong>{{ agent.name }}</strong></td>
+                                </tr>
+                                <tr>
+                                    <td class="label-col"><i class="fas fa-envelope text-info"></i> Email</td>
+                                    <td><a href="mailto:{{ agent.email }}">{{ agent.email }}</a></td>
+                                </tr>
+                                <tr>
+                                    <td class="label-col"><i class="fas fa-phone text-warning"></i> Phone</td>
+                                    <td><a href="tel:{{ agent.phone }}">{{ agent.phone }}</a></td>
+                                </tr>
+                                <tr>
+                                    <td class="label-col"><i class="fas fa-map-marker-alt text-danger"></i> Address</td>
+                                    <td>{{ agent.address|default:"Not specified" }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="label-col"><i class="fas fa-check-circle"></i> Status</td>
+                                    <td>
+                                        {% if agent.status == 'active' %}
+                                            <span class="badge bg-success">Active</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Inactive</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="label-col"><i class="fas fa-calendar-plus"></i> Joined</td>
+                                    <td>{{ agent.created_at|date:"d M, Y" }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="label-col"><i class="fas fa-sync-alt"></i> Last Updated</td>
+                                    <td>{{ agent.updated_at|date:"d M, Y H:i" }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="card shadow-sm border-0 rounded-lg mb-4">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="fas fa-lock"></i> Change Password</h6>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="change_password">
+
+                        <div class="mb-3">
+                            <label class="form-label">Current Password</label>
+                            <input type="password" class="form-control" name="old_password" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">New Password</label>
+                            <input type="password" class="form-control" name="new_password" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Confirm Password</label>
+                            <input type="password" class="form-control" name="confirm_password" required>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-save"></i> Update Password
+                        </button>
+                    </form>
                 </div>
             </div>
 
-            <!-- Quick Actions -->
-            <div class="row mt-4">
-                <div class="col-12">
-                    <div class="d-grid gap-2 d-sm-flex justify-content-center">
-                        <a href="{% url 'agent_edit_profile' %}" class="btn btn-primary btn-lg">
-                            <i class="fas fa-edit"></i> Edit Profile
-                        </a>
-                        <a href="{% url 'agent_settings' %}" class="btn btn-outline-secondary btn-lg">
-                            <i class="fas fa-cog"></i> Settings
-                        </a>
-                        <a href="{% url 'agent_dashboard' %}" class="btn btn-outline-secondary btn-lg">
-                            <i class="fas fa-home"></i> Dashboard
-                        </a>
-                    </div>
+            <div class="card shadow-sm border-0 rounded-lg">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="fas fa-bell"></i> Notification Preferences</h6>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="notification_settings">
+
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="notif_new" checked>
+                            <label class="form-check-label" for="notif_new">New applications update</label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="notif_status" checked>
+                            <label class="form-check-label" for="notif_status">Status change update</label>
+                        </div>
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="notif_complaint" checked>
+                            <label class="form-check-label" for="notif_complaint">Complaint updates</label>
+                        </div>
+
+                        <button type="submit" class="btn btn-outline-primary w-100">
+                            <i class="fas fa-save"></i> Save Preferences
+                        </button>
+                    </form>
                 </div>
             </div>
         </div>
@@ -166,16 +149,22 @@
 </div>
 
 <style>
-    .bg-gradient {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-    }
-    
-    table tr {
-        border-bottom: 1px solid #eee;
-    }
-    
-    table tr:last-child {
-        border-bottom: none;
-    }
+.profile-head {
+    background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%);
+}
+
+.profile-table tr {
+    border-bottom: 1px solid #eef2f7;
+}
+
+.profile-table tr:last-child {
+    border-bottom: none;
+}
+
+.label-col {
+    width: 42%;
+    color: #64748b;
+    font-weight: 600;
+}
 </style>
 {% endblock %}

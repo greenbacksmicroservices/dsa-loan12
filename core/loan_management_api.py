@@ -395,7 +395,22 @@ def api_dashboard_stats(request):
             assigned_employee=request.user
         ).aggregate(total=Sum('loan_amount'))['total'] or 0
     else:
-        return JsonResponse({'error': 'Unauthorized'}, status=403)
+        return JsonResponse({
+            'success': False,
+            'role_mismatch': True,
+            'message': 'Dashboard realtime stats not available for this role',
+            'data': {
+                'new_entries': 0,
+                'waiting': 0,
+                'follow_up': 0,
+                'approved': 0,
+                'rejected': 0,
+                'disbursed': 0,
+                'total': 0,
+                'total_amount_disbursed': 0.0,
+                'total_amount_pending': 0.0,
+            }
+        }, status=200)
     
     return JsonResponse({
         'success': True,

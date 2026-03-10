@@ -164,8 +164,8 @@
                         <i class="fas fa-file-alt"></i> New Entry Applications
                     {% elif status_name == 'Waiting for Processing' %}
                         <i class="fas fa-hourglass-half"></i> In Processing
-                    {% elif status_name == 'Required Follow-up' %}
-                        <i class="fas fa-phone-volume"></i> Follow-up Required
+                    {% elif status_name == 'Required Follow-up' or status_name == 'Banking Processing' %}
+                        <i class="fas fa-university"></i> Banking Processing
                     {% elif status_name == 'Approved' %}
                         <i class="fas fa-check-circle"></i> Approved Applications
                     {% elif status_name == 'Rejected' %}
@@ -215,8 +215,9 @@
                         <th style="padding: 15px 20px; font-weight: 600; color: #2d3748; font-size: 13px; text-transform: uppercase;">Phone</th>
                         <th style="padding: 15px 20px; font-weight: 600; color: #2d3748; font-size: 13px; text-transform: uppercase;">Loan Amount</th>
                         <th style="padding: 15px 20px; font-weight: 600; color: #2d3748; font-size: 13px; text-transform: uppercase;">Date Applied</th>
-                        {% if status_name == 'Waiting for Processing' or status_name == 'Required Follow-up' or status_name == 'Approved' or status_name == 'Rejected' or status_name == 'Disbursed' %}
+                        {% if status_name == 'Waiting for Processing' or status_name == 'Required Follow-up' or status_name == 'Banking Processing' or status_name == 'Approved' or status_name == 'Rejected' or status_name == 'Disbursed' %}
                         <th style="padding: 15px 20px; font-weight: 600; color: #2d3748; font-size: 13px; text-transform: uppercase;">Assigned To</th>
+                        <th style="padding: 15px 20px; font-weight: 600; color: #2d3748; font-size: 13px; text-transform: uppercase;">Assigned By</th>
                         {% endif %}
                         <th style="padding: 15px 20px; font-weight: 600; color: #2d3748; font-size: 13px; text-transform: uppercase;">Actions</th>
                     </tr>
@@ -227,14 +228,27 @@
                         <td style="padding: 15px 20px; font-weight: 600; color: #1f2937;">{{ app.applicant.full_name }}</td>
                         <td style="padding: 15px 20px; color: #666;">{{ app.applicant.email }}</td>
                         <td style="padding: 15px 20px; color: #666;">{{ app.applicant.mobile|default:"-" }}</td>
-                        <td style="padding: 15px 20px; font-weight: 600; color: #2d5016;">₹{{ app.applicant.loan_amount|floatformat:0 }}</td>
+                        <td style="padding: 15px 20px; font-weight: 600; color: #2d5016;">â‚¹{{ app.applicant.loan_amount|floatformat:0 }}</td>
                         <td style="padding: 15px 20px; color: #666; font-size: 13px;">{{ app.created_at|date:"M d, Y" }}</td>
-                        {% if status_name == 'Waiting for Processing' or status_name == 'Required Follow-up' or status_name == 'Approved' or status_name == 'Rejected' or status_name == 'Disbursed' %}
+                        {% if status_name == 'Waiting for Processing' or status_name == 'Required Follow-up' or status_name == 'Banking Processing' or status_name == 'Approved' or status_name == 'Rejected' or status_name == 'Disbursed' %}
                         <td style="padding: 15px 20px; font-weight: 600; color: #374151;">
                             {% if app.assigned_employee %}
                                 {{ app.assigned_employee.first_name }} {{ app.assigned_employee.last_name }}
                             {% else %}
                                 <span style="color: #9ca3af; font-style: italic;">Not assigned</span>
+                            {% endif %}
+                        </td>
+                        <td style="padding: 15px 20px; font-weight: 600; color: #374151;">
+                            {% if app.assigned_by %}
+                                {% if app.assigned_by.role == 'subadmin' %}
+                                    SubAdmin - {{ app.assigned_by.get_full_name|default:app.assigned_by.username }}
+                                {% elif app.assigned_by.role == 'admin' %}
+                                    Admin - {{ app.assigned_by.get_full_name|default:app.assigned_by.username }}
+                                {% else %}
+                                    {{ app.assigned_by.get_full_name|default:app.assigned_by.username }}
+                                {% endif %}
+                            {% else %}
+                                <span style="color: #9ca3af; font-style: italic;">System</span>
                             {% endif %}
                         </td>
                         {% endif %}
@@ -411,7 +425,7 @@ function viewDetails(appId, fullName, email, phone, loanType, loanAmount) {
                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                                     <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Service Required</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.loan_type || '-'}</p></div>
                                     <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Loan Tenure (Months)</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.loan_tenure || '-'}</p></div>
-                                    <div style="grid-column: 1 / -1;"><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Loan Amount Required</p><p style="margin: 0; color: #2d5016; font-weight: 700; font-size: 18px;">₹${app.loan_amount || '0'}</p></div>
+                                    <div style="grid-column: 1 / -1;"><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Loan Amount Required</p><p style="margin: 0; color: #2d5016; font-weight: 700; font-size: 18px;">â‚¹${app.loan_amount || '0'}</p></div>
                                     <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Any Charges or Fee</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.charges_fee}</p></div>
                                 </div>
                             </div>
@@ -492,3 +506,4 @@ document.addEventListener('keydown', function(event) {
 </script>
 
 {% endblock %}
+

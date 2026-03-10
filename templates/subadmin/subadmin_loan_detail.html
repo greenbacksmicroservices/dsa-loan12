@@ -1,0 +1,94 @@
+{% extends "subadmin/base_subadmin.html" %}
+{% load static %}
+
+{% block title %}Loan Detail - SubAdmin{% endblock %}
+{% block page_title %}Loan Detail{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex items-center justify-between bg-white rounded-lg border border-gray-200 shadow-sm p-6">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">Loan: {{ loan_payload.loan_id }}</h1>
+            <p class="text-sm text-gray-600 mt-1">{{ loan_payload.full_name }} | {{ loan_payload.status_display }}</p>
+        </div>
+        <a href="{% url 'subadmin_all_loans' %}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Back to All Loans</a>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
+            <h2 class="text-lg font-semibold text-gray-900 mb-4">Customer Details</h2>
+            <div class="space-y-2 text-sm">
+                <p><span class="text-gray-500">Name:</span> {{ loan_payload.full_name }}</p>
+                <p><span class="text-gray-500">Mobile:</span> {{ loan_payload.mobile_number }}</p>
+                <p><span class="text-gray-500">Email:</span> {{ loan_payload.email }}</p>
+                <p><span class="text-gray-500">City:</span> {{ loan_payload.city }}</p>
+                <p><span class="text-gray-500">State:</span> {{ loan_payload.state }}</p>
+                <p><span class="text-gray-500">Permanent Address:</span> {{ loan_payload.permanent_address }}</p>
+                <p><span class="text-gray-500">Current Address:</span> {{ loan_payload.current_address }}</p>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
+            <h2 class="text-lg font-semibold text-gray-900 mb-4">Loan and Bank Details</h2>
+            <div class="space-y-2 text-sm">
+                <p><span class="text-gray-500">Loan Type:</span> {{ loan_payload.loan_type }}</p>
+                <p><span class="text-gray-500">Amount:</span> Rs. {{ loan_payload.loan_amount }}</p>
+                <p><span class="text-gray-500">Tenure:</span> {{ loan_payload.tenure_months }}</p>
+                <p><span class="text-gray-500">Interest:</span> {{ loan_payload.interest_rate }}</p>
+                <p><span class="text-gray-500">EMI:</span> {{ loan_payload.emi }}</p>
+                <p><span class="text-gray-500">Bank:</span> {{ loan_payload.bank_name }}</p>
+                <p><span class="text-gray-500">Account:</span> {{ loan_payload.bank_account_number }}</p>
+                <p><span class="text-gray-500">IFSC:</span> {{ loan_payload.bank_ifsc_code }}</p>
+                <p><span class="text-gray-500">Bank Remark:</span> {{ loan_payload.bank_remark }}</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">Documents</h2>
+        {% if loan_payload.documents %}
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-3 py-2 text-left">Name</th>
+                        <th class="px-3 py-2 text-left">Source</th>
+                        <th class="px-3 py-2 text-left">Uploaded</th>
+                        <th class="px-3 py-2 text-left">File</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    {% for doc in loan_payload.documents %}
+                    <tr>
+                        <td class="px-3 py-2">{{ doc.name }}</td>
+                        <td class="px-3 py-2">{{ doc.source }}</td>
+                        <td class="px-3 py-2">{{ doc.uploaded_at }}</td>
+                        <td class="px-3 py-2"><a class="text-blue-600 hover:text-blue-800" href="{{ doc.url }}" target="_blank">Open</a></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-sm text-gray-500">No documents uploaded.</p>
+        {% endif %}
+    </div>
+
+    <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">Status Timeline</h2>
+        {% if history_timeline %}
+        <div class="space-y-3">
+            {% for item in history_timeline %}
+            <div class="border border-gray-200 rounded-lg p-3">
+                <p class="font-semibold text-gray-900">{{ item.status }}</p>
+                <p class="text-sm text-gray-600">By: {{ item.changed_by }} | {{ item.timestamp|date:"M d, Y H:i" }}</p>
+                <p class="text-sm text-gray-700 mt-1">{{ item.remarks|default:'-' }}</p>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-sm text-gray-500">No status history found.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

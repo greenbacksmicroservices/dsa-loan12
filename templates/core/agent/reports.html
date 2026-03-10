@@ -20,8 +20,7 @@
                         <i class="bi bi-person-circle" style="font-size: 1.5rem; color: #007bff;"></i>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item" href="#"><i class="bi bi-person"></i> Profile</a></li>
-                        <li><a class="dropdown-item" href="#"><i class="bi bi-gear"></i> Settings</a></li>
+                        <li><a class="dropdown-item" href="{% url 'agent_profile' %}"><i class="bi bi-person"></i> My Profile</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item text-danger" href="{% url 'logout' %}"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
                     </ul>
@@ -40,10 +39,10 @@
                     <h5 class="card-title">Last 1 Month</h5>
                     <p class="card-text text-muted">Download loan data from the last 30 days</p>
                     <div class="btn-group w-100" role="group">
-                        <a href="?period=1month&format=csv" class="btn btn-outline-primary">
+                        <a href="?period=1month&format=csv&download=1" class="btn btn-outline-primary">
                             <i class="bi bi-download"></i> CSV
                         </a>
-                        <a href="?period=1month&format=excel" class="btn btn-outline-primary">
+                        <a href="?period=1month&format=excel&download=1" class="btn btn-outline-primary">
                             <i class="bi bi-file-earmark-excel"></i> Excel
                         </a>
                     </div>
@@ -58,10 +57,10 @@
                     <h5 class="card-title">Last 6 Months</h5>
                     <p class="card-text text-muted">Download loan data from the last 6 months</p>
                     <div class="btn-group w-100" role="group">
-                        <a href="?period=6months&format=csv" class="btn btn-outline-success">
+                        <a href="?period=6months&format=csv&download=1" class="btn btn-outline-success">
                             <i class="bi bi-download"></i> CSV
                         </a>
-                        <a href="?period=6months&format=excel" class="btn btn-outline-success">
+                        <a href="?period=6months&format=excel&download=1" class="btn btn-outline-success">
                             <i class="bi bi-file-earmark-excel"></i> Excel
                         </a>
                     </div>
@@ -76,10 +75,10 @@
                     <h5 class="card-title">Last 1 Year</h5>
                     <p class="card-text text-muted">Download loan data from the last 12 months</p>
                     <div class="btn-group w-100" role="group">
-                        <a href="?period=1year&format=csv" class="btn btn-outline-info">
+                        <a href="?period=1year&format=csv&download=1" class="btn btn-outline-info">
                             <i class="bi bi-download"></i> CSV
                         </a>
-                        <a href="?period=1year&format=excel" class="btn btn-outline-info">
+                        <a href="?period=1year&format=excel&download=1" class="btn btn-outline-info">
                             <i class="bi bi-file-earmark-excel"></i> Excel
                         </a>
                     </div>
@@ -107,6 +106,7 @@
             <div class="card-body">
                 <h5 class="card-title mb-3">Select Custom Date Range</h5>
                 <form method="get" action="">
+                    <input type="hidden" name="download" value="1">
                     <div class="row g-3">
                         <div class="col-md-3">
                             <label class="form-label">From Date</label>

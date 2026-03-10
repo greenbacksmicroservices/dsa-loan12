@@ -8,24 +8,11 @@
     <!-- Header -->
     <div class="row mb-4">
         <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h1 class="h3 text-gray-800 mb-0">
-                        <i class="bi bi-exclamation-triangle"></i> Complaints
-                    </h1>
-                    <p class="text-muted mt-2 mb-0">File and track complaints regarding your loans</p>
-                </div>
-                <div class="dropdown">
-                    <button class="btn btn-light border rounded-circle p-3" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="bi bi-person-circle" style="font-size: 1.5rem; color: #007bff;"></i>
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item" href="#"><i class="bi bi-person"></i> Profile</a></li>
-                        <li><a class="dropdown-item" href="#"><i class="bi bi-gear"></i> Settings</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item text-danger" href="{% url 'logout' %}"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
-                    </ul>
-                </div>
+            <div>
+                <h1 class="h3 text-gray-800 mb-0">
+                    <i class="bi bi-exclamation-triangle"></i> Complaints
+                </h1>
+                <p class="text-muted mt-2 mb-0">File and track complaints regarding your loans</p>
             </div>
         </div>
     </div>
@@ -54,7 +41,7 @@
                                 <option value="">-- Choose a loan --</option>
                                 {% for loan in user_loans %}
                                 <option value="{{ loan.id }}">
-                                    {{ loan.applicant_name }} - ₹{{ loan.loan_amount|floatformat:0 }} ({{ loan.get_status_display }})
+                                    {{ loan.full_name }} - &#8377;{{ loan.loan_amount|floatformat:0 }} ({{ loan.get_status_display }})
                                 </option>
                                 {% endfor %}
                             </select>
@@ -158,19 +145,19 @@
                            onclick="viewComplaintDetails({{ complaint.id }}); return false;">
                             <div class="d-flex w-100 justify-content-between">
                                 <div class="flex-grow-1">
-                                    <h6 class="mb-1">{{ complaint.subject }}</h6>
+                                    <h6 class="mb-1">{{ complaint.subject_text }}</h6>
                                     <p class="mb-1 text-muted small">
-                                        <i class="bi bi-file-earmark"></i> Loan: {{ complaint.loan.applicant_name }}
+                                        <i class="bi bi-file-earmark"></i> Loan: {{ complaint.loan.full_name|default:"-" }}
                                     </p>
                                     <small class="text-muted">{{ complaint.created_at|date:"d M, Y H:i" }}</small>
                                 </div>
                                 <div class="text-end">
-                                    <span class="badge {% if complaint.status == 'pending' %}bg-warning{% elif complaint.status == 'resolved' %}bg-success{% elif complaint.status == 'closed' %}bg-secondary{% else %}bg-info{% endif %}">
+                                    <span class="badge {% if complaint.status == 'open' %}bg-warning text-dark{% elif complaint.status == 'in_progress' %}bg-info{% elif complaint.status == 'resolved' %}bg-success{% elif complaint.status == 'closed' %}bg-secondary{% else %}bg-secondary{% endif %}">
                                         {{ complaint.get_status_display }}
                                     </span>
                                     <br>
                                     <small class="text-muted">
-                                        <i class="bi bi-flag"></i> {{ complaint.get_priority_display|default:complaint.priority }}
+                                        <i class="bi bi-flag"></i> {{ complaint.get_priority_display }}
                                     </small>
                                 </div>
                             </div>
@@ -236,46 +223,64 @@ function viewComplaintDetails(complaintId) {
     `;
     
     // Fetch complaint details via AJAX
-    fetch(`/api/complaint/${complaintId}/`)
-        .then(response => response.json())
+    fetch(`/api/complaints/${complaintId}/`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Unable to load complaint details');
+            }
+            return response.json();
+        })
         .then(data => {
+            const fullDescription = data.description || '';
+            const descriptionParts = fullDescription.split('\n\n');
+            const subject = descriptionParts.length > 1
+                ? descriptionParts[0]
+                : `${(data.complaint_type || 'Complaint').replaceAll('_', ' ')}`;
+            const detailText = descriptionParts.length > 1
+                ? descriptionParts.slice(1).join('\n\n')
+                : fullDescription;
+            const loanDetails = data.loan_details || {};
+            const loanName = loanDetails.full_name || data.customer_name || '-';
+            const loanAmount = Number(loanDetails.loan_amount || 0).toLocaleString('en-IN');
+            const assignedAdmin = data.assigned_admin_name || '-';
+
             body.innerHTML = `
                 <div class="row mb-3">
                     <div class="col-6">
                         <strong>Status:</strong><br>
-                        <span class="badge bg-info">${data.status}</span>
+                        <span class="badge bg-info">${data.status || '-'}</span>
                     </div>
                     <div class="col-6 text-end">
                         <strong>Priority:</strong><br>
-                        <span class="badge bg-danger">${data.priority}</span>
+                        <span class="badge bg-danger">${data.priority || '-'}</span>
                     </div>
                 </div>
                 <div class="row mb-3">
                     <div class="col-6">
                         <strong>Loan:</strong><br>
-                        ${data.loan_applicant_name} - ₹${data.loan_amount}
+                        ${loanName} - &#8377;${loanAmount}
                     </div>
                     <div class="col-6 text-end">
                         <strong>Filed Date:</strong><br>
-                        ${new Date(data.created_at).toLocaleDateString()}
+                        ${data.created_at ? new Date(data.created_at).toLocaleDateString() : '-'}
                     </div>
                 </div>
                 <div class="row mb-3">
                     <div class="col-12">
                         <strong>Subject:</strong><br>
-                        ${data.subject}
+                        ${subject}
                     </div>
                 </div>
                 <div class="row mb-3">
                     <div class="col-12">
                         <strong>Description:</strong><br>
-                        <p class="text-muted">${data.description}</p>
+                        <p class="text-muted">${detailText || '-'}</p>
                     </div>
                 </div>
-                ${data.assigned_admin ? `<div class="row"><div class="col-12"><strong>Assigned to:</strong> ${data.assigned_admin_name}</div></div>` : ''}
+                <div class="row"><div class="col-12"><strong>Assigned to:</strong> ${assignedAdmin}</div></div>
             `;
         })
-        .catch(error => {
+        .catch(() => {
             body.innerHTML = `<div class="alert alert-danger">Error loading complaint details</div>`;
         });
     
@@ -321,3 +326,4 @@ setInterval(function() {
 }
 </style>
 {% endblock %}
+

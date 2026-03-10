@@ -1,7 +1,7 @@
 {% extends 'core/base.html' %}
 {% load static %}
 
-{% block title %}Request New Entry Loans - DSA Loan Management{% endblock %}
+{% block title %}{{ page_title_text|default:"Employee Loan Queue" }} - DSA Loan Management{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -250,6 +250,15 @@
         background: #bbdefb;
     }
 
+    .btn-process {
+        background: #e8f5e9;
+        color: #166534;
+    }
+
+    .btn-process:hover {
+        background: #c8e6c9;
+    }
+
     .btn-approve {
         background: #c8e6c9;
         color: #2e7d32;
@@ -257,6 +266,15 @@
 
     .btn-approve:hover {
         background: #a5d6a7;
+    }
+
+    .btn-collect {
+        background: #fff3cd;
+        color: #8a6d3b;
+    }
+
+    .btn-collect:hover {
+        background: #ffe8a1;
     }
 
     .btn-reject {
@@ -552,31 +570,8 @@
 <div class="request-loan-container">
     <div class="request-loan-header">
         <div>
-            <h1>📋 Request New Entry Loans</h1>
-            <p style="margin: 0.5rem 0 0 0; opacity: 0.9;">Loans assigned to you for processing and approval</p>
-        </div>
-    </div>
-
-    <div class="request-loan-stats">
-        <div class="stat-card">
-            <div class="stat-number" id="stat-total">0</div>
-            <div class="stat-label">Total Assigned</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-number" id="stat-processing">0</div>
-            <div class="stat-label">Awaiting Action</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-number" id="stat-approved">0</div>
-            <div class="stat-label">Approved</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-number" id="stat-rejected">0</div>
-            <div class="stat-label">Rejected</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-number" id="stat-disbursed">0</div>
-            <div class="stat-label">Disbursed</div>
+            <h1>{{ page_title_text|default:"Request New Entry Loans" }}</h1>
+            <p style="margin: 0.5rem 0 0 0; opacity: 0.9;">{{ page_subtitle_text|default:"Read full loan details first, then click Process to open Bank Processing page." }}</p>
         </div>
     </div>
 </div>
@@ -589,17 +584,21 @@
         <div class="table-filters">
             <select id="filter-status">
                 <option value="">All Statuses</option>
-                <option value="Waiting for Processing">Waiting for Processing</option>
+                {% if page_mode == 'bank_processing' %}
+                <option value="Required Follow-up">Banking Processing</option>
                 <option value="Approved">Approved</option>
                 <option value="Rejected">Rejected</option>
                 <option value="Disbursed">Disbursed</option>
+                {% else %}
+                <option value="Waiting for Processing">Waiting for Processing</option>
+                {% endif %}
             </select>
             <input type="date" id="filter-from-date" placeholder="From Date">
             <input type="date" id="filter-to-date" placeholder="To Date">
         </div>
         <div class="btn-group">
             <button class="btn-refresh" id="btn-refresh" onclick="loadAssignedLoans()">
-                <span>🔄 Refresh</span>
+                <span>Refresh</span>
             </button>
         </div>
     </div>
@@ -626,7 +625,7 @@
     </table>
 
     <div id="no-loans" class="no-data" style="display: none;">
-        <div style="font-size: 3rem; margin-bottom: 1rem;">📭</div>
+        <div style="font-size: 3rem; margin-bottom: 1rem;">No Data</div>
         <p>No loans assigned to you yet.</p>
         <p style="font-size: 0.9rem; color: #ccc;">New loans will appear here when an admin assigns them to you.</p>
     </div>
@@ -637,7 +636,7 @@
     <div class="modal-content">
         <div class="modal-header">
             <h2>Loan Application Details</h2>
-            <button class="modal-close" onclick="closeModal('view-modal')">✕</button>
+            <button class="modal-close" onclick="closeModal('view-modal')">X</button>
         </div>
         <div id="view-modal-body">
             <!-- Populated dynamically -->
@@ -648,18 +647,39 @@
     </div>
 </div>
 
+<!-- COLLECT MODAL -->
+<div class="modal-overlay" id="collect-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Banking Processing</h2>
+            <button class="modal-close" onclick="closeModal('collect-modal')">X</button>
+        </div>
+        <div id="collect-modal-body">
+            <div class="assigned-info" id="collect-info"></div>
+            <div class="form-group">
+                <label for="collect-bank-remark">Bank Remark (Optional)</label>
+                <textarea id="collect-bank-remark" rows="3" placeholder="Banking verification remark..."></textarea>
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn-modal-cancel" onclick="closeModal('collect-modal')">Cancel</button>
+            <button class="btn-modal-confirm success" id="btn-confirm-collect" onclick="confirmCollect()">Move to Banking Processing</button>
+        </div>
+    </div>
+</div>
+
 <!-- APPROVE MODAL -->
 <div class="modal-overlay" id="approve-modal">
     <div class="modal-content">
         <div class="modal-header">
-            <h2>✅ Approve Loan</h2>
-            <button class="modal-close" onclick="closeModal('approve-modal')">✕</button>
+            <h2>Approve Loan</h2>
+            <button class="modal-close" onclick="closeModal('approve-modal')">X</button>
         </div>
         <div id="approve-modal-body">
             <div class="assigned-info" id="approve-info"></div>
             <div class="form-group">
-                <label for="approval-notes">Approval Notes (Optional)</label>
-                <textarea id="approval-notes" rows="4" placeholder="Enter any additional notes for approval..."></textarea>
+                <label for="approval-notes">Bank Remark (Optional)</label>
+                <textarea id="approval-notes" rows="4" placeholder="Enter banking verification remark..."></textarea>
             </div>
         </div>
         <div class="modal-actions">
@@ -673,14 +693,18 @@
 <div class="modal-overlay" id="reject-modal">
     <div class="modal-content">
         <div class="modal-header">
-            <h2>❌ Reject Loan</h2>
-            <button class="modal-close" onclick="closeModal('reject-modal')">✕</button>
+            <h2>Reject Loan</h2>
+            <button class="modal-close" onclick="closeModal('reject-modal')">X</button>
         </div>
         <div id="reject-modal-body">
             <div class="assigned-info" id="reject-info"></div>
             <div class="form-group">
                 <label for="rejection-reason">Rejection Reason *</label>
                 <textarea id="rejection-reason" rows="4" placeholder="Please explain why this loan is being rejected..." required></textarea>
+            </div>
+            <div class="form-group">
+                <label for="reject-bank-remark">Bank Remark (Optional)</label>
+                <textarea id="reject-bank-remark" rows="3" placeholder="Banking verification remark..."></textarea>
             </div>
         </div>
         <div class="modal-actions">
@@ -694,8 +718,8 @@
 <div class="modal-overlay" id="disburse-modal">
     <div class="modal-content">
         <div class="modal-header">
-            <h2>💰 Mark as Disbursed</h2>
-            <button class="modal-close" onclick="closeModal('disburse-modal')">✕</button>
+            <h2>Mark as Disbursed</h2>
+            <button class="modal-close" onclick="closeModal('disburse-modal')">X</button>
         </div>
         <div id="disburse-modal-body">
             <div class="assigned-info" id="disburse-info"></div>
@@ -707,6 +731,10 @@
                 <label for="disburse-date">Disbursement Date *</label>
                 <input type="date" id="disburse-date" required>
             </div>
+            <div class="form-group">
+                <label for="disburse-bank-remark">Bank Remark (Optional)</label>
+                <textarea id="disburse-bank-remark" rows="3" placeholder="Banking verification remark..."></textarea>
+            </div>
         </div>
         <div class="modal-actions">
             <button class="btn-modal-cancel" onclick="closeModal('disburse-modal')">Cancel</button>
@@ -717,20 +745,40 @@
 
 <script>
     // Global state
+    const PAGE_MODE = '{{ page_mode|default:"new_entry" }}';
+    const DEFAULT_STATUS_FILTER = '{{ default_status_filter|default:"" }}';
     let currentLoanId = null;
     let loansData = [];
     let refreshInterval = null;
+    let authRedirectInProgress = false;
+
+    function isUnauthorizedResponse(response) {
+        return response.status === 401 || response.status === 403 || response.redirected;
+    }
+
+    function handleAuthFailure() {
+        if (authRedirectInProgress) return;
+        authRedirectInProgress = true;
+        if (refreshInterval) {
+            clearInterval(refreshInterval);
+            refreshInterval = null;
+        }
+        const nextUrl = encodeURIComponent(window.location.pathname + window.location.search);
+        window.location.href = `/login/?next=${nextUrl}`;
+    }
 
     // Initialize on page load
     document.addEventListener('DOMContentLoaded', function() {
+        const statusEl = document.getElementById('filter-status');
+        if (statusEl && DEFAULT_STATUS_FILTER) {
+            statusEl.value = DEFAULT_STATUS_FILTER;
+        }
         loadAssignedLoans();
-        updateDashboardStats();
         
-        // Auto-refresh every 10 seconds
+        // Auto-refresh list every 15 seconds
         refreshInterval = setInterval(() => {
             loadAssignedLoans();
-            updateDashboardStats();
-        }, 10000);
+        }, 15000);
 
         // Set today's date as default for disburse
         document.getElementById('disburse-date').valueAsDate = new Date();
@@ -756,6 +804,10 @@
 
         fetch(url)
             .then(response => {
+                if (isUnauthorizedResponse(response)) {
+                    handleAuthFailure();
+                    throw new Error('Session expired');
+                }
                 if (!response.ok) throw new Error('Failed to load loans');
                 return response.json();
             })
@@ -772,13 +824,17 @@
             })
             .finally(() => {
                 btn.classList.remove('loading');
-                btn.innerHTML = '<span>🔄 Refresh</span>';
+                btn.innerHTML = '<span>Refresh</span>';
             });
     }
 
     function updateDashboardStats() {
         fetch('/api/employee/dashboard-stats-new/')
             .then(response => {
+                if (isUnauthorizedResponse(response)) {
+                    handleAuthFailure();
+                    throw new Error('Session expired');
+                }
                 if (!response.ok) throw new Error('Failed to load stats');
                 return response.json();
             })
@@ -831,25 +887,21 @@
                     </div>
                 </td>
                 <td>
-                    <span class="amount-badge">₹${formatCurrency(loan.loan_amount)}</span>
+                    <span class="amount-badge">Rs ${formatCurrency(loan.loan_amount)}</span>
                 </td>
                 <td>${loan.loan_type}</td>
                 <td>
                     <span>${formatDate(loan.assigned_date)}</span><br>
                     <span class="time-badge">${daysAgo} days ago</span>
                 </td>
-                <td>Admin</td>
+                <td>${loan.assigned_by_name || 'System'}</td>
                 <td>
-                    <span class="status-badge ${statusClass}">${loan.status}</span>
+                    <span class="status-badge ${statusClass}">${displayStatus(loan.status)}</span>
                 </td>
                 <td>
                     <div class="action-buttons">
-                        <button class="btn-action btn-view" onclick="viewLoan(${loan.applicant_id}, '${loan.applicant_name}')">View</button>
-                        ${loan.status === 'Waiting for Processing' ? `
-                            <button class="btn-action btn-approve" onclick="openApprovalModal(${loan.applicant_id}, '${loan.applicant_name}')">Approve</button>
-                            <button class="btn-action btn-reject" onclick="openRejectModal(${loan.applicant_id}, '${loan.applicant_name}')">Reject</button>
-                            <button class="btn-action btn-disburse" onclick="openDisburseModal(${loan.applicant_id}, '${loan.applicant_name}')">Disburse</button>
-                        ` : ''}
+                        <button class="btn-action btn-view" onclick="viewLoan(${loan.id}, '${loan.applicant_name}')">View</button>
+                        <button class="btn-action btn-process" onclick="openProcessPage(${loan.id})">${PAGE_MODE === 'bank_processing' ? 'Open' : 'Process'}</button>
                     </div>
                 </td>
             `;
@@ -866,13 +918,17 @@
     function closeModal(modalId) {
         document.getElementById(modalId).classList.remove('active');
         // Reset form data
-        if (modalId === 'approve-modal') {
+        if (modalId === 'collect-modal') {
+            document.getElementById('collect-bank-remark').value = '';
+        } else if (modalId === 'approve-modal') {
             document.getElementById('approval-notes').value = '';
         } else if (modalId === 'reject-modal') {
             document.getElementById('rejection-reason').value = '';
+            document.getElementById('reject-bank-remark').value = '';
         } else if (modalId === 'disburse-modal') {
             document.getElementById('disburse-amount').value = '';
             document.getElementById('disburse-date').valueAsDate = new Date();
+            document.getElementById('disburse-bank-remark').value = '';
         }
     }
 
@@ -906,25 +962,71 @@
     function renderLoanDetails(loan) {
         const html = `
             <div style="background: #f9f9f9; padding: 1rem; border-radius: 5px;">
-                <h3 style="margin-top: 0;">📋 Applicant Information</h3>
+                <h3 style="margin-top: 0;">Applicant Information</h3>
                 <p><strong>Name:</strong> ${loan.applicant_name}</p>
                 <p><strong>Phone:</strong> ${loan.mobile}</p>
                 <p><strong>Email:</strong> ${loan.email || 'N/A'}</p>
                 <p><strong>City:</strong> ${loan.city || 'N/A'}</p>
 
-                <h3>💰 Loan Details</h3>
+                <h3>Loan Details</h3>
                 <p><strong>Loan Type:</strong> ${loan.loan_type}</p>
-                <p><strong>Loan Amount:</strong> ₹${formatCurrency(loan.loan_amount)}</p>
+                <p><strong>Loan Amount:</strong> Rs ${formatCurrency(loan.loan_amount)}</p>
                 <p><strong>Loan Purpose:</strong> ${loan.loan_purpose || 'N/A'}</p>
 
-                <h3>📝 Status History</h3>
-                <p><strong>Current Status:</strong> <span class="status-badge ${getStatusClass(loan.status)}">${loan.status}</span></p>
+                <h3>Status History</h3>
+                <p><strong>Current Status:</strong> <span class="status-badge ${getStatusClass(loan.status)}">${displayStatus(loan.status)}</span></p>
                 <p><strong>Assigned Date:</strong> ${formatDate(loan.assigned_date)}</p>
                 ${loan.approval_notes ? `<p><strong>Approval Notes:</strong> ${loan.approval_notes}</p>` : ''}
                 ${loan.rejection_reason ? `<p><strong>Rejection Reason:</strong> ${loan.rejection_reason}</p>` : ''}
             </div>
         `;
         document.getElementById('view-modal-body').innerHTML = html;
+    }
+
+    function openCollectModal(loanId, applicantName) {
+        currentLoanId = loanId;
+        document.getElementById('collect-info').innerHTML = `
+            Move <strong>${applicantName}</strong> to Banking Processing
+        `;
+        openModal('collect-modal');
+    }
+
+    function confirmCollect() {
+        if (!currentLoanId) return;
+
+        const btn = document.getElementById('btn-confirm-collect');
+        btn.innerHTML = '<div class="loader"></div>';
+        btn.disabled = true;
+
+        const bankRemark = document.getElementById('collect-bank-remark').value.trim();
+
+        fetch(`/api/employee/loan/${currentLoanId}/collect/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({ bank_remark: bankRemark })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showSuccess('Moved to Banking Processing successfully!');
+                closeModal('collect-modal');
+                loadAssignedLoans();
+            } else {
+                showError(data.error || 'Failed to move to Banking Processing');
+            }
+        })
+        .catch(error => showError('Error: ' + error.message))
+        .finally(() => {
+            btn.innerHTML = 'Move to Banking Processing';
+            btn.disabled = false;
+        });
+    }
+
+    function openProcessPage(loanId) {
+        window.location.href = `/employee/loan/${loanId}/bank-processing/`;
     }
 
     function openApprovalModal(loanId, applicantName) {
@@ -950,7 +1052,7 @@
                 'Content-Type': 'application/json',
                 'X-CSRFToken': getCookie('csrftoken')
             },
-            body: JSON.stringify({ approval_notes: notes })
+            body: JSON.stringify({ approval_notes: notes, bank_remark: notes })
         })
         .then(response => response.json())
         .then(data => {
@@ -958,7 +1060,6 @@
                 showSuccess('Loan approved successfully!');
                 closeModal('approve-modal');
                 loadAssignedLoans();
-                updateDashboardStats();
             } else {
                 showError(data.error || 'Failed to approve loan');
             }
@@ -982,6 +1083,7 @@
         if (!currentLoanId) return;
 
         const reason = document.getElementById('rejection-reason').value;
+        const bankRemark = document.getElementById('reject-bank-remark').value;
         if (!reason.trim()) {
             showError('Please provide a rejection reason');
             return;
@@ -997,7 +1099,7 @@
                 'Content-Type': 'application/json',
                 'X-CSRFToken': getCookie('csrftoken')
             },
-            body: JSON.stringify({ rejection_reason: reason })
+            body: JSON.stringify({ rejection_reason: reason, bank_remark: bankRemark })
         })
         .then(response => response.json())
         .then(data => {
@@ -1005,7 +1107,6 @@
                 showSuccess('Loan rejected successfully!');
                 closeModal('reject-modal');
                 loadAssignedLoans();
-                updateDashboardStats();
             } else {
                 showError(data.error || 'Failed to reject loan');
             }
@@ -1030,9 +1131,10 @@
 
         const amount = document.getElementById('disburse-amount').value;
         const date = document.getElementById('disburse-date').value;
+        const bankRemark = document.getElementById('disburse-bank-remark').value;
 
-        if (!amount || !date) {
-            showError('Please fill in all required fields');
+        if (amount && parseFloat(amount) <= 0) {
+            showError('Disbursement amount must be greater than 0');
             return;
         }
 
@@ -1047,8 +1149,9 @@
                 'X-CSRFToken': getCookie('csrftoken')
             },
             body: JSON.stringify({
-                disbursement_amount: parseFloat(amount),
-                disbursement_date: date
+                disbursement_amount: amount ? parseFloat(amount) : null,
+                disbursement_date: date || null,
+                bank_remark: bankRemark
             })
         })
         .then(response => response.json())
@@ -1057,7 +1160,6 @@
                 showSuccess('Loan marked as disbursed successfully!');
                 closeModal('disburse-modal');
                 loadAssignedLoans();
-                updateDashboardStats();
             } else {
                 showError(data.error || 'Failed to disburse loan');
             }
@@ -1075,11 +1177,17 @@
         const classMap = {
             'Waiting for Processing': 'waiting',
             'Required Follow-up': 'follow-up',
+            'Banking Processing': 'follow-up',
             'Approved': 'approved',
             'Rejected': 'rejected',
             'Disbursed': 'disbursed'
         };
         return classMap[status] || 'waiting';
+    }
+
+    function displayStatus(status) {
+        if (status === 'Required Follow-up') return 'Banking Processing';
+        return status;
     }
 
     function formatCurrency(value) {
@@ -1138,3 +1246,4 @@
     });
 </script>
 {% endblock %}
+

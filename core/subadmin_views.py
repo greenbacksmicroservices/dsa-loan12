@@ -4,6 +4,7 @@ Provides complete visibility and management for SubAdmin role
 """
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
+from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods, require_GET, require_POST
 from django.core.paginator import Paginator
@@ -13,7 +14,23 @@ from django.db.models.functions import Concat
 from django.http import JsonResponse
 from django.utils.decorators import method_decorator
 from .decorators import subadmin_required
-from .models import User, LoanApplication, Complaint, SubAdminEntry, Loan, LoanStatusHistory, Agent, LoanDocument, EmployeeProfile
+from .models import (
+    User,
+    LoanApplication,
+    LoanStatusHistory,
+    Complaint,
+    SubAdminEntry,
+    Loan,
+    Agent,
+    LoanDocument,
+    EmployeeProfile,
+    ActivityLog,
+)
+from .loan_sync import (
+    application_status_to_loan_status,
+    extract_assignment_context,
+    sync_loan_to_application,
+)
 from django.utils import timezone
 from datetime import timedelta
 import json
@@ -31,6 +48,278 @@ def _parse_request_data(request):
     return request.POST
 
 
+def _subadmin_tag(subadmin_user):
+    return f"[subadmin:{subadmin_user.id}]"
+
+
+def _status_label(status_key):
+    labels = {
+        'draft': 'Draft',
+        'new_entry': 'New Entry',
+        'waiting': 'In Processing',
+        'follow_up': 'Banking Processing',
+        'approved': 'Approved',
+        'rejected': 'Rejected',
+        'disbursed': 'Disbursed',
+        'forclose': 'For Close',
+        'disputed': 'Disputed',
+    }
+    return labels.get(status_key, status_key)
+
+
+def _role_label(user_obj):
+    if not user_obj:
+        return 'System'
+    return {
+        'admin': 'Admin',
+        'subadmin': 'SubAdmin',
+        'employee': 'Employee',
+        'agent': 'Agent',
+        'dsa': 'DSA',
+    }.get(user_obj.role, (user_obj.role or 'User').title())
+
+
+def _extract_assignment_marker(loan_obj):
+    if not loan_obj:
+        return '-'
+
+    assignment_context = extract_assignment_context(loan_obj)
+    display = assignment_context.get('assigned_by_display', '-')
+    return display or '-'
+
+
+def _latest_bank_remark(loan_obj):
+    remarks = []
+    if loan_obj.remarks:
+        remarks.append(str(loan_obj.remarks).strip())
+
+    related_app = None
+    if loan_obj.email and loan_obj.mobile_number:
+        related_app = LoanApplication.objects.filter(
+            applicant__email__iexact=loan_obj.email,
+            applicant__mobile=loan_obj.mobile_number,
+        ).first()
+    if not related_app and loan_obj.full_name and loan_obj.mobile_number:
+        related_app = LoanApplication.objects.filter(
+            applicant__full_name__iexact=loan_obj.full_name,
+            applicant__mobile=loan_obj.mobile_number,
+        ).first()
+
+    if related_app:
+        if related_app.approval_notes:
+            remarks.append(str(related_app.approval_notes).strip())
+        if related_app.rejection_reason:
+            remarks.append(str(related_app.rejection_reason).strip())
+        reasons = list(
+            related_app.status_history.exclude(reason__isnull=True)
+            .exclude(reason__exact='')
+            .values_list('reason', flat=True)[:5]
+        )
+        remarks.extend([str(item).strip() for item in reasons if item])
+
+    unique = []
+    seen = set()
+    for item in remarks:
+        clean = (item or '').strip()
+        if not clean:
+            continue
+        key = clean.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(clean)
+    return " | ".join(unique)[:700] if unique else '-'
+
+
+def _find_related_loan_application(loan_obj):
+    if not loan_obj:
+        return None
+
+    if loan_obj.email and loan_obj.mobile_number:
+        app = LoanApplication.objects.filter(
+            applicant__email__iexact=loan_obj.email,
+            applicant__mobile=loan_obj.mobile_number,
+        ).select_related('applicant').first()
+        if app:
+            return app
+
+    if loan_obj.full_name and loan_obj.mobile_number:
+        app = LoanApplication.objects.filter(
+            applicant__full_name__iexact=loan_obj.full_name,
+            applicant__mobile=loan_obj.mobile_number,
+        ).select_related('applicant').first()
+        if app:
+            return app
+
+    if loan_obj.email and loan_obj.full_name:
+        app = LoanApplication.objects.filter(
+            applicant__email__iexact=loan_obj.email,
+            applicant__full_name__iexact=loan_obj.full_name,
+        ).select_related('applicant').first()
+        if app:
+            return app
+
+    return None
+
+
+def _serialize_subadmin_loan_details(loan_obj):
+    loan_app = _find_related_loan_application(loan_obj)
+    applicant = loan_app.applicant if loan_app else None
+
+    created_by = loan_obj.created_by
+    created_by_name = (
+        (created_by.get_full_name() or created_by.username) if created_by else '-'
+    )
+    created_by_display = f"{_role_label(created_by)} - {created_by_name}" if created_by else 'System'
+    assigned_employee_name = (
+        loan_obj.assigned_employee.get_full_name() or loan_obj.assigned_employee.username
+        if loan_obj.assigned_employee else '-'
+    )
+    assigned_agent_name = loan_obj.assigned_agent.name if loan_obj.assigned_agent else '-'
+
+    # Build document list from both Loan and LoanApplication sources
+    documents = []
+    seen_urls = set()
+
+    for doc in LoanDocument.objects.filter(loan=loan_obj).order_by('-uploaded_at'):
+        file_url = doc.file.url if doc.file else ''
+        if not file_url or file_url in seen_urls:
+            continue
+        seen_urls.add(file_url)
+        documents.append({
+            'name': doc.get_document_type_display() if hasattr(doc, 'get_document_type_display') else (doc.document_type or 'Document'),
+            'url': file_url,
+            'uploaded_at': doc.uploaded_at.strftime('%Y-%m-%d %H:%M') if doc.uploaded_at else '',
+            'source': 'Loan',
+        })
+
+    if loan_app:
+        for doc in loan_app.documents.all().order_by('-uploaded_at'):
+            file_url = doc.file.url if doc.file else ''
+            if not file_url or file_url in seen_urls:
+                continue
+            seen_urls.add(file_url)
+            documents.append({
+                'name': doc.get_document_type_display() if hasattr(doc, 'get_document_type_display') else (doc.document_type or 'Document'),
+                'url': file_url,
+                'uploaded_at': doc.uploaded_at.strftime('%Y-%m-%d %H:%M') if doc.uploaded_at else '',
+                'source': 'Application',
+            })
+
+    timeline = []
+    if loan_app:
+        for row in loan_app.status_history.select_related('changed_by').order_by('-changed_at')[:50]:
+            changed_by = row.changed_by.get_full_name() if row.changed_by else 'System'
+            timeline.append({
+                'from_status': _status_label(row.from_status) if row.from_status else '-',
+                'to_status': _status_label(row.to_status),
+                'reason': row.reason or '-',
+                'changed_by': changed_by,
+                'changed_at': row.changed_at.strftime('%Y-%m-%d %H:%M') if row.changed_at else '',
+            })
+
+    return {
+        'id': loan_obj.id,
+        'loan_id': loan_obj.user_id or f"LOAN-{loan_obj.id:06d}",
+        'status': loan_obj.status,
+        'status_display': _status_label(loan_obj.status),
+        'created_at': loan_obj.created_at.strftime('%Y-%m-%d %H:%M') if loan_obj.created_at else '',
+        'updated_at': loan_obj.updated_at.strftime('%Y-%m-%d %H:%M') if loan_obj.updated_at else '',
+        'created_under': created_by_display,
+        'assigned_employee': assigned_employee_name,
+        'assigned_agent': assigned_agent_name,
+        'assigned_by': _extract_assignment_marker(loan_obj),
+
+        'full_name': loan_obj.full_name or '-',
+        'mobile_number': loan_obj.mobile_number or '-',
+        'email': loan_obj.email or '-',
+        'city': loan_obj.city or '-',
+        'state': loan_obj.state or '-',
+        'pin_code': loan_obj.pin_code or '-',
+        'permanent_address': loan_obj.permanent_address or '-',
+        'current_address': loan_obj.current_address or '-',
+
+        'loan_type': loan_obj.get_loan_type_display() if hasattr(loan_obj, 'get_loan_type_display') else (loan_obj.loan_type or '-'),
+        'loan_amount': float(loan_obj.loan_amount or 0),
+        'tenure_months': loan_obj.tenure_months or '-',
+        'interest_rate': float(loan_obj.interest_rate or 0) if loan_obj.interest_rate is not None else '-',
+        'emi': float(loan_obj.emi or 0) if loan_obj.emi is not None else '-',
+        'loan_purpose': loan_obj.loan_purpose or '-',
+
+        'bank_name': loan_obj.bank_name or '-',
+        'bank_account_number': loan_obj.bank_account_number or '-',
+        'bank_ifsc_code': loan_obj.bank_ifsc_code or '-',
+        'bank_type': loan_obj.bank_type or '-',
+        'bank_remark': _latest_bank_remark(loan_obj),
+
+        'co_applicant_name': loan_obj.co_applicant_name or '-',
+        'co_applicant_phone': loan_obj.co_applicant_phone or '-',
+        'co_applicant_email': loan_obj.co_applicant_email or '-',
+        'guarantor_name': loan_obj.guarantor_name or '-',
+        'guarantor_phone': loan_obj.guarantor_phone or '-',
+        'guarantor_email': loan_obj.guarantor_email or '-',
+
+        'remarks': loan_obj.remarks or '-',
+        'remarks_lines': [line.strip() for line in str(loan_obj.remarks or '').splitlines() if line.strip()],
+        'documents': documents,
+        'status_timeline': timeline,
+
+        # Extra enrichment from LoanApplication/Applicant where available
+        'applicant_name_from_application': getattr(applicant, 'full_name', '-') if applicant else '-',
+        'applicant_mobile_from_application': getattr(applicant, 'mobile', '-') if applicant else '-',
+        'applicant_email_from_application': getattr(applicant, 'email', '-') if applicant else '-',
+    }
+
+
+def _mark_employee_under_subadmin(employee, subadmin_user):
+    profile, _ = EmployeeProfile.objects.get_or_create(user=employee)
+    tag = _subadmin_tag(subadmin_user)
+    notes = (profile.notes or '').strip()
+    if tag not in notes:
+        profile.notes = f"{notes}\n{tag}".strip() if notes else tag
+        profile.save(update_fields=['notes', 'updated_at'])
+    return profile
+
+
+def _subadmin_managed_employees_qs(subadmin_user):
+    tag = _subadmin_tag(subadmin_user)
+    return User.objects.filter(role='employee').filter(
+        Q(employee_profile__notes__icontains=tag) |
+        Q(loans_as_employee__assigned_agent__created_by=subadmin_user) |
+        Q(loans_as_employee__created_by=subadmin_user) |
+        Q(created_loans__assigned_agent__created_by=subadmin_user)
+    ).distinct()
+
+
+def _subadmin_managed_agents_qs(subadmin_user):
+    managed_employee_ids = list(
+        _subadmin_managed_employees_qs(subadmin_user).values_list('id', flat=True)
+    )
+    filters = Q(created_by=subadmin_user)
+    if managed_employee_ids:
+        filters |= Q(loans__assigned_employee_id__in=managed_employee_ids)
+    return Agent.objects.filter(filters).distinct()
+
+
+def _subadmin_scoped_loans_qs(subadmin_user):
+    managed_employee_ids = list(
+        _subadmin_managed_employees_qs(subadmin_user).values_list('id', flat=True)
+    )
+    managed_agent_ids = list(
+        _subadmin_managed_agents_qs(subadmin_user).values_list('id', flat=True)
+    )
+
+    filters = Q(created_by=subadmin_user)
+    if managed_agent_ids:
+        filters |= Q(assigned_agent_id__in=managed_agent_ids)
+        filters |= Q(created_by__agent_profile__id__in=managed_agent_ids)
+    if managed_employee_ids:
+        filters |= Q(assigned_employee_id__in=managed_employee_ids)
+        filters |= Q(created_by_id__in=managed_employee_ids)
+
+    return Loan.objects.filter(filters).distinct()
+
+
 # ============ DASHBOARD ============
 
 @login_required(login_url='login')
@@ -46,8 +335,10 @@ def subadmin_dashboard(request):
     """
     user = request.user
     
-    # Get all loans (SubAdmin has visibility to all)
-    all_loans = Loan.objects.all().select_related('assigned_employee', 'assigned_agent')
+    # Get all loans under this subadmin scope
+    all_loans = _subadmin_scoped_loans_qs(user).select_related(
+        'assigned_employee', 'assigned_agent', 'created_by'
+    )
     
     # Calculate statistics
     total_loans = all_loans.count()
@@ -78,10 +369,12 @@ def subadmin_dashboard(request):
     status_stats['disbursed_value'] = all_loans.filter(status='disbursed').aggregate(Sum('loan_amount'))['loan_amount__sum'] or 0
     
     # Team statistics
-    active_agents = Agent.objects.filter(status='active').count()
-    all_agents = Agent.objects.count()
-    active_employees = User.objects.filter(role='employee', is_active=True).count()
-    all_employees = User.objects.filter(role='employee').count()
+    managed_agents_qs = _subadmin_managed_agents_qs(user)
+    managed_employees_qs = _subadmin_managed_employees_qs(user)
+    active_agents = managed_agents_qs.filter(status='active').count()
+    all_agents = managed_agents_qs.count()
+    active_employees = managed_employees_qs.filter(is_active=True).count()
+    all_employees = managed_employees_qs.count()
     
     team_stats = {
         'active_agents': active_agents,
@@ -129,8 +422,8 @@ def api_subadmin_dashboard_stats(request):
     Returns JSON with dashboard statistics for dynamic loading
     """
     try:
-        # Get all loans (SubAdmin has visibility to all)
-        all_loans = Loan.objects.all()
+        subadmin_user = request.user
+        all_loans = _subadmin_scoped_loans_qs(subadmin_user)
         
         # Loan status breakdown
         status_stats = {
@@ -155,11 +448,13 @@ def api_subadmin_dashboard_stats(request):
         # Loan amount statistics
         status_stats['total_value'] = all_loans.aggregate(Sum('loan_amount'))['loan_amount__sum'] or 0
         
-        # Team statistics
-        active_agents = Agent.objects.filter(status='active').count()
-        all_agents = Agent.objects.count()
-        active_employees = User.objects.filter(role='employee', is_active=True).count()
-        all_employees = User.objects.filter(role='employee').count()
+        # Team statistics (subadmin scope)
+        managed_agents_qs = _subadmin_managed_agents_qs(subadmin_user)
+        managed_employees_qs = _subadmin_managed_employees_qs(subadmin_user)
+        active_agents = managed_agents_qs.filter(status='active').count()
+        all_agents = managed_agents_qs.count()
+        active_employees = managed_employees_qs.filter(is_active=True).count()
+        all_employees = managed_employees_qs.count()
         
         team_stats = {
             'active_agents': active_agents,
@@ -169,10 +464,21 @@ def api_subadmin_dashboard_stats(request):
             'total_team': active_agents + active_employees,
         }
         
+        # Backward + forward compatible payload
         return JsonResponse({
             'success': True,
             'status_stats': status_stats,
             'team_stats': team_stats,
+            'stats': status_stats,
+            'total': status_stats['total'],
+            'new_entry': status_stats['new_entry'],
+            'waiting': status_stats['waiting'],
+            'in_processing': status_stats['waiting'],
+            'follow_up': status_stats['follow_up'],
+            'banking_processing': status_stats['follow_up'],
+            'approved': status_stats['approved'],
+            'rejected': status_stats['rejected'],
+            'disbursed': status_stats['disbursed'],
         })
     except Exception as e:
         logger.error(f"Error in api_subadmin_dashboard_stats: {str(e)}")
@@ -180,6 +486,48 @@ def api_subadmin_dashboard_stats(request):
             'success': False,
             'error': str(e),
         }, status=500)
+
+
+@login_required(login_url='login')
+@subadmin_required
+@require_http_methods(['GET'])
+def api_subadmin_recent_loans(request):
+    """Return recent scoped loans for subadmin dashboard table."""
+    try:
+        loans_qs = _subadmin_scoped_loans_qs(request.user).select_related(
+            'created_by',
+            'assigned_employee',
+            'assigned_agent',
+        ).order_by('-created_at')[:25]
+
+        rows = []
+        for loan in loans_qs:
+            creator = loan.created_by
+            creator_name = (creator.get_full_name() or creator.username) if creator else '-'
+            creator_role = _role_label(creator)
+            rows.append({
+                'id': loan.id,
+                'loan_id': loan.user_id or f"LOAN-{loan.id}",
+                'full_name': loan.full_name or '-',
+                'mobile_number': loan.mobile_number or '-',
+                'loan_type': loan.get_loan_type_display() if hasattr(loan, 'get_loan_type_display') else (loan.loan_type or '-'),
+                'loan_amount': float(loan.loan_amount or 0),
+                'status': loan.status,
+                'status_display': _status_label(loan.status),
+                'created_under': f"{creator_role} - {creator_name}",
+                'assigned_to': (
+                    f"Employee - {loan.assigned_employee.get_full_name() or loan.assigned_employee.username}"
+                    if loan.assigned_employee else (
+                        f"Agent - {loan.assigned_agent.name}" if loan.assigned_agent else '-'
+                    )
+                ),
+                'created_at': loan.created_at.isoformat() if loan.created_at else '',
+            })
+
+        return JsonResponse({'success': True, 'results': rows})
+    except Exception as e:
+        logger.error(f"Error in api_subadmin_recent_loans: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
 # ============ MY ALL LOANS ============
@@ -199,8 +547,11 @@ def subadmin_all_loans(request):
     - Sortable columns
     - Real-time counts
     """
-    # Start with all loans
-    loans_qs = Loan.objects.all().select_related('assigned_employee', 'assigned_agent')
+    # Start with scoped loans only
+    scoped_loans = _subadmin_scoped_loans_qs(request.user).select_related(
+        'assigned_employee', 'assigned_agent', 'created_by'
+    )
+    loans_qs = scoped_loans
     
     # Apply filters
     search_query = request.GET.get('q', '').strip()
@@ -216,13 +567,18 @@ def subadmin_all_loans(request):
             Q(full_name__icontains=search_query) |
             Q(mobile_number__icontains=search_query) |
             Q(email__icontains=search_query) |
-            Q(id__icontains=search_query)
+            Q(user_id__icontains=search_query)
         )
     
     # Status filter
-    if status_filter:
+    if status_filter and status_filter != 'all':
         loans_qs = loans_qs.filter(status=status_filter)
     
+    managed_agents_qs = _subadmin_managed_agents_qs(request.user)
+    managed_employees_qs = _subadmin_managed_employees_qs(request.user)
+    managed_agent_ids = list(managed_agents_qs.values_list('id', flat=True))
+    managed_employee_ids = list(managed_employees_qs.values_list('id', flat=True))
+
     # Agent filter
     if agent_filter:
         loans_qs = loans_qs.filter(assigned_agent_id=agent_filter)
@@ -251,19 +607,19 @@ def subadmin_all_loans(request):
     # Order by latest first
     loans_qs = loans_qs.order_by('-created_at')
     
-    # Get filter options
-    agents = Agent.objects.all().values('id', 'name').distinct()
-    employees = User.objects.filter(role='employee').values('id', 'first_name', 'last_name').distinct()
-    
-    # Real-time counts
-    all_loans_count = Loan.objects.count()
+    # Get filter options (scoped)
+    agents = managed_agents_qs.values('id', 'name').distinct()
+    employees = managed_employees_qs.values('id', 'first_name', 'last_name').distinct()
+
+    # Real-time counts (scoped)
+    all_loans_count = scoped_loans.count()
     status_counts = {
-        'new_entry': Loan.objects.filter(status='new_entry').count(),
-        'waiting': Loan.objects.filter(status='waiting').count(),
-        'follow_up': Loan.objects.filter(status='follow_up').count(),
-        'approved': Loan.objects.filter(status='approved').count(),
-        'rejected': Loan.objects.filter(status='rejected').count(),
-        'disbursed': Loan.objects.filter(status='disbursed').count(),
+        'new_entry': scoped_loans.filter(status='new_entry').count(),
+        'waiting': scoped_loans.filter(status='waiting').count(),
+        'follow_up': scoped_loans.filter(status='follow_up').count(),
+        'approved': scoped_loans.filter(status='approved').count(),
+        'rejected': scoped_loans.filter(status='rejected').count(),
+        'disbursed': scoped_loans.filter(status='disbursed').count(),
     }
     
     # Pagination
@@ -274,18 +630,30 @@ def subadmin_all_loans(request):
     # Format loans for display
     loans_list = []
     for loan in page_obj:
+        creator_role = _role_label(loan.created_by)
+        creator_name = (loan.created_by.get_full_name() or loan.created_by.username) if loan.created_by else '-'
+        assigned_to = '-'
+        if loan.assigned_employee:
+            assigned_to = f"Employee - {loan.assigned_employee.get_full_name() or loan.assigned_employee.username}"
+        elif loan.assigned_agent:
+            assigned_to = f"Agent - {loan.assigned_agent.name}"
+
         loans_list.append({
             'id': loan.id,
-            'loan_id': f'LOAN-{loan.id:06d}',
+            'loan_id': loan.user_id or f'LOAN-{loan.id:06d}',
             'applicant_name': loan.full_name,
             'phone': loan.mobile_number,
-            'loan_type': loan.loan_type,
+            'email': loan.email or '-',
+            'loan_type': loan.get_loan_type_display() if hasattr(loan, 'get_loan_type_display') else loan.loan_type,
             'amount': loan.loan_amount,
             'agent': loan.assigned_agent.name if loan.assigned_agent else 'Unassigned',
             'employee': loan.assigned_employee.get_full_name() if loan.assigned_employee else 'Unassigned',
+            'assigned_to': assigned_to,
             'status': loan.status,
-            'status_display': loan.get_status_display(),
-            'created_date': loan.created_at.strftime('%Y-%m-%d'),
+            'status_display': _status_label(loan.status),
+            'created_under': f"{creator_role} - {creator_name}",
+            'assigned_by': _extract_assignment_marker(loan),
+            'created_date': loan.created_at,
         })
     
     context = {
@@ -304,6 +672,16 @@ def subadmin_all_loans(request):
         'employee_filter': employee_filter,
         'date_from': date_from,
         'date_to': date_to,
+        'stats': {
+            'total': all_loans_count,
+            'new_entry': status_counts['new_entry'],
+            'processing': status_counts['waiting'],
+            'follow_up': status_counts['follow_up'],
+            'approved': status_counts['approved'],
+            'rejected': status_counts['rejected'],
+            'disbursed': status_counts['disbursed'],
+        },
+        'employees_for_assign': managed_employees_qs.order_by('first_name', 'last_name'),
     }
     
     return render(request, 'subadmin/subadmin_all_loans.html', context)
@@ -323,26 +701,25 @@ def subadmin_loan_detail(request, loan_id):
     - Status history timeline
     - Internal remarks
     """
-    loan = get_object_or_404(Loan, id=loan_id)
+    loan = get_object_or_404(_subadmin_scoped_loans_qs(request.user), id=loan_id)
     
     # Get loan documents
-    documents = LoanDocument.objects.filter(loan=loan)
-    
-    # Get status history
-    status_history = LoanStatusHistory.objects.filter(loan=loan).order_by('-created_at')
-    
-    # Format status history for timeline
+    documents = LoanDocument.objects.filter(loan=loan).order_by('-uploaded_at')
+
+    # LoanStatusHistory is linked with LoanApplication, so map through related application
     history_timeline = []
-    for history in status_history:
-        history_timeline.append({
-            'status': history.status,
-            'timestamp': history.created_at,
-            'changed_by': history.changed_by.get_full_name() if history.changed_by else 'System',
-            'remarks': history.remarks,
-        })
-    
-    # Get available employees for reassignment
-    available_employees = User.objects.filter(role='employee', is_active=True)
+    loan_application = _find_related_loan_application(loan)
+    if loan_application:
+        for history in loan_application.status_history.select_related('changed_by').order_by('-changed_at')[:60]:
+            history_timeline.append({
+                'status': _status_label(history.to_status),
+                'timestamp': history.changed_at,
+                'changed_by': history.changed_by.get_full_name() if history.changed_by else 'System',
+                'remarks': history.reason,
+            })
+
+    # Get available employees for reassignment (subadmin scope only)
+    available_employees = _subadmin_managed_employees_qs(request.user).filter(is_active=True)
     
     context = {
         'page_title': f'Loan Detail - {loan.full_name}',
@@ -350,9 +727,31 @@ def subadmin_loan_detail(request, loan_id):
         'documents': documents,
         'history_timeline': history_timeline,
         'available_employees': available_employees,
+        'loan_payload': _serialize_subadmin_loan_details(loan),
     }
     
-    return render(request, 'subadmin/subadmin_all_loans.html', context)
+    return render(request, 'subadmin/subadmin_loan_detail.html', context)
+
+
+@login_required(login_url='login')
+@subadmin_required
+@require_GET
+def api_subadmin_loan_details(request, loan_id):
+    """Scoped full loan details for subadmin loan view modal/page."""
+    try:
+        loan = get_object_or_404(
+            _subadmin_scoped_loans_qs(request.user).select_related(
+                'created_by',
+                'assigned_employee',
+                'assigned_agent',
+            ),
+            id=loan_id,
+        )
+        payload = _serialize_subadmin_loan_details(loan)
+        return JsonResponse({'success': True, 'data': payload})
+    except Exception as e:
+        logger.error(f"Error in api_subadmin_loan_details: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
 
 @login_required(login_url='login')
@@ -363,32 +762,79 @@ def subadmin_assign_employee_api(request, loan_id):
     API: Assign/Reassign employee to loan
     """
     try:
-        loan = get_object_or_404(Loan, id=loan_id)
-        employee_id = request.POST.get('employee_id')
-        remarks = request.POST.get('remarks', '')
+        loan = get_object_or_404(_subadmin_scoped_loans_qs(request.user), id=loan_id)
+        payload = _parse_request_data(request)
+        employee_id = str(payload.get('employee_id', '')).strip()
+        remarks = str(payload.get('remarks', '')).strip()
         
         if not employee_id:
             return JsonResponse({'error': 'Employee ID required'}, status=400)
         
-        employee = get_object_or_404(User, id=employee_id, role='employee')
-        
-        # Update loan assignment
+        employee = get_object_or_404(_subadmin_managed_employees_qs(request.user), id=employee_id)
+        related_application = _find_related_loan_application(loan)
+        previous_app_status_key = application_status_to_loan_status(related_application.status) if related_application else None
+        previous_assigned_employee_id = related_application.assigned_employee_id if related_application else None
+
+        # Update loan assignment + workflow status
         old_employee = loan.assigned_employee
+        old_status = loan.status
         loan.assigned_employee = employee
         loan.assigned_at = timezone.now()
+        if loan.status in ['new_entry', 'draft']:
+            loan.status = 'waiting'
+
+        subadmin_name = request.user.get_full_name() or request.user.username
+        employee_name = employee.get_full_name() or employee.username
+        assignment_line = f"Assigned By SubAdmin: {subadmin_name} -> Employee: {employee_name}"
+        if remarks:
+            assignment_line = f"{assignment_line} | Remark: {remarks}"
+
+        if loan.remarks:
+            loan.remarks = f"{loan.remarks}\n{assignment_line}"
+        else:
+            loan.remarks = assignment_line
         loan.save()
-        
-        # Create status history
-        LoanStatusHistory.objects.create(
-            loan=loan,
-            status=loan.status,
-            changed_by=request.user,
-            remarks=f'Reassigned from {old_employee.get_full_name() if old_employee else "Unassigned"} to {employee.get_full_name()} by SubAdmin. {remarks}'
+
+        # Ensure employee appears under this subadmin ownership
+        _mark_employee_under_subadmin(employee, request.user)
+
+        synced_application = sync_loan_to_application(
+            loan,
+            assigned_by_user=request.user,
+            create_if_missing=True,
         )
+
+        if synced_application:
+            current_app_status_key = application_status_to_loan_status(synced_application.status)
+            if previous_app_status_key != current_app_status_key or previous_assigned_employee_id != employee.id:
+                LoanStatusHistory.objects.create(
+                    loan_application=synced_application,
+                    from_status=previous_app_status_key,
+                    to_status=current_app_status_key,
+                    changed_by=request.user,
+                    reason=remarks or f'Assigned to {employee_name} by subadmin',
+                    is_auto_triggered=False,
+                )
+
+        try:
+            from_name = old_employee.get_full_name() if old_employee else 'Unassigned'
+            ActivityLog.objects.create(
+                action='status_updated',
+                description=(
+                    f"SubAdmin assigned loan {loan.user_id or loan.id} from {from_name} "
+                    f"to {employee_name} (status: {_status_label(old_status)} -> {_status_label(loan.status)})"
+                ),
+                user=request.user,
+                related_loan=loan,
+            )
+        except Exception:
+            pass
         
         return JsonResponse({
             'success': True,
-            'message': f'Loan assigned to {employee.get_full_name()}'
+            'message': f'Loan assigned to {employee_name}',
+            'status': loan.status,
+            'status_display': _status_label(loan.status),
         })
     
     except Exception as e:
@@ -505,7 +951,7 @@ def subadmin_my_agents(request):
 
         return redirect('subadmin_my_agents')
 
-    agents_qs = Agent.objects.all().select_related('user', 'created_by')
+    agents_qs = _subadmin_managed_agents_qs(request.user).select_related('user', 'created_by')
     
     # Search filter
     search_query = request.GET.get('q', '').strip()
@@ -530,10 +976,10 @@ def subadmin_my_agents(request):
     
     agents_qs = agents_qs.order_by('-created_at')
     
-    # Real-time counts
-    total_agents = Agent.objects.count()
-    active_agents = Agent.objects.filter(status='active').count()
-    blocked_agents = Agent.objects.filter(status='blocked').count()
+    # Real-time counts (scoped)
+    total_agents = agents_qs.count()
+    active_agents = agents_qs.filter(status='active').count()
+    blocked_agents = agents_qs.filter(status='blocked').count()
     
     # Pagination
     paginator = Paginator(agents_qs, 20)
@@ -590,15 +1036,19 @@ def subadmin_agent_detail(request, agent_id):
     - Loans submitted by agent
     - Loan status summary
     """
-    agent = get_object_or_404(Agent, id=agent_id)
+    agent = get_object_or_404(_subadmin_managed_agents_qs(request.user), id=agent_id)
     
-    # Get loans from this agent
-    loans = Loan.objects.filter(assigned_agent=agent).select_related('assigned_employee')
+    # Get scoped loans from this agent
+    loans = _subadmin_scoped_loans_qs(request.user).filter(
+        Q(assigned_agent=agent) | (Q(created_by=agent.user) if agent.user else Q(id__in=[]))
+    ).select_related('assigned_employee')
     
     # Status breakdown
     loan_stats = {
         'total': loans.count(),
         'new_entry': loans.filter(status='new_entry').count(),
+        'waiting': loans.filter(status='waiting').count(),
+        'follow_up': loans.filter(status='follow_up').count(),
         'approved': loans.filter(status='approved').count(),
         'rejected': loans.filter(status='rejected').count(),
         'disbursed': loans.filter(status='disbursed').count(),
@@ -623,12 +1073,65 @@ def subadmin_agent_detail(request, agent_id):
 @require_GET
 def subadmin_get_agent(request, agent_id):
     try:
-        agent = get_object_or_404(Agent, id=agent_id)
+        agent = get_object_or_404(_subadmin_managed_agents_qs(request.user), id=agent_id)
         photo_url = ''
         if agent.profile_photo:
             photo_url = agent.profile_photo.url
         elif agent.user and agent.user.profile_photo:
             photo_url = agent.user.profile_photo.url
+
+        scoped_loans_qs = _subadmin_scoped_loans_qs(request.user).filter(
+            Q(assigned_agent=agent) | (Q(created_by=agent.user) if agent.user else Q(id__in=[]))
+        ).select_related('created_by', 'assigned_employee', 'assigned_agent').order_by('-created_at').distinct()
+
+        submitted_qs = Loan.objects.none()
+        if agent.user:
+            submitted_qs = scoped_loans_qs.filter(created_by=agent.user)
+        assigned_qs = scoped_loans_qs.filter(assigned_agent=agent)
+
+        customers = []
+        for loan in scoped_loans_qs[:250]:
+            owner = loan.created_by
+            owner_role = _role_label(owner)
+            owner_name = (owner.get_full_name() or owner.username) if owner else '-'
+            source = 'Submitted' if (agent.user and loan.created_by_id == agent.user.id) else 'Assigned'
+            assigned_to = '-'
+            if loan.assigned_employee:
+                assigned_to = f"Employee - {loan.assigned_employee.get_full_name() or loan.assigned_employee.username}"
+            elif loan.assigned_agent:
+                assigned_to = f"Agent - {loan.assigned_agent.name}"
+
+            customers.append({
+                'loan_id': loan.id,
+                'loan_uid': loan.user_id or f'LOAN-{loan.id}',
+                'customer_name': loan.full_name or '-',
+                'mobile': loan.mobile_number or '-',
+                'email': loan.email or '-',
+                'loan_type': loan.get_loan_type_display() if hasattr(loan, 'get_loan_type_display') else (loan.loan_type or '-'),
+                'loan_amount': float(loan.loan_amount or 0),
+                'status': loan.status,
+                'status_display': _status_label(loan.status),
+                'source': source,
+                'assigned_to': assigned_to,
+                'under_whom': f"{owner_role} - {owner_name}",
+                'owner_role': owner_role,
+                'owner_name': owner_name,
+                'assigned_by': _extract_assignment_marker(loan),
+                'bank_remark': _latest_bank_remark(loan),
+                'created_at': loan.created_at.strftime('%Y-%m-%d %H:%M') if loan.created_at else '',
+            })
+
+        summary = {
+            'total_submitted_applications': submitted_qs.count(),
+            'total_assigned_applications': assigned_qs.count(),
+            'total_applications': scoped_loans_qs.count(),
+            'approved': scoped_loans_qs.filter(status='approved').count(),
+            'rejected': scoped_loans_qs.filter(status='rejected').count(),
+            'banking_processing': scoped_loans_qs.filter(status='follow_up').count(),
+            'waiting': scoped_loans_qs.filter(status='waiting').count(),
+            'disbursed': scoped_loans_qs.filter(status='disbursed').count(),
+            'total_customers': scoped_loans_qs.count(),
+        }
 
         return JsonResponse({
             'success': True,
@@ -642,7 +1145,9 @@ def subadmin_get_agent(request, agent_id):
                 'address': agent.address or '',
                 'status': agent.status or 'active',
                 'photo_url': photo_url,
-            }
+            },
+            'summary': summary,
+            'customers': customers,
         })
     except Exception as e:
         logger.error(f"Error fetching agent: {str(e)}")
@@ -654,7 +1159,7 @@ def subadmin_get_agent(request, agent_id):
 @require_POST
 def subadmin_update_agent(request, agent_id):
     try:
-        agent = get_object_or_404(Agent, id=agent_id)
+        agent = get_object_or_404(_subadmin_managed_agents_qs(request.user), id=agent_id)
         data = _parse_request_data(request)
         profile_photo = request.FILES.get('profile_photo')
 
@@ -748,7 +1253,7 @@ def subadmin_update_agent(request, agent_id):
 @require_POST
 def subadmin_delete_agent(request, agent_id):
     try:
-        agent = get_object_or_404(Agent, id=agent_id)
+        agent = get_object_or_404(_subadmin_managed_agents_qs(request.user), id=agent_id)
         agent.status = 'blocked'
         agent.save()
 
@@ -860,6 +1365,7 @@ def subadmin_my_employees(request):
                     employee.save()
 
                 EmployeeProfile.objects.get_or_create(user=employee)
+                _mark_employee_under_subadmin(employee, request.user)
 
             messages.success(request, f'Employee {name} created successfully.')
         except Exception as e:
@@ -868,7 +1374,7 @@ def subadmin_my_employees(request):
 
         return redirect('subadmin_my_employees')
 
-    employees_qs = User.objects.filter(role='employee')
+    employees_qs = _subadmin_managed_employees_qs(request.user)
     
     # Search filter
     search_query = request.GET.get('q', '').strip()
@@ -888,18 +1394,19 @@ def subadmin_my_employees(request):
     elif status_filter == 'inactive':
         employees_qs = employees_qs.filter(is_active=False)
     
-    # Add loan counts
+    scoped_loan_ids = list(_subadmin_scoped_loans_qs(request.user).values_list('id', flat=True))
+    # Add scoped loan counts
     employees_qs = employees_qs.annotate(
-        total_assigned_loans=Count('loans_as_employee'),
-        total_approved_count=Count('loans_as_employee', filter=Q(loans_as_employee__status='approved')),
-        total_rejected_count=Count('loans_as_employee', filter=Q(loans_as_employee__status='rejected')),
+        total_assigned_loans=Count('loans_as_employee', filter=Q(loans_as_employee__id__in=scoped_loan_ids)),
+        total_approved_count=Count('loans_as_employee', filter=Q(loans_as_employee__id__in=scoped_loan_ids, loans_as_employee__status='approved')),
+        total_rejected_count=Count('loans_as_employee', filter=Q(loans_as_employee__id__in=scoped_loan_ids, loans_as_employee__status='rejected')),
     )
     
     employees_qs = employees_qs.order_by('-created_at')
     
-    # Real-time counts
-    total_employees = User.objects.filter(role='employee').count()
-    active_employees = User.objects.filter(role='employee', is_active=True).count()
+    # Real-time counts (scoped)
+    total_employees = employees_qs.count()
+    active_employees = employees_qs.filter(is_active=True).count()
     
     # Pagination
     paginator = Paginator(employees_qs, 20)
@@ -951,10 +1458,12 @@ def subadmin_employee_detail(request, employee_id):
     - Performance summary
     - Agents under this employee (if any)
     """
-    employee = get_object_or_404(User, id=employee_id, role='employee')
+    employee = get_object_or_404(_subadmin_managed_employees_qs(request.user), id=employee_id)
     
     # Get assigned loans
-    loans = Loan.objects.filter(assigned_employee=employee)
+    loans = _subadmin_scoped_loans_qs(request.user).filter(
+        Q(assigned_employee=employee) | Q(created_by=employee)
+    )
     
     # Performance stats
     perf_stats = {
@@ -986,8 +1495,59 @@ def subadmin_employee_detail(request, employee_id):
 @require_GET
 def subadmin_get_employee(request, employee_id):
     try:
-        user = get_object_or_404(User, id=employee_id, role='employee')
+        user = get_object_or_404(_subadmin_managed_employees_qs(request.user), id=employee_id)
         profile = getattr(user, 'employee_profile', None)
+
+        scoped_loans_qs = _subadmin_scoped_loans_qs(request.user).filter(
+            Q(assigned_employee=user) | Q(created_by=user)
+        ).select_related('created_by', 'assigned_employee', 'assigned_agent').order_by('-created_at').distinct()
+
+        submitted_qs = scoped_loans_qs.filter(created_by=user)
+        assigned_qs = scoped_loans_qs.filter(assigned_employee=user)
+
+        customers = []
+        for loan in scoped_loans_qs[:250]:
+            owner = loan.created_by
+            owner_role = _role_label(owner)
+            owner_name = (owner.get_full_name() or owner.username) if owner else '-'
+            source = 'Submitted' if loan.created_by_id == user.id else 'Assigned'
+            assigned_to = '-'
+            if loan.assigned_employee:
+                assigned_to = f"Employee - {loan.assigned_employee.get_full_name() or loan.assigned_employee.username}"
+            elif loan.assigned_agent:
+                assigned_to = f"Agent - {loan.assigned_agent.name}"
+
+            customers.append({
+                'loan_id': loan.id,
+                'loan_uid': loan.user_id or f'LOAN-{loan.id}',
+                'customer_name': loan.full_name or '-',
+                'mobile': loan.mobile_number or '-',
+                'email': loan.email or '-',
+                'loan_type': loan.get_loan_type_display() if hasattr(loan, 'get_loan_type_display') else (loan.loan_type or '-'),
+                'loan_amount': float(loan.loan_amount or 0),
+                'status': loan.status,
+                'status_display': _status_label(loan.status),
+                'source': source,
+                'assigned_to': assigned_to,
+                'under_whom': f"{owner_role} - {owner_name}",
+                'owner_role': owner_role,
+                'owner_name': owner_name,
+                'assigned_by': _extract_assignment_marker(loan),
+                'bank_remark': _latest_bank_remark(loan),
+                'created_at': loan.created_at.strftime('%Y-%m-%d %H:%M') if loan.created_at else '',
+            })
+
+        summary = {
+            'total_submitted_applications': submitted_qs.count(),
+            'total_assigned_applications': assigned_qs.count(),
+            'total_applications': scoped_loans_qs.count(),
+            'approved': scoped_loans_qs.filter(status='approved').count(),
+            'rejected': scoped_loans_qs.filter(status='rejected').count(),
+            'banking_processing': scoped_loans_qs.filter(status='follow_up').count(),
+            'waiting': scoped_loans_qs.filter(status='waiting').count(),
+            'disbursed': scoped_loans_qs.filter(status='disbursed').count(),
+            'total_customers': scoped_loans_qs.count(),
+        }
 
         return JsonResponse({
             'success': True,
@@ -1002,7 +1562,9 @@ def subadmin_get_employee(request, employee_id):
                 'status': 'active' if user.is_active else 'inactive',
                 'photo_url': user.profile_photo.url if user.profile_photo else '',
                 'role': profile.employee_role if profile else 'loan_processor',
-            }
+            },
+            'summary': summary,
+            'customers': customers,
         })
     except Exception as e:
         logger.error(f"Error fetching employee: {str(e)}")
@@ -1014,7 +1576,7 @@ def subadmin_get_employee(request, employee_id):
 @require_POST
 def subadmin_update_employee(request, employee_id):
     try:
-        user = get_object_or_404(User, id=employee_id, role='employee')
+        user = get_object_or_404(_subadmin_managed_employees_qs(request.user), id=employee_id)
         data = _parse_request_data(request)
         profile_photo = request.FILES.get('profile_photo')
 
@@ -1086,7 +1648,7 @@ def subadmin_update_employee(request, employee_id):
 @require_POST
 def subadmin_delete_employee(request, employee_id):
     try:
-        user = get_object_or_404(User, id=employee_id, role='employee')
+        user = get_object_or_404(_subadmin_managed_employees_qs(request.user), id=employee_id)
         user.is_active = False
         user.save()
         return JsonResponse({'success': True, 'message': 'Employee deleted successfully'})
@@ -1109,7 +1671,9 @@ def subadmin_reports(request):
     - Agent performance
     - Charts and analytics
     """
-    all_loans = Loan.objects.all()
+    all_loans = _subadmin_scoped_loans_qs(request.user)
+    managed_employees_qs = _subadmin_managed_employees_qs(request.user)
+    managed_agents_qs = _subadmin_managed_agents_qs(request.user)
     
     # Overall statistics
     report_stats = {
@@ -1128,9 +1692,13 @@ def subadmin_reports(request):
         report_stats['approval_rate'] = 0
     
     # Employee performance
-    top_employees = User.objects.filter(role='employee').annotate(
-        emp_total_loans=Count('loans_as_employee'),
-        emp_approved_count=Count('loans_as_employee', filter=Q(loans_as_employee__status='approved')),
+    scoped_loan_ids = list(all_loans.values_list('id', flat=True))
+    top_employees = managed_employees_qs.annotate(
+        emp_total_loans=Count('loans_as_employee', filter=Q(loans_as_employee__id__in=scoped_loan_ids)),
+        emp_approved_count=Count(
+            'loans_as_employee',
+            filter=Q(loans_as_employee__id__in=scoped_loan_ids, loans_as_employee__status='approved')
+        ),
     ).order_by('-emp_approved_count')[:10]
     
     employee_performance = []
@@ -1148,9 +1716,9 @@ def subadmin_reports(request):
         })
     
     # Agent performance
-    top_agents = Agent.objects.annotate(
-        agent_total_loans=Count('loans'),
-        agent_approved_count=Count('loans', filter=Q(loans__status='approved')),
+    top_agents = managed_agents_qs.annotate(
+        agent_total_loans=Count('loans', filter=Q(loans__id__in=scoped_loan_ids)),
+        agent_approved_count=Count('loans', filter=Q(loans__id__in=scoped_loan_ids, loans__status='approved')),
     ).order_by('-agent_total_loans')[:10]
     
     agent_performance = []
@@ -1180,16 +1748,46 @@ def subadmin_reports(request):
             'month': month_start.strftime('%b %Y'),
             'applications': month_loans.count(),
             'approved': month_loans.filter(status='approved').count(),
+            'rejected': month_loans.filter(status='rejected').count(),
             'disbursed': month_loans.filter(status='disbursed').count(),
             'value': month_loans.aggregate(Sum('loan_amount'))['loan_amount__sum'] or 0,
         })
-    
+    reports = {
+        'total_applications': report_stats['total_applications'],
+        'approval_rate': report_stats['approval_rate'],
+        'avg_processing_days': 0,
+        'total_disbursed': report_stats['disbursed_value'],
+        'loans_processed': report_stats['total_applications'],
+        'loans_approved': report_stats['total_approved'],
+        'loans_rejected': report_stats['total_rejected'],
+        'loans_pending': all_loans.filter(status__in=['new_entry', 'waiting', 'follow_up']).count(),
+        'loans_disbursed': report_stats['total_disbursed'],
+        'total_employees': managed_employees_qs.count(),
+        'active_employees': managed_employees_qs.filter(is_active=True).count(),
+        'avg_loans_per_employee': (
+            round(report_stats['total_applications'] / managed_employees_qs.count(), 2)
+            if managed_employees_qs.count() > 0 else 0
+        ),
+        'top_performer': employee_performance[0]['name'] if employee_performance else '-',
+        'performance_score': report_stats['approval_rate'] / 10,
+        'monthly_trend': [
+            {
+                'month': row['month'],
+                'new': row['applications'],
+                'approved': row['approved'],
+                'rejected': row['rejected'],
+                'disbursed': row['disbursed'],
+            } for row in monthly_trend
+        ],
+    }
+
     context = {
         'page_title': 'Reports & Analytics',
         'report_stats': report_stats,
         'employee_performance': employee_performance,
         'agent_performance': agent_performance,
         'monthly_trend': monthly_trend,
+        'reports': reports,
     }
     
     return render(request, 'subadmin/subadmin_reports.html', context)
@@ -1208,13 +1806,24 @@ def subadmin_complaints(request):
     - Update status
     - Track resolution
     """
-    complaints_qs = Complaint.objects.all().select_related('loan')
+    scoped_loans_qs = _subadmin_scoped_loans_qs(request.user)
+    managed_employees_qs = _subadmin_managed_employees_qs(request.user)
+    managed_agents_qs = _subadmin_managed_agents_qs(request.user)
+
+    base_complaints_qs = Complaint.objects.filter(
+        Q(loan__in=scoped_loans_qs) |
+        Q(filed_by_employee__in=managed_employees_qs) |
+        Q(filed_by_agent__in=managed_agents_qs) |
+        Q(created_by=request.user)
+    ).select_related('loan', 'filed_by_employee', 'filed_by_agent')
+    complaints_qs = base_complaints_qs
     
     # Search filter
     search_query = request.GET.get('q', '').strip()
     if search_query:
         complaints_qs = complaints_qs.filter(
-            Q(subject__icontains=search_query) |
+            Q(complaint_id__icontains=search_query) |
+            Q(customer_name__icontains=search_query) |
             Q(description__icontains=search_query)
         )
     
@@ -1227,10 +1836,10 @@ def subadmin_complaints(request):
     
     # Status counts
     complaint_counts = {
-        'total': Complaint.objects.count(),
-        'open': Complaint.objects.filter(status='open').count(),
-        'in_progress': Complaint.objects.filter(status='in_progress').count(),
-        'resolved': Complaint.objects.filter(status='resolved').count(),
+        'total': base_complaints_qs.count(),
+        'open': base_complaints_qs.filter(status='open').count(),
+        'in_progress': base_complaints_qs.filter(status='in_progress').count(),
+        'resolved': base_complaints_qs.filter(status='resolved').count(),
     }
     
     # Pagination
@@ -1240,12 +1849,26 @@ def subadmin_complaints(request):
     
     complaints_list = []
     for complaint in page_obj:
+        status_label = complaint.get_status_display() if hasattr(complaint, 'get_status_display') else complaint.status
+        priority_label = complaint.get_priority_display() if hasattr(complaint, 'get_priority_display') else complaint.priority
+        category_label = complaint.get_complaint_type_display() if hasattr(complaint, 'get_complaint_type_display') else complaint.complaint_type
+        complainant = complaint.customer_name or '-'
+        if complaint.filed_by_employee:
+            complainant = complaint.filed_by_employee.get_full_name() or complaint.filed_by_employee.username or complaint.customer_name
+        elif complaint.filed_by_agent:
+            complainant = complaint.filed_by_agent.name or complaint.customer_name
+
         complaints_list.append({
-            'id': complaint.id,
+            'id': complaint.complaint_id or complaint.id,
             'subject': complaint.description,
             'description': complaint.description,
-            'status': complaint.status,
-            'priority': complaint.priority if hasattr(complaint, 'priority') else 'Medium',
+            'status': status_label,
+            'status_key': complaint.status,
+            'priority': priority_label,
+            'priority_key': complaint.priority,
+            'category': category_label,
+            'complainant_name': complainant,
+            'date': complaint.created_at,
             'created_date': complaint.created_at.strftime('%Y-%m-%d'),
             'loan_id': complaint.loan.id if complaint.loan else None,
         })
@@ -1257,6 +1880,7 @@ def subadmin_complaints(request):
         'page_obj': page_obj,
         'is_paginated': page_obj.has_other_pages(),
         'complaint_counts': complaint_counts,
+        'stats': complaint_counts,
         'search_query': search_query,
         'status_filter': status_filter,
     }
@@ -1278,27 +1902,63 @@ def subadmin_settings(request):
     user = request.user
     
     if request.method == 'POST':
-        action = request.POST.get('action')
+        action = (request.POST.get('action') or '').strip()
+
+        if action == 'upload_photo':
+            profile_photo = request.FILES.get('profile_photo')
+            if not profile_photo:
+                return JsonResponse({'success': False, 'message': 'Please select a photo to upload.'}, status=400)
+
+            if profile_photo.size > 5 * 1024 * 1024:
+                return JsonResponse({'success': False, 'message': 'Profile photo must be less than 5MB.'}, status=400)
+
+            content_type = getattr(profile_photo, 'content_type', '') or ''
+            if content_type and not content_type.startswith('image/'):
+                return JsonResponse({'success': False, 'message': 'Only image files are allowed.'}, status=400)
+
+            user.profile_photo = profile_photo
+            user.save(update_fields=['profile_photo', 'updated_at'])
+            return JsonResponse({
+                'success': True,
+                'message': 'Profile photo updated successfully.',
+                'photo_url': user.profile_photo.url if user.profile_photo else '',
+            })
         
         if action == 'update_profile':
-            user.first_name = request.POST.get('first_name', user.first_name)
-            user.last_name = request.POST.get('last_name', user.last_name)
-            user.email = request.POST.get('email', user.email)
-            user.phone = request.POST.get('phone', user.phone)
-            user.save()
-            
-            return JsonResponse({'success': True, 'message': 'Profile updated successfully'})
+            first_name = (request.POST.get('first_name') or '').strip()
+            last_name = (request.POST.get('last_name') or '').strip()
+            email = (request.POST.get('email') or '').strip()
+            phone = (request.POST.get('phone') or '').strip()
+
+            if email and User.objects.filter(email__iexact=email).exclude(id=user.id).exists():
+                return JsonResponse({'success': False, 'message': 'Email is already in use.'}, status=400)
+
+            user.first_name = first_name
+            user.last_name = last_name
+            user.email = email
+            user.phone = phone
+            user.save(update_fields=['first_name', 'last_name', 'email', 'phone', 'updated_at'])
+            return JsonResponse({'success': True, 'message': 'Profile updated successfully.'})
         
-        elif action == 'change_password':
-            old_password = request.POST.get('old_password')
-            new_password = request.POST.get('new_password')
-            
-            if user.check_password(old_password):
-                user.set_password(new_password)
-                user.save()
-                return JsonResponse({'success': True, 'message': 'Password changed successfully'})
-            else:
-                return JsonResponse({'success': False, 'message': 'Old password is incorrect'}, status=400)
+        if action == 'change_password':
+            old_password = (request.POST.get('old_password') or '').strip()
+            new_password = (request.POST.get('new_password') or '').strip()
+
+            if not old_password or not new_password:
+                return JsonResponse({'success': False, 'message': 'Current and new password are required.'}, status=400)
+
+            if len(new_password) < 6:
+                return JsonResponse({'success': False, 'message': 'New password must be at least 6 characters.'}, status=400)
+
+            if not user.check_password(old_password):
+                return JsonResponse({'success': False, 'message': 'Current password is incorrect.'}, status=400)
+
+            user.set_password(new_password)
+            user.save()
+            update_session_auth_hash(request, user)
+            return JsonResponse({'success': True, 'message': 'Password changed successfully.'})
+
+        return JsonResponse({'success': False, 'message': 'Invalid action.'}, status=400)
     
     context = {
         'page_title': 'Settings',

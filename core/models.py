@@ -1,4 +1,4 @@
-from django.db import models
+﻿from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.core.validators import RegexValidator
 from django.utils import timezone
@@ -102,7 +102,7 @@ class Loan(models.Model):
         ('draft', 'Draft'),
         ('new_entry', 'New Entry'),
         ('waiting', 'Waiting for Processing'),
-        ('follow_up', 'Required Follow-up'),
+        ('follow_up', 'Banking Processing'),
         ('approved', 'Approved'),
         ('rejected', 'Rejected'),
         ('disputed', 'Disputed'),
@@ -458,7 +458,7 @@ class Applicant(models.Model):
         return f"{self.full_name} ({self.role})"
     
     def calculate_emi(self):
-        """Calculate EMI using formula: EMI = [P x R x (1+R)^N] / [(1+R)^N – 1]"""
+        """Calculate EMI using formula: EMI = [P x R x (1+R)^N] / [(1+R)^N â€“ 1]"""
         if self.loan_amount and self.tenure_months and self.interest_rate:
             principal = float(self.loan_amount)
             monthly_rate = float(self.interest_rate) / 100 / 12
@@ -485,7 +485,7 @@ class LoanApplication(models.Model):
     STATUS_CHOICES = [
         ('New Entry', 'New Entry'),
         ('Waiting for Processing', 'Waiting for Processing'),
-        ('Required Follow-up', 'Required Follow-up'),
+        ('Required Follow-up', 'Banking Processing'),
         ('Approved', 'Approved'),
         ('Rejected', 'Rejected'),
         ('Disbursed', 'Disbursed'),
@@ -659,7 +659,7 @@ class LoanStatusHistory(models.Model):
     STATUS_CHOICES = [
         ('new_entry', 'New Entry'),
         ('waiting', 'Waiting for Processing'),
-        ('follow_up', 'Required Follow-up'),
+        ('follow_up', 'Banking Processing'),
         ('approved', 'Approved'),
         ('rejected', 'Rejected'),
         ('disbursed', 'Disbursed'),
@@ -682,7 +682,7 @@ class LoanStatusHistory(models.Model):
         ]
     
     def __str__(self):
-        return f"{self.loan_application.id}: {self.from_status} → {self.to_status}"
+        return f"{self.loan_application.id}: {self.from_status} â†’ {self.to_status}"
 
 
 class LoanAssignment(models.Model):
@@ -717,7 +717,7 @@ class LoanAssignment(models.Model):
         ]
     
     def __str__(self):
-        return f"Assigned: {self.loan_application.id} → {self.assigned_to.get_full_name()}"
+        return f"Assigned: {self.loan_application.id} â†’ {self.assigned_to.get_full_name()}"
     
     @property
     def hours_assigned(self):
@@ -758,7 +758,7 @@ class AgentAssignment(models.Model):
         ordering = ['-assigned_at']
     
     def __str__(self):
-        return f"{self.agent.name} → {self.employee.get_full_name()}"
+        return f"{self.agent.name} â†’ {self.employee.get_full_name()}"
 
 
 class SubAdminEntry(models.Model):
@@ -769,7 +769,7 @@ class SubAdminEntry(models.Model):
     STATUS_CHOICES = [
         ('New Entry', 'New Entry'),
         ('Waiting for Processing', 'Waiting for Processing'),
-        ('Required Follow-up', 'Required Follow-up'),
+        ('Required Follow-up', 'Banking Processing'),
         ('Approved', 'Approved'),
         ('Rejected', 'Rejected'),
         ('Disbursed', 'Disbursed'),
@@ -815,6 +815,7 @@ class SubAdminEntry(models.Model):
         ]
     
     def __str__(self):
-        return f"{self.applicant_name} - {self.loan_type} (₹{self.loan_amount})"
+        return f"{self.applicant_name} - {self.loan_type} (â‚¹{self.loan_amount})"
+
 
 

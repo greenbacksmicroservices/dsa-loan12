@@ -39,6 +39,10 @@
             color: #1e293b;
         }
 
+        html {
+            scroll-behavior: smooth;
+        }
+
         /* Sidebar Styles */
         .sidebar {
             position: fixed;
@@ -48,10 +52,12 @@
             width: var(--sidebar-width);
             background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
             color: white;
-            padding: 20px 0;
+            padding: 20px 0 10px;
             z-index: 1000;
             overflow-y: auto;
             box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
         }
 
         .sidebar-header {
@@ -152,6 +158,8 @@
         .sidebar-menu {
             list-style: none;
             padding: 10px 0;
+            margin: 0;
+            flex: 1;
         }
 
         .sidebar-menu li {
@@ -289,15 +297,25 @@
             border-left-color: #4f46e5;
         }
 
-        body.employee-theme .sidebar-company {
-            margin: 16px 20px 24px;
-            padding: 10px 12px;
-            background: #f8fafc;
-            color: #0f172a;
-            font-size: 11px;
-            font-weight: 600;
-            border-radius: 10px;
+        .sidebar-company {
+            margin: 10px 20px 8px;
+            padding: 0;
+            background: transparent;
+            color: rgba(248, 250, 252, 0.82);
+            font-size: 10px;
+            font-weight: 500;
             text-align: center;
+            letter-spacing: 0.25px;
+            margin-top: auto;
+        }
+
+        body.employee-theme .sidebar-company {
+            margin: 10px 20px 8px;
+            padding: 0;
+            background: transparent;
+            color: rgba(248, 250, 252, 0.82);
+            font-size: 10px;
+            font-weight: 500;
         }
 
         /* Main Content */
@@ -307,6 +325,11 @@
             min-height: 100vh;
             padding-top: 0;
         }
+
+        .main-content.no-auth {
+            margin-left: 0;
+            padding: 0;
+            min-height: 100vh;
         }
 
         /* Header */
@@ -323,6 +346,111 @@
             color: #1e293b;
             font-weight: 600;
             margin: 0;
+        }
+
+        .topbar {
+            margin-left: var(--sidebar-width);
+            background: white;
+            padding: 12px 24px;
+            border-bottom: 1px solid #e2e8f0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .topbar-inner {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .topbar-title {
+            font-weight: 700;
+            color: #1e293b;
+            font-size: 16px;
+            line-height: 1.2;
+        }
+
+        .topbar-subtitle {
+            font-size: 12px;
+            color: #64748b;
+            margin-top: 2px;
+        }
+
+        .topbar-user-btn {
+            border: 1px solid #d1d5db;
+            border-radius: 999px;
+            background: #ffffff;
+            color: #0f172a;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 6px 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .topbar-user-btn:hover,
+        .topbar-user-btn:focus {
+            background: #f8fafc;
+            border-color: #94a3b8;
+            color: #0f172a;
+            box-shadow: none;
+        }
+
+        .topbar-menu {
+            border-radius: 10px;
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.14);
+            border: 1px solid #e2e8f0;
+            min-width: 210px;
+            padding: 6px 0;
+        }
+
+        .topbar-menu .dropdown-item {
+            font-size: 13px;
+            font-weight: 600;
+            color: #0f172a;
+            padding: 9px 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .topbar-menu .dropdown-item:hover {
+            background: #f1f5f9;
+        }
+
+        .topbar-menu .dropdown-item.text-danger:hover {
+            background: #fef2f2;
+        }
+
+        body[data-role='agent'] .main-content table,
+        body[data-role='employee'] .main-content table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1px solid #dbe3ef;
+            background: #ffffff;
+        }
+
+        body[data-role='agent'] .main-content table thead tr,
+        body[data-role='employee'] .main-content table thead tr {
+            background: #f1f5f9;
+        }
+
+        body[data-role='agent'] .main-content table th,
+        body[data-role='agent'] .main-content table td,
+        body[data-role='employee'] .main-content table th,
+        body[data-role='employee'] .main-content table td {
+            border: 1px solid #e2e8f0;
+            padding: 10px 12px;
+            vertical-align: middle;
+        }
+
+        body[data-role='agent'] .main-content table tbody tr:hover,
+        body[data-role='employee'] .main-content table tbody tr:hover {
+            background: #f8fafc;
         }
 
         .user-info {
@@ -547,6 +675,7 @@
                 display: none;
             }
 
+            .stat-value {
                 font-size: 18px;
             }
         }
@@ -806,7 +935,8 @@
         }
 
         /* Employee Table Grid + Avatars */
-        body[data-role="employee"] .table-grid {
+        body[data-role="employee"] .table-grid,
+        body[data-role="agent"] .table-grid {
             width: 100%;
             border-collapse: separate;
             border-spacing: 0;
@@ -817,31 +947,39 @@
             box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
         }
 
-        body[data-role="employee"] .table-grid thead th {
+        body[data-role="employee"] .table-grid thead th,
+        body[data-role="agent"] .table-grid thead th {
             border-bottom: 1px solid rgba(148, 163, 184, 0.4);
             border-right: 1px solid rgba(148, 163, 184, 0.3);
         }
 
-        body[data-role="employee"] .table-grid tbody td {
+        body[data-role="employee"] .table-grid tbody td,
+        body[data-role="agent"] .table-grid tbody td {
             border-bottom: 1px solid #eef2f7;
             border-right: 1px solid #eef2f7;
         }
 
         body[data-role="employee"] .table-grid th:last-child,
-        body[data-role="employee"] .table-grid td:last-child {
+        body[data-role="employee"] .table-grid td:last-child,
+        body[data-role="agent"] .table-grid th:last-child,
+        body[data-role="agent"] .table-grid td:last-child {
             border-right: none;
         }
 
-        body[data-role="employee"] .table-grid tbody tr:last-child td {
+        body[data-role="employee"] .table-grid tbody tr:last-child td,
+        body[data-role="agent"] .table-grid tbody tr:last-child td {
             border-bottom: none;
         }
 
-        body[data-role="employee"] .table-grid tbody tr:hover {
+        body[data-role="employee"] .table-grid tbody tr:hover,
+        body[data-role="agent"] .table-grid tbody tr:hover {
             background: #f8fafc;
         }
 
         body[data-role="employee"] .table-avatar,
-        body[data-role="employee"] .table-avatar-fallback {
+        body[data-role="employee"] .table-avatar-fallback,
+        body[data-role="agent"] .table-avatar,
+        body[data-role="agent"] .table-avatar-fallback {
             width: 40px;
             height: 40px;
             border-radius: 50%;
@@ -857,7 +995,8 @@
             flex-shrink: 0;
         }
 
-        body[data-role="employee"] .table-avatar img {
+        body[data-role="employee"] .table-avatar img,
+        body[data-role="agent"] .table-avatar img {
             width: 100%;
             height: 100%;
             object-fit: cover;
@@ -989,7 +1128,8 @@
     
     {% block extra_css %}{% endblock %}
 </head>
-<body data-role="{{ user.role }}" class="{% if user.role == 'employee' %}employee-theme{% endif %}">
+<body data-role="{% if user.is_authenticated %}{{ user.role }}{% else %}guest{% endif %}" class="{% if user.is_authenticated and user.role == 'employee' %}employee-theme{% endif %}">
+    {% if user.is_authenticated %}
     <!-- Mobile Toggle Button -->
     <button class="mobile-toggle" onclick="toggleSidebar()">
         <i class="bi bi-list"></i>
@@ -1060,7 +1200,7 @@
             <!-- ADMIN MENU -->
             {% if user.role == 'admin' %}
             <li>
-                <a href="{% url 'admin_all_loans' %}" class="{% if request.resolver_match.url_name == 'admin_all_loans' %}active{% endif %}">
+                <a href="{% url 'admin_dashboard' %}" class="{% if request.resolver_match.url_name == 'admin_dashboard' %}active{% endif %}">
                     <i class="bi bi-speedometer2"></i>
                     <span>Dashboard</span>
                 </a>
@@ -1090,7 +1230,7 @@
                 </a>
             </li>
             <li>
-                <a href="{% url 'reports_legacy' %}" class="{% if request.resolver_match.url_name == 'reports_legacy' %}active{% endif %}">">
+                <a href="{% url 'reports_legacy' %}" class="{% if request.resolver_match.url_name == 'reports_legacy' %}active{% endif %}">
                     <i class="bi bi-file-earmark-bar-graph"></i>
                     <span>Reports</span>
                 </a>
@@ -1121,19 +1261,13 @@
             <li>
                 <a href="{% url 'agent_my_applications' %}" class="{% if request.resolver_match.url_name == 'agent_my_applications' %}active{% endif %}">
                     <i class="bi bi-file-earmark"></i>
-                    <span>My Records</span>
+                    <span>My Applications</span>
                 </a>
             </li>
             <li>
                 <a href="{% url 'agent_sub_agents' %}" class="{% if request.resolver_match.url_name == 'agent_sub_agents' %}active{% endif %}">
                     <i class="bi bi-people"></i>
                     <span>My Sub Agents</span>
-                </a>
-            </li>
-            <li>
-                <a href="{% url 'agent_my_applications' %}" class="{% if request.resolver_match.url_name == 'agent_my_applications' %}active{% endif %}">
-                    <i class="bi bi-briefcase"></i>
-                    <span>My Applications</span>
                 </a>
             </li>
             <li class="sidebar-divider"></li>
@@ -1154,12 +1288,6 @@
                 <a href="{% url 'agent_profile' %}" class="{% if request.resolver_match.url_name == 'agent_profile' %}active{% endif %}">
                     <i class="bi bi-person-circle"></i>
                     <span>My Profile</span>
-                </a>
-            </li>
-            <li>
-                <a href="{% url 'agent_settings' %}" class="{% if request.resolver_match.url_name == 'agent_settings' %}active{% endif %}">
-                    <i class="bi bi-gear"></i>
-                    <span>Settings</span>
                 </a>
             </li>
             <li class="sidebar-divider"></li>
@@ -1200,6 +1328,12 @@
                 </a>
             </li>
             <li>
+                <a href="{% url 'employee_bank_processing' %}" class="{% if request.resolver_match.url_name == 'employee_bank_processing' or request.resolver_match.url_name == 'employee_bank_processing_detail' or request.resolver_match.url_name == 'employee_loan_detail' %}active{% endif %}">
+                    <i class="bi bi-bank2"></i>
+                    <span>Bank Processing</span>
+                </a>
+            </li>
+            <li>
                 <a href="/employee/my-agents/" class="{% if request.resolver_match.url_name == 'employee_my_agents_page' %}active{% endif %}">
                     <i class="bi bi-people"></i>
                     <span>My Agents</span>
@@ -1222,40 +1356,50 @@
 
             <li class="sidebar-divider"></li>
         </ul>
-        {% if user.role == 'employee' %}
-        <div class="sidebar-company">Greenbacks Microservice Foundation</div>
-        {% endif %}
+        <div class="sidebar-company">&copy; Greenbacks Micro Services</div>
     </aside>
 
     <!-- Top Navigation Bar -->
-    <nav style="margin-left: var(--sidebar-width); background: white; padding: 12px 30px; border-bottom: 1px solid #e2e8f0; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);">
-        <div style="display: flex; justify-content: flex-end; align-items: center;">
+    <nav class="topbar">
+        <div class="topbar-inner">
+            <div>
+                {% if user.role == 'agent' %}
+                    <div class="topbar-title">Agent Panel</div>
+                    <div class="topbar-subtitle">{{ user.get_full_name|default:user.username }}</div>
+                {% elif user.role == 'employee' %}
+                    <div class="topbar-title">Employee Panel</div>
+                    <div class="topbar-subtitle">{{ user.get_full_name|default:user.username }}</div>
+                {% else %}
+                    <div class="topbar-title">Dashboard</div>
+                {% endif %}
+            </div>
             <div class="dropdown">
-                <button class="btn btn-sm btn-outline-secondary dropdown-toggle rounded-pill" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="padding: 6px 16px; font-size: 13px; border-radius: 20px !important; display: flex; align-items: center; gap: 8px;">
+                <button class="btn dropdown-toggle topbar-user-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                     <i class="bi bi-person-circle"></i>
-                    <span>{{ user.name|default:user.get_full_name }}</span>
+                    <span>{{ user.get_full_name|default:user.username }}</span>
                 </button>
-                <ul class="dropdown-menu dropdown-menu-end rounded" style="border-radius: 12px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1); border: none; min-width: 200px;">
-                    <li><h6 class="dropdown-header" style="font-size: 12px; font-weight: 600; color: #64748b;">{{ user.get_role_display|default:user.role }}</h6></li>
+                <ul class="dropdown-menu dropdown-menu-end topbar-menu">
+                    <li><h6 class="dropdown-header" style="font-size: 12px; font-weight: 700; color: #64748b;">{{ user.get_role_display|default:user.role }}</h6></li>
                     <li><hr class="dropdown-divider" style="margin: 6px 0;"></li>
                     {% if user.role == 'employee' %}
-                        <li><a class="dropdown-item" href="/employee/profile/" style="font-size: 13px; padding: 8px 16px;"><i class="bi bi-person"></i> My Profile</a></li>
-                        <li><a class="dropdown-item" href="/employee/settings/" style="font-size: 13px; padding: 8px 16px;"><i class="bi bi-gear"></i> Settings</a></li>
+                        <li><a class="dropdown-item" href="/employee/profile/"><i class="bi bi-person"></i> My Profile</a></li>
+                        <li><a class="dropdown-item" href="/employee/settings/"><i class="bi bi-gear"></i> Settings</a></li>
                     {% elif user.role == 'agent' %}
-                        <li><a class="dropdown-item" href="/agent/profile/" style="font-size: 13px; padding: 8px 16px;"><i class="bi bi-person"></i> My Profile</a></li>
-                        <li><a class="dropdown-item" href="/agent/settings/" style="font-size: 13px; padding: 8px 16px;"><i class="bi bi-gear"></i> Settings</a></li>
+                        <li><a class="dropdown-item" href="/agent/profile/"><i class="bi bi-person"></i> My Profile</a></li>
+                        <li><a class="dropdown-item" href="/agent/settings/"><i class="bi bi-gear"></i> Settings</a></li>
                     {% else %}
-                        <li><a class="dropdown-item" href="/admin/profile/" style="font-size: 13px; padding: 8px 16px;"><i class="bi bi-person"></i> My Profile</a></li>
+                        <li><a class="dropdown-item" href="/admin/profile/"><i class="bi bi-person"></i> My Profile</a></li>
                     {% endif %}
                     <li><hr class="dropdown-divider" style="margin: 6px 0;"></li>
-                    <li><a class="dropdown-item text-danger" href="{% url 'logout' %}" style="font-size: 13px; padding: 8px 16px;"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
+                    <li><a class="dropdown-item text-danger" href="{% url 'logout' %}"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
                 </ul>
             </div>
         </div>
     </nav>
+    {% endif %}
 
     <!-- Main Content -->
-    <main class="main-content">
+    <main class="main-content{% if not user.is_authenticated %} no-auth{% endif %}">
         {% if messages %}
             {% for message in messages %}
                 <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
