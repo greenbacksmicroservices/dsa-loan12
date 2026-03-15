@@ -20,6 +20,9 @@ def ensure_assigned_at_for_waiting(sender, instance, created, **kwargs):
     """
     Keep waiting/banking-process records timestamped for aging logic.
     """
+    if kwargs.get("raw", False):
+        return
+
     if created:
         if instance.status in ["Waiting for Processing", "Required Follow-up"] and not instance.assigned_at:
             assigned_at = timezone.now()
@@ -38,6 +41,9 @@ def mirror_application_to_loan(sender, instance, created, **kwargs):
     """
     Keep the legacy Loan table aligned with workflow updates done on LoanApplication.
     """
+    if kwargs.get("raw", False):
+        return
+
     if getattr(instance, "_skip_sync_to_loan", False):
         return
 
@@ -52,6 +58,9 @@ def mirror_loan_to_application(sender, instance, created, **kwargs):
     """
     Ensure every Loan created by any role also appears in LoanApplication (New Entry workflow).
     """
+    if kwargs.get("raw", False):
+        return
+
     existing_app = find_related_loan_application(instance)
     loan_app = sync_loan_to_application(instance, create_if_missing=True)
 

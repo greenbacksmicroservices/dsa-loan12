@@ -78,19 +78,62 @@ def find_related_loan_application(loan_obj):
     if not loan_obj:
         return None
 
-    queries = []
+    base_qs = LoanApplication.objects.select_related(
+        "applicant",
+        "assigned_by",
+        "assigned_employee",
+        "assigned_agent",
+    )
+
+    created_at = loan_obj.created_at or timezone.now()
+    window_start = created_at - timedelta(days=7)
+    window_end = created_at + timedelta(days=7)
+
+    # Prefer strict identity matches first.
+    strict_filters = []
     if loan_obj.email and loan_obj.mobile_number:
-        queries.append(
-            Q(applicant__email__iexact=loan_obj.email, applicant__mobile=loan_obj.mobile_number)
-        )
+        strict_filters.append({
+            "applicant__email__iexact": loan_obj.email,
+            "applicant__mobile": loan_obj.mobile_number,
+        })
     if loan_obj.full_name and loan_obj.mobile_number:
-        queries.append(
-            Q(applicant__full_name__iexact=loan_obj.full_name, applicant__mobile=loan_obj.mobile_number)
-        )
+        strict_filters.append({
+            "applicant__full_name__iexact": loan_obj.full_name,
+            "applicant__mobile": loan_obj.mobile_number,
+        })
     if loan_obj.email and loan_obj.full_name:
-        queries.append(
-            Q(applicant__email__iexact=loan_obj.email, applicant__full_name__iexact=loan_obj.full_name)
+        strict_filters.append({
+            "applicant__email__iexact": loan_obj.email,
+            "applicant__full_name__iexact": loan_obj.full_name,
+        })
+    if loan_obj.username:
+        strict_filters.append({
+            "applicant__username__iexact": loan_obj.username,
+        })
+
+    # Try in date-window first, then global fallback so older records still map.
+    for filters in strict_filters:
+        match = (
+            base_qs.filter(**filters, created_at__gte=window_start, created_at__lte=window_end)
+            .order_by("-created_at")
+            .first()
         )
+        if match:
+            return match
+
+    for filters in strict_filters:
+        match = base_qs.filter(**filters).order_by("-created_at").first()
+        if match:
+            return match
+
+    # Last-resort fuzzy OR match.
+    queries = []
+    if loan_obj.email:
+        queries.append(Q(applicant__email__iexact=loan_obj.email))
+    if loan_obj.mobile_number:
+        queries.append(Q(applicant__mobile=loan_obj.mobile_number))
+    if loan_obj.full_name:
+        queries.append(Q(applicant__full_name__iexact=loan_obj.full_name))
 
     if not queries:
         return None
@@ -99,16 +142,7 @@ def find_related_loan_application(loan_obj):
     for query in queries:
         condition |= query
 
-    created_at = loan_obj.created_at or timezone.now()
-    window_start = created_at - timedelta(days=7)
-    window_end = created_at + timedelta(days=7)
-
-    return (
-        LoanApplication.objects.select_related("applicant", "assigned_by", "assigned_employee", "assigned_agent")
-        .filter(condition, created_at__gte=window_start, created_at__lte=window_end)
-        .order_by("-created_at")
-        .first()
-    )
+    return base_qs.filter(condition).order_by("-created_at").first()
 
 
 def find_related_loan(loan_app):
@@ -116,13 +150,53 @@ def find_related_loan(loan_app):
         return None
 
     applicant = loan_app.applicant
-    queries = []
+    base_qs = Loan.objects.select_related("created_by", "assigned_employee", "assigned_agent")
+    created_at = loan_app.created_at or timezone.now()
+    window_start = created_at - timedelta(days=7)
+    window_end = created_at + timedelta(days=7)
+
+    strict_filters = []
     if applicant.email and applicant.mobile:
-        queries.append(Q(email__iexact=applicant.email, mobile_number=applicant.mobile))
+        strict_filters.append({
+            "email__iexact": applicant.email,
+            "mobile_number": applicant.mobile,
+        })
     if applicant.full_name and applicant.mobile:
-        queries.append(Q(full_name__iexact=applicant.full_name, mobile_number=applicant.mobile))
+        strict_filters.append({
+            "full_name__iexact": applicant.full_name,
+            "mobile_number": applicant.mobile,
+        })
     if applicant.email and applicant.full_name:
-        queries.append(Q(email__iexact=applicant.email, full_name__iexact=applicant.full_name))
+        strict_filters.append({
+            "email__iexact": applicant.email,
+            "full_name__iexact": applicant.full_name,
+        })
+    if applicant.username:
+        strict_filters.append({
+            "username__iexact": applicant.username,
+        })
+
+    for filters in strict_filters:
+        match = (
+            base_qs.filter(**filters, created_at__gte=window_start, created_at__lte=window_end)
+            .order_by("-created_at")
+            .first()
+        )
+        if match:
+            return match
+
+    for filters in strict_filters:
+        match = base_qs.filter(**filters).order_by("-created_at").first()
+        if match:
+            return match
+
+    queries = []
+    if applicant.email:
+        queries.append(Q(email__iexact=applicant.email))
+    if applicant.mobile:
+        queries.append(Q(mobile_number=applicant.mobile))
+    if applicant.full_name:
+        queries.append(Q(full_name__iexact=applicant.full_name))
 
     if not queries:
         return None
@@ -131,16 +205,7 @@ def find_related_loan(loan_app):
     for query in queries:
         condition |= query
 
-    created_at = loan_app.created_at or timezone.now()
-    window_start = created_at - timedelta(days=7)
-    window_end = created_at + timedelta(days=7)
-
-    return (
-        Loan.objects.select_related("created_by", "assigned_employee", "assigned_agent")
-        .filter(condition, created_at__gte=window_start, created_at__lte=window_end)
-        .order_by("-created_at")
-        .first()
-    )
+    return base_qs.filter(condition).order_by("-created_at").first()
 
 
 def resolve_user_by_role_and_name(role, raw_name):

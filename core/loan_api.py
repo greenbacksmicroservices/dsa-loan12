@@ -33,11 +33,35 @@ def api_loan_details(request, loan_id):
             cleaned = re.sub(r'[^a-z0-9]+', ' ', str(value or '').lower())
             return ' '.join(cleaned.split())
 
+        def humanize_key(value):
+            normalized = normalize_lookup_key(value)
+            return ' '.join(part.capitalize() for part in normalized.split())
+
         def parse_extra_info(raw_text):
             parsed = {}
             if not raw_text:
                 return parsed
-            text = str(raw_text).replace('\r', '\n')
+            raw_value = str(raw_text).strip()
+
+            # Handle JSON-like remarks payloads as a fallback.
+            if raw_value.startswith('{') and raw_value.endswith('}'):
+                try:
+                    parsed_json = json.loads(raw_value)
+                    if isinstance(parsed_json, dict):
+                        for key, value in parsed_json.items():
+                            norm_key = normalize_lookup_key(key)
+                            if not norm_key:
+                                continue
+                            if isinstance(value, (list, dict)):
+                                value_text = json.dumps(value, ensure_ascii=False)
+                            else:
+                                value_text = str(value or '').strip()
+                            if value_text:
+                                parsed[norm_key] = value_text
+                except Exception:
+                    pass
+
+            text = raw_value.replace('\r', '\n')
             scan_text = re.sub(r'\s+', ' ', text).strip()
             known_labels = [
                 'Alternate Mobile',
@@ -80,6 +104,7 @@ def api_loan_details(request, loan_id):
                 'ITR Details',
                 'Loan Purpose',
                 'Purpose',
+                'Service Required',
                 'Charges/Fee',
                 'Charges Or Fee',
                 'Any Charges Or Fee',
@@ -94,6 +119,7 @@ def api_loan_details(request, loan_id):
                 'PAN',
                 'Bank Name',
                 'Account Number',
+                'Bank Account No',
                 'IFSC Code',
                 'IFSC',
                 'Bank Type',
@@ -425,7 +451,11 @@ def api_loan_details(request, loan_id):
             'existing_loans': existing_loans,
 
             # Section 4
-            'loan_type': loan.get_loan_type_display() if hasattr(loan, 'get_loan_type_display') else loan.loan_type,
+            'loan_type': first_non_empty(
+                loan.get_loan_type_display() if hasattr(loan, 'get_loan_type_display') else loan.loan_type,
+                get_extra('service required', 'loan type', default='-'),
+                default='-'
+            ),
             'loan_amount': float(loan.loan_amount or 0),
             'tenure_months': loan.tenure_months or '-',
             'loan_purpose': first_non_empty(loan.loan_purpose, get_extra('loan purpose', 'purpose', default='-'), default='-'),
@@ -447,7 +477,11 @@ def api_loan_details(request, loan_id):
             'pan_number': get_extra('pan number', 'pan', default='-'),
             'bank_name': loan.bank_name or get_extra('bank name', default='-'),
             'bank_type': loan.bank_type or '-',
-            'account_number': first_non_empty(loan.bank_account_number, get_extra('account number', default='-'), default='-'),
+            'account_number': first_non_empty(
+                loan.bank_account_number,
+                get_extra('account number', 'bank account no', default='-'),
+                default='-'
+            ),
             'ifsc_code': first_non_empty(loan.bank_ifsc_code, get_extra('ifsc code', 'ifsc', default='-'), default='-'),
             'remarks': remarks_suggestions,
             'processing_remarks': "\n".join(dedup_processing)[:3000] if dedup_processing else '-',
@@ -459,8 +493,16 @@ def api_loan_details(request, loan_id):
 
         # If LoanApplication/Applicant exists, enrich from it where Loan is empty
         if applicant:
+            details['full_name'] = first_non_empty(applicant.full_name, details['full_name'])
             details['email'] = first_non_empty(applicant.email, details['email'])
             details['mobile_number'] = first_non_empty(applicant.mobile, details['mobile_number'])
+            details['gender'] = first_non_empty(
+                applicant.get_gender_display() if hasattr(applicant, 'get_gender_display') else getattr(applicant, 'gender', None),
+                details['gender']
+            )
+            details['city'] = first_non_empty(applicant.city, details['city'])
+            details['state'] = first_non_empty(applicant.state, details['state'])
+            details['pin_code'] = first_non_empty(applicant.pin_code, details['pin_code'])
             details['loan_type'] = first_non_empty(
                 applicant.get_loan_type_display() if hasattr(applicant, 'get_loan_type_display') else applicant.loan_type,
                 details['loan_type']
@@ -475,6 +517,81 @@ def api_loan_details(request, loan_id):
             details['cibil_score'] = first_non_empty(getattr(applicant, 'cibil_score', None), details['cibil_score'])
             details['aadhar_number'] = first_non_empty(getattr(applicant, 'aadhar_number', None), details['aadhar_number'])
             details['pan_number'] = first_non_empty(getattr(applicant, 'pan_number', None), details['pan_number'])
+            details['permanent_address_line1'] = first_non_empty(
+                getattr(applicant, 'permanent_address', None),
+                details['permanent_address_line1']
+            )
+            details['present_address_line1'] = first_non_empty(
+                getattr(applicant, 'current_address', None),
+                details['present_address_line1']
+            )
+
+        if details['assigned_employee_name'] == '-' and assignment_context.get('assigned_employee_name'):
+            details['assigned_employee_name'] = assignment_context.get('assigned_employee_name')
+
+        # Build an "all captured fields" list to show every available detail in modal.
+        full_application_details = []
+        seen_labels = set()
+
+        def add_full_row(label, value):
+            if isinstance(value, (list, dict)):
+                return
+            text = str(value or '').strip()
+            if text in ['', '-']:
+                return
+            key = normalize_lookup_key(label)
+            if key in seen_labels:
+                return
+            seen_labels.add(key)
+            full_application_details.append({
+                'label': label,
+                'value': text,
+            })
+
+        ordered_rows = [
+            ('Applicant Name', details.get('full_name')),
+            ('Mobile Number', details.get('mobile_number')),
+            ('Alternate Mobile', details.get('alternate_mobile')),
+            ('Email', details.get('email')),
+            ('Father Name', details.get('father_name')),
+            ('Mother Name', details.get('mother_name')),
+            ('Date Of Birth', details.get('date_of_birth')),
+            ('Gender', details.get('gender')),
+            ('Marital Status', details.get('marital_status')),
+            ('Permanent Address', details.get('permanent_address_line1')),
+            ('Present Address', details.get('present_address_line1')),
+            ('City', details.get('city')),
+            ('State', details.get('state')),
+            ('PIN Code', details.get('pin_code')),
+            ('Occupation', details.get('occupation')),
+            ('Date Of Joining', details.get('employment_date')),
+            ('Experience (Years)', details.get('years_of_experience')),
+            ('Additional Income', details.get('additional_income')),
+            ('Extra Income Details', details.get('extra_income_details')),
+            ('Loan Type', details.get('loan_type')),
+            ('Loan Amount', details.get('loan_amount')),
+            ('Tenure Months', details.get('tenure_months')),
+            ('Loan Purpose', details.get('loan_purpose')),
+            ('Charges Applicable', details.get('charges_applicable')),
+            ('CIBIL Score', details.get('cibil_score')),
+            ('Aadhar Number', details.get('aadhar_number')),
+            ('PAN Number', details.get('pan_number')),
+            ('Bank Name', details.get('bank_name')),
+            ('Account Number', details.get('account_number')),
+            ('IFSC Code', details.get('ifsc_code')),
+            ('Bank Type', details.get('bank_type')),
+            ('Remarks', details.get('remarks')),
+            ('Processing Remarks', details.get('processing_remarks')),
+        ]
+        for label, value in ordered_rows:
+            add_full_row(label, value)
+
+        for key, value in extra_info.items():
+            if key.startswith('assigned by'):
+                continue
+            add_full_row(humanize_key(key), value)
+
+        details['full_application_details'] = full_application_details
 
         return JsonResponse({'success': True, 'data': details})
 

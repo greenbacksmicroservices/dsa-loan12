@@ -3,11 +3,24 @@ Django settings for dsa_loan_management project.
 """
 
 from pathlib import Path
-import os
 from decouple import config
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+
+def env_bool(name, default=False):
+    value = config(name, default=str(default))
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() in {'1', 'true', 'yes', 'on', 'debug', 'development'}
+
+
+def env_list(name, default=''):
+    value = config(name, default=default)
+    if isinstance(value, (list, tuple)):
+        return [str(item).strip() for item in value if str(item).strip()]
+    return [item.strip() for item in str(value).split(',') if item.strip()]
 
 
 # Quick-start development settings - unsuitable for production
@@ -17,9 +30,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-change-this-in-production')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = config('DEBUG', default=True, cast=bool)
+DEBUG = env_bool('DEBUG', default=True)
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = env_list('ALLOWED_HOSTS', default='127.0.0.1,localhost')
+if DEBUG:
+    ALLOWED_HOSTS = list(dict.fromkeys(ALLOWED_HOSTS + ['127.0.0.1', 'localhost']))
 
 
 # Application definition
@@ -39,10 +54,10 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -71,12 +86,18 @@ WSGI_APPLICATION = 'dsa_loan_management.wsgi.application'
 
 
 # Database
-# # settings.py
-
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / "db.sqlite3",  # Project folder me SQLite file create karega
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': config('DB_NAME', default='u529002218_dsafinal'),
+        'USER': config('DB_USER', default='u529002218_dsafinal'),
+        'PASSWORD': config('DB_PASSWORD', default='Dsafinal12345'),
+        'HOST': config('DB_HOST', default='srv685.hstgr.io'),
+        'PORT': config('DB_PORT', default='3306'),
+        'OPTIONS': {
+            'charset': 'utf8mb4',
+        },
+        'CONN_MAX_AGE': config('DB_CONN_MAX_AGE', default=60, cast=int),
     }
 }
 
@@ -116,12 +137,30 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-MEDIA_URL = 'media/'
+MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+# Security settings for production deployment
+USE_HTTPS = env_bool('USE_HTTPS', default=not DEBUG)
+SECURE_SSL_REDIRECT = env_bool('SECURE_SSL_REDIRECT', default=USE_HTTPS)
+SESSION_COOKIE_SECURE = env_bool('SESSION_COOKIE_SECURE', default=USE_HTTPS)
+SESSION_COOKIE_SAMESITE = config('SESSION_COOKIE_SAMESITE', default='Lax')
+CSRF_COOKIE_SECURE = env_bool('CSRF_COOKIE_SECURE', default=USE_HTTPS)
+CSRF_COOKIE_SAMESITE = config('CSRF_COOKIE_SAMESITE', default='Lax')
+SECURE_HSTS_SECONDS = config('SECURE_HSTS_SECONDS', default=31536000 if USE_HTTPS else 0, cast=int)
+SECURE_HSTS_INCLUDE_SUBDOMAINS = env_bool('SECURE_HSTS_INCLUDE_SUBDOMAINS', default=USE_HTTPS)
+SECURE_HSTS_PRELOAD = env_bool('SECURE_HSTS_PRELOAD', default=False)
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_REFERRER_POLICY = config('SECURE_REFERRER_POLICY', default='same-origin')
+X_FRAME_OPTIONS = config('X_FRAME_OPTIONS', default='DENY')
+
+if env_bool('USE_X_FORWARDED_PROTO', default=True):
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
@@ -149,21 +188,20 @@ REST_FRAMEWORK = {
 }
 
 # CORS Settings
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:8000",
-    "http://127.0.0.1:8000",
-]
+default_cors_origins = 'http://localhost:8000,http://127.0.0.1:8000'
+if not DEBUG:
+    default_cors_origins = ''
+CORS_ALLOWED_ORIGINS = env_list('CORS_ALLOWED_ORIGINS', default=default_cors_origins)
+CORS_ALLOW_ALL_ORIGINS = env_bool('CORS_ALLOW_ALL_ORIGINS', default=False)
 
 CORS_ALLOW_CREDENTIALS = True
 
 # CSRF Settings
-CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:8000",
-    "http://127.0.0.1:8000",
-]
-CSRF_COOKIE_SECURE = False  # Set to True in production with HTTPS
+default_csrf_origins = 'http://localhost:8000,http://127.0.0.1:8000'
+if not DEBUG:
+    default_csrf_origins = ''
+CSRF_TRUSTED_ORIGINS = env_list('CSRF_TRUSTED_ORIGINS', default=default_csrf_origins)
 CSRF_COOKIE_HTTPONLY = False  # Must be False for CSRF token to work with forms
-CSRF_COOKIE_SAMESITE = 'Lax'
 
 # Login URLs
 LOGIN_URL = '/login/'

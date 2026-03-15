@@ -733,6 +733,16 @@
                 <p style="color: #999; text-align: center; padding: 20px;">No documents attached</p>
             </div>
         </div>
+
+        <!-- ALL CAPTURED DETAILS -->
+        <div style="margin-bottom: 30px;">
+            <h3 style="color: #1abc9c; font-size: 16px; font-weight: 700; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid #e5e7eb;">ALL CAPTURED DETAILS</h3>
+            <p style="margin: 0 0 14px 0; color: #475569; font-size: 13px;">This section shows every available field saved for this loan.</p>
+
+            <div id="fullDetailsContainer">
+                <p style="color: #999; text-align: center; padding: 20px;">No additional details available</p>
+            </div>
+        </div>
         
         <!-- Declaration -->
         <div style="background: #ecfdf5; padding: 15px; border-radius: 8px; margin-bottom: 30px; border-left: 4px solid #10b981;">
@@ -1102,6 +1112,20 @@ function submitAssignment() {
 }
 
 // View Loan Detail
+function setText(id, value, fallback = '-') {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const finalValue = (value === null || value === undefined || value === '') ? fallback : value;
+    el.textContent = finalValue;
+}
+
+function formatWithUnit(value, unit) {
+    if (value === null || value === undefined || value === '' || value === '-') {
+        return '-';
+    }
+    return `${value} ${unit}`;
+}
+
 function viewLoanDetail(id, name, email, phone, loanType, amount, status) {
     currentLoanId = id;
     
@@ -1147,30 +1171,23 @@ function viewLoanDetail(id, name, email, phone, loanType, amount, status) {
 
 // Populate Detail Modal with data
 function populateDetailModal(data) {
-    const loanUidEl = document.getElementById('detailLoanUid');
-    const statusTextEl = document.getElementById('detailStatusText');
-    const createdByEl = document.getElementById('detailCreatedBy');
-    const assignedEmployeeEl = document.getElementById('detailAssignedEmployee');
-    const assignedAgentEl = document.getElementById('detailAssignedAgent');
-    const assignedByEl = document.getElementById('detailAssignedBy');
-
-    if (loanUidEl) loanUidEl.textContent = data.user_id || data.id || '-';
-    if (statusTextEl) statusTextEl.textContent = data.status || data.status_display || '-';
-    if (createdByEl) createdByEl.textContent = data.created_by_display || '-';
-    if (assignedEmployeeEl) assignedEmployeeEl.textContent = data.assigned_employee_name || '-';
-    if (assignedAgentEl) assignedAgentEl.textContent = data.assigned_agent_name || '-';
-    if (assignedByEl) assignedByEl.textContent = data.assigned_by_display || '-';
+    setText('detailLoanUid', data.user_id || data.id || '-');
+    setText('detailStatusText', data.status || data.status_display || '-');
+    setText('detailCreatedBy', data.created_by_display || '-');
+    setText('detailAssignedEmployee', data.assigned_employee_name || '-');
+    setText('detailAssignedAgent', data.assigned_agent_name || '-');
+    setText('detailAssignedBy', data.assigned_by_display || '-');
 
     // Section 1: Name & Contact Details
-    document.getElementById('detailName').textContent = data.full_name || '-';
-    document.getElementById('detailPhone').textContent = data.mobile_number || '-';
-    document.getElementById('detailAltPhone').textContent = data.alternate_mobile || '-';
-    document.getElementById('detailEmail').textContent = data.email || '-';
-    document.getElementById('detailFatherName').textContent = data.father_name || '-';
-    document.getElementById('detailMotherName').textContent = data.mother_name || '-';
-    document.getElementById('detailDOB').textContent = data.date_of_birth || '-';
-    document.getElementById('detailGender').textContent = data.gender || '-';
-    document.getElementById('detailMaritalStatus').textContent = data.marital_status || '-';
+    setText('detailName', data.full_name || '-');
+    setText('detailPhone', data.mobile_number || '-');
+    setText('detailAltPhone', data.alternate_mobile || '-');
+    setText('detailEmail', data.email || '-');
+    setText('detailFatherName', data.father_name || '-');
+    setText('detailMotherName', data.mother_name || '-');
+    setText('detailDOB', data.date_of_birth || '-');
+    setText('detailGender', data.gender || '-');
+    setText('detailMaritalStatus', data.marital_status || '-');
     
     // Permanent Address
     const permAddressLine = data.permanent_address_line1 || data.permanent_address || '-';
@@ -1178,15 +1195,10 @@ function populateDetailModal(data) {
     const permCity = data.permanent_city || data.city || '-';
     const permPin = data.permanent_pincode || data.pin_code || '-';
 
-    const permAddressLineEl = document.getElementById('detailPermAddressLine');
-    const permLandmarkEl = document.getElementById('detailPermLandmark');
-    const permCityEl = document.getElementById('detailPermCity');
-    const permPinEl = document.getElementById('detailPermPin');
-
-    if (permAddressLineEl) permAddressLineEl.textContent = permAddressLine || '-';
-    if (permLandmarkEl) permLandmarkEl.textContent = permLandmark || '-';
-    if (permCityEl) permCityEl.textContent = permCity || '-';
-    if (permPinEl) permPinEl.textContent = permPin || '-';
+    setText('detailPermAddressLine', permAddressLine || '-');
+    setText('detailPermLandmark', permLandmark || '-');
+    setText('detailPermCity', permCity || '-');
+    setText('detailPermPin', permPin || '-');
     
     // Present Address
     const presentAddressLine = data.present_address_line1 || data.current_address || '-';
@@ -1195,23 +1207,17 @@ function populateDetailModal(data) {
     const presentPin = data.present_pincode || data.pin_code || '-';
     const sameAsPermanent = (!presentAddressLine || presentAddressLine === '-' || presentAddressLine === permAddressLine) ? 'Yes' : 'No';
 
-    const presentSameEl = document.getElementById('detailPresentSameAs');
-    const presentAddressLineEl = document.getElementById('detailPresentAddressLine');
-    const presentLandmarkEl = document.getElementById('detailPresentLandmark');
-    const presentCityEl = document.getElementById('detailPresentCity');
-    const presentPinEl = document.getElementById('detailPresentPin');
-
-    if (presentSameEl) presentSameEl.textContent = sameAsPermanent;
-    if (presentAddressLineEl) presentAddressLineEl.textContent = presentAddressLine || '-';
-    if (presentLandmarkEl) presentLandmarkEl.textContent = presentLandmark || '-';
-    if (presentCityEl) presentCityEl.textContent = presentCity || '-';
-    if (presentPinEl) presentPinEl.textContent = presentPin || '-';
+    setText('detailPresentSameAs', sameAsPermanent);
+    setText('detailPresentAddressLine', presentAddressLine || '-');
+    setText('detailPresentLandmark', presentLandmark || '-');
+    setText('detailPresentCity', presentCity || '-');
+    setText('detailPresentPin', presentPin || '-');
     
     // Section 2: Occupation & Income
-    document.getElementById('detailOccupation').textContent = data.occupation || '-';
-    document.getElementById('detailDateOfJoin').textContent = data.employment_date || '-';
-    document.getElementById('detailExperience').textContent = (data.years_of_experience || '-') + ' years';
-    document.getElementById('detailExtraIncome').textContent = data.additional_income || '-';
+    setText('detailOccupation', data.occupation || '-');
+    setText('detailDateOfJoin', data.employment_date || '-');
+    setText('detailExperience', formatWithUnit(data.years_of_experience, 'years'));
+    setText('detailExtraIncome', data.additional_income || '-');
     const extraIncomeDetailsEl = document.getElementById('detailExtraIncomeDetails');
     if (extraIncomeDetailsEl) {
         extraIncomeDetailsEl.textContent = data.extra_income_details || '-';
@@ -1222,25 +1228,25 @@ function populateDetailModal(data) {
     document.getElementById('existingLoansContainer').innerHTML = existingLoansHtml || '<p style="color: #999; text-align: center; padding: 20px;">No existing loans reported</p>';
     
     // Section 4: Loan Request
-    document.getElementById('detailServiceType').textContent = data.loan_type || '-';
-    document.getElementById('detailLoanAmount').textContent = 'Rs ' + Number(data.loan_amount || 0).toLocaleString('en-IN');
-    document.getElementById('detailTenure').textContent = (data.tenure_months || '-') + ' months';
+    setText('detailServiceType', data.loan_type || '-');
+    setText('detailLoanAmount', 'Rs ' + Number(data.loan_amount || 0).toLocaleString('en-IN'));
+    setText('detailTenure', formatWithUnit(data.tenure_months, 'months'));
     const loanPurposeEl = document.getElementById('detailLoanPurpose');
     if (loanPurposeEl) {
         loanPurposeEl.textContent = data.loan_purpose || '-';
     }
-    document.getElementById('detailCharges').textContent = data.charges_applicable || 'No charges';
+    setText('detailCharges', data.charges_applicable || 'No charges', 'No charges');
     
     // Section 5: References
     const referencesHtml = generateReferencesHtml(data.references);
     document.getElementById('referencesContainer').innerHTML = referencesHtml || '<p style="color: #999; text-align: center; padding: 20px;">No references provided</p>';
     
     // Section 6: Financial & Bank Details
-    document.getElementById('detailCIBIL').textContent = data.cibil_score || '-';
-    document.getElementById('detailAadhar').textContent = data.aadhar_number || '-';
-    document.getElementById('detailPAN').textContent = data.pan_number || '-';
-    document.getElementById('detailBankName').textContent = data.bank_name || '-';
-    document.getElementById('detailAccNumber').textContent = data.account_number || '-';
+    setText('detailCIBIL', data.cibil_score || '-');
+    setText('detailAadhar', data.aadhar_number || '-');
+    setText('detailPAN', data.pan_number || '-');
+    setText('detailBankName', data.bank_name || '-');
+    setText('detailAccNumber', data.account_number || '-');
     const ifscEl = document.getElementById('detailIFSC');
     if (ifscEl) {
         ifscEl.textContent = data.ifsc_code || '-';
@@ -1249,7 +1255,7 @@ function populateDetailModal(data) {
     if (bankTypeEl) {
         bankTypeEl.textContent = data.bank_type || '-';
     }
-    document.getElementById('detailRemarks').textContent = data.remarks || '-';
+    setText('detailRemarks', data.remarks || '-');
     const processingRemarksEl = document.getElementById('detailProcessingRemarks');
     if (processingRemarksEl) {
         processingRemarksEl.textContent = data.processing_remarks || '-';
@@ -1262,19 +1268,24 @@ function populateDetailModal(data) {
     // Section 7: Documents
     const documentsHtml = generateDocumentsHtml(data.documents);
     document.getElementById('documentsContainer').innerHTML = documentsHtml || '<p style="color: #999; text-align: center; padding: 20px;">No documents attached</p>';
+
+    // All captured details
+    const fullDetailsHtml = generateFullDetailsHtml(data.full_application_details);
+    const fullDetailsContainer = document.getElementById('fullDetailsContainer');
+    if (fullDetailsContainer) {
+        fullDetailsContainer.innerHTML = fullDetailsHtml || '<p style="color: #999; text-align: center; padding: 20px;">No additional details available</p>';
+    }
 }
 
 // Fallback for basic info
 function populateDetailModalFallback(name, email, phone, loanType, amount, status) {
-    const loanUidEl = document.getElementById('detailLoanUid');
-    const statusTextEl = document.getElementById('detailStatusText');
-    if (loanUidEl) loanUidEl.textContent = currentLoanId || '-';
-    if (statusTextEl) statusTextEl.textContent = status || '-';
-    document.getElementById('detailName').textContent = name || '-';
-    document.getElementById('detailEmail').textContent = email || '-';
-    document.getElementById('detailPhone').textContent = phone || '-';
-    document.getElementById('detailServiceType').textContent = loanType || '-';
-    document.getElementById('detailLoanAmount').textContent = 'Rs ' + Number(amount || 0).toLocaleString('en-IN');
+    setText('detailLoanUid', currentLoanId || '-');
+    setText('detailStatusText', status || '-');
+    setText('detailName', name || '-');
+    setText('detailEmail', email || '-');
+    setText('detailPhone', phone || '-');
+    setText('detailServiceType', loanType || '-');
+    setText('detailLoanAmount', 'Rs ' + Number(amount || 0).toLocaleString('en-IN'));
     const loanPurposeEl = document.getElementById('detailLoanPurpose');
     if (loanPurposeEl) {
         loanPurposeEl.textContent = '-';
@@ -1286,6 +1297,10 @@ function populateDetailModalFallback(name, email, phone, loanType, amount, statu
     const processingRemarksEl = document.getElementById('detailProcessingRemarks');
     if (processingRemarksEl) {
         processingRemarksEl.textContent = '-';
+    }
+    const fullDetailsContainer = document.getElementById('fullDetailsContainer');
+    if (fullDetailsContainer) {
+        fullDetailsContainer.innerHTML = '<p style="color: #999; text-align: center; padding: 20px;">No additional details available</p>';
     }
 }
 
@@ -1338,7 +1353,7 @@ function generateExistingLoansHtml(loans) {
 function generateReferencesHtml(references) {
     if (!references || references.length === 0) return '';
     
-    return references.slice(0, 2).map((ref, index) => `
+    return references.map((ref, index) => `
         <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
             <p style="color: #718096; font-size: 12px; font-weight: 700; margin: 0 0 12px 0; text-transform: uppercase;">Reference #${index + 1}</p>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
@@ -1357,6 +1372,21 @@ function generateReferencesHtml(references) {
             </div>
         </div>
     `).join('');
+}
+
+function generateFullDetailsHtml(rows) {
+    if (!rows || rows.length === 0) return '';
+
+    return `
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px;">
+            ${rows.map(row => `
+                <div style="padding: 10px 12px; border: 1px solid #e5e7eb; border-radius: 8px; background: #f8fafc;">
+                    <p style="margin: 0 0 4px 0; font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: 700;">${row.label || '-'}</p>
+                    <p style="margin: 0; color: #1a202c; font-size: 13px; font-weight: 600; white-space: pre-wrap;">${row.value || '-'}</p>
+                </div>
+            `).join('')}
+        </div>
+    `;
 }
 
 // Generate documents HTML
