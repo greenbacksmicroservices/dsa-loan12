@@ -13,68 +13,54 @@
     </div>
 
     <!-- Statistics Cards -->
-    <div class="employee-stat-grid">
-        <a class="stat-card stat-new" href="{% url 'employee_loans_new_entry' %}">
-            <div class="stat-top">
-                <span>New Entry</span>
-                <i class="bi bi-file-earmark-plus"></i>
-            </div>
-            <div class="stat-number" id="stat-new-entry">0</div>
-            <div class="stat-subtext">Total New Applications - View Details -></div>
+    <div class="card-container">
+        <a class="insight-card c-new" href="{% url 'employee_loans_new_entry' %}">
+            <p class="status-title">New Entry</p>
+            <h2 class="main-value" id="stat-new-entry">0</h2>
+            <p class="description">Total New Applications</p>
+            <span class="view-details" style="color:#4c51bf;">View Details →</span>
         </a>
 
-        <a class="stat-card stat-processing" href="{% url 'employee_loans_waiting' %}">
-            <div class="stat-top">
-                <span>In Processing</span>
-                <i class="bi bi-hourglass-split"></i>
-            </div>
-            <div class="stat-number" id="stat-waiting">0</div>
-            <div class="stat-subtext">Pending Review - View Details -></div>
+        <a class="insight-card c-process" href="{% url 'employee_loans_waiting' %}">
+            <p class="status-title">In Processing</p>
+            <h2 class="main-value" id="stat-waiting">0</h2>
+            <p class="description">Pending Review</p>
+            <span class="view-details" style="color:#d69e2e;">View Details →</span>
         </a>
 
-        <a class="stat-card stat-banking" href="{% url 'employee_loans_followup' %}">
-            <div class="stat-top">
-                <span>Banking Processing</span>
-                <i class="bi bi-bank2"></i>
-            </div>
-            <div class="stat-number" id="stat-banking">0</div>
-            <div class="stat-subtext">Banking Processing Queue - View Details -></div>
+        <a class="insight-card c-bank" href="{% url 'employee_loans_followup' %}">
+            <p class="status-title">Banking Processing</p>
+            <h2 class="main-value" id="stat-banking">0</h2>
+            <p class="description">Banking Processing Queue</p>
+            <span class="view-details" style="color:#319795;">View Details →</span>
         </a>
 
-        <a class="stat-card stat-followup" href="{% url 'employee_loans_followup_pending' %}">
-            <div class="stat-top">
-                <span>Follow Up</span>
-                <i class="bi bi-arrow-repeat"></i>
-            </div>
-            <div class="stat-number" id="stat-follow-up-pending">0</div>
-            <div class="stat-subtext">Reverted for Correction - View Details -></div>
+        <a class="insight-card c-follow" href="{% url 'employee_loans_followup_pending' %}">
+            <p class="status-title">Follow Up</p>
+            <h2 class="main-value" id="stat-follow-up-pending">0</h2>
+            <p class="description">Reverted for Correction</p>
+            <span class="view-details" style="color:#d53f8c;">View Details →</span>
         </a>
 
-        <a class="stat-card stat-approved" href="{% url 'employee_loans_approved' %}">
-            <div class="stat-top">
-                <span>Approved</span>
-                <i class="bi bi-check-circle"></i>
-            </div>
-            <div class="stat-number" id="stat-approved">0</div>
-            <div class="stat-subtext">Successfully Approved - View Details -></div>
+        <a class="insight-card c-approved" href="{% url 'employee_loans_approved' %}">
+            <p class="status-title">Approved</p>
+            <h2 class="main-value" id="stat-approved">0</h2>
+            <p class="description">Successfully Approved</p>
+            <span class="view-details" style="color:#38a169;">View Details →</span>
         </a>
 
-        <a class="stat-card stat-rejected" href="{% url 'employee_loans_rejected' %}">
-            <div class="stat-top">
-                <span>Rejected</span>
-                <i class="bi bi-x-circle"></i>
-            </div>
-            <div class="stat-number" id="stat-rejected">0</div>
-            <div class="stat-subtext">Rejected Applications - View Details -></div>
+        <a class="insight-card c-rejected" href="{% url 'employee_loans_rejected' %}">
+            <p class="status-title">Rejected</p>
+            <h2 class="main-value" id="stat-rejected">0</h2>
+            <p class="description">Rejected Applications</p>
+            <span class="view-details" style="color:#e53e3e;">View Details →</span>
         </a>
 
-        <a class="stat-card stat-disbursed" href="{% url 'employee_loans_disbursed' %}">
-            <div class="stat-top">
-                <span>Disbursed</span>
-                <i class="bi bi-cash-coin"></i>
-            </div>
-            <div class="stat-number" id="stat-disbursed">0</div>
-            <div class="stat-subtext">Amount Disbursed - View Details -></div>
+        <a class="insight-card c-disbursed" href="{% url 'employee_loans_disbursed' %}">
+            <p class="status-title">Disbursed</p>
+            <h2 class="main-value" id="stat-disbursed">0</h2>
+            <p class="description">Fund Disbursed Successfully</p>
+            <span class="view-details" style="color:#3182ce;">View Details →</span>
         </a>
     </div>
 
@@ -102,82 +88,99 @@
         </div>
     </div>
 
-    <!-- Loan History Table -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="employee-table-card">
-                <div class="employee-table-header">
-                    <h6 class="m-0 fw-bold">
-                        <i class="bi bi-clock-history"></i> Complete Loan History
-                    </h6>
-                </div>
-                <div class="employee-table-body">
-                    <!-- Search & Filter Controls -->
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <div class="input-group">
-                                <span class="input-group-text bg-light border-0"><i class="bi bi-search"></i></span>
-                                <input type="text" class="form-control border-0 bg-light" id="search-box" placeholder="Search by applicant name, phone or ID...">
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <select class="form-select border-0 bg-light" id="status-filter">
-                                <option value="">All Status</option>
-                                <option value="new_entry">New Entry</option>
-                                <option value="waiting">In Processing</option>
-                                <option value="follow_up">Banking Processing</option>
-                                <option value="follow_up_pending">Follow Up</option>
-                                <option value="approved">Approved</option>
-                                <option value="rejected">Rejected</option>
-                                <option value="disbursed">Disbursed</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <select class="form-select border-0 bg-light" id="type-filter">
-                                <option value="">All Types</option>
-                                <option value="personal">Personal</option>
-                                <option value="business">Business</option>
-                                <option value="home">Home</option>
-                                <option value="car">Auto</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- Loans Table -->
-                    <div class="table-responsive">
-                        <table class="table table-grid" id="loans-table">
-                            <thead class="table-light">
-                                <tr>
-                                    <th style="width: 50px;">Photo</th>
-                                    <th>Applicant Name</th>
-                                    <th>Phone</th>
-                                    <th>Loan Type</th>
-                                    <th>Amount (â‚¹)</th>
-                                    <th>Status</th>
-                                    <th>Created Date</th>
-                                    <th style="width: 180px;">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="loans-tbody">
-                                <tr>
-                                    <td colspan="8" class="text-center text-muted py-4">
-                                        <div class="spinner-border spinner-border-sm me-2" role="status">
-                                            <span class="visually-hidden">Loading...</span>
-                                        </div>
-                                        Loading loan history...
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
 </div>
 
 <style>
+    /* Insight-style CRM cards (shared design) */
+    :root {
+        --primary: #002B5B;
+        --accent: #FF5C00;
+        --card-shadow: 0 10px 30px rgba(0,0,0,0.05);
+    }
+
+    .card-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+        max-width: 1400px;
+        margin: 0 auto;
+        margin-bottom: 24px;
+    }
+
+    .insight-card {
+        background: #fff;
+        border-radius: 20px;
+        padding: 24px;
+        box-shadow: var(--card-shadow);
+        transition: transform 0.3s ease;
+        position: relative;
+        overflow: hidden;
+        border: 1px solid rgba(255,255,255,0.8);
+        text-decoration: none;
+        color: inherit;
+        display: block;
+    }
+
+    .insight-card:hover {
+        transform: translateY(-5px);
+    }
+
+    .insight-card::after {
+        content: '';
+        position: absolute;
+        width: 120px;
+        height: 120px;
+        background: currentColor;
+        opacity: 0.1;
+        border-radius: 50%;
+        top: -20px;
+        right: -20px;
+    }
+
+    .status-title {
+        font-size: 14px;
+        color: #718096;
+        margin: 0;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .main-value {
+        font-size: 32px;
+        font-weight: 800;
+        margin: 10px 0;
+        color: var(--primary);
+    }
+
+    .description {
+        font-size: 13px;
+        color: #a0aec0;
+        margin-bottom: 15px;
+    }
+
+    .view-details {
+        display: inline-flex;
+        align-items: center;
+        text-decoration: none;
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--accent);
+        transition: gap 0.2s;
+    }
+
+    .view-details:hover {
+        gap: 8px;
+    }
+
+    .c-new { color: #4c51bf; }
+    .c-process { color: #ecc94b; }
+    .c-bank { color: #38b2ac; }
+    .c-follow { color: #ed64a1; }
+    .c-approved { color: #48bb78; }
+    .c-rejected { color: #f56565; }
+    .c-disbursed { color: #4299e1; }
+
     .employee-dashboard-heading {
         position: sticky;
         top: 68px;
@@ -397,13 +400,21 @@
 
     document.addEventListener('DOMContentLoaded', function() {
         loadEmployeeDashboardStats();
-        loadAllLoansHistory();
         loadMonthlyChart();
+
+        // "Complete Loan History" section is removed from this page.
+        // Keep all related logic guarded so the dashboard doesn't crash.
+        const loansTableExists = !!document.getElementById('loans-tbody');
+        if (loansTableExists) {
+            loadAllLoansHistory();
+        }
         
         // Auto-refresh every 30 seconds for real-time updates
         dashboardRefreshTimer = setInterval(function() {
             loadEmployeeDashboardStats();
-            loadAllLoansHistory();
+            if (loansTableExists) {
+                loadAllLoansHistory();
+            }
             loadMonthlyChart();
         }, 30000);
 
@@ -412,36 +423,38 @@
         const statusFilter = document.getElementById('status-filter');
         const typeFilter = document.getElementById('type-filter');
 
-        searchBox.addEventListener('input', function() {
-            applyFilters();
-        });
-
-        statusFilter.addEventListener('change', function() {
-            applyFilters();
-        });
-
-        typeFilter.addEventListener('change', function() {
-            applyFilters();
-        });
-
-        function applyFilters() {
-            const searchTerm = searchBox.value.toLowerCase().trim();
-            const statusTerm = statusFilter.value;
-            const typeTerm = typeFilter.value;
-
-            const filteredLoans = allLoans.filter(loan => {
-                const matchesSearch = !searchTerm || 
-                    (loan.applicant_name || '').toLowerCase().includes(searchTerm) ||
-                    (loan.mobile || '').includes(searchTerm) ||
-                    String(loan.loan_id || loan.id || '').includes(searchTerm);
-                
-                const matchesStatus = !statusTerm || loan.status === statusTerm;
-                const matchesType = !typeTerm || loan.loan_type === typeTerm;
-                
-                return matchesSearch && matchesStatus && matchesType;
+        if (searchBox && statusFilter && typeFilter && loansTableExists) {
+            searchBox.addEventListener('input', function() {
+                applyFilters();
             });
 
-            displayLoans(filteredLoans);
+            statusFilter.addEventListener('change', function() {
+                applyFilters();
+            });
+
+            typeFilter.addEventListener('change', function() {
+                applyFilters();
+            });
+
+            function applyFilters() {
+                const searchTerm = searchBox.value.toLowerCase().trim();
+                const statusTerm = statusFilter.value;
+                const typeTerm = typeFilter.value;
+
+                const filteredLoans = allLoans.filter(loan => {
+                    const matchesSearch = !searchTerm || 
+                        (loan.applicant_name || '').toLowerCase().includes(searchTerm) ||
+                        (loan.mobile || '').includes(searchTerm) ||
+                        String(loan.loan_id || loan.id || '').includes(searchTerm);
+                    
+                    const matchesStatus = !statusTerm || loan.status === statusTerm;
+                    const matchesType = !typeTerm || loan.loan_type === typeTerm;
+                    
+                    return matchesSearch && matchesStatus && matchesType;
+                });
+
+                displayLoans(filteredLoans);
+            }
         }
     });
 

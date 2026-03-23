@@ -183,10 +183,115 @@
     <!-- Disbursement Information -->
     <div class="disbursement-info">
         <h4>💰 Disbursement Details</h4>
-        <p><strong>Loan Amount:</strong> ₹ {{ application.applicant.loan_amount }}</p>
-        <p><strong>Disbursed Date:</strong> {{ application.updated_at|date:"d M, Y - h:i A" }}</p>
+        <p><strong>Loan Amount:</strong> ₹ {{ application.disbursement_amount|default:"0" }}</p>
+        <p><strong>Disbursed Date:</strong> {{ application.disbursed_at|default_if_none:""|date:"d M, Y - h:i A" }}</p>
         <p><strong>Status:</strong> Successfully Disbursed</p>
     </div>
+
+    {% if can_edit_form %}
+    <!-- Disbursed Edit Panel (Admin Only) -->
+    <div class="applicant-details" style="margin-top: 25px;">
+        <h3 class="section-title">Edit Disbursed Details</h3>
+        <form id="edit-disbursed-form" style="max-width: 900px;">
+            <div class="detail-grid">
+                <div class="detail-row">
+                    <div class="detail-label">Disbursement Amount</div>
+                    <div>
+                        <input id="edit-disbursement-amount" class="form-control" type="number" min="0" step="0.01"
+                               value="{{ application.disbursement_amount|default_if_none:'' }}" />
+                    </div>
+                </div>
+
+                <div class="detail-row">
+                    <div class="detail-label">Disbursed Date</div>
+                    <div>
+                        <input id="edit-disbursed-date" class="form-control" type="date"
+                               value="{{ application.disbursed_at|date:'Y-m-d' }}" />
+                    </div>
+                </div>
+
+                <div class="detail-row">
+                    <div class="detail-label">SM Name</div>
+                    <div>
+                        <input id="edit-sm-name" class="form-control" type="text" value="{{ application.sm_name|default:'' }}" />
+                    </div>
+                </div>
+
+                <div class="detail-row">
+                    <div class="detail-label">SM Phone</div>
+                    <div>
+                        <input id="edit-sm-phone" class="form-control" type="text" value="{{ application.sm_phone_number|default:'' }}" />
+                    </div>
+                </div>
+
+                <div class="detail-row">
+                    <div class="detail-label">SM Email</div>
+                    <div>
+                        <input id="edit-sm-email" class="form-control" type="email" value="{{ application.sm_email|default:'' }}" />
+                    </div>
+                </div>
+
+                <div class="detail-row">
+                    <div class="detail-label">SM Signed</div>
+                    <div style="margin-top: 8px;">
+                        <label style="display:flex; gap:10px; align-items:center;">
+                            <input id="edit-is-sm-signed" type="checkbox" {% if application.is_sm_signed %}checked{% endif %} />
+                            <span style="font-size:13px; color:#334155; font-weight:600;">Signed</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="detail-row">
+                    <div class="detail-label">SM Signed At</div>
+                    <div>
+                        <input id="edit-sm-signed-at" class="form-control" type="datetime-local"
+                               value="{{ application.sm_signed_at|date:'Y-m-d\\TH:i' }}" />
+                    </div>
+                </div>
+
+                <div class="detail-row" style="grid-column: 1 / -1;">
+                    <div class="detail-label">Processing Remarks (Admin/SM)</div>
+                    <div>
+                        <textarea id="edit-processing-remarks" class="form-control" rows="3"
+                                  placeholder="Enter processing remarks (optional)">{{ application.approval_notes|default:'' }}</textarea>
+                    </div>
+                </div>
+
+                <div class="detail-row" style="grid-column: 1 / -1;">
+                    <div class="detail-label">Remarks (Full Details Notes)</div>
+                    <div>
+                        <textarea id="edit-loan-remarks" class="form-control" rows="3"
+                                  placeholder="Enter remarks (optional)">{{ loan_remarks|default:'' }}</textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top: 16px; display:flex; gap: 12px; justify-content:flex-end; flex-wrap:wrap;">
+                <button type="submit" class="back-button" style="background:#2563eb; color:#fff;">
+                    <i class="fas fa-save"></i> Update Disbursed Details
+                </button>
+            </div>
+
+            <div id="edit-disbursed-status" style="margin-top: 12px;"></div>
+        </form>
+    </div>
+    {% endif %}
+
+    {% if can_edit_form %}
+    <!-- Full Details (Admin Only) -->
+    <div class="applicant-details" style="margin-top: 25px;">
+        <h3 class="section-title">Full Details</h3>
+        <div id="full-details-loader" class="text-muted">Loading full details...</div>
+        <div id="full-details-content" style="display:none;">
+            <div class="detail-grid" id="full-details-grid"></div>
+
+            <div style="margin-top: 22px;">
+                <h4 style="font-weight:800; color:#1e293b; margin: 0 0 12px 0;">Documents</h4>
+                <div class="documents-grid" id="full-details-docs"></div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
     <!-- Applicant Summary -->
     <div class="summary-card">
@@ -315,4 +420,139 @@
         </a>
     </div>
 </div>
+
+{% if can_edit_form %}
+<script>
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    const canEdit = true;
+    const loanId = {{ loan_id|default:"null" }};
+
+    async function loadFullDetails() {
+        if (!loanId) return;
+
+        const loader = document.getElementById('full-details-loader');
+        const content = document.getElementById('full-details-content');
+
+        try {
+            const res = await fetch(`/api/loan-detail/${loanId}/`, {
+                method: 'GET',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                credentials: 'same-origin'
+            });
+            const result = await res.json();
+            if (!result.success) throw new Error(result.error || 'Failed to load');
+
+            const data = result.data || {};
+            const grid = document.getElementById('full-details-grid');
+            const docs = document.getElementById('full-details-docs');
+
+            const applicant = data.applicant || {};
+            const loan = data.loan || {};
+            const bank = data.bank || {};
+
+            grid.innerHTML = [
+                `<div class="detail-row"><div class="detail-label">Full Name</div><div class="detail-value">${applicant.full_name || '-'}</div></div>`,
+                `<div class="detail-row"><div class="detail-label">Mobile</div><div class="detail-value">${applicant.mobile || '-'}</div></div>`,
+                `<div class="detail-row"><div class="detail-label">Email</div><div class="detail-value">${applicant.email || '-'}</div></div>`,
+                `<div class="detail-row"><div class="detail-label">Loan Type</div><div class="detail-value">${loan.type || '-'}</div></div>`,
+                `<div class="detail-row"><div class="detail-label">Loan Amount</div><div class="detail-value">₹ ${loan.amount || 0}</div></div>`,
+                `<div class="detail-row"><div class="detail-label">Tenure (Months)</div><div class="detail-value">${loan.tenure_months || '-'}</div></div>`,
+                `<div class="detail-row"><div class="detail-label">Interest Rate</div><div class="detail-value">${loan.interest_rate || 0}%</div></div>`,
+                `<div class="detail-row"><div class="detail-label">Bank Name</div><div class="detail-value">${bank.name || '-'}</div></div>`,
+                `<div class="detail-row"><div class="detail-label">Bank Type</div><div class="detail-value">${bank.type || '-'}</div></div>`,
+                `<div class="detail-row"><div class="detail-label">Account Number</div><div class="detail-value">${bank.account_number || '-'}</div></div>`,
+                `<div class="detail-row"><div class="detail-label">IFSC</div><div class="detail-value">${bank.ifsc_code || '-'}</div></div>`
+            ].join('');
+
+            const documents = data.documents || [];
+            docs.innerHTML = documents.length ? documents.map(doc => `
+                <div class="document-card">
+                    <div class="document-icon"><i class="fas fa-file-alt"></i></div>
+                    <div class="document-type">${doc.type || 'Document'}</div>
+                    <div style="font-size:12px; color:#64748b; margin-bottom: 10px;">${doc.uploaded_at ? new Date(doc.uploaded_at).toLocaleString() : ''}</div>
+                    <div class="document-actions">
+                        ${doc.file_url ? `<a href="${doc.file_url}" target="_blank" rel="noopener noreferrer">View</a>` : `<span style="color:#9ca3af;">Missing File</span>`}
+                    </div>
+                </div>
+            `).join('') : `<div class="text-muted" style="grid-column:1/-1;">No documents uploaded.</div>`;
+
+            loader.style.display = 'none';
+            content.style.display = 'block';
+        } catch (e) {
+            if (loader) loader.textContent = 'Failed to load full details.';
+            console.error(e);
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadFullDetails();
+
+        const form = document.getElementById('edit-disbursed-form');
+        if (!form) return;
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const statusEl = document.getElementById('edit-disbursed-status');
+            const setStatus = (msg, ok=true) => {
+                statusEl.style.color = ok ? '#16a34a' : '#dc2626';
+                statusEl.textContent = msg;
+            };
+
+            if (!loanId) {
+                setStatus('Missing loan id for update.', false);
+                return;
+            }
+
+            try {
+                const endpoint = `/api/loan/${loanId}/disbursed-details/update/`;
+
+                const payload = {
+                    disbursement_amount: document.getElementById('edit-disbursement-amount').value || null,
+                    disbursed_date: document.getElementById('edit-disbursed-date').value || null,
+                    sm_name: document.getElementById('edit-sm-name').value.trim(),
+                    sm_phone_number: document.getElementById('edit-sm-phone').value.trim(),
+                    sm_email: document.getElementById('edit-sm-email').value.trim(),
+                    is_sm_signed: document.getElementById('edit-is-sm-signed').checked,
+                    sm_signed_at: document.getElementById('edit-sm-signed-at').value || null,
+                    processing_remarks: document.getElementById('edit-processing-remarks').value || '',
+                    remarks: document.getElementById('edit-loan-remarks').value || ''
+                };
+
+                const res = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify(payload),
+                    credentials: 'same-origin'
+                });
+                const result = await res.json();
+
+                if (!result.success) throw new Error(result.error || 'Update failed');
+
+                setStatus('Disbursed details updated successfully.');
+                setTimeout(() => window.location.reload(), 800);
+            } catch (err) {
+                console.error(err);
+                setStatus(err.message || 'Update failed.', false);
+            }
+        });
+    });
+</script>
+{% endif %}
 {% endblock %}

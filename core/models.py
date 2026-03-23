@@ -1,4 +1,4 @@
-﻿from django.db import models
+from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.core.validators import RegexValidator
 from django.utils import timezone
@@ -265,6 +265,7 @@ class LoanDocument(models.Model):
         ('service_book', 'Service Book'),
         ('property_documents', 'Property Documents'),
         ('soa_existing_loan', 'SOA of Existing Loan Account'),
+        ('forclosure_document', 'Forcloser Document'),
         ('co_applicant_pan', 'Co-applicant PAN'),
         ('co_applicant_aadhaar', 'Co-applicant Aadhaar'),
         ('co_applicant_photo', 'Co-applicant Photo'),

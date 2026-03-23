@@ -96,6 +96,8 @@ DATABASES = {
         'PORT': config('DB_PORT', default='3306'),
         'OPTIONS': {
             'charset': 'utf8mb4',
+            # Enables MariaDB strict mode to avoid silent truncation / data integrity issues.
+            'sql_mode': 'STRICT_TRANS_TABLES',
         },
         'CONN_MAX_AGE': config('DB_CONN_MAX_AGE', default=60, cast=int),
         'CONN_HEALTH_CHECKS': True,

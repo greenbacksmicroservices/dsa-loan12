@@ -6,6 +6,97 @@
 
 {% block content %}
 <style>
+    /* Insight-style CRM cards (shared design) */
+    :root {
+        --primary: #002B5B;
+        --accent: #FF5C00;
+        --card-shadow: 0 10px 30px rgba(0,0,0,0.05);
+    }
+
+    .card-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+        max-width: 1400px;
+        margin: 0 auto;
+        margin-bottom: 24px;
+    }
+
+    .insight-card {
+        background: #fff;
+        border-radius: 20px;
+        padding: 24px;
+        box-shadow: var(--card-shadow);
+        transition: transform 0.3s ease;
+        position: relative;
+        overflow: hidden;
+        border: 1px solid rgba(255,255,255,0.8);
+        text-decoration: none;
+        color: inherit;
+        display: block;
+    }
+
+    .insight-card:hover {
+        transform: translateY(-5px);
+    }
+
+    .insight-card::after {
+        content: '';
+        position: absolute;
+        width: 120px;
+        height: 120px;
+        background: currentColor;
+        opacity: 0.1;
+        border-radius: 50%;
+        top: -20px;
+        right: -20px;
+    }
+
+    .status-title {
+        font-size: 14px;
+        color: #718096;
+        margin: 0;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .main-value {
+        font-size: 32px;
+        font-weight: 800;
+        margin: 10px 0;
+        color: var(--primary);
+    }
+
+    .description {
+        font-size: 13px;
+        color: #a0aec0;
+        margin-bottom: 15px;
+    }
+
+    .view-details {
+        display: inline-flex;
+        align-items: center;
+        text-decoration: none;
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--accent);
+        transition: gap 0.2s;
+    }
+
+    .view-details:hover {
+        gap: 8px;
+    }
+
+    /* Color variations */
+    .c-new { color: #4c51bf; }
+    .c-process { color: #ecc94b; }
+    .c-bank { color: #38b2ac; }
+    .c-follow { color: #ed64a1; }
+    .c-approved { color: #48bb78; }
+    .c-rejected { color: #f56565; }
+    .c-disbursed { color: #4299e1; }
+
     .stats-row-primary,
     .stats-row-secondary {
         --bs-gutter-x: 1rem;
@@ -156,93 +247,56 @@
 </style>
 
 <div class="container-fluid">
-    <!-- ROW 1: Main Statistics Cards - Clickable -->
-    <div class="row stats-row-primary">
-        <div class="col-xl-3 col-md-6 col-12">
-            <a href="/admin/all-loans/?status=new_entry" class="stat-card card-primary" title="View New Entries">
-                <div class="stat-card-content">
-                    <i class="fas fa-file-alt stat-icon"></i>
-                    <h3>New Entry</h3>
-                    <div class="number" id="stat-new-entry">{{ new_entry_count }}</div>
-                    <p>Total New Applications</p>
-                    <span class="view-link">View Details →</span>
-                </div>
-            </a>
-        </div>
+    <!-- Status Cards -->
+    <div class="card-container">
+        <a href="/admin/all-loans/?status=new_entry" class="insight-card c-new">
+            <p class="status-title">New Entry</p>
+            <h2 class="main-value" id="stat-new-entry">{{ new_entry_count }}</h2>
+            <p class="description">Total New Applications</p>
+            <span class="view-details" style="color:#4c51bf;">View Details →</span>
+        </a>
 
-        <div class="col-xl-3 col-md-6 col-12">
-            <a href="/admin/all-loans/?status=waiting" class="stat-card card-warning" title="View In Processing">
-                <div class="stat-card-content">
-                    <i class="fas fa-hourglass-half stat-icon"></i>
-                    <h3>In Processing</h3>
-                    <div class="number" id="stat-processing">{{ in_processing_count }}</div>
-                    <p>Pending Review</p>
-                    <span class="view-link">View Details →</span>
-                </div>
-            </a>
-        </div>
+        <a href="/admin/all-loans/?status=waiting" class="insight-card c-process">
+            <p class="status-title">In Processing</p>
+            <h2 class="main-value" id="stat-processing">{{ in_processing_count }}</h2>
+            <p class="description">Pending Review</p>
+            <span class="view-details" style="color:#d69e2e;">View Details →</span>
+        </a>
 
-        <div class="col-xl-3 col-md-6 col-12">
-            <a href="/admin/all-loans/?status=follow_up" class="stat-card card-secondary" title="View Banking Processing">
-                <div class="stat-card-content">
-                    <i class="fas fa-phone-volume stat-icon"></i>
-                    <h3>Banking Processing</h3>
-                    <div class="number" id="stat-followup">{{ followup_count }}</div>
-                    <p>Banking Processing Queue</p>
-                    <span class="view-link">View Details →</span>
-                </div>
-            </a>
-        </div>
+        <a href="/admin/all-loans/?status=follow_up" class="insight-card c-bank">
+            <p class="status-title">Banking Processing</p>
+            <h2 class="main-value" id="stat-followup">{{ followup_count }}</h2>
+            <p class="description">Banking Processing Queue</p>
+            <span class="view-details" style="color:#319795;">View Details →</span>
+        </a>
 
-        <div class="col-xl-3 col-md-6 col-12">
-            <a href="/admin/all-loans/?status=follow_up_pending" class="stat-card card-followup-pending" title="View Follow Up">
-                <div class="stat-card-content">
-                    <i class="fas fa-rotate-left stat-icon"></i>
-                    <h3>Follow Up</h3>
-                    <div class="number" id="stat-follow-up-pending">{{ follow_up_pending_count }}</div>
-                    <p>Reverted for Correction</p>
-                    <span class="view-link">View Details -></span>
-                </div>
-            </a>
-        </div>
-    </div>
+        <a href="/admin/all-loans/?status=follow_up_pending" class="insight-card c-follow">
+            <p class="status-title">Follow Up</p>
+            <h2 class="main-value" id="stat-follow-up-pending">{{ follow_up_pending_count }}</h2>
+            <p class="description">Reverted for Correction</p>
+            <span class="view-details" style="color:#d53f8c;">View Details →</span>
+        </a>
 
-    <div class="row stats-row-secondary mt-1">
-        <div class="col-xl-4 col-md-6 col-12">
-            <a href="/admin/all-loans/?status=approved" class="stat-card card-success" title="View Approved">
-                <div class="stat-card-content">
-                    <i class="fas fa-check-circle stat-icon"></i>
-                    <h3>Approved</h3>
-                    <div class="number" id="stat-approved">{{ approved_count }}</div>
-                    <p>Successfully Approved</p>
-                    <span class="view-link">View Details →</span>
-                </div>
-            </a>
-        </div>
+        <a href="/admin/all-loans/?status=approved" class="insight-card c-approved">
+            <p class="status-title">Approved</p>
+            <h2 class="main-value" id="stat-approved">{{ approved_count }}</h2>
+            <p class="description">Successfully Approved</p>
+            <span class="view-details" style="color:#38a169;">View Details →</span>
+        </a>
 
-        <div class="col-xl-4 col-md-6 col-12">
-            <a href="/admin/all-loans/?status=rejected" class="stat-card card-danger" title="View Rejected">
-                <div class="stat-card-content">
-                    <i class="fas fa-ban stat-icon"></i>
-                    <h3>Rejected</h3>
-                    <div class="number" id="stat-rejected">{{ rejected_count }}</div>
-                    <p>Rejected Applications</p>
-                    <span class="view-link">View Details →</span>
-                </div>
-            </a>
-        </div>
+        <a href="/admin/all-loans/?status=rejected" class="insight-card c-rejected">
+            <p class="status-title">Rejected</p>
+            <h2 class="main-value" id="stat-rejected">{{ rejected_count }}</h2>
+            <p class="description">Rejected Applications</p>
+            <span class="view-details" style="color:#e53e3e;">View Details →</span>
+        </a>
 
-        <div class="col-xl-4 col-md-12 col-12">
-            <a href="/admin/all-loans/?status=disbursed" class="stat-card card-info" title="View Disbursed">
-                <div class="stat-card-content">
-                    <i class="fas fa-money-bill-wave stat-icon"></i>
-                    <h3>Disbursed</h3>
-                    <div class="number" id="stat-disbursed">{{ disbursed_count }}</div>
-                    <p>Amount Disbursed</p>
-                    <span class="view-link">View Details →</span>
-                </div>
-            </a>
-        </div>
+        <a href="/admin/all-loans/?status=disbursed" class="insight-card c-disbursed">
+            <p class="status-title">Disbursed</p>
+            <h2 class="main-value" id="stat-disbursed">{{ disbursed_count }}</h2>
+            <p class="description">Amount Disbursed</p>
+            <span class="view-details" style="color:#3182ce;">View Details →</span>
+        </a>
     </div>
 
     <!-- ROW 3: Charts Section -->

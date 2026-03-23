@@ -268,16 +268,11 @@
                     <div class="meta"><small>Assigned Date</small><strong id="assignedDate">-</strong></div>
                     <div class="meta"><small>Visibility</small><strong id="visibility">-</strong></div>
                     <div class="meta"><small>SM Sign</small><strong id="smSignStatus">Pending</strong></div>
-                    <div class="form-check mt-2">
-                        <input class="form-check-input" type="checkbox" id="smSignTick" disabled>
-                        <label class="form-check-label small" for="smSignTick">Sign Tick</label>
-                    </div>
 
                     <div class="d-grid gap-2 mt-3">
                         <button id="collectBtn" class="btn btn-warning" style="display:none;">Move to Banking Processing</button>
                         <button id="revertBtn" class="btn btn-outline-warning" style="display:none;">Revert to Agent</button>
                         <button id="approveBtn" class="btn btn-success" style="display:none;">Approve</button>
-                        <button id="signBtn" class="btn btn-outline-success" style="display:none;">Sign (Tick Mark)</button>
                         <button id="rejectBtn" class="btn btn-danger" style="display:none;">Reject</button>
                         <button id="disburseBtn" class="btn btn-primary" style="display:none;">Submit to Disbursed</button>
                     </div>
@@ -340,8 +335,17 @@
                         <textarea id="approveBankDetails" class="form-control" rows="3" placeholder="Bank verification notes"></textarea>
                     </div>
                     <div class="col-md-12">
-                        <label class="form-label">Approval Remark (visible in admin panel)</label>
-                        <textarea id="approveRemark" class="form-control" rows="3" placeholder="Any additional remark"></textarea>
+                        <label class="form-label fw-semibold">Signature Done: *</label>
+                        <div class="d-flex gap-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="approveSignatureDone" id="approveSignatureDoneYes" value="yes" checked>
+                                <label class="form-check-label" for="approveSignatureDoneYes">Yes</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="approveSignatureDone" id="approveSignatureDoneNo" value="no">
+                                <label class="form-check-label" for="approveSignatureDoneNo">No</label>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -469,7 +473,6 @@ function prefillApproveModal(v, force = false) {
     setInputValue('approveSmPhone', v.sm_phone_number || '');
     setInputValue('approveSmEmail', v.sm_email || '');
     setInputValue('approveBankDetails', '');
-    setInputValue('approveRemark', '');
 }
 
 function msg(type, text) {
@@ -630,8 +633,6 @@ function fill() {
 
     prefillApproveModal(v);
     set('smSignStatus', v.is_sm_signed ? `Signed (${v.sm_signed_at || 'Now'})` : 'Pending');
-    const smSignTick = document.getElementById('smSignTick');
-    if (smSignTick) smSignTick.checked = !!v.is_sm_signed;
     fillFollowUpEditFields(v);
 
     const existingLoans = Array.isArray(v.existing_loans) ? v.existing_loans : [];
@@ -693,10 +694,9 @@ function fill() {
     const revertBtn = document.getElementById('revertBtn');
     const approveBtn = document.getElementById('approveBtn');
     const rejectBtn = document.getElementById('rejectBtn');
-    const signBtn = document.getElementById('signBtn');
     const disburseBtn = document.getElementById('disburseBtn');
 
-    ['collectBtn','revertBtn','approveBtn','rejectBtn','signBtn','disburseBtn'].forEach(id => {
+    ['collectBtn','revertBtn','approveBtn','rejectBtn','disburseBtn'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = 'none';
     });
@@ -705,11 +705,6 @@ function fill() {
         collectBtn.textContent = 'Move to Banking Processing';
         collectBtn.disabled = false;
     }
-    if (signBtn) {
-        signBtn.textContent = v.is_sm_signed ? 'Signed (Tick Marked)' : 'Sign (Tick Mark)';
-        signBtn.disabled = !!v.is_sm_signed;
-    }
-
     if (s === 'Waiting for Processing') {
         if (collectBtn) collectBtn.style.display = 'block';
         if (rejectBtn) rejectBtn.style.display = 'block';
@@ -720,7 +715,6 @@ function fill() {
         if (revertBtn) revertBtn.style.display = 'block';
         if (rejectBtn) rejectBtn.style.display = 'block';
     } else if (s === 'Approved') {
-        if (signBtn) signBtn.style.display = 'block';
         if (rejectBtn) rejectBtn.style.display = 'block';
         if (disburseBtn) disburseBtn.style.display = 'block';
     }
@@ -763,6 +757,14 @@ document.getElementById('revertBtn').onclick = () => {
 };
 document.getElementById('approveBtn').onclick = () => {
     prefillApproveModal(loan || {}, true);
+    // Default signature done based on current value.
+    const yes = document.getElementById('approveSignatureDoneYes');
+    const no = document.getElementById('approveSignatureDoneNo');
+    if (yes && no) {
+        const signed = !!(loan && loan.is_sm_signed);
+        yes.checked = signed;
+        no.checked = !signed;
+    }
     approveModal.show();
 };
 document.getElementById('saveFollowUpEditBtn').onclick = async () => {
@@ -827,13 +829,6 @@ document.getElementById('uploadFollowUpDocBtn').onclick = async () => {
     }
 };
 document.getElementById('rejectBtn').onclick = () => rejectModal.show();
-document.getElementById('signBtn').onclick = async () => {
-    try {
-        const d = await call(`/api/employee/loan/${loanId}/sign/`, {});
-        msg('success', d.message || 'Sign updated');
-        setTimeout(load, 300);
-    } catch(e) { msg('danger', e.message); }
-};
 document.getElementById('disburseBtn').onclick = () => { document.getElementById('disburseAmount').value = loan?.loan_amount || ''; document.getElementById('disburseDate').value = new Date().toISOString().slice(0,10); disburseModal.show(); };
 document.getElementById('confirmReject').onclick = async () => {
     const reason = document.getElementById('rejectReason').value.trim();
@@ -862,7 +857,9 @@ document.getElementById('confirmRevert').onclick = async () => {
 document.getElementById('confirmApprove').onclick = async () => {
     const sm = smPayload();
     const bankDetailsText = document.getElementById('approveBankDetails').value.trim();
-    const approvalRemark = document.getElementById('approveRemark').value.trim();
+    const signatureDoneYesEl = document.getElementById('approveSignatureDoneYes');
+    const signatureDoneNoEl = document.getElementById('approveSignatureDoneNo');
+    const signatureDone = signatureDoneYesEl?.checked ? true : (signatureDoneNoEl?.checked ? false : null);
     if (!sm.sm_name || !sm.sm_phone_number || !sm.sm_email) {
         msg('danger', 'SM Name, Phone, and Email are required for approval.');
         return;
@@ -876,10 +873,16 @@ document.getElementById('confirmApprove').onclick = async () => {
         msg('danger', 'Bank Details Notes is required for approval.');
         return;
     }
+    if (signatureDone === null) {
+        msg('danger', 'Please select Signature Done: Yes or No.');
+        return;
+    }
     try {
         const d = await call(`/api/employee/loan/${loanId}/approve/`, {
-            approval_notes: approvalRemark,
+            // Approval remark is intentionally removed from UI; backend will handle notes.
+            approval_notes: '',
             bank_remark: bankDetailsText,
+            is_sm_signed: signatureDone,
             ...sm,
         });
         approveModal.hide();

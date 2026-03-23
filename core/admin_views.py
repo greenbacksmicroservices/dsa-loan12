@@ -1299,14 +1299,20 @@ def team_management(request):
         return redirect('admin_dashboard')
 
 
-@login_required(login_url='admin_login')
-@admin_required
 @require_http_methods(['GET', 'POST'])
 def admin_add_loan(request):
     """
     Admin Add New Loan - Create new loan applications
     Allows admin to manually create loan entries with all applicant details
     """
+    if not request.user.is_authenticated:
+        # Keeps redirects consistent with normal employee/agent login flow
+        return redirect('login')
+
+    if request.user.role not in ['admin', 'employee']:
+        messages.error(request, 'Access denied.')
+        return redirect('dashboard')
+
     if request.method == 'POST':
         try:
             applicant_name = (request.POST.get('name') or request.POST.get('applicant_name') or '').strip()
@@ -1512,6 +1518,8 @@ def admin_add_loan(request):
                 bank_ifsc_code=(request.POST.get('ifsc_code') or '').strip() or None,
                 status='new_entry',
                 applicant_type='agent' if request.user.role == 'agent' else 'employee',
+                assigned_employee=request.user if request.user.role == 'employee' else None,
+                assigned_at=timezone.now() if request.user.role == 'employee' else None,
                 assigned_agent=agent_profile,
                 created_by=request.user,
                 remarks="\n".join(remarks_lines) if remarks_lines else None,
@@ -1523,6 +1531,10 @@ def admin_add_loan(request):
                     ('pan', 'pan_card'),
                     ('aadhaar', 'aadhaar_card'),
                     ('aadhar', 'aadhaar_card'),
+                    ('soa', 'soa_existing_loan'),
+                    ('forclos', 'forclosure_document'),
+                    ('forclose', 'forclosure_document'),
+                    ('forclosure', 'forclosure_document'),
                     ('photo', 'applicant_photo'),
                     ('salary slip', 'salary_slip'),
                     ('bank statement', 'bank_statement'),
@@ -1559,7 +1571,9 @@ def admin_add_loan(request):
             )
 
             messages.success(request, f'Loan application submitted successfully! ID: {loan.id}')
-            return redirect('admin_all_loans')
+            if request.user.role == 'admin':
+                return redirect('admin_all_loans')
+            return redirect('employee_all_loans')
         except Exception as e:
             logger.error(f"Error creating loan: {str(e)}")
             messages.error(request, f'Error creating loan application: {str(e)}')
@@ -1579,7 +1593,8 @@ def admin_add_loan(request):
         'page_title': 'Add New Loan Application',
         'recent_loans': recent_loans,
     }
-    return render(request, 'core/admin/add_loan.html', context)
+    template_name = 'core/admin/add_loan.html' if request.user.role == 'admin' else 'core/employee/add_loan.html'
+    return render(request, template_name, context)
 
 
 @login_required(login_url='admin_login')

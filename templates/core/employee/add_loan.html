@@ -1,4 +1,4 @@
-{% extends 'core/admin/admin_base.html' %}
+{% extends 'core/base.html' %}
 {% load static %}
 
 {% block title %}Add New Loan Application - Comprehensive Form{% endblock %}
@@ -673,6 +673,7 @@
             </div>
         </div>
 
+        <div id="btDetailsSection">
         <!-- ===================== SECTION 3: EXISTING LOAN DETAILS ===================== -->
         <div class="section-header">
             <i class="bi bi-cash-coin"></i> SECTION 3: EXISTING LOAN DETAILS
@@ -687,14 +688,6 @@
             <div class="sub-section-title">Loan #1</div>
             <div class="form-row">
                 <div class="form-group">
-                    <label>Bank/Finance Name</label>
-                    <input type="text" class="form-control" name="loan1_bank" placeholder="Name of bank/financial institution">
-                </div>
-                <div class="form-group">
-                    <label>Amount Taken</label>
-                    <input type="number" class="form-control" name="loan1_amount_taken" placeholder="Original loan amount" min="0">
-                </div>
-                <div class="form-group">
                     <label>EMI Left</label>
                     <input type="number" class="form-control" name="loan1_emi_left" placeholder="Number of EMIs remaining" min="0">
                 </div>
@@ -706,24 +699,12 @@
                     <input type="number" class="form-control" name="loan1_amount_left" placeholder="Remaining amount to be paid" min="0">
                 </div>
                 <div class="form-group">
-                    <label>Years/Months</label>
-                    <input type="text" class="form-control" name="loan1_duration" placeholder="e.g., 2 years 6 months">
-                </div>
-                <div class="form-group">
                     <label>EMI Amount</label>
                     <input type="text" class="form-control" name="loan1_emi_over" placeholder="Monthly EMI amount">
                 </div>
             </div>
 
             <div class="form-row">
-                <div class="form-group">
-                    <label>Any Bounce</label>
-                    <select class="form-select" name="loan1_bounce">
-                        <option value="">-- Select --</option>
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
-                    </select>
-                </div>
                 <div class="form-group">
                     <label>Cleared - Yes/No</label>
                     <select class="form-select" name="loan1_cleared">
@@ -757,7 +738,7 @@
                     <input type="number" class="form-control" name="loan2_amount_left" placeholder="Remaining amount to be paid" min="0">
                 </div>
                 <div class="form-group">
-                    <label>Years/Months</label>
+                    <label>Tenure</label>
                     <input type="text" class="form-control" name="loan2_duration" placeholder="e.g., 2 years 6 months">
                 </div>
                 <div class="form-group">
@@ -768,7 +749,7 @@
 
             <div class="form-row">
                 <div class="form-group">
-                    <label>Any Bounce</label>
+                    <label>Emi Cross</label>
                     <select class="form-select" name="loan2_bounce">
                         <option value="">-- Select --</option>
                         <option value="Yes">Yes</option>
@@ -808,7 +789,7 @@
                     <input type="number" class="form-control" name="loan3_amount_left" placeholder="Remaining amount to be paid" min="0">
                 </div>
                 <div class="form-group">
-                    <label>Years/Months</label>
+                    <label>Tenure</label>
                     <input type="text" class="form-control" name="loan3_duration" placeholder="e.g., 2 years 6 months">
                 </div>
                 <div class="form-group">
@@ -819,7 +800,7 @@
 
             <div class="form-row">
                 <div class="form-group">
-                    <label>Any Bounce</label>
+                    <label>Emi Cross</label>
                     <select class="form-select" name="loan3_bounce">
                         <option value="">-- Select --</option>
                         <option value="Yes">Yes</option>
@@ -835,6 +816,8 @@
                     </select>
                 </div>
             </div>
+        </div>
+
         </div>
 
         <!-- ===================== SECTION 4: LOAN REQUEST ===================== -->
@@ -939,33 +922,49 @@
             <div class="sub-section-title">Credit & Identity Details</div>
             <div class="form-row">
                 <div class="form-group">
-                    <label>CIBIL Score <span class="required">*</span></label>
-                    <input type="number" class="form-control" name="cibil_score" placeholder="Enter your CIBIL score" required>
-                    <span class="helper-text">Your credit score for loan eligibility assessment</span>
+                    <label>Name of Bank</label>
+                    <input type="text" class="form-control" name="loan1_bank" placeholder="Name of bank/financial institution">
                 </div>
                 <div class="form-group">
-                    <label>Aadhar Number <span class="required">*</span></label>
-                    <input type="text" class="form-control" name="aadhar_number" placeholder="XXXX XXXX XXXX XXXX" pattern="[0-9]{12}" maxlength="12" required>
-                    <span class="helper-text">12-digit Aadhar number without spaces</span>
-                </div>
-                <div class="form-group">
-                    <label>PAN Number <span class="required">*</span></label>
-                    <input type="text" class="form-control" name="pan_number" placeholder="AAAAA0000A" pattern="[A-Z]{5}[0-9]{4}[A-Z]" maxlength="10" required>
-                    <span class="helper-text">PAN format: AAAAA0000A</span>
+                    <label>Amount Taken</label>
+                    <input type="number" class="form-control" name="loan1_amount_taken" placeholder="Original loan amount" min="0">
                 </div>
             </div>
 
-            <div class="sub-section-title">Bank Disbursement Details</div>
             <div class="form-row">
                 <div class="form-group">
-                    <label>Bank Name</label>
-                    <input type="text" class="form-control" name="bank_name" placeholder="Enter your bank name" required>
-                    <span class="helper-text">Name of your bank for loan disbursement</span>
+                    <label>Tenure</label>
+                    <input type="text" class="form-control" name="loan1_duration" placeholder="e.g., 2 years 6 months">
                 </div>
                 <div class="form-group">
-                    <label>Account Number</label>
-                    <input type="text" class="form-control" name="account_number" placeholder="Enter your account number" required>
-                    <span class="helper-text">Your bank account number for disbursement</span>
+                    <label>Emi Cross</label>
+                    <select class="form-select" name="loan1_bounce">
+                        <option value="">-- Select --</option>
+                        <option value="Yes">Yes</option>
+                        <option value="No">No</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="document-item" style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 20px; margin-bottom: 15px;">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>SOA (Document) <span class="required">*</span></label>
+                        <input type="hidden" class="document-name" name="document_name[]" value="SOA">
+                        <input type="file" class="form-control document-file" name="document_file[]" accept=".pdf,.jpg,.jpeg,.png" required>
+                        <span class="helper-text">PDF, JPG, PNG files up to 5MB</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="document-item" style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 20px; margin-bottom: 15px;">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Forcloser (Document) <span class="required">*</span></label>
+                        <input type="hidden" class="document-name" name="document_name[]" value="Forcloser">
+                        <input type="file" class="form-control document-file" name="document_file[]" accept=".pdf,.jpg,.jpeg,.png" required>
+                        <span class="helper-text">PDF, JPG, PNG files up to 5MB</span>
+                    </div>
                 </div>
             </div>
 
@@ -1004,12 +1003,12 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label>Document Name <span class="required">*</span></label>
-                            <input type="text" class="form-control document-name" placeholder="e.g., Aadhar Card, PAN Card, Bank Statement, etc." required>
+                            <input type="text" class="form-control document-name" name="document_name[]" placeholder="e.g., Aadhar Card, PAN Card, Bank Statement, etc." required>
                             <span class="helper-text">Provide a meaningful name for the document</span>
                         </div>
                         <div class="form-group">
                             <label>Upload Document <span class="required">*</span></label>
-                            <input type="file" class="form-control document-file" accept=".pdf,.jpg,.jpeg,.png" required>
+                            <input type="file" class="form-control document-file" name="document_file[]" accept=".pdf,.jpg,.jpeg,.png" required>
                             <span class="helper-text">PDF, JPG, PNG files up to 5MB</span>
                         </div>
                     </div>
@@ -1053,12 +1052,12 @@
             <div class="form-row">
                 <div class="form-group">
                     <label>Document Name</label>
-                    <input type="text" class="form-control document-name" placeholder="e.g., Aadhar Card, PAN Card, Bank Statement, etc.">
+                    <input type="text" class="form-control document-name" name="document_name[]" placeholder="e.g., Aadhar Card, PAN Card, Bank Statement, etc.">
                     <span class="helper-text">Provide a meaningful name for the document</span>
                 </div>
                 <div class="form-group">
                     <label>Upload Document</label>
-                    <input type="file" class="form-control document-file" accept=".pdf,.jpg,.jpeg,.png">
+                    <input type="file" class="form-control document-file" name="document_file[]" accept=".pdf,.jpg,.jpeg,.png">
                     <span class="helper-text">PDF, JPG, PNG files up to 5MB</span>
                 </div>
             </div>
@@ -1149,16 +1148,27 @@
         // Validate at least one document is uploaded
         const documents = document.querySelectorAll('.document-item');
         let hasValidDocument = false;
+        let hasSoa = false;
+        let hasForcloser = false;
         documents.forEach(doc => {
-            const name = doc.querySelector('.document-name').value;
-            const file = doc.querySelector('.document-file').value;
+            const nameEl = doc.querySelector('.document-name');
+            const fileEl = doc.querySelector('.document-file');
+            const name = nameEl ? nameEl.value : '';
+            const file = fileEl ? fileEl.value : '';
             if (name && file) {
                 hasValidDocument = true;
+                if (name === 'SOA') hasSoa = true;
+                if (name === 'Forcloser') hasForcloser = true;
             }
         });
 
         if (!hasValidDocument) {
             alert('Please upload at least one document');
+            return;
+        }
+
+        if (!hasSoa || !hasForcloser) {
+            alert('Please upload both SOA and Forcloser documents');
             return;
         }
 

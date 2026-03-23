@@ -72,37 +72,10 @@ class ApplicantStep2Form(forms.ModelForm):
     
     class Meta:
         model = Applicant
-        fields = ['loan_type', 'loan_amount', 'tenure_months', 'interest_rate', 'loan_purpose', 
-                  'bank_name', 'bank_type', 'account_number', 'ifsc_code']
+        # Registration Step 2 should not ask for loan details.
+        # Loan fields can be captured later in the loan management workflow.
+        fields = ['bank_name', 'bank_type', 'account_number', 'ifsc_code']
         widgets = {
-            'loan_type': forms.Select(attrs={
-                'class': 'form-control',
-                'required': True
-            }),
-            'loan_amount': forms.NumberInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'Enter Loan Amount (₹)',
-                'step': '0.01',
-                'required': True
-            }),
-            'tenure_months': forms.NumberInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'Enter Tenure (in months)',
-                'min': '1',
-                'required': True
-            }),
-            'interest_rate': forms.NumberInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'Enter Interest Rate (%)',
-                'step': '0.01',
-                'required': True
-            }),
-            'loan_purpose': forms.Textarea(attrs={
-                'class': 'form-control',
-                'placeholder': 'Enter Loan Purpose',
-                'rows': 3,
-                'required': True
-            }),
             'bank_name': forms.TextInput(attrs={
                 'class': 'form-control',
                 'placeholder': 'Enter Bank Name',

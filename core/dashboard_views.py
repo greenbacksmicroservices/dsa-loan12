@@ -697,9 +697,20 @@ def disbursed_detail(request, applicant_id):
         messages.warning(request, 'Application status has changed.')
         return redirect('disbursed_list')
     
+    # Admin can fully edit disbursed fields; finance can only view.
+    can_edit_form = request.user.role == 'admin'
+
+    # Find the related Loan row so we can call the disbursed update API
+    # (it updates Loan + LoanApplication together).
+    from .loan_sync import find_related_loan
+    related_loan = find_related_loan(application)
+    loan_id = related_loan.id if related_loan else None
+
     context = {
         'application': application,
-        'can_edit_form': False,
+        'can_edit_form': can_edit_form,
+        'loan_id': loan_id,
+        'loan_remarks': getattr(related_loan, 'remarks', '') if related_loan else '',
     }
     
     return render(request, 'admin/dashboard/disbursed_detail.html', context)

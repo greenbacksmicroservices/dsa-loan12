@@ -432,6 +432,58 @@
             </div>
         </div>
 
+        <!-- Section 3.5: Co-applicant Details -->
+        <div class="form-section">
+            <h4><i class="fas fa-user-friends"></i> Co-applicant Details</h4>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Has Co-applicant?</label>
+                    <select name="has_co_applicant" class="form-control">
+                        <option value="false" {% if not loan.has_co_applicant %}selected{% endif %}>No</option>
+                        <option value="true" {% if loan.has_co_applicant %}selected{% endif %}>Yes</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Co-applicant Name</label>
+                    <input type="text" name="co_applicant_name" class="form-control" value="{{ loan.co_applicant_name|default:'' }}">
+                </div>
+                <div class="form-group">
+                    <label>Co-applicant Phone</label>
+                    <input type="tel" name="co_applicant_phone" class="form-control" value="{{ loan.co_applicant_phone|default:'' }}">
+                </div>
+                <div class="form-group">
+                    <label>Co-applicant Email</label>
+                    <input type="email" name="co_applicant_email" class="form-control" value="{{ loan.co_applicant_email|default:'' }}">
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 3.6: Guarantor Details -->
+        <div class="form-section">
+            <h4><i class="fas fa-user-shield"></i> Guarantor Details</h4>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Has Guarantor?</label>
+                    <select name="has_guarantor" class="form-control">
+                        <option value="false" {% if not loan.has_guarantor %}selected{% endif %}>No</option>
+                        <option value="true" {% if loan.has_guarantor %}selected{% endif %}>Yes</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Guarantor Name</label>
+                    <input type="text" name="guarantor_name" class="form-control" value="{{ loan.guarantor_name|default:'' }}">
+                </div>
+                <div class="form-group">
+                    <label>Guarantor Phone</label>
+                    <input type="tel" name="guarantor_phone" class="form-control" value="{{ loan.guarantor_phone|default:'' }}">
+                </div>
+                <div class="form-group">
+                    <label>Guarantor Email</label>
+                    <input type="email" name="guarantor_email" class="form-control" value="{{ loan.guarantor_email|default:'' }}">
+                </div>
+            </div>
+        </div>
+
         <!-- Section 4: Bank Details -->
         <div class="form-section">
             <h4><i class="fas fa-university"></i> Bank Details</h4>

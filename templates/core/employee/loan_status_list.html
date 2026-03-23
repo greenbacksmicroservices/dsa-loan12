@@ -445,14 +445,18 @@ async function openApprovedProcessModal(loanId) {
         document.getElementById('approvedSmPhone').value = loan.sm_phone_number || '-';
         document.getElementById('approvedSmEmail').value = loan.sm_email || '-';
         document.getElementById('approvedBankNotes').value = splitNotes.bankNotes || '-';
-        document.getElementById('approvedApprovalRemark').value = splitNotes.approvalRemark || '-';
-        document.getElementById('approvedSignStatus').value = loan.is_sm_signed ? `Signed ${loan.sm_signed_at ? '(' + loan.sm_signed_at + ')' : ''}` : 'Pending';
+
+        // Signature Done Yes/No
+        const yesEl = document.getElementById('approvedSignatureDoneYes');
+        const noEl = document.getElementById('approvedSignatureDoneNo');
+        if (yesEl && noEl) {
+            const signed = !!loan.is_sm_signed;
+            yesEl.checked = signed;
+            noEl.checked = !signed;
+        }
 
         document.getElementById('approvedDisburseAmount').value = loan.loan_amount || '';
         document.getElementById('approvedDisburseDate').value = new Date().toISOString().slice(0, 10);
-
-        const signBtn = document.getElementById('approvedSignBtn');
-        if (signBtn) signBtn.disabled = !!loan.is_sm_signed;
 
         new bootstrap.Modal(modalEl).show();
     } catch (error) {
@@ -463,7 +467,13 @@ async function openApprovedProcessModal(loanId) {
 async function submitApprovedSign() {
     if (!CURRENT_APPROVED_LOAN_ID) return;
     try {
-        await postJson(`/api/employee/loan/${CURRENT_APPROVED_LOAN_ID}/sign/`, {});
+        const yesEl = document.getElementById('approvedSignatureDoneYes');
+        const noEl = document.getElementById('approvedSignatureDoneNo');
+        if (!yesEl || !noEl) throw new Error('Signature Done options not found in modal.');
+        if (!yesEl.checked && !noEl.checked) throw new Error('Please select Signature Done: Yes or No.');
+        const signatureDone = yesEl.checked ? true : false;
+
+        await postJson(`/api/employee/loan/${CURRENT_APPROVED_LOAN_ID}/sign/`, { is_sm_signed: signatureDone });
         await loadLoans();
         openApprovedProcessModal(CURRENT_APPROVED_LOAN_ID);
     } catch (error) {
@@ -624,13 +634,18 @@ window.addEventListener('beforeunload', () => refreshTimer && clearInterval(refr
                         <label class="form-label">Bank Details Notes *</label>
                         <textarea class="form-control" rows="2" id="approvedBankNotes" readonly></textarea>
                     </div>
-                    <div class="col-12">
-                        <label class="form-label">Approval Remark</label>
-                        <textarea class="form-control" rows="2" id="approvedApprovalRemark" readonly></textarea>
-                    </div>
                     <div class="col-md-4">
-                        <label class="form-label">Sign Status</label>
-                        <input type="text" class="form-control" id="approvedSignStatus" readonly>
+                        <label class="form-label">Signature Done</label>
+                        <div class="d-flex gap-3 flex-wrap">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="approvedSignatureDone" id="approvedSignatureDoneYes" value="true">
+                                <label class="form-check-label" for="approvedSignatureDoneYes">Yes</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="approvedSignatureDone" id="approvedSignatureDoneNo" value="false">
+                                <label class="form-check-label" for="approvedSignatureDoneNo">No</label>
+                            </div>
+                        </div>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">Disbursement Amount</label>
@@ -648,7 +663,7 @@ window.addEventListener('beforeunload', () => refreshTimer && clearInterval(refr
             </div>
             <div class="modal-footer d-flex justify-content-between flex-wrap gap-2">
                 <div class="d-flex gap-2 flex-wrap">
-                    <button id="approvedSignBtn" class="btn btn-outline-success" type="button" onclick="submitApprovedSign()">Sign Tick</button>
+                    <button id="approvedSignBtn" class="btn btn-outline-success" type="button" onclick="submitApprovedSign()">Save Signature</button>
                     <button class="btn btn-danger" type="button" onclick="submitApprovedReject()">Reject</button>
                     <button class="btn btn-primary" type="button" onclick="submitApprovedDisburse()">Disburse</button>
                 </div>

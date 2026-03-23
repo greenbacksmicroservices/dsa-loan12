@@ -220,10 +220,13 @@ def agent_add_loan(request):
                 loan_amount=float(request.POST.get('loan_amount_required', 0) or 0),
                 tenure_months=int(request.POST.get('loan_tenure', 0) or 0),
                 interest_rate=float(request.POST.get('interest_rate', 0) or 0),
-                loan_purpose=request.POST.get('remarks_suggestions', '').strip(),
+                loan_purpose=(request.POST.get('loan_purpose') or request.POST.get('remarks_suggestions') or '').strip() or None,
                 
                 # Bank Details
                 bank_name=request.POST.get('bank_name', '').strip(),
+                bank_account_number=request.POST.get('account_number', '').strip() or None,
+                bank_ifsc_code=request.POST.get('ifsc_code', '').strip() or None,
+                bank_type=request.POST.get('bank_type', '').strip() or None,
                 
                 # Assignment
                 assigned_agent=agent,
@@ -265,6 +268,50 @@ def agent_add_loan(request):
                     print(f"Photo upload error: {str(photo_error)}")
             
             loan.save()
+
+            # Save loan documents (SOA/Forcloser/etc.) created via document inputs.
+            # Admin's add-loan flow uses `document_name[]` + `document_file[]`; we do the same here
+            # so that agent-created loans also show documents in view pages.
+            document_names = [(name or '').strip() for name in request.POST.getlist('document_name[]')]
+            documents_files = request.FILES.getlist('document_file[]')
+
+            if documents_files:
+                def get_document_type(raw_name, index):
+                    normalized = (raw_name or '').lower().strip()
+                    type_map = [
+                        ('pan', 'pan_card'),
+                        ('aadhaar', 'aadhaar_card'),
+                        ('aadhar', 'aadhaar_card'),
+                        ('soa', 'soa_existing_loan'),
+                        ('forclos', 'forclosure_document'),
+                        ('forclose', 'forclosure_document'),
+                        ('forclosure', 'forclosure_document'),
+                        ('photo', 'applicant_photo'),
+                        ('salary slip', 'salary_slip'),
+                        ('bank statement', 'bank_statement'),
+                        ('form 16', 'form_16'),
+                        ('service book', 'service_book'),
+                        ('property', 'property_documents'),
+                    ]
+                    for token, mapped in type_map:
+                        if token in normalized:
+                            return mapped
+                    return 'other' if index == 1 else f'other_{index}'
+
+                for idx, uploaded_file in enumerate(documents_files, start=1):
+                    if not uploaded_file:
+                        continue
+                    doc_name = document_names[idx - 1] if idx - 1 < len(document_names) else ''
+                    document_type = get_document_type(doc_name, idx)
+                    if LoanDocument.objects.filter(loan=loan, document_type=document_type).exists():
+                        document_type = f"{document_type}_{idx}"
+
+                    LoanDocument.objects.create(
+                        loan=loan,
+                        document_type=document_type[:50],
+                        file=uploaded_file,
+                        is_required=False,
+                    )
             
             if save_as_draft:
                 messages.success(request, f'Application saved as draft! You can continue later.')
@@ -278,7 +325,21 @@ def agent_add_loan(request):
     context = {
         'page_title': 'Add New Loan Application',
     }
-    return render(request, 'core/agent/add_loan.html', context)
+    # Reuse the same Add New Loan Application form for all panels.
+    recent_qs = Loan.objects.filter(created_by=request.user).order_by('-created_at')[:8]
+    recent_loans = [{
+        'applicant_name': loan.full_name or '-',
+        'phone': loan.mobile_number or '-',
+        'loan_amount_required': loan.loan_amount,
+        'service_required': loan.get_loan_type_display(),
+        'created_date': loan.created_at,
+        'status': loan.status,
+    } for loan in recent_qs]
+
+    context.update({
+        'recent_loans': recent_loans,
+    })
+    return render(request, 'core/admin/add_loan.html', context)
 
 
 @agent_required
@@ -505,59 +566,168 @@ def agent_resubmit_reverted_loan(request, loan_id):
         return redirect('agent_my_applications')
 
     if request.method == 'POST':
-        agent_remark = str(request.POST.get('agent_remark', '')).strip()
-        if not agent_remark:
+        # Enhanced template sends `agent_remarks` (plural).
+        agent_remark = str(request.POST.get('agent_remarks', '')).strip()
+        if not agent_remark and not str(request.POST.get('auto_save', '')).lower() == 'true':
             messages.error(request, 'Please write agent remark before resubmitting.')
             return redirect('agent_resubmit_reverted_loan', loan_id=loan.id)
 
-        loan_purpose = str(request.POST.get('loan_purpose', '')).strip()
-        bank_name = str(request.POST.get('bank_name', '')).strip()
-        bank_account_number = str(request.POST.get('bank_account_number', '')).strip()
-        bank_ifsc_code = str(request.POST.get('bank_ifsc_code', '')).strip()
-        document_type = str(request.POST.get('document_type', '')).strip()
-        document_file = request.FILES.get('updated_document')
+        is_auto_save = str(request.POST.get('auto_save', '')).lower() == 'true'
 
-        valid_document_types = {choice[0] for choice in LoanDocument.DOCUMENT_TYPE_CHOICES}
-        if document_file and not document_type:
-            messages.error(request, 'Please select a document type for uploaded file.')
-            return redirect('agent_resubmit_reverted_loan', loan_id=loan.id)
-        if document_type and document_type not in valid_document_types:
-            messages.error(request, 'Invalid document type selected.')
-            return redirect('agent_resubmit_reverted_loan', loan_id=loan.id)
+        # Update all editable fields (enhanced template).
+        def _clean_str(v):
+            return str(v or '').strip()
 
-        if loan_purpose:
-            loan.loan_purpose = loan_purpose
-        if bank_name:
-            loan.bank_name = bank_name
-        if bank_account_number:
-            loan.bank_account_number = bank_account_number
-        if bank_ifsc_code:
-            loan.bank_ifsc_code = bank_ifsc_code
+        def _to_int_or_none(raw):
+            raw = _clean_str(raw)
+            if not raw:
+                return None
+            try:
+                return int(raw)
+            except (TypeError, ValueError):
+                return None
 
-        if document_file and document_type:
-            LoanDocument.objects.update_or_create(
-                loan=loan,
-                document_type=document_type,
-                defaults={
-                    'file': document_file,
-                    'is_required': False,
-                }
-            )
+        def _to_decimal_or_none(raw):
+            raw = _clean_str(raw)
+            if not raw:
+                return None
+            try:
+                return raw  # Let model/DB handle Decimal conversion via DecimalField
+            except Exception:
+                return None
 
-        reply_count = 0
-        for line in remarks_text.splitlines():
-            if str(line).strip().lower().startswith('agent reply '):
-                reply_count += 1
-        reply_reason = f"Agent Reply {reply_count + 1}: {agent_remark}"
+        loan.full_name = _clean_str(request.POST.get('full_name', loan.full_name))
+        loan.mobile_number = _clean_str(request.POST.get('mobile_number', loan.mobile_number))
+        loan.email = _clean_str(request.POST.get('email', loan.email))
 
+        loan.permanent_address = _clean_str(request.POST.get('permanent_address', loan.permanent_address))
+        loan.current_address = _clean_str(request.POST.get('current_address', loan.current_address))
+        loan.city = _clean_str(request.POST.get('city', loan.city))
+        loan.state = _clean_str(request.POST.get('state', loan.state))
+        loan.pin_code = _clean_str(request.POST.get('pin_code', loan.pin_code))
+
+        loan.loan_type = _clean_str(request.POST.get('loan_type', loan.loan_type))
+        loan.loan_amount = _to_decimal_or_none(request.POST.get('loan_amount', loan.loan_amount)) or loan.loan_amount
+        loan.tenure_months = _to_int_or_none(request.POST.get('tenure_months', loan.tenure_months))
+        loan.interest_rate = _to_decimal_or_none(request.POST.get('interest_rate', loan.interest_rate)) or loan.interest_rate
+        loan.loan_purpose = _clean_str(request.POST.get('loan_purpose', loan.loan_purpose))
+
+        # Co-applicant & Guarantor (optional)
+        has_co_applicant_raw = request.POST.get('has_co_applicant', 'false')
+        loan.has_co_applicant = str(has_co_applicant_raw).lower() == 'true'
+        if loan.has_co_applicant:
+            loan.co_applicant_name = _clean_str(request.POST.get('co_applicant_name', loan.co_applicant_name))
+            loan.co_applicant_phone = _clean_str(request.POST.get('co_applicant_phone', loan.co_applicant_phone))
+            loan.co_applicant_email = _clean_str(request.POST.get('co_applicant_email', loan.co_applicant_email))
+        else:
+            loan.co_applicant_name = None
+            loan.co_applicant_phone = None
+            loan.co_applicant_email = None
+
+        has_guarantor_raw = request.POST.get('has_guarantor', 'false')
+        loan.has_guarantor = str(has_guarantor_raw).lower() == 'true'
+        if loan.has_guarantor:
+            loan.guarantor_name = _clean_str(request.POST.get('guarantor_name', loan.guarantor_name))
+            loan.guarantor_phone = _clean_str(request.POST.get('guarantor_phone', loan.guarantor_phone))
+            loan.guarantor_email = _clean_str(request.POST.get('guarantor_email', loan.guarantor_email))
+        else:
+            loan.guarantor_name = None
+            loan.guarantor_phone = None
+            loan.guarantor_email = None
+
+        loan.bank_name = _clean_str(request.POST.get('bank_name', loan.bank_name))
+        loan.bank_type = _clean_str(request.POST.get('bank_type', loan.bank_type)) or None
+        loan.bank_account_number = _clean_str(request.POST.get('bank_account_number', loan.bank_account_number))
+        loan.bank_ifsc_code = _clean_str(request.POST.get('bank_ifsc_code', loan.bank_ifsc_code))
+
+        # Only update remarks/status on real submit; auto-save should not create new history entries.
         previous_status = loan.status
-        loan.remarks = _append_note_line(loan.remarks, reply_reason)
-        loan.status = 'follow_up'
-        loan.assigned_at = timezone.now()
-        loan.action_taken_at = None
-        loan.is_sm_signed = False
-        loan.sm_signed_at = None
+        if not is_auto_save:
+            reply_count = 0
+            remarks_text = str(loan.remarks or '')
+            for line in remarks_text.splitlines():
+                if str(line).strip().lower().startswith('agent reply '):
+                    reply_count += 1
+            reply_reason = f"Agent Reply {reply_count + 1}: {agent_remark}"
+
+            loan.remarks = _append_note_line(loan.remarks, reply_reason)
+            loan.status = 'follow_up'
+            loan.assigned_at = timezone.now()
+            loan.action_taken_at = None
+            loan.is_sm_signed = False
+            loan.sm_signed_at = None
+        else:
+            # Keep current workflow status for draft save.
+            loan.action_taken_at = loan.action_taken_at or None
+
+        # Save the updated loan core fields first.
         loan.save()
+
+        # Multi-document uploads: enhanced template sends files as `new_document_<index>`.
+        if not is_auto_save:
+            def _infer_document_type_from_filename(filename: str) -> str:
+                name = _clean_str(filename).lower()
+                # Applicant basics
+                if 'pan' in name and 'co' not in name and 'guar' not in name:
+                    return 'pan_card'
+                if 'aadhaar' in name or 'aadhar' in name:
+                    if 'co' in name:
+                        if 'photo' in name:
+                            return 'co_applicant_photo'
+                        return 'co_applicant_aadhaar'
+                    if 'guar' in name or 'guarantor' in name:
+                        return 'guarantor_aadhaar'
+                    return 'aadhaar_card'
+                if 'photo' in name:
+                    if 'co' in name:
+                        return 'co_applicant_photo'
+                    if 'guar' in name or 'guarantor' in name:
+                        return 'guarantor_address_proof'  # best-effort; UI may not provide distinct photo naming
+                    return 'applicant_photo'
+                if 'permanent' in name or ('perm' in name and 'address' in name):
+                    return 'permanent_address_proof'
+                if 'current' in name or 'present' in name or ('curr' in name and 'address' in name):
+                    return 'current_address_proof'
+                if 'salary' in name or 'slip' in name:
+                    return 'salary_slip'
+                if 'bank_statement' in name or 'bank statement' in name:
+                    return 'bank_statement'
+                if 'form16' in name or 'form_16' in name or 'form 16' in name:
+                    return 'form_16'
+                if 'service_book' in name or 'service book' in name:
+                    return 'service_book'
+                if 'property' in name:
+                    return 'property_documents'
+                if 'soa' in name:
+                    return 'soa_existing_loan'
+                if 'co' in name and 'pan' in name:
+                    return 'co_applicant_pan'
+                if 'guar' in name or 'guarantor' in name:
+                    if 'pan' in name:
+                        return 'guarantor_pan'
+                    if 'address' in name:
+                        return 'guarantor_address_proof'
+                return 'other'
+
+            # Perform uploads.
+            uploaded_any = False
+            for file_key, doc_file in request.FILES.items():
+                if not str(file_key).startswith('new_document_'):
+                    continue
+                uploaded_any = True
+                inferred_type = _infer_document_type_from_filename(getattr(doc_file, 'name', '') or file_key)
+                LoanDocument.objects.update_or_create(
+                    loan=loan,
+                    document_type=inferred_type,
+                    defaults={
+                        'file': doc_file,
+                        'is_required': False,
+                    }
+                )
+
+        if is_auto_save:
+            # Draft save: return a simple success response for the AJAX request.
+            return JsonResponse({'success': True, 'message': 'Draft auto-saved'})
 
         synced_application = sync_loan_to_application(
             loan,
@@ -591,7 +761,7 @@ def agent_resubmit_reverted_loan(request, loan_id):
         'revert_remarks': revert_remarks,
         'document_type_choices': LoanDocument.DOCUMENT_TYPE_CHOICES,
     }
-    return render(request, 'core/agent/reverted_loan_edit.html', context)
+    return render(request, 'core/agent/reverted_loan_edit_enhanced.html', context)
 
 
 @agent_required

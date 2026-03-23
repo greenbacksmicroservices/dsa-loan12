@@ -14,7 +14,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
-from .models import User, Agent, Loan, Complaint, ComplaintComment, ActivityLog, LoanDocument, Applicant, LoanApplication, ApplicantDocument, SubAdminEntry, EmployeeProfile, LoanStatusHistory
+from .models import User, Agent, Loan, Complaint, ComplaintComment, ActivityLog, LoanDocument, Applicant, LoanApplication, ApplicantDocument, SubAdminEntry, EmployeeProfile, LoanStatusHistory, LoanAssignment
 from .serializers import (
     UserSerializer, AgentSerializer, LoanSerializer,
     ComplaintSerializer, ComplaintCommentSerializer,
@@ -1474,11 +1474,6 @@ def registration_wizard(request, step=1, role=None):
             if form.is_valid():
                 # Save Step 2 data to session
                 applicant_data.update({
-                    'loan_type': form.cleaned_data['loan_type'],
-                    'loan_amount': str(form.cleaned_data['loan_amount']),
-                    'tenure_months': form.cleaned_data['tenure_months'],
-                    'interest_rate': str(form.cleaned_data['interest_rate']),
-                    'loan_purpose': form.cleaned_data['loan_purpose'],
                     'bank_name': form.cleaned_data['bank_name'],
                     'bank_type': form.cleaned_data['bank_type'],
                     'account_number': form.cleaned_data['account_number'],
@@ -1579,10 +1574,6 @@ def registration_wizard(request, step=1, role=None):
                     'email': applicant.email,
                     'city': applicant.city,
                     'state': applicant.state,
-                    'loan_type': applicant.loan_type,
-                    'loan_amount': applicant.loan_amount,
-                    'tenure_months': applicant.tenure_months,
-                    'interest_rate': applicant.interest_rate,
                     'bank_name': applicant.bank_name,
                     'account_number': applicant.account_number,
                 }
@@ -5828,6 +5819,7 @@ def employee_revert_loan_to_agent(request, loan_id):
 def employee_sign_off_loan(request, loan_id):
     """
     Tick/sign action on Approved loan before final disbursement.
+    Accepts marking signature as done (`is_sm_signed=true`) or not done (`is_sm_signed=false`).
     """
     try:
         loan = LoanApplication.objects.get(id=loan_id)
@@ -5848,29 +5840,42 @@ def employee_sign_off_loan(request, loan_id):
         if sm_errors:
             return Response({'success': False, 'error': ' '.join(sm_errors)}, status=status.HTTP_400_BAD_REQUEST)
 
+        requested = request.data or {}
+        # Backward compatible default: if client doesn't send is_sm_signed, treat as "Yes".
+        signature_done_raw = requested.get('is_sm_signed', requested.get('signature_done', None))
+        signature_done = True if signature_done_raw is None else bool(signature_done_raw)
+
         signer = request.user.get_full_name() or request.user.username or 'System'
-        sign_reason = f"SM Sign-Off: {signer}"
+        sign_reason = f"SM Signature Done: {'Yes' if signature_done else 'No'} (by {signer})"
 
-        if not loan.is_sm_signed:
-            loan.is_sm_signed = True
-            loan.sm_signed_at = timezone.now()
-            loan.approval_notes = _append_note_line(loan.approval_notes, sign_reason)
-            loan.save(update_fields=['is_sm_signed', 'sm_signed_at', 'approval_notes', 'updated_at'])
+        prev = bool(loan.is_sm_signed)
+        if signature_done:
+            if not prev:
+                loan.is_sm_signed = True
+                loan.sm_signed_at = timezone.now()
+                loan.approval_notes = _append_note_line(loan.approval_notes, sign_reason)
+                loan.save(update_fields=['is_sm_signed', 'sm_signed_at', 'approval_notes', 'updated_at'])
 
-            LoanStatusHistory.objects.create(
-                loan_application=loan,
-                from_status='approved',
-                to_status='approved',
-                changed_by=request.user,
-                reason=sign_reason,
-                is_auto_triggered=False,
-            )
+                LoanStatusHistory.objects.create(
+                    loan_application=loan,
+                    from_status='approved',
+                    to_status='approved',
+                    changed_by=request.user,
+                    reason=sign_reason,
+                    is_auto_triggered=False,
+                )
 
-            _append_related_loan_remark(loan, sign_reason, status_override='approved')
+                _append_related_loan_remark(loan, sign_reason, status_override='approved')
+        else:
+            if prev:
+                loan.is_sm_signed = False
+                loan.sm_signed_at = None
+                loan.approval_notes = _append_note_line(loan.approval_notes, sign_reason)
+                loan.save(update_fields=['is_sm_signed', 'sm_signed_at', 'approval_notes', 'updated_at'])
 
         return Response({
             'success': True,
-            'message': 'Approved sign marked successfully.',
+            'message': 'Approved signature updated successfully.',
             'is_sm_signed': bool(loan.is_sm_signed),
             'sm_signed_at': loan.sm_signed_at.strftime('%Y-%m-%d %H:%M') if loan.sm_signed_at else '',
         }, status=status.HTTP_200_OK)
@@ -5894,20 +5899,33 @@ def employee_sign_off_loan(request, loan_id):
             if sm_errors:
                 return Response({'success': False, 'error': ' '.join(sm_errors)}, status=status.HTTP_400_BAD_REQUEST)
 
-            signer = request.user.get_full_name() or request.user.username or 'System'
-            sign_reason = f"SM Sign-Off: {signer}"
+            requested = request.data or {}
+            signature_done_raw = requested.get('is_sm_signed', requested.get('signature_done', None))
+            signature_done = True if signature_done_raw is None else bool(signature_done_raw)
 
-            legacy.is_sm_signed = True
-            legacy.sm_signed_at = timezone.now()
-            legacy.remarks = _append_note_line(legacy.remarks, sign_reason)
-            legacy.save()
+            signer = request.user.get_full_name() or request.user.username or 'System'
+            sign_reason = f"SM Signature Done: {'Yes' if signature_done else 'No'} (by {signer})"
+
+            prev = bool(getattr(legacy, 'is_sm_signed', False))
+            if signature_done:
+                if not prev:
+                    legacy.is_sm_signed = True
+                    legacy.sm_signed_at = timezone.now()
+                    legacy.remarks = _append_note_line(legacy.remarks, sign_reason)
+                    legacy.save()
+            else:
+                if prev:
+                    legacy.is_sm_signed = False
+                    legacy.sm_signed_at = None
+                    legacy.remarks = _append_note_line(legacy.remarks, sign_reason)
+                    legacy.save()
 
             synced_application = sync_loan_to_application(
                 legacy,
                 assigned_by_user=request.user,
                 create_if_missing=True,
             )
-            if synced_application:
+            if synced_application and signature_done and not prev:
                 LoanStatusHistory.objects.create(
                     loan_application=synced_application,
                     from_status='approved',
@@ -5919,8 +5937,8 @@ def employee_sign_off_loan(request, loan_id):
 
             return Response({
                 'success': True,
-                'message': 'Approved sign marked successfully.',
-                'is_sm_signed': True,
+                'message': 'Approved signature updated successfully.',
+                'is_sm_signed': bool(getattr(legacy, 'is_sm_signed', False)),
                 'sm_signed_at': legacy.sm_signed_at.strftime('%Y-%m-%d %H:%M') if legacy.sm_signed_at else '',
             }, status=status.HTTP_200_OK)
         except Loan.DoesNotExist:
@@ -5965,6 +5983,13 @@ def employee_approve_loan(request, loan_id):
             approval_reason,
             f"SM Details: {sm_name} | {sm_phone_number} | {sm_email}"
         )
+        # Signature status captured at approval time (replaces separate "Sign" button).
+        signature_done_raw = request.data.get('is_sm_signed', False)
+        signature_done = bool(signature_done_raw) if signature_done_raw is not None else False
+        sign_reason = None
+        if signature_done:
+            signer = request.user.get_full_name() or request.user.username or 'System'
+            sign_reason = f"SM Sign-Off: {signer}"
 
         previous_status = loan.status
         loan.status = 'Approved'
@@ -5974,8 +5999,10 @@ def employee_approve_loan(request, loan_id):
         loan.sm_name = sm_name
         loan.sm_phone_number = sm_phone_number
         loan.sm_email = sm_email
-        loan.is_sm_signed = False
-        loan.sm_signed_at = None
+        loan.is_sm_signed = signature_done
+        loan.sm_signed_at = timezone.now() if signature_done else None
+        if signature_done and sign_reason:
+            loan.approval_notes = _append_note_line(loan.approval_notes, sign_reason)
         loan.save(update_fields=[
             'status',
             'approved_by',
@@ -5999,6 +6026,8 @@ def employee_approve_loan(request, loan_id):
         )
 
         _append_related_loan_remark(loan, approval_reason, status_override='approved')
+        if signature_done and sign_reason:
+            _append_related_loan_remark(loan, sign_reason, status_override='approved')
         
         # TODO: Send notification to agent and admin
         
@@ -6042,8 +6071,17 @@ def employee_approve_loan(request, loan_id):
             legacy.sm_name = sm_name
             legacy.sm_phone_number = sm_phone_number
             legacy.sm_email = sm_email
-            legacy.is_sm_signed = False
-            legacy.sm_signed_at = None
+            signature_done_raw = request.data.get('is_sm_signed', False)
+            signature_done = bool(signature_done_raw) if signature_done_raw is not None else False
+            sign_reason = None
+            if signature_done:
+                signer = request.user.get_full_name() or request.user.username or 'System'
+                sign_reason = f"SM Sign-Off: {signer}"
+
+            legacy.is_sm_signed = signature_done
+            legacy.sm_signed_at = timezone.now() if signature_done else None
+            if signature_done and sign_reason:
+                legacy.remarks = _append_note_line(legacy.remarks, sign_reason)
             legacy.remarks = _append_note_line(legacy.remarks, approval_reason)
             legacy.save()
 

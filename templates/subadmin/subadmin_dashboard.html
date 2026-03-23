@@ -6,6 +6,95 @@
 
 {% block extra_css %}
 <style>
+    /* Insight-style CRM cards (shared design) */
+    :root {
+        --primary: #002B5B;
+        --accent: #FF5C00;
+        --card-shadow: 0 10px 30px rgba(0,0,0,0.05);
+    }
+
+    .card-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    .insight-card {
+        background: #fff;
+        border-radius: 20px;
+        padding: 24px;
+        box-shadow: var(--card-shadow);
+        transition: transform 0.3s ease;
+        position: relative;
+        overflow: hidden;
+        border: 1px solid rgba(255,255,255,0.8);
+        text-decoration: none;
+        color: inherit;
+        display: block;
+    }
+
+    .insight-card:hover {
+        transform: translateY(-5px);
+    }
+
+    .insight-card::after {
+        content: '';
+        position: absolute;
+        width: 120px;
+        height: 120px;
+        background: currentColor;
+        opacity: 0.1;
+        border-radius: 50%;
+        top: -20px;
+        right: -20px;
+    }
+
+    .status-title {
+        font-size: 14px;
+        color: #718096;
+        margin: 0;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .main-value {
+        font-size: 32px;
+        font-weight: 800;
+        margin: 10px 0;
+        color: var(--primary);
+    }
+
+    .description {
+        font-size: 13px;
+        color: #a0aec0;
+        margin-bottom: 15px;
+    }
+
+    .view-details {
+        display: inline-flex;
+        align-items: center;
+        text-decoration: none;
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--accent);
+        transition: gap 0.2s;
+    }
+
+    .view-details:hover {
+        gap: 8px;
+    }
+
+    .c-new { color: #4c51bf; }
+    .c-process { color: #ecc94b; }
+    .c-bank { color: #38b2ac; }
+    .c-follow { color: #ed64a1; }
+    .c-approved { color: #48bb78; }
+    .c-rejected { color: #f56565; }
+    .c-disbursed { color: #4299e1; }
+
     .status-chart-shell {
         position: relative;
         height: 280px;
@@ -134,61 +223,61 @@
         <p class="text-sm text-gray-600 mt-1">Live status view for all applications under your team.</p>
     </div>
 
-    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <a href="{% url 'subadmin_all_loans' %}?status=new_entry" class="admin-like-card grad-new">
-            <div class="admin-like-top"><span>New Entry</span><i class="fas fa-plus-circle admin-like-icon"></i></div>
-            <p id="stat-new-entry" class="admin-like-count">0</p>
-            <p class="admin-like-sub">Total New Applications</p>
-            <p class="admin-like-link">Click to view</p>
+    <div class="card-container">
+        <a href="{% url 'subadmin_all_loans' %}?status=new_entry" class="insight-card c-new">
+            <p class="status-title">New Entry</p>
+            <h2 class="main-value" id="stat-new-entry">0</h2>
+            <p class="description">Total New Applications</p>
+            <span class="view-details" style="color:#4c51bf;">View Details →</span>
         </a>
 
-        <a href="{% url 'subadmin_all_loans' %}?status=waiting" class="admin-like-card grad-processing">
-            <div class="admin-like-top"><span>In Processing</span><i class="fas fa-hourglass-half admin-like-icon"></i></div>
-            <p id="stat-processing" class="admin-like-count">0</p>
-            <p class="admin-like-sub">Pending Review</p>
-            <p class="admin-like-link">Click to view</p>
+        <a href="{% url 'subadmin_all_loans' %}?status=waiting" class="insight-card c-process">
+            <p class="status-title">In Processing</p>
+            <h2 class="main-value" id="stat-processing">0</h2>
+            <p class="description">Pending Review</p>
+            <span class="view-details" style="color:#d69e2e;">View Details →</span>
         </a>
 
-        <a href="{% url 'subadmin_all_loans' %}?status=follow_up" class="admin-like-card grad-banking">
-            <div class="admin-like-top"><span>Bank Processing</span><i class="fas fa-university admin-like-icon"></i></div>
-            <p id="stat-banking-processing" class="admin-like-count">0</p>
-            <p class="admin-like-sub">Need Follow-up</p>
-            <p class="admin-like-link">Click to view</p>
+        <a href="{% url 'subadmin_all_loans' %}?status=follow_up" class="insight-card c-bank">
+            <p class="status-title">Banking Processing</p>
+            <h2 class="main-value" id="stat-banking-processing">0</h2>
+            <p class="description">Need Follow-up</p>
+            <span class="view-details" style="color:#319795;">View Details →</span>
         </a>
 
-        <a href="{% url 'subadmin_all_loans' %}?status=follow_up_pending" class="admin-like-card grad-follow-up">
-            <div class="admin-like-top"><span>Follow Up</span><i class="fas fa-history admin-like-icon"></i></div>
-            <p id="stat-follow-up-pending" class="admin-like-count">0</p>
-            <p class="admin-like-sub">Reverted Cases</p>
-            <p class="admin-like-link">Click to view</p>
+        <a href="{% url 'subadmin_all_loans' %}?status=follow_up_pending" class="insight-card c-follow">
+            <p class="status-title">Follow Up</p>
+            <h2 class="main-value" id="stat-follow-up-pending">0</h2>
+            <p class="description">Reverted Cases</p>
+            <span class="view-details" style="color:#d53f8c;">View Details →</span>
         </a>
 
-        <a href="{% url 'subadmin_all_loans' %}?status=approved" class="admin-like-card grad-approved">
-            <div class="admin-like-top"><span>Approved</span><i class="fas fa-check-circle admin-like-icon"></i></div>
-            <p id="stat-approved" class="admin-like-count">0</p>
-            <p class="admin-like-sub">Successfully Approved</p>
-            <p class="admin-like-link">Click to view</p>
+        <a href="{% url 'subadmin_all_loans' %}?status=approved" class="insight-card c-approved">
+            <p class="status-title">Approved</p>
+            <h2 class="main-value" id="stat-approved">0</h2>
+            <p class="description">Successfully Approved</p>
+            <span class="view-details" style="color:#38a169;">View Details →</span>
         </a>
 
-        <a href="{% url 'subadmin_all_loans' %}?status=rejected" class="admin-like-card grad-rejected">
-            <div class="admin-like-top"><span>Rejected</span><i class="fas fa-times-circle admin-like-icon"></i></div>
-            <p id="stat-rejected" class="admin-like-count">0</p>
-            <p class="admin-like-sub">Rejected Applications</p>
-            <p class="admin-like-link">Click to view</p>
+        <a href="{% url 'subadmin_all_loans' %}?status=rejected" class="insight-card c-rejected">
+            <p class="status-title">Rejected</p>
+            <h2 class="main-value" id="stat-rejected">0</h2>
+            <p class="description">Rejected Applications</p>
+            <span class="view-details" style="color:#e53e3e;">View Details →</span>
         </a>
 
-        <a href="{% url 'subadmin_all_loans' %}?status=disbursed" class="admin-like-card grad-disbursed">
-            <div class="admin-like-top"><span>Disbursed</span><i class="fas fa-money-bill-wave admin-like-icon"></i></div>
-            <p id="stat-disbursed" class="admin-like-count">0</p>
-            <p class="admin-like-sub">Amount Disbursed</p>
-            <p class="admin-like-link">Click to view</p>
+        <a href="{% url 'subadmin_all_loans' %}?status=disbursed" class="insight-card c-disbursed">
+            <p class="status-title">Disbursed</p>
+            <h2 class="main-value" id="stat-disbursed">0</h2>
+            <p class="description">Amount Disbursed</p>
+            <span class="view-details" style="color:#3182ce;">View Details →</span>
         </a>
 
-        <a href="{% url 'subadmin_all_loans' %}?status=all" class="admin-like-card grad-total">
-            <div class="admin-like-top"><span>Total</span><i class="fas fa-list admin-like-icon"></i></div>
-            <p id="stat-total" class="admin-like-count">0</p>
-            <p class="admin-like-sub">All Applications</p>
-            <p class="admin-like-link">Click to view</p>
+        <a href="{% url 'subadmin_all_loans' %}?status=all" class="insight-card" style="color:#111827;">
+            <p class="status-title">Total</p>
+            <h2 class="main-value" id="stat-total">0</h2>
+            <p class="description">All Applications</p>
+            <span class="view-details" style="color:#111827;">View Details →</span>
         </a>
     </div>
 

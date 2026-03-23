@@ -15,7 +15,7 @@
                 </h2>
                 <p class="text-muted mb-0">Total: <strong>{{ loans|length }}</strong> loans</p>
             </div>
-            <a href="{% url 'admin_all_loans' %}" class="btn text-white" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none;">
+            <a href="{% url 'admin_all_loans' %}" class="btn text-white" style="background: linear-gradient(135deg, #667eea 0%, #3c1c94 100%); border: none;">
                 <i class="fas fa-arrow-left"></i> Back to Dashboard
             </a>
         </div>
@@ -27,7 +27,7 @@
         <div class="table-responsive">
             <table class="table table-hover mb-0">
                 <thead>
-                    <tr style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                    <tr style="background: linear-gradient(135deg, #667eea 0%, #39298d 100%); color: white;">
                         <th style="color: white; padding: 14px; border: none;">Applicant Name</th>
                         <th style="color: white; padding: 14px; border: none;">Loan Type</th>
                         <th style="color: white; padding: 14px; border: none;">Loan Amount</th>
@@ -43,7 +43,7 @@
                             <strong>{{ loan.full_name }}</strong>
                         </td>
                         <td style="padding: 13px;">
-                            <span class="badge" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">{{ loan.get_loan_type_display }}</span>
+                            <span class="badge" style="background: linear-gradient(135deg, #667eea 0%, #2b1876 100%); color: white;">{{ loan.get_loan_type_display }}</span>
                         </td>
                         <td style="padding: 13px;">
                             <strong style="color: #667eea;">₹{{ loan.loan_amount|floatformat:2 }}</strong>
