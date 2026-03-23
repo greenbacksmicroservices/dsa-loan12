@@ -19,6 +19,10 @@ from .models import (
 from .decorators import admin_required, employee_required
 
 
+def _follow_up_pending_q():
+    return Q(status__in=['new_entry', 'waiting']) & Q(remarks__icontains='Revert Remark ')
+
+
 # ============================================================================
 # NEW LOAN APPLICATIONS API (AJAX Only)
 # ============================================================================
@@ -360,39 +364,42 @@ def api_dashboard_stats(request):
     """
     if request.user.role == 'admin':
         # Admin gets all statistics
-        new_entries = Loan.objects.filter(status='new_entry').count()
-        waiting = Loan.objects.filter(status='waiting').count()
-        follow_up = Loan.objects.filter(status='follow_up').count()
-        approved = Loan.objects.filter(status='approved').count()
-        rejected = Loan.objects.filter(status='rejected').count()
-        disbursed = Loan.objects.filter(status='disbursed').count()
-        total = Loan.objects.count()
-        
-        total_amount_disbursed = Loan.objects.filter(
+        base_qs = Loan.objects.all()
+        follow_up_pending = base_qs.filter(_follow_up_pending_q()).count()
+        new_entries = base_qs.filter(status='new_entry').exclude(remarks__icontains='Revert Remark ').count()
+        waiting = base_qs.filter(status='waiting').exclude(remarks__icontains='Revert Remark ').count()
+        follow_up = base_qs.filter(status='follow_up').count()
+        approved = base_qs.filter(status='approved').count()
+        rejected = base_qs.filter(status='rejected').count()
+        disbursed = base_qs.filter(status='disbursed').count()
+        total = base_qs.count()
+
+        total_amount_disbursed = base_qs.filter(
             status='disbursed'
         ).aggregate(total=Sum('loan_amount'))['total'] or 0
-        
-        total_amount_pending = Loan.objects.filter(
+
+        total_amount_pending = base_qs.filter(
             status__in=['new_entry', 'waiting', 'approved']
         ).aggregate(total=Sum('loan_amount'))['total'] or 0
-        
+
     elif request.user.role == 'employee':
         # Employee sees only assigned loans
-        new_entries = Loan.objects.filter(status='new_entry', assigned_employee=request.user).count()
-        waiting = Loan.objects.filter(status='waiting', assigned_employee=request.user).count()
-        follow_up = Loan.objects.filter(status='follow_up', assigned_employee=request.user).count()
-        approved = Loan.objects.filter(status='approved', assigned_employee=request.user).count()
-        rejected = Loan.objects.filter(status='rejected', assigned_employee=request.user).count()
-        disbursed = Loan.objects.filter(status='disbursed', assigned_employee=request.user).count()
-        total = Loan.objects.filter(assigned_employee=request.user).count()
-        
-        total_amount_disbursed = Loan.objects.filter(
-            status='disbursed', assigned_employee=request.user
+        base_qs = Loan.objects.filter(assigned_employee=request.user)
+        follow_up_pending = base_qs.filter(_follow_up_pending_q()).count()
+        new_entries = base_qs.filter(status='new_entry').exclude(remarks__icontains='Revert Remark ').count()
+        waiting = base_qs.filter(status='waiting').exclude(remarks__icontains='Revert Remark ').count()
+        follow_up = base_qs.filter(status='follow_up').count()
+        approved = base_qs.filter(status='approved').count()
+        rejected = base_qs.filter(status='rejected').count()
+        disbursed = base_qs.filter(status='disbursed').count()
+        total = base_qs.count()
+
+        total_amount_disbursed = base_qs.filter(
+            status='disbursed'
         ).aggregate(total=Sum('loan_amount'))['total'] or 0
-        
-        total_amount_pending = Loan.objects.filter(
-            status__in=['new_entry', 'waiting', 'approved'],
-            assigned_employee=request.user
+
+        total_amount_pending = base_qs.filter(
+            status__in=['new_entry', 'waiting', 'approved']
         ).aggregate(total=Sum('loan_amount'))['total'] or 0
     else:
         return JsonResponse({
@@ -403,6 +410,7 @@ def api_dashboard_stats(request):
                 'new_entries': 0,
                 'waiting': 0,
                 'follow_up': 0,
+                'follow_up_pending': 0,
                 'approved': 0,
                 'rejected': 0,
                 'disbursed': 0,
@@ -418,6 +426,7 @@ def api_dashboard_stats(request):
             'new_entries': new_entries,
             'waiting': waiting,
             'follow_up': follow_up,
+            'follow_up_pending': follow_up_pending,
             'approved': approved,
             'rejected': rejected,
             'disbursed': disbursed,

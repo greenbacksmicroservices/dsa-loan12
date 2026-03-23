@@ -239,7 +239,7 @@
         background: white;
         border-radius: 12px;
         width: 100%;
-        max-width: 720px;
+        max-width: 980px;
         box-shadow: 0 20px 45px rgba(0, 0, 0, 0.2);
         overflow: hidden;
     }
@@ -261,6 +261,62 @@
 
     .modal-body {
         padding: 24px;
+    }
+
+    .modal-body.scroll {
+        max-height: 70vh;
+        overflow-y: auto;
+    }
+
+    .section-card {
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 16px;
+        background: #f9fafb;
+        margin-bottom: 16px;
+    }
+
+    .section-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: #111827;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .section-subtext {
+        font-size: 12px;
+        color: #6b7280;
+        margin-bottom: 12px;
+    }
+
+    .inline-checkbox {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        color: #374151;
+    }
+
+    .document-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-bottom: 10px;
+        align-items: end;
+    }
+
+    .btn-add-row {
+        background: #fff7ed;
+        color: #c2410c;
+        border: 1px dashed #fdba74;
+        padding: 8px 12px;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
     }
 
     .form-grid {
@@ -457,48 +513,323 @@
             <button type="button" onclick="closeAddAgentModal()" style="background: none; border: none; font-size: 26px; cursor: pointer; color: #6b7280;">&times;</button>
         </div>
         <form id="addAgentForm" enctype="multipart/form-data">
-            <div class="modal-body">
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label>Name *</label>
-                        <input type="text" name="name" id="agentName" required placeholder="Agent full name">
-                    </div>
-                    <div class="form-group">
-                        <label>Email (Gmail) *</label>
-                        <input type="email" name="email" id="agentEmail" required placeholder="example@gmail.com">
-                    </div>
-                    <div class="form-group">
-                        <label>Phone Number *</label>
-                        <input type="tel" name="phone" id="agentPhone" required placeholder="10-15 digits">
-                    </div>
-                    <div class="form-group">
-                        <label>Password *</label>
-                        <input type="password" name="password" id="agentPassword" required placeholder="Create login password">
-                    </div>
-                    <div class="form-group">
-                        <label>Gender</label>
-                        <select name="gender" id="agentGender">
-                            <option value="Male">Male</option>
-                            <option value="Female">Female</option>
-                            <option value="Other" selected>Other</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-grid full" style="margin-top: 16px;">
-                    <div class="form-group">
-                        <label>Address</label>
-                        <textarea name="address" id="agentAddress" placeholder="Street, City, State"></textarea>
-                    </div>
-                </div>
-                <div class="form-grid full" style="margin-top: 16px;">
-                    <div class="form-group">
-                        <label>Photo</label>
-                        <input type="file" name="profile_photo" id="agentPhoto" accept="image/*">
-                        <div class="photo-preview" id="agentPhotoPreview">
-                            <img id="agentPhotoImg" alt="Preview">
-                            <span style="font-size: 12px; color: #6b7280;">Preview</span>
+            {% csrf_token %}
+            <div class="modal-body scroll">
+                <div class="section-card">
+                    <div class="section-title">SECTION 1: APPLICANT INFORMATION</div>
+                    <p class="section-subtext">Provide accurate personal information. This will be verified during processing.</p>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Name *</label>
+                            <input type="text" name="name" id="agentName" required placeholder="Agent full name">
+                        </div>
+                        <div class="form-group">
+                            <label>Mobile Number *</label>
+                            <input type="tel" name="phone" id="agentPhone" required placeholder="10-15 digits">
+                        </div>
+                        <div class="form-group">
+                            <label>Alternate Mobile</label>
+                            <input type="tel" name="onb_alt_mobile" placeholder="Optional">
+                        </div>
+                        <div class="form-group">
+                            <label>Email ID *</label>
+                            <input type="email" name="email" id="agentEmail" required placeholder="example@gmail.com">
+                        </div>
+                        <div class="form-group">
+                            <label>Father's Name</label>
+                            <input type="text" name="onb_father_name" placeholder="Optional">
+                        </div>
+                        <div class="form-group">
+                            <label>Mother's Name</label>
+                            <input type="text" name="onb_mother_name" placeholder="Optional">
+                        </div>
+                        <div class="form-group">
+                            <label>Date of Birth</label>
+                            <input type="date" name="onb_dob">
+                        </div>
+                        <div class="form-group">
+                            <label>Gender</label>
+                            <select name="gender" id="agentGender">
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                                <option value="Other" selected>Other</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Marital Status</label>
+                            <input type="text" name="onb_marital_status" placeholder="Single / Married / Other">
                         </div>
                     </div>
+                    <div class="form-grid full" style="margin-top: 8px;">
+                        <div class="form-group">
+                            <label>Permanent Address</label>
+                            <textarea name="address" id="agentAddress" placeholder="Address line"></textarea>
+                        </div>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Permanent Landmark</label>
+                            <input type="text" name="onb_perm_landmark" id="agentPermLandmark" placeholder="Landmark">
+                        </div>
+                        <div class="form-group">
+                            <label>Permanent State</label>
+                            <input type="text" name="onb_perm_state" id="agentPermState" placeholder="State">
+                        </div>
+                        <div class="form-group">
+                            <label>Permanent City</label>
+                            <input type="text" name="onb_perm_city" id="agentPermCity" placeholder="City">
+                        </div>
+                        <div class="form-group">
+                            <label>Permanent PIN Code</label>
+                            <input type="text" name="onb_perm_pin" id="agentPermPin" placeholder="PIN Code">
+                        </div>
+                    </div>
+                    <div class="form-grid full" style="margin-top: 8px;">
+                        <label class="inline-checkbox" for="agentPresentSame">
+                            <input type="checkbox" id="agentPresentSame" name="onb_present_same">
+                            Present Address same as Permanent
+                        </label>
+                    </div>
+                    <div class="form-grid full" style="margin-top: 8px;">
+                        <div class="form-group">
+                            <label>Present Address</label>
+                            <textarea name="onb_present_address" id="agentPresentAddress" placeholder="Present address"></textarea>
+                        </div>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Present Landmark</label>
+                            <input type="text" name="onb_present_landmark" id="agentPresentLandmark" placeholder="Landmark">
+                        </div>
+                        <div class="form-group">
+                            <label>Present State</label>
+                            <input type="text" name="onb_present_state" id="agentPresentState" placeholder="State">
+                        </div>
+                        <div class="form-group">
+                            <label>Present City</label>
+                            <input type="text" name="onb_present_city" id="agentPresentCity" placeholder="City">
+                        </div>
+                        <div class="form-group">
+                            <label>Present PIN Code</label>
+                            <input type="text" name="onb_present_pin" id="agentPresentPin" placeholder="PIN Code">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section-card">
+                    <div class="section-title">LOGIN & PROFILE</div>
+                    <p class="section-subtext">Create login access and upload profile photo.</p>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Password *</label>
+                            <input type="password" name="password" id="agentPassword" required placeholder="Create login password">
+                        </div>
+                        <div class="form-group">
+                            <label>Profile Photo</label>
+                            <input type="file" name="profile_photo" id="agentPhoto" accept="image/*">
+                            <div class="photo-preview" id="agentPhotoPreview">
+                                <img id="agentPhotoImg" alt="Preview">
+                                <span style="font-size: 12px; color: #6b7280;">Preview</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section-card">
+                    <div class="section-title">SECTION 2: OCCUPATION & INCOME DETAILS</div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Occupation</label>
+                            <input type="text" name="onb_occupation" placeholder="Occupation">
+                        </div>
+                        <div class="form-group">
+                            <label>Date of Joining</label>
+                            <input type="date" name="onb_joining_date">
+                        </div>
+                        <div class="form-group">
+                            <label>Year of Experience</label>
+                            <input type="text" name="onb_experience_years" placeholder="Years">
+                        </div>
+                        <div class="form-group">
+                            <label>Additional Income (if any)</label>
+                            <input type="text" name="onb_additional_income" placeholder="Optional">
+                        </div>
+                    </div>
+                    <div class="form-grid full">
+                        <div class="form-group">
+                            <label>Extra Income Details</label>
+                            <textarea name="onb_extra_income_details" placeholder="Extra income details"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section-card">
+                    <div class="section-title">SECTION 3: EXISTING LOAN DETAILS</div>
+                    <p class="section-subtext">Provide details of all existing loans or EMI commitments.</p>
+                    <div class="form-grid full">
+                        <div class="form-group">
+                            <label>Existing Loan Details</label>
+                            <textarea name="onb_existing_loans" placeholder="No data available"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section-card">
+                    <div class="section-title">SECTION 4: LOAN REQUEST</div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Service Required</label>
+                            <select name="onb_service_required">
+                                <option value="">Select</option>
+                                <option value="Personal Loan">Personal Loan</option>
+                                <option value="Business Loan">Business Loan</option>
+                                <option value="Home Loan">Home Loan</option>
+                                <option value="Education Loan">Education Loan</option>
+                                <option value="Car Loan">Car Loan</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Loan Amount Required</label>
+                            <input type="text" name="onb_loan_amount_required" placeholder="Amount">
+                        </div>
+                        <div class="form-group">
+                            <label>Loan Tenure (Months)</label>
+                            <input type="text" name="onb_loan_tenure" placeholder="Tenure">
+                        </div>
+                        <div class="form-group">
+                            <label>Any Charges or Fee</label>
+                            <input type="text" name="onb_charges_fee" placeholder="No charges">
+                        </div>
+                    </div>
+                    <div class="form-grid full">
+                        <div class="form-group">
+                            <label>Loan Purpose</label>
+                            <textarea name="onb_loan_purpose" placeholder="Purpose"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section-card">
+                    <div class="section-title">SECTION 5: REFERENCES</div>
+                    <p class="section-subtext">Provide contact details of two reliable references.</p>
+                    <div class="document-row">
+                        <div class="form-group">
+                            <label>Reference Name</label>
+                            <input type="text" name="ref_name" placeholder="Reference name">
+                        </div>
+                        <div class="form-group">
+                            <label>Reference Phone</label>
+                            <input type="text" name="ref_phone" placeholder="Phone">
+                        </div>
+                    </div>
+                    <div class="document-row">
+                        <div class="form-group">
+                            <label>Reference Email</label>
+                            <input type="email" name="ref_email" placeholder="Email">
+                        </div>
+                        <div class="form-group">
+                            <label>Relation</label>
+                            <input type="text" name="ref_relation" placeholder="Relation">
+                        </div>
+                    </div>
+                    <div class="document-row">
+                        <div class="form-group">
+                            <label>Reference Name</label>
+                            <input type="text" name="ref_name" placeholder="Reference name">
+                        </div>
+                        <div class="form-group">
+                            <label>Reference Phone</label>
+                            <input type="text" name="ref_phone" placeholder="Phone">
+                        </div>
+                    </div>
+                    <div class="document-row">
+                        <div class="form-group">
+                            <label>Reference Email</label>
+                            <input type="email" name="ref_email" placeholder="Email">
+                        </div>
+                        <div class="form-group">
+                            <label>Relation</label>
+                            <input type="text" name="ref_relation" placeholder="Relation">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section-card">
+                    <div class="section-title">SECTION 6: FINANCIAL & BANK DETAILS</div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>CIBIL Score</label>
+                            <input type="text" name="onb_cibil" placeholder="CIBIL Score">
+                        </div>
+                        <div class="form-group">
+                            <label>Aadhar Number</label>
+                            <input type="text" name="onb_aadhar" placeholder="Aadhar Number">
+                        </div>
+                        <div class="form-group">
+                            <label>PAN Number</label>
+                            <input type="text" name="onb_pan" placeholder="PAN Number">
+                        </div>
+                        <div class="form-group">
+                            <label>Bank Name</label>
+                            <input type="text" name="onb_bank_name" placeholder="Bank Name">
+                        </div>
+                        <div class="form-group">
+                            <label>Account Number</label>
+                            <input type="text" name="onb_account_number" placeholder="Account Number">
+                        </div>
+                        <div class="form-group">
+                            <label>IFSC Code</label>
+                            <input type="text" name="onb_ifsc" placeholder="IFSC Code">
+                        </div>
+                        <div class="form-group">
+                            <label>Bank Type</label>
+                            <select name="onb_bank_type">
+                                <option value="">Select</option>
+                                <option value="Private">Private</option>
+                                <option value="Government">Government</option>
+                                <option value="Cooperative">Cooperative</option>
+                                <option value="NBFC">NBFC</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-grid full">
+                        <div class="form-group">
+                            <label>Remarks / Suggestions (if any)</label>
+                            <textarea name="onb_bank_remarks" placeholder="Remarks"></textarea>
+                        </div>
+                    </div>
+                    <div class="form-grid full">
+                        <label class="inline-checkbox" for="agentDeclaration">
+                            <input type="checkbox" name="onb_declaration" id="agentDeclaration">
+                            I hereby declare that the above information given by me is true and correct.
+                        </label>
+                    </div>
+                </div>
+
+                <div class="section-card">
+                    <div class="section-title">SECTION 7: DOCUMENTS</div>
+                    <div id="agentDocumentRows">
+                        <div class="document-row">
+                            <div class="form-group">
+                                <label>Document Type</label>
+                                <select name="document_type">
+                                    <option value="pan_card">PAN Card</option>
+                                    <option value="aadhaar_card">Aadhaar Card</option>
+                                    <option value="photo">Applicant Photo</option>
+                                    <option value="address_proof">Address Proof</option>
+                                    <option value="salary_slip">Salary Slip</option>
+                                    <option value="bank_statement">Bank Statement</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Upload File</label>
+                                <input type="file" name="document_file">
+                            </div>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-add-row" onclick="addAgentDocumentRow()">+ Add Another Document</button>
                 </div>
             </div>
             <div class="modal-actions">
@@ -517,6 +848,7 @@
             <button type="button" onclick="closeEditAgentModal()" style="background: none; border: none; font-size: 26px; cursor: pointer; color: #6b7280;">&times;</button>
         </div>
         <form id="editAgentForm">
+            {% csrf_token %}
             <div class="modal-body">
                 <div class="form-grid">
                     <div class="form-group">
@@ -599,6 +931,7 @@ function closeAddAgentModal() {
     }
     const preview = document.getElementById('agentPhotoPreview');
     if (preview) preview.style.display = 'none';
+    resetAgentDocumentRows();
 }
 
 function escapeHtml(value) {
@@ -721,6 +1054,57 @@ function formatINR(value) {
     return amount.toLocaleString('en-IN', { maximumFractionDigits: 0 });
 }
 
+function resetAgentDocumentRows() {
+    const container = document.getElementById('agentDocumentRows');
+    if (!container) return;
+    container.innerHTML = `
+        <div class="document-row">
+            <div class="form-group">
+                <label>Document Type</label>
+                <select name="document_type">
+                    <option value="pan_card">PAN Card</option>
+                    <option value="aadhaar_card">Aadhaar Card</option>
+                    <option value="photo">Applicant Photo</option>
+                    <option value="address_proof">Address Proof</option>
+                    <option value="salary_slip">Salary Slip</option>
+                    <option value="bank_statement">Bank Statement</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Upload File</label>
+                <input type="file" name="document_file">
+            </div>
+        </div>
+    `;
+}
+
+function addAgentDocumentRow() {
+    const container = document.getElementById('agentDocumentRows');
+    if (!container) return;
+    const row = document.createElement('div');
+    row.className = 'document-row';
+    row.innerHTML = `
+        <div class="form-group">
+            <label>Document Type</label>
+            <select name="document_type">
+                <option value="pan_card">PAN Card</option>
+                <option value="aadhaar_card">Aadhaar Card</option>
+                <option value="photo">Applicant Photo</option>
+                <option value="address_proof">Address Proof</option>
+                <option value="salary_slip">Salary Slip</option>
+                <option value="bank_statement">Bank Statement</option>
+                <option value="other">Other</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Upload File</label>
+            <input type="file" name="document_file">
+        </div>
+    `;
+    container.appendChild(row);
+}
+
 function closeViewModal() {
     const modal = document.getElementById('viewModal');
     if (modal) modal.remove();
@@ -740,7 +1124,126 @@ function showAgentLoadingModal(title) {
     document.body.style.overflow = 'hidden';
 }
 
-function renderAgentViewModal(agent, summary, customers) {
+function renderOnboardingSection(title, rows) {
+    if (!rows || !rows.length) return '';
+    const rowsHtml = rows.map(([label, value]) => `
+        <div style="display:flex; justify-content:space-between; gap:12px; padding:6px 0; border-bottom:1px dashed #e5e7eb;">
+            <div style="color:#6b7280; font-size:12px; min-width:140px;">${escapeHtml(label)}</div>
+            <div style="color:#111827; font-weight:600; text-align:right;">${escapeHtml(value || '-')}</div>
+        </div>
+    `).join('');
+    return `
+        <details style="border:1px solid #e5e7eb; border-radius:10px; padding:12px; background:#f9fafb; margin-bottom:10px;">
+            <summary style="font-weight:700; color:#111827; cursor:pointer;">${escapeHtml(title)}</summary>
+            <div style="margin-top:10px;">${rowsHtml}</div>
+        </details>
+    `;
+}
+
+function renderOnboardingHtml(onboarding, documents) {
+    const data = onboarding || {};
+    const s1 = data.section1 || {};
+    const s2 = data.section2 || {};
+    const s3 = data.section3 || {};
+    const s4 = data.section4 || {};
+    const s5 = data.section5 || {};
+    const s6 = data.section6 || {};
+    const perm = s1.permanent_address || {};
+    const pres = s1.present_address || {};
+
+    const refs = Array.isArray(s5.references) ? s5.references : [];
+    const refsHtml = refs.length
+        ? refs.map((ref, idx) => `
+            <div style="padding:8px; border:1px solid #e5e7eb; border-radius:8px; margin-bottom:8px; background:#fff;">
+                <div style="font-weight:700; font-size:12px; color:#4b5563;">Reference ${idx + 1}</div>
+                <div style="font-size:12px; color:#111827; margin-top:4px;">
+                    <div><strong>Name:</strong> ${escapeHtml(ref.name || '-')}</div>
+                    <div><strong>Phone:</strong> ${escapeHtml(ref.phone || '-')}</div>
+                    <div><strong>Email:</strong> ${escapeHtml(ref.email || '-')}</div>
+                    <div><strong>Relation:</strong> ${escapeHtml(ref.relation || '-')}</div>
+                </div>
+            </div>
+        `).join('')
+        : '<div style="color:#6b7280; font-size:12px;">No references added.</div>';
+
+    const docs = Array.isArray(documents) ? documents : [];
+    const docsHtml = docs.length
+        ? docs.map(doc => `
+            <div style="display:flex; justify-content:space-between; gap:12px; padding:6px 0; border-bottom:1px dashed #e5e7eb;">
+                <div style="font-size:12px; color:#4b5563;">${escapeHtml(doc.type || 'other')}</div>
+                <div style="font-size:12px;">
+                    ${doc.url ? `<a href="${escapeHtml(doc.url)}" target="_blank" style="color:#2563eb; text-decoration:none;">View</a>` : '<span style="color:#9ca3af;">No file</span>'}
+                </div>
+            </div>
+        `).join('')
+        : '<div style="color:#6b7280; font-size:12px;">No documents uploaded.</div>';
+
+    return `
+        <div style="margin: 18px 0;">
+            <h3 style="margin:0 0 8px 0; font-size:16px; color:#111827;">Onboarding Details</h3>
+            ${renderOnboardingSection('SECTION 1: Applicant Information', [
+                ['Name', s1.full_name],
+                ['Mobile', s1.mobile],
+                ['Alternate Mobile', s1.alternate_mobile],
+                ['Email', s1.email],
+                ["Father's Name", s1.father_name],
+                ["Mother's Name", s1.mother_name],
+                ['Date of Birth', s1.date_of_birth],
+                ['Gender', s1.gender],
+                ['Marital Status', s1.marital_status],
+                ['Permanent Address', perm.address],
+                ['Permanent Landmark', perm.landmark],
+                ['Permanent State', perm.state],
+                ['Permanent City', perm.city],
+                ['Permanent PIN', perm.pin_code],
+                ['Present Same as Permanent', pres.same_as_permanent ? 'Yes' : 'No'],
+                ['Present Address', pres.address],
+                ['Present Landmark', pres.landmark],
+                ['Present State', pres.state],
+                ['Present City', pres.city],
+                ['Present PIN', pres.pin_code],
+            ])}
+            ${renderOnboardingSection('SECTION 2: Occupation & Income Details', [
+                ['Occupation', s2.occupation],
+                ['Date of Joining', s2.date_of_joining],
+                ['Years of Experience', s2.years_experience],
+                ['Additional Income', s2.additional_income],
+                ['Extra Income Details', s2.extra_income_details],
+            ])}
+            ${renderOnboardingSection('SECTION 3: Existing Loan Details', [
+                ['Existing Loans', s3.existing_loan_details],
+            ])}
+            ${renderOnboardingSection('SECTION 4: Loan Request', [
+                ['Service Required', s4.service_required],
+                ['Loan Amount Required', s4.loan_amount_required],
+                ['Loan Tenure (Months)', s4.loan_tenure_months],
+                ['Charges / Fee', s4.charges_or_fee],
+                ['Loan Purpose', s4.loan_purpose],
+            ])}
+            <details style="border:1px solid #e5e7eb; border-radius:10px; padding:12px; background:#f9fafb; margin-bottom:10px;">
+                <summary style="font-weight:700; color:#111827; cursor:pointer;">SECTION 5: References</summary>
+                <div style="margin-top:10px;">${refsHtml}</div>
+            </details>
+            ${renderOnboardingSection('SECTION 6: Financial & Bank Details', [
+                ['CIBIL Score', s6.cibil_score],
+                ['Aadhar Number', s6.aadhar_number],
+                ['PAN Number', s6.pan_number],
+                ['Bank Name', s6.bank_name],
+                ['Account Number', s6.account_number],
+                ['IFSC Code', s6.ifsc_code],
+                ['Bank Type', s6.bank_type],
+                ['Remarks', s6.remarks],
+                ['Declaration', s6.declaration ? 'Yes' : 'No'],
+            ])}
+            <details style="border:1px solid #e5e7eb; border-radius:10px; padding:12px; background:#f9fafb; margin-bottom:10px;">
+                <summary style="font-weight:700; color:#111827; cursor:pointer;">SECTION 7: Documents</summary>
+                <div style="margin-top:10px;">${docsHtml}</div>
+            </details>
+        </div>
+    `;
+}
+
+function renderAgentViewModal(agent, summary, customers, onboarding, documents) {
     const safeCustomers = Array.isArray(customers) ? customers : [];
     const rowsHtml = safeCustomers.length ? safeCustomers.map((item, idx) => `
         <tr>
@@ -806,6 +1309,8 @@ function renderAgentViewModal(agent, summary, customers) {
                         <div><strong>Address:</strong> ${escapeHtml(agent.address || '-')}</div>
                     </div>
 
+                    ${renderOnboardingHtml(onboarding, documents)}
+
                     <div style="border:1px solid #e5e7eb; border-radius:10px; overflow:auto;">
                         <table style="width:100%; border-collapse:collapse; font-size:12px; min-width:980px;">
                             <thead style="background:#f8fafc; color:#334155;">
@@ -848,7 +1353,13 @@ async function viewAgent(id, name, email, phone) {
         if (!response.ok || !data.success) {
             throw new Error(data.error || 'Failed to load agent details');
         }
-        renderAgentViewModal(data.agent || {}, data.summary || {}, data.customers || []);
+        renderAgentViewModal(
+            data.agent || {},
+            data.summary || {},
+            data.customers || [],
+            data.onboarding || {},
+            data.documents || []
+        );
     } catch (error) {
         console.error('View agent error:', error);
         renderAgentViewModal(
@@ -859,6 +1370,8 @@ async function viewAgent(id, name, email, phone) {
                 status: '-',
                 address: '-',
             },
+            {},
+            [],
             {},
             []
         );
@@ -1063,6 +1576,37 @@ if (agentPhotoInput) {
             };
             reader.readAsDataURL(file);
         }
+    });
+}
+
+const agentPresentSame = document.getElementById('agentPresentSame');
+if (agentPresentSame) {
+    agentPresentSame.addEventListener('change', (event) => {
+        const checked = event.target.checked;
+        const permAddress = document.getElementById('agentAddress')?.value || '';
+        const permLandmark = document.getElementById('agentPermLandmark')?.value || '';
+        const permState = document.getElementById('agentPermState')?.value || '';
+        const permCity = document.getElementById('agentPermCity')?.value || '';
+        const permPin = document.getElementById('agentPermPin')?.value || '';
+
+        const presentAddress = document.getElementById('agentPresentAddress');
+        const presentLandmark = document.getElementById('agentPresentLandmark');
+        const presentState = document.getElementById('agentPresentState');
+        const presentCity = document.getElementById('agentPresentCity');
+        const presentPin = document.getElementById('agentPresentPin');
+
+        if (checked) {
+            if (presentAddress) presentAddress.value = permAddress;
+            if (presentLandmark) presentLandmark.value = permLandmark;
+            if (presentState) presentState.value = permState;
+            if (presentCity) presentCity.value = permCity;
+            if (presentPin) presentPin.value = permPin;
+        }
+        [presentAddress, presentLandmark, presentState, presentCity, presentPin].forEach((field) => {
+            if (!field) return;
+            field.readOnly = checked;
+            field.style.background = checked ? '#f3f4f6' : '';
+        });
     });
 }
 

@@ -1,0 +1,663 @@
+/**
+ * Design System - DSA Loan Management System
+ * Centralized design tokens for consistent UI/UX across all panels
+ */
+
+/* ============================================
+   DESIGN TOKENS - CSS Custom Properties
+   ============================================ */
+
+:root {
+  /* Primary Colors - Teal-based theme */
+  --color-primary: #0f766e;
+  --color-primary-dark: #0b5f57;
+  --color-primary-light: #ccfbf1;
+  --color-accent: #1abc9c;
+  
+  /* Surface Colors */
+  --color-surface: #ffffff;
+  --color-background: #f0fdf9;
+  --color-border: #e2e8f0;
+  
+  /* Text Colors */
+  --color-text-primary: #1a202c;
+  --color-text-secondary: #718096;
+  --color-text-muted: #a0aec0;
+  
+  /* Status Colors */
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+  --color-info: #3b82f6;
+  
+  /* Spacing Scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  
+  /* Shadow Tokens */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.10);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --shadow-card: 0 2px 8px rgba(15, 118, 110, 0.08);
+  --shadow-hover: 0 6px 20px rgba(15, 118, 110, 0.15);
+  
+  /* Border Radius Tokens */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  
+  /* Font Size Tokens */
+  --font-size-xs: 11px;
+  --font-size-sm: 13px;
+  --font-size-base: 14px;
+  --font-size-lg: 16px;
+  --font-size-xl: 20px;
+  --font-size-2xl: 24px;
+  --font-size-3xl: 30px;
+  
+  /* Gradient Tokens */
+  --gradient-teal: linear-gradient(135deg, #0f766e, #0b5f57);
+  --gradient-blue: linear-gradient(135deg, #3b82f6, #2563eb);
+  --gradient-green: linear-gradient(135deg, #10b981, #059669);
+  --gradient-red: linear-gradient(135deg, #ef4444, #dc2626);
+  --gradient-orange: linear-gradient(135deg, #f59e0b, #d97706);
+  --gradient-purple: linear-gradient(135deg, #8b5cf6, #7c3aed);
+  --gradient-indigo: linear-gradient(135deg, #6366f1, #4f46e5);
+}
+
+/* ============================================
+   ENHANCED CARD COMPONENT
+   ============================================ */
+
+.ds-card {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-6);
+  transition: all 0.3s ease;
+}
+
+.ds-card:hover {
+  box-shadow: var(--shadow-hover);
+}
+
+.ds-card__header {
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.ds-card__title {
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.ds-card__body {
+  color: var(--color-text-secondary);
+}
+
+/* Interactive Card Variant */
+.ds-card--interactive {
+  cursor: pointer;
+}
+
+.ds-card--interactive:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* ============================================
+   COMPACT DASHBOARD CARD COMPONENT
+   ============================================ */
+
+.ds-compact-card {
+  display: flex;
+  align-items: center;
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  color: white;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  min-height: 80px;
+  text-decoration: none;
+}
+
+.ds-compact-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+  text-decoration: none;
+  color: white;
+}
+
+.ds-compact-card__icon {
+  font-size: 32px;
+  margin-right: var(--space-4);
+  opacity: 0.9;
+}
+
+.ds-compact-card__content {
+  flex: 1;
+}
+
+.ds-compact-card__value {
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.ds-compact-card__label {
+  font-size: var(--font-size-sm);
+  opacity: 0.9;
+  margin: 0;
+  margin-top: var(--space-1);
+}
+
+.ds-compact-card__action {
+  font-size: 20px;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+}
+
+.ds-compact-card:hover .ds-compact-card__action {
+  opacity: 1;
+}
+
+/* Gradient Variants */
+.ds-compact-card--gradient-teal {
+  background: var(--gradient-teal);
+}
+
+.ds-compact-card--gradient-blue {
+  background: var(--gradient-blue);
+}
+
+.ds-compact-card--gradient-green {
+  background: var(--gradient-green);
+}
+
+.ds-compact-card--gradient-red {
+  background: var(--gradient-red);
+}
+
+.ds-compact-card--gradient-orange {
+  background: var(--gradient-orange);
+}
+
+.ds-compact-card--gradient-purple {
+  background: var(--gradient-purple);
+}
+
+.ds-compact-card--gradient-indigo {
+  background: var(--gradient-indigo);
+}
+
+/* ============================================
+   ENHANCED TABLE COMPONENT
+   ============================================ */
+
+.ds-table-wrapper {
+  overflow-x: auto;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  background: var(--color-surface);
+}
+
+.ds-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-base);
+}
+
+.ds-table thead {
+  background: var(--gradient-teal);
+  color: white;
+}
+
+.ds-table thead th {
+  padding: var(--space-4);
+  text-align: left;
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ds-table tbody tr {
+  border-bottom: 1px solid var(--color-border);
+  transition: background-color 0.2s ease;
+}
+
+.ds-table tbody tr:nth-child(even) {
+  background-color: #f9fafb;
+}
+
+.ds-table tbody tr:hover {
+  background-color: var(--color-primary-light);
+}
+
+.ds-table tbody td {
+  padding: var(--space-4);
+  color: var(--color-text-secondary);
+}
+
+.ds-table tbody td:first-child {
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+/* Table with images */
+.ds-table__photo {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--color-border);
+}
+
+/* Highlight animation for new rows */
+@keyframes highlightRow {
+  0% {
+    background-color: var(--color-primary-light);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.highlight-new-row {
+  animation: highlightRow 2s ease;
+}
+
+/* ============================================
+   BUTTON COMPONENTS
+   ============================================ */
+
+.ds-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-base);
+  font-weight: 500;
+  transition: all 0.2s ease;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.ds-btn--primary {
+  background: var(--gradient-teal);
+  color: white;
+}
+
+.ds-btn--primary:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+  color: white;
+}
+
+.ds-btn--secondary {
+  background: var(--color-border);
+  color: var(--color-text-primary);
+}
+
+.ds-btn--secondary:hover {
+  background: #cbd5e0;
+}
+
+.ds-btn--danger {
+  background: var(--gradient-red);
+  color: white;
+}
+
+.ds-btn--danger:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.ds-btn--sm {
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--font-size-sm);
+}
+
+.ds-btn--lg {
+  padding: var(--space-4) var(--space-6);
+  font-size: var(--font-size-lg);
+}
+
+/* ============================================
+   BADGE COMPONENTS
+   ============================================ */
+
+.ds-badge {
+  display: inline-block;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ds-badge--success {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.ds-badge--warning {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.ds-badge--danger {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+.ds-badge--info {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.ds-badge--secondary {
+  background-color: #e5e7eb;
+  color: #374151;
+}
+
+/* Status-specific badges */
+.ds-badge--active {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.ds-badge--inactive {
+  background-color: #e5e7eb;
+  color: #6b7280;
+}
+
+.ds-badge--approved {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.ds-badge--rejected {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+.ds-badge--processing {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.ds-badge--pending {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+/* ============================================
+   SIGNATURE STATUS COMPONENT
+   ============================================ */
+
+.ds-signature-section {
+  padding: var(--space-4);
+  background: var(--color-background);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+}
+
+.ds-field-group {
+  margin-bottom: var(--space-4);
+}
+
+.ds-field-group:last-child {
+  margin-bottom: 0;
+}
+
+.ds-field-label {
+  display: block;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-2);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ds-field-value {
+  font-size: var(--font-size-base);
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.ds-radio-group {
+  display: flex;
+  gap: var(--space-4);
+}
+
+.ds-radio-label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  padding: var(--space-3) var(--space-4);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  transition: all 0.2s ease;
+}
+
+.ds-radio-label:hover {
+  border-color: var(--color-primary);
+  background-color: var(--color-primary-light);
+}
+
+.ds-radio-label input[type="radio"] {
+  margin-right: var(--space-2);
+  cursor: pointer;
+}
+
+.ds-radio-label input[type="radio"]:checked + .ds-radio-text {
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+.ds-radio-text {
+  font-size: var(--font-size-base);
+  color: var(--color-text-secondary);
+  transition: all 0.2s ease;
+}
+
+/* Toggle Button Style (Alternative) */
+.ds-toggle-group {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.ds-toggle-btn {
+  padding: var(--space-3) var(--space-5);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: white;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-base);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ds-toggle-btn:hover {
+  border-color: var(--color-primary);
+  background-color: var(--color-primary-light);
+}
+
+.ds-toggle-btn--active {
+  border-color: var(--color-primary);
+  background: var(--gradient-teal);
+  color: white;
+}
+
+.ds-toggle-btn--yes {
+  /* Specific styling for Yes button */
+}
+
+.ds-toggle-btn--no {
+  /* Specific styling for No button */
+}
+
+/* ============================================
+   DETAIL GRID LAYOUT
+   ============================================ */
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: var(--space-4);
+}
+
+.detail-field {
+  padding: var(--space-3);
+}
+
+.detail-field.full-width {
+  grid-column: 1 / -1;
+}
+
+.detail-field label {
+  display: block;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-2);
+}
+
+.detail-field p {
+  font-size: var(--font-size-base);
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+/* ============================================
+   UTILITY CLASSES
+   ============================================ */
+
+.mt-1 { margin-top: var(--space-1); }
+.mt-2 { margin-top: var(--space-2); }
+.mt-3 { margin-top: var(--space-3); }
+.mt-4 { margin-top: var(--space-4); }
+.mt-5 { margin-top: var(--space-5); }
+.mt-6 { margin-top: var(--space-6); }
+
+.mb-1 { margin-bottom: var(--space-1); }
+.mb-2 { margin-bottom: var(--space-2); }
+.mb-3 { margin-bottom: var(--space-3); }
+.mb-4 { margin-bottom: var(--space-4); }
+.mb-5 { margin-bottom: var(--space-5); }
+.mb-6 { margin-bottom: var(--space-6); }
+
+.p-1 { padding: var(--space-1); }
+.p-2 { padding: var(--space-2); }
+.p-3 { padding: var(--space-3); }
+.p-4 { padding: var(--space-4); }
+.p-5 { padding: var(--space-5); }
+.p-6 { padding: var(--space-6); }
+
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+.text-left { text-align: left; }
+
+/* ============================================
+   RESPONSIVE UTILITIES
+   ============================================ */
+
+@media (max-width: 768px) {
+  .ds-compact-card {
+    min-height: 70px;
+  }
+  
+  .ds-compact-card__icon {
+    font-size: 24px;
+    margin-right: var(--space-3);
+  }
+  
+  .ds-compact-card__value {
+    font-size: var(--font-size-xl);
+  }
+  
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .ds-radio-group {
+    flex-direction: column;
+  }
+}
+
+/* ============================================
+   TOAST NOTIFICATIONS
+   ============================================ */
+
+.ds-toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  z-index: 9999;
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(400px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.ds-toast--success {
+  background: var(--color-success);
+  color: white;
+}
+
+.ds-toast--error {
+  background: var(--color-danger);
+  color: white;
+}
+
+.ds-toast--info {
+  background: var(--color-info);
+  color: white;
+}
+
+/* ============================================
+   DASHBOARD CARDS GRID
+   ============================================ */
+
+.dashboard-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+@media (max-width: 768px) {
+  .dashboard-cards-grid {
+    grid-template-columns: 1fr;
+  }
+}

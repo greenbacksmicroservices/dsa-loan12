@@ -2,7 +2,7 @@
 Agent-specific views for role-based loan management dashboard
 Includes: New Entries, Add Loans, Sub-Agents, Reports, Complaints
 """
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_http_methods
@@ -13,7 +13,8 @@ from datetime import datetime, timedelta
 import csv
 from openpyxl import Workbook
 
-from .models import Loan, Agent, Complaint, User
+from .models import Loan, Agent, Complaint, User, LoanDocument, LoanStatusHistory, AgentAssignment
+from .loan_sync import sync_loan_to_application
 from .role_decorators import agent_required
 
 
@@ -28,6 +29,55 @@ def get_agent_loan_queryset(user, agent):
     ).distinct()
 
 
+def _resolve_employee_for_agent(agent):
+    """
+    Resolve the employee responsible for this agent.
+    Preference:
+    1) Latest explicit AgentAssignment
+    2) Agent created_by if it is an employee
+    """
+    assignment = (
+        AgentAssignment.objects.filter(agent=agent)
+        .select_related('employee')
+        .order_by('-assigned_at')
+        .first()
+    )
+    if assignment and assignment.employee and assignment.employee.role == 'employee':
+        return assignment.employee
+    created_by = agent.created_by
+    if created_by and getattr(created_by, 'role', None) == 'employee':
+        return created_by
+    return None
+
+
+def _append_note_line(existing_text, new_line):
+    line = str(new_line or '').strip()
+    if not line:
+        return existing_text or ''
+    existing = str(existing_text or '').strip()
+    return f"{existing}\n{line}".strip() if existing else line
+
+
+def _normalize_history_status(status_key):
+    normalized = str(status_key or '').strip().lower()
+    allowed = {'new_entry', 'waiting', 'follow_up', 'approved', 'rejected', 'disbursed'}
+    return normalized if normalized in allowed else 'new_entry'
+
+
+def _has_revert_marker(raw_text):
+    return 'revert remark ' in str(raw_text or '').lower()
+
+
+def _follow_up_pending_q():
+    return Q(status__in=['new_entry', 'waiting']) & Q(remarks__icontains='Revert Remark ')
+
+
+def _is_follow_up_pending(loan_obj):
+    if not loan_obj:
+        return False
+    return loan_obj.status in ['new_entry', 'waiting'] and _has_revert_marker(loan_obj.remarks)
+
+
 @agent_required
 def agent_dashboard(request):
     """
@@ -38,11 +88,13 @@ def agent_dashboard(request):
 
     # Include both created and assigned loans for a reliable live dashboard view
     agent_loans = get_agent_loan_queryset(request.user, agent)
+    follow_up_pending_count = agent_loans.filter(_follow_up_pending_q()).count()
 
     # Real-time dashboard statistics
     dashboard_data = {
         'total_assigned': agent_loans.count(),
-        'processing': agent_loans.filter(status__in=['new_entry', 'waiting', 'follow_up']).count(),
+        'processing': agent_loans.filter(status__in=['new_entry', 'waiting', 'follow_up']).exclude(_follow_up_pending_q()).count(),
+        'follow_up_pending': follow_up_pending_count,
         'approved': agent_loans.filter(status='approved').count(),
         'rejected': agent_loans.filter(status='rejected').count(),
         'disbursed': agent_loans.filter(status='disbursed').count(),
@@ -96,6 +148,11 @@ def agent_add_loan(request):
             if len(mobile) < 9:
                 messages.error(request, 'Please provide a valid mobile number')
                 return redirect('agent_add_loan')
+
+            loan_uid = request.POST.get('loan_uid', '').strip()
+            if loan_uid and Loan.objects.filter(user_id=loan_uid).exists():
+                messages.error(request, 'Loan ID already exists. Please enter a unique Loan ID.')
+                return redirect('agent_add_loan')
             
             # Validate email only if provided
             email = request.POST.get('email_id', '').strip()
@@ -108,6 +165,10 @@ def agent_add_loan(request):
             
             # Create loan with comprehensive details
             agent = Agent.objects.get(user=request.user)
+            assigned_employee = _resolve_employee_for_agent(agent)
+            auto_assign = bool(assigned_employee) and not save_as_draft
+            loan_status = 'waiting' if auto_assign else ('draft' if save_as_draft else 'new_entry')
+            assigned_at = timezone.now() if auto_assign else None
 
             loan_type_map = {
                 'personal': 'personal',
@@ -143,6 +204,7 @@ def agent_add_loan(request):
             loan = Loan.objects.create(
                 # Applicant Information - CORRECTED FIELD NAMES FROM FORM
                 full_name=request.POST.get('name', '').strip() or 'Unknown Applicant',
+                user_id=loan_uid or None,
                 mobile_number=mobile,  # CRITICAL: MUST NOT BE NULL!
                 email=email,
                 
@@ -165,10 +227,11 @@ def agent_add_loan(request):
                 
                 # Assignment
                 assigned_agent=agent,
-                assigned_employee=None,  # Agent creates, admin assigns employee
+                assigned_employee=assigned_employee,
+                assigned_at=assigned_at,
                 
-                # Status (draft or new entry)
-                status='draft' if save_as_draft else 'new_entry',
+                # Status (draft/new entry or auto-assigned waiting)
+                status=loan_status,
                 applicant_type='agent',
                 created_by=request.user,
                 
@@ -369,16 +432,29 @@ def agent_my_applications(request):
         'waiting_for_processing': 'waiting',
         'processing': 'waiting',
         'bank': 'follow_up',
+        'followup_pending': 'follow_up_pending',
     }
     normalized_status = status_alias_map.get(status_filter, status_filter) if status_filter else None
-    if normalized_status:
+    if normalized_status == 'follow_up_pending':
+        loans = all_loans.filter(_follow_up_pending_q())
+    elif normalized_status:
         loans = all_loans.filter(status=normalized_status)
+        if normalized_status in ['new_entry', 'waiting']:
+            loans = loans.exclude(remarks__icontains='Revert Remark ')
     else:
         loans = all_loans
+
+    for loan in loans:
+        loan.has_revert_pending = _is_follow_up_pending(loan)
+    
+    recent_submitted = list(all_loans[:10])
+    for loan in recent_submitted:
+        loan.has_revert_pending = _is_follow_up_pending(loan)
     
     # Get counts by status
     total_count = all_loans.count()
-    processing_count = all_loans.filter(status__in=['new_entry', 'waiting', 'follow_up']).count()
+    follow_up_pending_count = all_loans.filter(_follow_up_pending_q()).count()
+    processing_count = all_loans.filter(status__in=['new_entry', 'waiting', 'follow_up']).exclude(_follow_up_pending_q()).count()
     approved_count = all_loans.filter(status='approved').count()
     rejected_count = all_loans.filter(status='rejected').count()
     disbursed_count = all_loans.filter(status='disbursed').count()
@@ -389,24 +465,133 @@ def agent_my_applications(request):
         'loans': loans,
         'total_count': total_count,
         'processing_count': processing_count,
+        'follow_up_pending_count': follow_up_pending_count,
         'approved_count': approved_count,
         'rejected_count': rejected_count,
         'disbursed_count': disbursed_count,
         'active_count': active_count,
         'status_filter': normalized_status,
-        'recent_submitted': all_loans[:10],
+        'recent_submitted': recent_submitted,
         'focus_loan_id': focus_loan_id,
         'statuses': [
             ('draft', 'Draft'),
             ('new_entry', 'New Entry'),
             ('waiting', 'Processing'),
             ('follow_up', 'Bank Stage'),
+            ('follow_up_pending', 'Follow Up'),
             ('approved', 'Approved'),
             ('rejected', 'Rejected'),
             ('disbursed', 'Disbursed'),
         ]
     }
     return render(request, 'core/agent/my_applications.html', context)
+
+
+@agent_required
+@require_http_methods(["GET", "POST"])
+def agent_resubmit_reverted_loan(request, loan_id):
+    """
+    Agent correction form for reverted applications.
+    Allows updating key fields, replacing one document, and resubmitting
+    directly into Banking Processing.
+    """
+    agent = Agent.objects.get(user=request.user)
+    loan = get_object_or_404(get_agent_loan_queryset(request.user, agent), id=loan_id)
+
+    remarks_text = str(loan.remarks or '')
+    has_revert_history = 'revert remark ' in remarks_text.lower()
+    if not has_revert_history:
+        messages.warning(request, 'This loan does not have a revert remark yet.')
+        return redirect('agent_my_applications')
+
+    if request.method == 'POST':
+        agent_remark = str(request.POST.get('agent_remark', '')).strip()
+        if not agent_remark:
+            messages.error(request, 'Please write agent remark before resubmitting.')
+            return redirect('agent_resubmit_reverted_loan', loan_id=loan.id)
+
+        loan_purpose = str(request.POST.get('loan_purpose', '')).strip()
+        bank_name = str(request.POST.get('bank_name', '')).strip()
+        bank_account_number = str(request.POST.get('bank_account_number', '')).strip()
+        bank_ifsc_code = str(request.POST.get('bank_ifsc_code', '')).strip()
+        document_type = str(request.POST.get('document_type', '')).strip()
+        document_file = request.FILES.get('updated_document')
+
+        valid_document_types = {choice[0] for choice in LoanDocument.DOCUMENT_TYPE_CHOICES}
+        if document_file and not document_type:
+            messages.error(request, 'Please select a document type for uploaded file.')
+            return redirect('agent_resubmit_reverted_loan', loan_id=loan.id)
+        if document_type and document_type not in valid_document_types:
+            messages.error(request, 'Invalid document type selected.')
+            return redirect('agent_resubmit_reverted_loan', loan_id=loan.id)
+
+        if loan_purpose:
+            loan.loan_purpose = loan_purpose
+        if bank_name:
+            loan.bank_name = bank_name
+        if bank_account_number:
+            loan.bank_account_number = bank_account_number
+        if bank_ifsc_code:
+            loan.bank_ifsc_code = bank_ifsc_code
+
+        if document_file and document_type:
+            LoanDocument.objects.update_or_create(
+                loan=loan,
+                document_type=document_type,
+                defaults={
+                    'file': document_file,
+                    'is_required': False,
+                }
+            )
+
+        reply_count = 0
+        for line in remarks_text.splitlines():
+            if str(line).strip().lower().startswith('agent reply '):
+                reply_count += 1
+        reply_reason = f"Agent Reply {reply_count + 1}: {agent_remark}"
+
+        previous_status = loan.status
+        loan.remarks = _append_note_line(loan.remarks, reply_reason)
+        loan.status = 'follow_up'
+        loan.assigned_at = timezone.now()
+        loan.action_taken_at = None
+        loan.is_sm_signed = False
+        loan.sm_signed_at = None
+        loan.save()
+
+        synced_application = sync_loan_to_application(
+            loan,
+            assigned_by_user=request.user,
+            create_if_missing=True,
+        )
+        if synced_application:
+            LoanStatusHistory.objects.create(
+                loan_application=synced_application,
+                from_status=_normalize_history_status(previous_status),
+                to_status='follow_up',
+                changed_by=request.user,
+                reason=reply_reason,
+                is_auto_triggered=False,
+            )
+
+        messages.success(request, 'Application re-submitted to Banking Processing successfully.')
+        return redirect(f"{reverse('agent_my_applications')}?status=follow_up&loan_id={loan.id}")
+
+    documents = LoanDocument.objects.filter(loan=loan).order_by('-uploaded_at')
+    revert_remarks = []
+    for line in remarks_text.splitlines():
+        clean = str(line).strip()
+        if clean.lower().startswith('revert remark '):
+            revert_remarks.append(clean)
+
+    context = {
+        'page_title': 'Reverted Loan Edit',
+        'loan': loan,
+        'documents': documents,
+        'revert_remarks': revert_remarks,
+        'document_type_choices': LoanDocument.DOCUMENT_TYPE_CHOICES,
+    }
+    return render(request, 'core/agent/reverted_loan_edit.html', context)
 
 
 @agent_required
@@ -661,17 +846,19 @@ def api_agent_dashboard_stats(request):
     """
     agent = Agent.objects.get(user=request.user)
     agent_loans = get_agent_loan_queryset(request.user, agent)
+    follow_up_pending_count = agent_loans.filter(_follow_up_pending_q()).count()
     
     data = {
         'total_assigned': agent_loans.count(),
-        'processing': agent_loans.filter(status__in=['new_entry', 'waiting', 'follow_up']).count(),
+        'processing': agent_loans.filter(status__in=['new_entry', 'waiting', 'follow_up']).exclude(_follow_up_pending_q()).count(),
         'approved': agent_loans.filter(status='approved').count(),
         'rejected': agent_loans.filter(status='rejected').count(),
         'disbursed': agent_loans.filter(status='disbursed').count(),
         'total_amount': float(agent_loans.aggregate(Sum('loan_amount'))['loan_amount__sum'] or 0),
-        'new_entry': agent_loans.filter(status='new_entry').count(),
-        'waiting': agent_loans.filter(status='waiting').count(),
+        'new_entry': agent_loans.filter(status='new_entry').exclude(remarks__icontains='Revert Remark ').count(),
+        'waiting': agent_loans.filter(status='waiting').exclude(remarks__icontains='Revert Remark ').count(),
         'bank_stage': agent_loans.filter(status='follow_up').count(),
+        'follow_up_pending': follow_up_pending_count,
         'timestamp': timezone.now().isoformat(),
     }
     
@@ -833,15 +1020,17 @@ def api_agent_recent_entries(request):
         # Format response data
         loans_data = []
         for loan in recent_loans:
+            is_follow_up_pending = _is_follow_up_pending(loan)
+            status_key = 'follow_up_pending' if is_follow_up_pending else loan.status
             loan_data = {
                 'id': loan.id,
                 'applicant_name': loan.full_name or 'N/A',
                 'mobile_number': loan.mobile_number or 'N/A',
                 'loan_type': loan.loan_type or 'N/A',
                 'loan_amount': float(loan.loan_amount or 0),
-                'status': loan.status,
-                'status_label': get_status_label(loan.status),
-                'stage': get_stage_label(loan.status),
+                'status': status_key,
+                'status_label': get_status_label(status_key),
+                'stage': get_stage_label(status_key),
                 'created_at': loan.created_at.strftime('%Y-%m-%d %H:%M:%S'),
                 'assigned_date': loan.updated_at.strftime('%Y-%m-%d') if loan.updated_at else 'N/A',
                 'assigned_employee': loan.assigned_employee.get_full_name() if loan.assigned_employee else 'Pending',
@@ -850,7 +1039,7 @@ def api_agent_recent_entries(request):
                     if loan.assigned_agent and loan.assigned_agent.user
                     else (loan.assigned_agent.name if loan.assigned_agent else 'N/A')
                 ),
-                'status_badge': get_status_badge(loan.status),
+                'status_badge': get_status_badge(status_key),
                 # Open directly in My Applications to avoid applicant-id route mismatch
                 'detail_url': f"{reverse('agent_my_applications')}?loan_id={loan.id}",
             }
@@ -876,6 +1065,7 @@ def get_status_badge(status):
         'waiting_for_processing': 'warning',
         'waiting': 'warning',
         'processing': 'info',
+        'follow_up_pending': 'warning',
         'approved': 'success',
         'rejected': 'danger',
         'disbursed': 'success',
@@ -891,6 +1081,7 @@ def get_status_label(status):
         'waiting': 'Processing',
         'waiting_for_processing': 'Processing',
         'follow_up': 'Bank Stage',
+        'follow_up_pending': 'Follow Up',
         'approved': 'Approved',
         'rejected': 'Rejected',
         'disbursed': 'Disbursed',
@@ -905,6 +1096,7 @@ def get_stage_label(status):
         'waiting': 'Processing',
         'waiting_for_processing': 'Processing',
         'follow_up': 'Bank Stage',
+        'follow_up_pending': 'Follow Up',
         'approved': 'Completed',
         'rejected': 'Closed',
         'disbursed': 'Disbursed',

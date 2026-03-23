@@ -16,8 +16,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 import json
 
-from .models import User, Loan, EmployeeProfile, LoanApplication, Agent
+from .models import User, Loan, EmployeeProfile, LoanApplication, Agent, UserOnboardingProfile, UserOnboardingDocument
 from .decorators import admin_required
+from .onboarding_utils import collect_onboarding_payload, collect_onboarding_documents
 
 
 # ============= PROCESSING REQUESTS / ASSIGN / APPLICATIONS =============
@@ -1101,6 +1102,10 @@ def api_add_agent(request):
             status='active',
             created_by=request.user
         )
+        agent.city = request.POST.get('onb_perm_city', '').strip() or agent.city
+        agent.state = request.POST.get('onb_perm_state', '').strip() or agent.state
+        agent.pin_code = request.POST.get('onb_perm_pin', '').strip() or agent.pin_code
+        agent.save()
 
         # Reuse user photo if available
         if user.profile_photo:
@@ -1109,6 +1114,28 @@ def api_add_agent(request):
         elif profile_photo:
             agent.profile_photo = profile_photo
             agent.save()
+
+        onboarding_payload = collect_onboarding_payload(request)
+        if onboarding_payload:
+            profile, _ = UserOnboardingProfile.objects.get_or_create(
+                user=user,
+                defaults={'role': user.role, 'data': onboarding_payload},
+            )
+            if profile.data != onboarding_payload or profile.role != user.role:
+                profile.data = onboarding_payload
+                profile.role = user.role
+                profile.save()
+
+        for doc_type, doc_file in collect_onboarding_documents(request):
+            if not doc_file:
+                continue
+            if doc_file.size > 10 * 1024 * 1024:
+                continue
+            UserOnboardingDocument.objects.create(
+                user=user,
+                document_type=doc_type or 'other',
+                file=doc_file,
+            )
 
         return JsonResponse({
             'success': True,
@@ -1262,6 +1289,20 @@ def api_get_agent(request, agent_id):
             'total_customers': combined_qs.count(),
         }
 
+        onboarding = {}
+        documents = []
+        if agent_user and hasattr(agent_user, 'onboarding_profile') and agent_user.onboarding_profile:
+            onboarding = agent_user.onboarding_profile.data or {}
+        if agent_user and hasattr(agent_user, 'onboarding_documents'):
+            documents = [
+                {
+                    'type': doc.document_type or 'other',
+                    'url': doc.file.url if doc.file else '',
+                    'uploaded_at': doc.uploaded_at.strftime('%Y-%m-%d %H:%M') if doc.uploaded_at else '',
+                }
+                for doc in agent_user.onboarding_documents.all()
+            ]
+
         return JsonResponse({
             'success': True,
             'agent': {
@@ -1276,6 +1317,8 @@ def api_get_agent(request, agent_id):
             },
             'summary': summary,
             'customers': customers,
+            'onboarding': onboarding,
+            'documents': documents,
         })
     except Exception as e:
         return JsonResponse({

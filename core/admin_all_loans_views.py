@@ -131,7 +131,7 @@ def api_get_all_loans(request):
             
             loans_data.append({
                 'id': loan.id,
-                'loan_id': f"LOAN-{loan.id:06d}",
+                'loan_id': loan.user_id or f"LOAN-{loan.id:06d}",
                 'applicant_name': loan.applicant.full_name,
                 'applicant_email': loan.applicant.email or 'N/A',
                 'applicant_phone': loan.applicant.mobile or 'N/A',

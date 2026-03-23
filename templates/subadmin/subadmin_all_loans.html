@@ -21,7 +21,7 @@
         <p class="text-sm text-gray-600 mt-1">Scoped view of loans under your subadmin team.</p>
     </div>
 
-    <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-7 gap-4">
+    <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-8 gap-4">
         <a href="{% url 'subadmin_all_loans' %}?status=all" class="bg-slate-700 text-white rounded-lg p-4">
             <p class="text-xs uppercase">Total</p>
             <p class="text-2xl font-bold mt-1">{{ stats.total|default:0 }}</p>
@@ -37,6 +37,10 @@
         <a href="{% url 'subadmin_all_loans' %}?status=follow_up" class="bg-cyan-600 text-white rounded-lg p-4">
             <p class="text-xs uppercase">Bank Processing</p>
             <p class="text-2xl font-bold mt-1">{{ stats.follow_up|default:0 }}</p>
+        </a>
+        <a href="{% url 'subadmin_all_loans' %}?status=follow_up_pending" class="bg-orange-600 text-white rounded-lg p-4">
+            <p class="text-xs uppercase">Follow Up</p>
+            <p class="text-2xl font-bold mt-1">{{ stats.follow_up_pending|default:0 }}</p>
         </a>
         <a href="{% url 'subadmin_all_loans' %}?status=approved" class="bg-emerald-600 text-white rounded-lg p-4">
             <p class="text-xs uppercase">Approved</p>
@@ -62,6 +66,7 @@
                 <option value="new_entry" {% if status_filter == 'new_entry' %}selected{% endif %}>New Entry</option>
                 <option value="waiting" {% if status_filter == 'waiting' %}selected{% endif %}>In Processing</option>
                 <option value="follow_up" {% if status_filter == 'follow_up' %}selected{% endif %}>Bank Processing</option>
+                <option value="follow_up_pending" {% if status_filter == 'follow_up_pending' %}selected{% endif %}>Follow Up</option>
                 <option value="approved" {% if status_filter == 'approved' %}selected{% endif %}>Approved</option>
                 <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>Rejected</option>
                 <option value="disbursed" {% if status_filter == 'disbursed' %}selected{% endif %}>Disbursed</option>
@@ -122,7 +127,9 @@
                             <td class="px-4 py-3 text-sm text-gray-700">{{ loan.loan_type }}</td>
                             <td class="px-4 py-3 text-sm font-semibold text-gray-900">Rs. {{ loan.amount|default:0 }}</td>
                             <td class="px-4 py-3 text-sm">
-                                {% if loan.status == 'new_entry' %}
+                                {% if loan.status_key == 'follow_up_pending' %}
+                                    <span class="px-2 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-800">{{ loan.status_display }}</span>
+                                {% elif loan.status == 'new_entry' %}
                                     <span class="px-2 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">{{ loan.status_display }}</span>
                                 {% elif loan.status == 'waiting' %}
                                     <span class="px-2 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">{{ loan.status_display }}</span>
@@ -145,7 +152,9 @@
                             <td class="px-4 py-3 text-sm">
                                 <div class="flex flex-wrap gap-2">
                                     <button type="button" onclick="openLoanDetailsModal({{ loan.id }})" class="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700">View</button>
+                                    {% if loan.status_key != 'follow_up_pending' %}
                                     <button type="button" onclick="openAssignModal({{ loan.id }}, '{{ loan.applicant_name|escapejs }}')" class="px-2 py-1 bg-emerald-600 text-white rounded text-xs hover:bg-emerald-700">Assign</button>
+                                    {% endif %}
                                 </div>
                             </td>
                         </tr>
@@ -357,6 +366,10 @@ function openLoanDetailsModal(loanId) {
                         { label: 'Account Number', value: data.bank_account_number },
                         { label: 'IFSC', value: data.bank_ifsc_code },
                         { label: 'Bank Type', value: data.bank_type },
+                        { label: 'SM Name', value: data.sm_name },
+                        { label: 'SM Phone', value: data.sm_phone_number },
+                        { label: 'SM Email', value: data.sm_email },
+                        { label: 'SM Sign', value: data.is_sm_signed ? `☑ Signed (${data.sm_signed_at || '-'})` : '☐ Pending' },
                         { label: 'Bank Remark', value: data.bank_remark },
                         { label: 'Internal Remark', value: data.remarks },
                     ])}

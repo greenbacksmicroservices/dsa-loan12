@@ -131,9 +131,10 @@
         text-transform: capitalize;
     }
     
-    .status-new-entry { background: #cfe2ff; color: #084298; }
+    .status-new-entry, .status-new_entry { background: #cfe2ff; color: #084298; }
     .status-waiting { background: #fff3cd; color: #997404; }
-    .status-follow-up { background: #d1e7dd; color: #0f5132; }
+    .status-follow-up, .status-follow_up { background: #d1e7dd; color: #0f5132; }
+    .status-follow_up_pending { background: #ffedd5; color: #9a3412; }
     .status-approved { background: #d1e7dd; color: #0f5132; }
     .status-rejected { background: #f8d7da; color: #842029; }
     .status-disbursed { background: #d1e7dd; color: #0f5132; }
@@ -346,7 +347,7 @@
         <!-- Header -->
         <div class="loans-header">
             <div>
-        <h1 class="loans-title">All Loans{% if status_filter %} - {{ status_filter|title }}{% endif %}</h1>
+        <h1 class="loans-title">All Loans{% if status_filter_display %} - {{ status_filter_display }}{% endif %}</h1>
                 <span class="loans-count" id="loansCountText">Total: {{ loans|length }} Loans</span>
             </div>
         </div>
@@ -354,6 +355,7 @@
         <!-- Search Bar -->
         <div class="search-bar">
             <form method="GET" class="row g-3">
+                {% csrf_token %}
                 <div class="col-md-12">
                     <input type="text" name="q" placeholder="Search by borrower name, email, or phone..." 
                            value="{{ search_query }}" class="form-control w-100" id="searchInput" onkeyup="filterTable()">
@@ -397,8 +399,8 @@
                         </td>
                         <td><span class="amount-text">₹{{ loan.loan_amount|floatformat:0 }}</span></td>
                         <td>
-                            <span class="status-badge status-{{ loan.status }}">
-                                {{ loan.get_status_display }}
+                            <span class="status-badge status-{{ loan.status_key_display|default:loan.status }}">
+                                {{ loan.status_display_text|default:loan.get_status_display }}
                             </span>
                         </td>
                         <td><span class="date-text">{{ loan.created_under_display|default:"-" }}</span></td>
@@ -407,14 +409,14 @@
                         <td><span class="date-text">{{ loan.created_at|date:"M d, Y" }}</span></td>
                         <td>
                             <div class="action-buttons">
-                                <a href="#" class="btn-action btn-view" title="View Loan Details" onclick="viewLoanDetail({{ loan.id }}, '{{ loan.full_name|escapejs }}', '{{ loan.email|default:''|escapejs }}', '{{ loan.mobile_number|default:''|escapejs }}', '{{ loan.loan_type|default:''|escapejs }}', '{{ loan.loan_amount|default:'0'|escapejs }}', '{{ loan.status|default:''|escapejs }}'); return false;">
+                                <a href="#" class="btn-action btn-view" title="View Loan Details" onclick="viewLoanDetail({{ loan.id }}, '{{ loan.full_name|escapejs }}', '{{ loan.email|default:''|escapejs }}', '{{ loan.mobile_number|default:''|escapejs }}', '{{ loan.loan_type|default:''|escapejs }}', '{{ loan.loan_amount|default:'0'|escapejs }}', '{{ loan.status_display_text|default:''|escapejs }}'); return false;">
                                     <i class="fas fa-eye"></i> View
                                 </a>
-                                {% if loan.status == 'new_entry' %}
+                                {% if loan.status_key_display|default:loan.status == 'new_entry' %}
                                 <a href="#" class="btn-action btn-assign" title="Assign to Employee" onclick="openAssignModal({{ loan.id }}, '{{ loan.full_name|escapejs }}', 'assign'); return false;">
                                     <i class="fas fa-user-plus"></i> Assign
                                 </a>
-                                {% elif loan.status == 'follow_up' %}
+                                {% elif loan.status_key_display|default:loan.status == 'follow_up' %}
                                 <a href="#" class="btn-action btn-reassign" title="Reassign to Employee" onclick="openAssignModal({{ loan.id }}, '{{ loan.full_name|escapejs }}', 'reassign'); return false;">
                                     <i class="fas fa-user-clock"></i> Reassign
                                 </a>
@@ -696,11 +698,11 @@
                 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px; margin-top: 15px;">
                     <div>
-                        <p style="color: #718096; font-size: 11px; margin: 0 0 8px 0; text-transform: uppercase; font-weight: 700;">Bank Name *</p>
+                        <p style="color: #718096; font-size: 11px; margin: 0 0 8px 0; text-transform: uppercase; font-weight: 700;">Bank Name</p>
                         <p style="color: #1a202c; font-size: 14px; font-weight: 600; margin: 0;" id="detailBankName">-</p>
                     </div>
                     <div>
-                        <p style="color: #718096; font-size: 11px; margin: 0 0 8px 0; text-transform: uppercase; font-weight: 700;">Account Number *</p>
+                        <p style="color: #718096; font-size: 11px; margin: 0 0 8px 0; text-transform: uppercase; font-weight: 700;">Account Number</p>
                         <p style="color: #1a202c; font-size: 14px; font-weight: 600; margin: 0;" id="detailAccNumber">-</p>
                     </div>
                     <div>
@@ -710,6 +712,22 @@
                     <div>
                         <p style="color: #718096; font-size: 11px; margin: 0 0 8px 0; text-transform: uppercase; font-weight: 700;">Bank Type</p>
                         <p style="color: #1a202c; font-size: 14px; font-weight: 600; margin: 0;" id="detailBankType">-</p>
+                    </div>
+                    <div>
+                        <p style="color: #718096; font-size: 11px; margin: 0 0 8px 0; text-transform: uppercase; font-weight: 700;">SM Name</p>
+                        <p style="color: #1a202c; font-size: 14px; font-weight: 600; margin: 0;" id="detailSmName">-</p>
+                    </div>
+                    <div>
+                        <p style="color: #718096; font-size: 11px; margin: 0 0 8px 0; text-transform: uppercase; font-weight: 700;">SM Phone Number</p>
+                        <p style="color: #1a202c; font-size: 14px; font-weight: 600; margin: 0;" id="detailSmPhone">-</p>
+                    </div>
+                    <div>
+                        <p style="color: #718096; font-size: 11px; margin: 0 0 8px 0; text-transform: uppercase; font-weight: 700;">SM Email</p>
+                        <p style="color: #1a202c; font-size: 14px; font-weight: 600; margin: 0;" id="detailSmEmail">-</p>
+                    </div>
+                    <div>
+                        <p style="color: #718096; font-size: 11px; margin: 0 0 8px 0; text-transform: uppercase; font-weight: 700;">SM Sign</p>
+                        <p style="color: #1a202c; font-size: 14px; font-weight: 600; margin: 0;" id="detailSmSign">-</p>
                     </div>
                 </div>
             </div>
@@ -721,6 +739,27 @@
             <div style="margin-top: 16px;">
                 <p style="color: #718096; font-size: 11px; margin: 0 0 8px 0; text-transform: uppercase; font-weight: 700;">Processing / Action Notes</p>
                 <pre id="detailProcessingRemarks" style="white-space: pre-wrap; margin: 0; color: #1a202c; font-size: 13px; font-family: inherit; font-weight: 600; background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0;">-</pre>
+            </div>
+            <div style="margin-top: 16px;">
+                <p style="color: #718096; font-size: 11px; margin: 0 0 8px 0; text-transform: uppercase; font-weight: 700;">Disbursement Snapshot</p>
+                <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;">
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px;">
+                        <p style="margin: 0 0 5px 0; color: #64748b; font-size: 11px;">Disbursed Amount</p>
+                        <p style="margin: 0; color: #1a202c; font-weight: 700;" id="detailDisbursedAmount">-</p>
+                    </div>
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px;">
+                        <p style="margin: 0 0 5px 0; color: #64748b; font-size: 11px;">Disbursed At</p>
+                        <p style="margin: 0; color: #1a202c; font-weight: 700;" id="detailDisbursedAt">-</p>
+                    </div>
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px;">
+                        <p style="margin: 0 0 5px 0; color: #64748b; font-size: 11px;">Disbursed By</p>
+                        <p style="margin: 0; color: #1a202c; font-weight: 700;" id="detailDisbursedBy">-</p>
+                    </div>
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px;">
+                        <p style="margin: 0 0 5px 0; color: #64748b; font-size: 11px;">Disbursement Notes</p>
+                        <p style="margin: 0; color: #1a202c; font-weight: 700; white-space: pre-wrap;" id="detailDisbursementNotes">-</p>
+                    </div>
+                </div>
             </div>
         </div>
         
@@ -803,9 +842,9 @@
         <div style="margin-bottom: 30px;">
             <p style="color: #1a202c; font-size: 14px; font-weight: 700; margin-bottom: 15px;">Select Action:</p>
             
-            <div style="display: grid; grid-template-columns: 1fr; gap: 15px;">
+            <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: stretch;">
                 <!-- Approve Option -->
-                <div style="border: 2px solid #dcfce7; border-radius: 8px; padding: 15px; cursor: pointer; transition: all 0.2s;" onclick="selectAction('approve')" id="approveOption">
+                <div style="border: 2px solid #dcfce7; border-radius: 8px; padding: 15px; cursor: pointer; transition: all 0.2s; flex: 1 1 180px;" onclick="selectAction('approve')" id="approveOption">
                     <div style="display: flex; align-items: center; gap: 12px;">
                         <div style="width: 20px; height: 20px; border: 2px solid #10b981; border-radius: 50%; display: flex; align-items: center; justify-content: center;" id="approveRadio">
                             <div style="display: none; width: 10px; height: 10px; background: #10b981; border-radius: 50%;"></div>
@@ -818,7 +857,7 @@
                 </div>
 
                 <!-- Reject Option -->
-                <div style="border: 2px solid #fee2e2; border-radius: 8px; padding: 15px; cursor: pointer; transition: all 0.2s;" onclick="selectAction('reject')" id="rejectOption">
+                <div style="border: 2px solid #fee2e2; border-radius: 8px; padding: 15px; cursor: pointer; transition: all 0.2s; flex: 1 1 180px;" onclick="selectAction('reject')" id="rejectOption">
                     <div style="display: flex; align-items: center; gap: 12px;">
                         <div style="width: 20px; height: 20px; border: 2px solid #dc2626; border-radius: 50%; display: flex; align-items: center; justify-content: center;" id="rejectRadio">
                             <div style="display: none; width: 10px; height: 10px; background: #dc2626; border-radius: 50%;"></div>
@@ -831,7 +870,7 @@
                 </div>
                 
                 <!-- Disbursed Option -->
-                <div style="border: 2px solid #dcfce7; border-radius: 8px; padding: 15px; cursor: pointer; transition: all 0.2s;" onclick="selectAction('disburse')" id="disburseOption">
+                <div style="border: 2px solid #dcfce7; border-radius: 8px; padding: 15px; cursor: pointer; transition: all 0.2s; flex: 1 1 180px;" onclick="selectAction('disburse')" id="disburseOption">
                     <div style="display: flex; align-items: center; gap: 12px;">
                         <div style="width: 20px; height: 20px; border: 2px solid #10b981; border-radius: 50%; display: flex; align-items: center; justify-content: center;" id="disburseRadio">
                             <div style="display: none; width: 10px; height: 10px; background: #10b981; border-radius: 50%;"></div>
@@ -843,15 +882,15 @@
                     </div>
                 </div>
 
-                <!-- ForClose Option -->
-                <div style="border: 2px solid #fef3c7; border-radius: 8px; padding: 15px; cursor: pointer; transition: all 0.2s;" onclick="selectAction('forclose')" id="forcloseOption">
+                <!-- Update Details Option -->
+                <div style="border: 2px solid #dbeafe; border-radius: 8px; padding: 15px; cursor: pointer; transition: all 0.2s; flex: 1 1 180px;" onclick="selectAction('update_disbursed')" id="updateDisbursedOption">
                     <div style="display: flex; align-items: center; gap: 12px;">
-                        <div style="width: 20px; height: 20px; border: 2px solid #f59e0b; border-radius: 50%; display: flex; align-items: center; justify-content: center;" id="forcloseRadio">
-                            <div style="display: none; width: 10px; height: 10px; background: #f59e0b; border-radius: 50%;"></div>
+                        <div style="width: 20px; height: 20px; border: 2px solid #2563eb; border-radius: 50%; display: flex; align-items: center; justify-content: center;" id="updateDisbursedRadio">
+                            <div style="display: none; width: 10px; height: 10px; background: #2563eb; border-radius: 50%;"></div>
                         </div>
                         <div>
-                            <p style="color: #f59e0b; font-weight: 700; margin: 0 0 5px 0; font-size: 14px;">Mark as ForClose</p>
-                            <p style="color: #666; margin: 0; font-size: 12px;">Loan application closed for further processing</p>
+                            <p id="updateDetailsTitle" style="color: #2563eb; font-weight: 700; margin: 0 0 5px 0; font-size: 14px;">Update Loan Details</p>
+                            <p id="updateDetailsSubtitle" style="color: #666; margin: 0; font-size: 12px;">Edit applicant, loan, and remark details for this loan</p>
                         </div>
                     </div>
                 </div>
@@ -870,10 +909,175 @@
             <textarea id="disbursementNotes" style="width: 100%; padding: 12px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 14px; font-family: inherit; resize: vertical; min-height: 100px; box-sizing: border-box;" placeholder="Add any notes about the disbursement (e.g., reference number, bank details verification, etc.)"></textarea>
         </div>
 
-        <!-- ForClose Details -->
-        <div id="forcloseDetailsDiv" style="display: none; margin-bottom: 30px;">
-            <label style="display: block; color: #1a202c; font-weight: 700; margin-bottom: 10px; font-size: 14px;">ForClose Reason (Optional)</label>
-            <textarea id="forcloseNotes" style="width: 100%; padding: 12px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 14px; font-family: inherit; resize: vertical; min-height: 100px; box-sizing: border-box;" placeholder="Provide reason for closing this loan application (e.g., applicant request, incomplete documents, etc.)"></textarea>
+        <!-- Disbursed Edit Details -->
+        <div id="disbursedEditDiv" style="display: none; margin-bottom: 30px;">
+            <p style="margin: 0 0 6px 0; color: #1a202c; font-weight: 700; font-size: 14px;">Loan Detail Update</p>
+            <p id="editDetailNote" style="margin: 0 0 12px 0; color: #64748b; font-size: 12px;">Disbursement fields apply only after the loan is disbursed.</p>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                <div>
+                    <label style="display: block; color: #334155; font-weight: 700; margin-bottom: 6px; font-size: 12px;">Applicant Name</label>
+                    <input id="editApplicantName" type="text" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px;">
+                </div>
+                <div>
+                    <label style="display: block; color: #334155; font-weight: 700; margin-bottom: 6px; font-size: 12px;">Mobile Number</label>
+                    <input id="editApplicantMobile" type="text" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px;">
+                </div>
+                <div>
+                    <label style="display: block; color: #334155; font-weight: 700; margin-bottom: 6px; font-size: 12px;">Email</label>
+                    <input id="editApplicantEmail" type="email" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px;">
+                </div>
+                <div>
+                    <label style="display: block; color: #334155; font-weight: 700; margin-bottom: 6px; font-size: 12px;">City</label>
+                    <input id="editApplicantCity" type="text" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px;">
+                </div>
+                <div>
+                    <label style="display: block; color: #334155; font-weight: 700; margin-bottom: 6px; font-size: 12px;">State</label>
+                    <input id="editApplicantState" type="text" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px;">
+                </div>
+                <div>
+                    <label style="display: block; color: #334155; font-weight: 700; margin-bottom: 6px; font-size: 12px;">PIN Code</label>
+                    <input id="editApplicantPin" type="text" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px;">
+                </div>
+                <div style="grid-column: 1 / -1;">
+                    <label style="display: block; color: #334155; font-weight: 700; margin-bottom: 6px; font-size: 12px;">Permanent Address</label>
+                    <textarea id="editApplicantPermanentAddress" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px; min-height: 70px; resize: vertical;"></textarea>
+                </div>
+                <div style="grid-column: 1 / -1;">
+                    <label style="display: block; color: #334155; font-weight: 700; margin-bottom: 6px; font-size: 12px;">Present Address</label>
+                    <textarea id="editApplicantCurrentAddress" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px; min-height: 70px; resize: vertical;"></textarea>
+                </div>
+                <div>
+                    <label style="display: block; color: #334155; font-weight: 700; margin-bottom: 6px; font-size: 12px;">Loan Type</label>
+                    <select id="editApplicantLoanType" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px;">
+                        <option value="">Select</option>
+                        <option value="personal">Personal Loan</option>
+                        <option value="lap">LAP (Loan Against Property)</option>
+                        <option value="home">Home Loan</option>
+                        <option value="business">Business Loan</option>
+                        <option value="education">Education Loan</option>
+                        <option value="car">Car Loan</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="display: block; color: #334155; font-weight: 700; margin-bottom: 6px; font-size: 12px;">Loan Amount</label>
+                    <input id="editApplicantLoanAmount" type="number" min="0" step="0.01" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px;">
+                </div>
+                <div>
+                    <label style="display: block; color: #334155; font-weight: 700; margin-bottom: 6px; font-size: 12px;">Tenure (Months)</label>
+                    <input id="editLoanTenure" type="number" min="0" step="1" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px;">
+                </div>
+                <div>
+                    <label style="display: block; color: #334155; font-weight: 700; margin-bottom: 6px; font-size: 12px;">Interest Rate (%)</label>
+                    <input id="editLoanInterestRate" type="number" min="0" step="0.01" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px;">
+                </div>
+                <div style="grid-column: 1 / -1;">
+                    <label style="display: block; color: #334155; font-weight: 700; margin-bottom: 6px; font-size: 12px;">Loan Purpose</label>
+                    <textarea id="editLoanPurpose" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px; min-height: 60px; resize: vertical;"></textarea>
+                </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                <div>
+                    <label style="display: block; color: #334155; font-weight: 700; margin-bottom: 6px; font-size: 12px;">Bank Name</label>
+                    <input id="editBankName" type="text" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px;">
+                </div>
+                <div>
+                    <label style="display: block; color: #334155; font-weight: 700; margin-bottom: 6px; font-size: 12px;">Account Number</label>
+                    <input id="editBankAccount" type="text" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px;">
+                </div>
+                <div>
+                    <label style="display: block; color: #334155; font-weight: 700; margin-bottom: 6px; font-size: 12px;">IFSC Code</label>
+                    <input id="editBankIfsc" type="text" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px;">
+                </div>
+                <div>
+                    <label style="display: block; color: #334155; font-weight: 700; margin-bottom: 6px; font-size: 12px;">Bank Type</label>
+                    <select id="editBankType" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px;">
+                        <option value="">Select</option>
+                        <option value="private">Private</option>
+                        <option value="government">Government</option>
+                        <option value="cooperative">Cooperative</option>
+                        <option value="nbfc">NBFC</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="display: block; color: #334155; font-weight: 700; margin-bottom: 6px; font-size: 12px;">Disbursed Amount</label>
+                    <input id="editDisbursedAmount" type="number" min="0" step="0.01" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px;">
+                </div>
+                <div>
+                    <label style="display: block; color: #334155; font-weight: 700; margin-bottom: 6px; font-size: 12px;">Disbursed Date</label>
+                    <input id="editDisbursedDate" type="date" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px;">
+                </div>
+                <div>
+                    <label style="display: block; color: #334155; font-weight: 700; margin-bottom: 6px; font-size: 12px;">SM Name</label>
+                    <input id="editSmName" type="text" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px;">
+                </div>
+                <div>
+                    <label style="display: block; color: #334155; font-weight: 700; margin-bottom: 6px; font-size: 12px;">SM Phone Number</label>
+                    <input id="editSmPhone" type="text" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px;">
+                </div>
+                <div style="grid-column: 1 / -1;">
+                    <label style="display: block; color: #334155; font-weight: 700; margin-bottom: 6px; font-size: 12px;">SM Email</label>
+                    <input id="editSmEmail" type="email" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px;">
+                </div>
+            </div>
+            <div style="margin-bottom: 12px; padding: 12px; border: 1px dashed #e5e7eb; border-radius: 8px;">
+                <p style="margin: 0 0 10px 0; font-weight: 700; color: #1a202c; font-size: 13px;">Co-Applicant Details</p>
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: #334155; margin-bottom: 10px;">
+                    <input id="editHasCoApplicant" type="checkbox" style="width: 16px; height: 16px;">
+                    Has Co-Applicant
+                </label>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <div>
+                        <label style="display: block; color: #334155; font-weight: 700; margin-bottom: 6px; font-size: 12px;">Co-Applicant Name</label>
+                        <input id="editCoApplicantName" type="text" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px;">
+                    </div>
+                    <div>
+                        <label style="display: block; color: #334155; font-weight: 700; margin-bottom: 6px; font-size: 12px;">Co-Applicant Phone</label>
+                        <input id="editCoApplicantPhone" type="text" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px;">
+                    </div>
+                    <div style="grid-column: 1 / -1;">
+                        <label style="display: block; color: #334155; font-weight: 700; margin-bottom: 6px; font-size: 12px;">Co-Applicant Email</label>
+                        <input id="editCoApplicantEmail" type="email" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px;">
+                    </div>
+                </div>
+            </div>
+            <div style="margin-bottom: 12px; padding: 12px; border: 1px dashed #e5e7eb; border-radius: 8px;">
+                <p style="margin: 0 0 10px 0; font-weight: 700; color: #1a202c; font-size: 13px;">Guarantor Details</p>
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: #334155; margin-bottom: 10px;">
+                    <input id="editHasGuarantor" type="checkbox" style="width: 16px; height: 16px;">
+                    Has Guarantor
+                </label>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <div>
+                        <label style="display: block; color: #334155; font-weight: 700; margin-bottom: 6px; font-size: 12px;">Guarantor Name</label>
+                        <input id="editGuarantorName" type="text" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px;">
+                    </div>
+                    <div>
+                        <label style="display: block; color: #334155; font-weight: 700; margin-bottom: 6px; font-size: 12px;">Guarantor Phone</label>
+                        <input id="editGuarantorPhone" type="text" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px;">
+                    </div>
+                    <div style="grid-column: 1 / -1;">
+                        <label style="display: block; color: #334155; font-weight: 700; margin-bottom: 6px; font-size: 12px;">Guarantor Email</label>
+                        <input id="editGuarantorEmail" type="email" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px;">
+                    </div>
+                </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                <input id="editIsSmSigned" type="checkbox" style="width: 16px; height: 16px;">
+                <label for="editIsSmSigned" style="color: #1a202c; font-size: 13px; font-weight: 600; margin: 0;">SM Sign Completed</label>
+            </div>
+            <div style="margin-bottom: 12px;">
+                <label style="display: block; color: #334155; font-weight: 700; margin-bottom: 6px; font-size: 12px;">SM Signed At (Optional)</label>
+                <input id="editSmSignedAt" type="datetime-local" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px;">
+            </div>
+            <div style="margin-bottom: 12px;">
+                <label style="display: block; color: #334155; font-weight: 700; margin-bottom: 6px; font-size: 12px;">Remarks / Suggestions</label>
+                <textarea id="editDisbursedRemarks" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px; min-height: 80px; resize: vertical;"></textarea>
+            </div>
+            <div>
+                <label style="display: block; color: #334155; font-weight: 700; margin-bottom: 6px; font-size: 12px;">Processing / Action Notes</label>
+                <textarea id="editProcessingRemarks" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px; min-height: 90px; resize: vertical;"></textarea>
+            </div>
         </div>
         
         <!-- Action Buttons -->
@@ -891,6 +1095,141 @@ let currentAction = null;
 let currentAssignLoanId = null;
 let currentAssignMode = 'assign';
 let assignmentEmployeesCache = null;
+let currentLoanStatusKey = '';
+let currentLoanDetails = null;
+
+function normalizeStatusKey(value) {
+    const raw = String(value || '').trim().toLowerCase();
+    if (!raw) return '';
+    if (raw === 'new entry') return 'new_entry';
+    if (raw === 'waiting for processing') return 'waiting';
+    if (raw === 'banking processing' || raw === 'required follow-up') return 'follow_up';
+    if (raw === 'follow up') return 'follow_up_pending';
+    return raw.replace(/\s+/g, '_');
+}
+
+function formatDateForInput(value) {
+    if (!value || value === '-') return '';
+    const text = String(value).trim();
+    const match = text.match(/^(\d{4}-\d{2}-\d{2})/);
+    return match ? match[1] : '';
+}
+
+function formatDateTimeForInput(value) {
+    if (!value || value === '-') return '';
+    const text = String(value).trim().replace(' ', 'T');
+    const match = text.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/);
+    return match ? `${match[1]}T${match[2]}` : '';
+}
+
+function formatMoney(value) {
+    const amount = Number(value);
+    if (!Number.isFinite(amount) || amount <= 0) return '-';
+    return `Rs ${amount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+}
+
+function normalizeLoanTypeKey(value) {
+    const raw = String(value || '').toLowerCase().trim();
+    if (!raw) return '';
+    const map = {
+        'personal loan': 'personal',
+        'personal': 'personal',
+        'lap': 'lap',
+        'loan against property': 'lap',
+        'home loan': 'home',
+        'home': 'home',
+        'business loan': 'business',
+        'business': 'business',
+        'education loan': 'education',
+        'education': 'education',
+        'car loan': 'car',
+        'car': 'car',
+        'other': 'other',
+    };
+    return map[raw] || raw;
+}
+
+function normalizeBankTypeKey(value) {
+    const raw = String(value || '').toLowerCase().trim();
+    if (!raw) return '';
+    const map = {
+        'private': 'private',
+        'government': 'government',
+        'cooperative': 'cooperative',
+        'nbfc': 'nbfc',
+    };
+    return map[raw] || raw;
+}
+
+function toggleDisbursedUpdateOption(statusKey) {
+    const option = document.getElementById('updateDisbursedOption');
+    if (!option) return;
+    const title = document.getElementById('updateDetailsTitle');
+    const subtitle = document.getElementById('updateDetailsSubtitle');
+    const note = document.getElementById('editDetailNote');
+    const isDisbursed = statusKey === 'disbursed';
+    option.style.display = 'block';
+    if (title) title.textContent = isDisbursed ? 'Update Disbursed Details' : 'Update Loan Details';
+    if (subtitle) subtitle.textContent = isDisbursed
+        ? 'Edit disbursement, sign, and remark details for this already-disbursed loan'
+        : 'Edit applicant, loan, and remark details for this loan';
+    if (note) note.textContent = isDisbursed
+        ? 'Update disbursement and sign details for this loan.'
+        : 'Disbursement fields apply only after the loan is disbursed.';
+}
+
+function prefillDisbursedEditFields(data) {
+    const payload = data || {};
+    const amountValue = payload.disbursement_amount;
+    document.getElementById('editDisbursedAmount').value =
+        (amountValue === null || amountValue === undefined || amountValue === '' || amountValue === '-') ? '' : amountValue;
+    document.getElementById('editDisbursedDate').value = formatDateForInput(payload.disbursed_at);
+    document.getElementById('editSmName').value = payload.sm_name && payload.sm_name !== '-' ? payload.sm_name : '';
+    document.getElementById('editSmPhone').value = payload.sm_phone_number && payload.sm_phone_number !== '-' ? payload.sm_phone_number : '';
+    document.getElementById('editSmEmail').value = payload.sm_email && payload.sm_email !== '-' ? payload.sm_email : '';
+    document.getElementById('editApplicantName').value = payload.full_name && payload.full_name !== '-' ? payload.full_name : '';
+    document.getElementById('editApplicantMobile').value = payload.mobile_number && payload.mobile_number !== '-' ? payload.mobile_number : '';
+    document.getElementById('editApplicantEmail').value = payload.email && payload.email !== '-' ? payload.email : '';
+    document.getElementById('editApplicantCity').value = payload.city && payload.city !== '-' ? payload.city : '';
+    document.getElementById('editApplicantState').value = payload.state && payload.state !== '-' ? payload.state : '';
+    document.getElementById('editApplicantPin').value = payload.pin_code && payload.pin_code !== '-' ? payload.pin_code : '';
+    document.getElementById('editApplicantPermanentAddress').value =
+        (payload.permanent_address && payload.permanent_address !== '-') ? payload.permanent_address
+        : (payload.permanent_address_line1 && payload.permanent_address_line1 !== '-' ? payload.permanent_address_line1 : '');
+    document.getElementById('editApplicantCurrentAddress').value =
+        (payload.current_address && payload.current_address !== '-') ? payload.current_address
+        : (payload.present_address_line1 && payload.present_address_line1 !== '-' ? payload.present_address_line1 : '');
+    const loanTypeKey = normalizeLoanTypeKey(payload.loan_type_key || payload.loan_type_raw || payload.loan_type);
+    document.getElementById('editApplicantLoanType').value = loanTypeKey || '';
+    document.getElementById('editApplicantLoanAmount').value =
+        (payload.loan_amount === null || payload.loan_amount === undefined || payload.loan_amount === '' || payload.loan_amount === '-') ? '' : payload.loan_amount;
+    document.getElementById('editLoanTenure').value =
+        (payload.tenure_months === null || payload.tenure_months === undefined || payload.tenure_months === '' || payload.tenure_months === '-') ? '' : payload.tenure_months;
+    document.getElementById('editLoanInterestRate').value =
+        (payload.interest_rate === null || payload.interest_rate === undefined || payload.interest_rate === '' || payload.interest_rate === '-') ? '' : payload.interest_rate;
+    document.getElementById('editLoanPurpose').value = payload.loan_purpose && payload.loan_purpose !== '-' ? payload.loan_purpose : '';
+    document.getElementById('editBankName').value = payload.bank_name && payload.bank_name !== '-' ? payload.bank_name : '';
+    document.getElementById('editBankAccount').value =
+        (payload.account_number && payload.account_number !== '-') ? payload.account_number
+        : (payload.bank_account_number && payload.bank_account_number !== '-' ? payload.bank_account_number : '');
+    document.getElementById('editBankIfsc').value =
+        (payload.ifsc_code && payload.ifsc_code !== '-') ? payload.ifsc_code
+        : (payload.bank_ifsc_code && payload.bank_ifsc_code !== '-' ? payload.bank_ifsc_code : '');
+    const bankTypeKey = normalizeBankTypeKey(payload.bank_type_key || payload.bank_type);
+    document.getElementById('editBankType').value = bankTypeKey || '';
+    document.getElementById('editIsSmSigned').checked = !!payload.is_sm_signed;
+    document.getElementById('editSmSignedAt').value = formatDateTimeForInput(payload.sm_signed_at);
+    document.getElementById('editDisbursedRemarks').value = payload.remarks && payload.remarks !== '-' ? payload.remarks : '';
+    document.getElementById('editProcessingRemarks').value = payload.processing_remarks && payload.processing_remarks !== '-' ? payload.processing_remarks : '';
+    document.getElementById('editHasCoApplicant').checked = !!payload.has_co_applicant;
+    document.getElementById('editCoApplicantName').value = payload.co_applicant_name && payload.co_applicant_name !== '-' ? payload.co_applicant_name : '';
+    document.getElementById('editCoApplicantPhone').value = payload.co_applicant_phone && payload.co_applicant_phone !== '-' ? payload.co_applicant_phone : '';
+    document.getElementById('editCoApplicantEmail').value = payload.co_applicant_email && payload.co_applicant_email !== '-' ? payload.co_applicant_email : '';
+    document.getElementById('editHasGuarantor').checked = !!payload.has_guarantor;
+    document.getElementById('editGuarantorName').value = payload.guarantor_name && payload.guarantor_name !== '-' ? payload.guarantor_name : '';
+    document.getElementById('editGuarantorPhone').value = payload.guarantor_phone && payload.guarantor_phone !== '-' ? payload.guarantor_phone : '';
+    document.getElementById('editGuarantorEmail').value = payload.guarantor_email && payload.guarantor_email !== '-' ? payload.guarantor_email : '';
+}
 
 // Close modal on ESC key
 document.addEventListener('keydown', function(event) {
@@ -1172,7 +1511,7 @@ function viewLoanDetail(id, name, email, phone, loanType, amount, status) {
 // Populate Detail Modal with data
 function populateDetailModal(data) {
     setText('detailLoanUid', data.user_id || data.id || '-');
-    setText('detailStatusText', data.status || data.status_display || '-');
+    setText('detailStatusText', data.status_display || data.status || '-');
     setText('detailCreatedBy', data.created_by_display || '-');
     setText('detailAssignedEmployee', data.assigned_employee_name || '-');
     setText('detailAssignedAgent', data.assigned_agent_name || '-');
@@ -1255,11 +1594,19 @@ function populateDetailModal(data) {
     if (bankTypeEl) {
         bankTypeEl.textContent = data.bank_type || '-';
     }
+    setText('detailSmName', data.sm_name || '-');
+    setText('detailSmPhone', data.sm_phone_number || '-');
+    setText('detailSmEmail', data.sm_email || '-');
+    setText('detailSmSign', data.is_sm_signed ? `☑ Signed (${data.sm_signed_at || '-'})` : '☐ Pending');
     setText('detailRemarks', data.remarks || '-');
     const processingRemarksEl = document.getElementById('detailProcessingRemarks');
     if (processingRemarksEl) {
         processingRemarksEl.textContent = data.processing_remarks || '-';
     }
+    setText('detailDisbursedAmount', formatMoney(data.disbursement_amount));
+    setText('detailDisbursedAt', data.disbursed_at || '-');
+    setText('detailDisbursedBy', data.disbursed_by_name || '-');
+    setText('detailDisbursementNotes', data.disbursement_notes || '-');
     const declarationEl = document.getElementById('detailDeclaration');
     if (declarationEl) {
         declarationEl.textContent = data.declaration || 'I hereby declare that the above information given by me is true and correct.';
@@ -1298,6 +1645,14 @@ function populateDetailModalFallback(name, email, phone, loanType, amount, statu
     if (processingRemarksEl) {
         processingRemarksEl.textContent = '-';
     }
+    setText('detailSmName', '-');
+    setText('detailSmPhone', '-');
+    setText('detailSmEmail', '-');
+    setText('detailSmSign', '-');
+    setText('detailDisbursedAmount', '-');
+    setText('detailDisbursedAt', '-');
+    setText('detailDisbursedBy', '-');
+    setText('detailDisbursementNotes', '-');
     const fullDetailsContainer = document.getElementById('fullDetailsContainer');
     if (fullDetailsContainer) {
         fullDetailsContainer.innerHTML = '<p style="color: #999; text-align: center; padding: 20px;">No additional details available</p>';
@@ -1458,9 +1813,13 @@ function openEditModal() {
     })
     .then(payload => {
         const data = payload && payload.data ? payload.data : payload;
+        currentLoanDetails = data || {};
+        currentLoanStatusKey = normalizeStatusKey((data && (data.status_key || data.status_raw || data.status)) || '');
         document.getElementById('editBorrowerName').textContent = data.full_name || '-';
         document.getElementById('editLoanAmount').textContent = 'Rs ' + Number(data.loan_amount || 0).toLocaleString('en-IN');
-        document.getElementById('editCurrentStatus').textContent = data.status || '-';
+        document.getElementById('editCurrentStatus').textContent = data.status_display || data.status || '-';
+        toggleDisbursedUpdateOption(currentLoanStatusKey);
+        prefillDisbursedEditFields(data);
         
         resetActionSelection();
         const modal = document.getElementById('loanEditModal');
@@ -1474,9 +1833,13 @@ function openEditModal() {
         const fallbackStatus = document.getElementById('detailStatus')?.textContent
             || document.getElementById('detailStatusText')?.textContent
             || '-';
+        currentLoanDetails = null;
+        currentLoanStatusKey = normalizeStatusKey(fallbackStatus);
         document.getElementById('editBorrowerName').textContent = fallbackName;
         document.getElementById('editLoanAmount').textContent = fallbackAmount;
         document.getElementById('editCurrentStatus').textContent = fallbackStatus;
+        toggleDisbursedUpdateOption(currentLoanStatusKey);
+        prefillDisbursedEditFields({});
         
         resetActionSelection();
         const modal = document.getElementById('loanEditModal');
@@ -1500,21 +1863,26 @@ function resetActionSelection() {
     currentAction = null;
     document.getElementById('rejectionReasonDiv').style.display = 'none';
     document.getElementById('disbursementDetailsDiv').style.display = 'none';
-    document.getElementById('forcloseDetailsDiv').style.display = 'none';
+    document.getElementById('disbursedEditDiv').style.display = 'none';
     document.getElementById('submitActionBtn').style.display = 'none';
     document.getElementById('rejectionReason').value = '';
     document.getElementById('disbursementNotes').value = '';
-    document.getElementById('forcloseNotes').value = '';
     
     // Reset radio buttons
     document.getElementById('approveOption').style.borderColor = '#dcfce7';
     document.getElementById('rejectOption').style.borderColor = '#fee2e2';
     document.getElementById('disburseOption').style.borderColor = '#dcfce7';
-    document.getElementById('forcloseOption').style.borderColor = '#fef3c7';
+    const updateDisbursedOption = document.getElementById('updateDisbursedOption');
+    if (updateDisbursedOption) {
+        updateDisbursedOption.style.borderColor = '#dbeafe';
+    }
     document.getElementById('approveRadio').querySelector('div').style.display = 'none';
     document.getElementById('rejectRadio').querySelector('div').style.display = 'none';
     document.getElementById('disburseRadio').querySelector('div').style.display = 'none';
-    document.getElementById('forcloseRadio').querySelector('div').style.display = 'none';
+    const updateDisbursedRadio = document.getElementById('updateDisbursedRadio');
+    if (updateDisbursedRadio) {
+        updateDisbursedRadio.querySelector('div').style.display = 'none';
+    }
 }
 
 // Select action
@@ -1523,15 +1891,21 @@ function selectAction(action) {
     document.getElementById('approveOption').style.borderColor = action === 'approve' ? '#10b981' : '#dcfce7';
     document.getElementById('rejectOption').style.borderColor = action === 'reject' ? '#dc2626' : '#fee2e2';
     document.getElementById('disburseOption').style.borderColor = action === 'disburse' ? '#10b981' : '#dcfce7';
-    document.getElementById('forcloseOption').style.borderColor = action === 'forclose' ? '#f59e0b' : '#fef3c7';
+    const updateDisbursedOption = document.getElementById('updateDisbursedOption');
+    if (updateDisbursedOption && updateDisbursedOption.style.display !== 'none') {
+        updateDisbursedOption.style.borderColor = action === 'update_disbursed' ? '#2563eb' : '#dbeafe';
+    }
     document.getElementById('approveRadio').querySelector('div').style.display = action === 'approve' ? 'block' : 'none';
     document.getElementById('rejectRadio').querySelector('div').style.display = action === 'reject' ? 'block' : 'none';
     document.getElementById('disburseRadio').querySelector('div').style.display = action === 'disburse' ? 'block' : 'none';
-    document.getElementById('forcloseRadio').querySelector('div').style.display = action === 'forclose' ? 'block' : 'none';
+    const updateDisbursedRadio = document.getElementById('updateDisbursedRadio');
+    if (updateDisbursedRadio) {
+        updateDisbursedRadio.querySelector('div').style.display = action === 'update_disbursed' ? 'block' : 'none';
+    }
     
     document.getElementById('rejectionReasonDiv').style.display = action === 'reject' ? 'block' : 'none';
     document.getElementById('disbursementDetailsDiv').style.display = action === 'disburse' ? 'block' : 'none';
-    document.getElementById('forcloseDetailsDiv').style.display = action === 'forclose' ? 'block' : 'none';
+    document.getElementById('disbursedEditDiv').style.display = action === 'update_disbursed' ? 'block' : 'none';
     document.getElementById('submitActionBtn').style.display = 'block';
 }
 
@@ -1559,10 +1933,44 @@ function submitAction() {
         endpoint = `/api/loan/${currentLoanId}/disburse/`;
         const notes = document.getElementById('disbursementNotes').value.trim();
         data = { disbursement_notes: notes };
-    } else if (currentAction === 'forclose') {
-        endpoint = `/api/loan/${currentLoanId}/forclose/`;
-        const notes = document.getElementById('forcloseNotes').value.trim();
-        data = { forclose_notes: notes };
+    } else if (currentAction === 'update_disbursed') {
+        endpoint = `/api/loan/${currentLoanId}/disbursed-details/update/`;
+        data = {
+            disbursement_amount: document.getElementById('editDisbursedAmount').value || null,
+            disbursed_date: document.getElementById('editDisbursedDate').value || null,
+            full_name: document.getElementById('editApplicantName').value.trim(),
+            mobile_number: document.getElementById('editApplicantMobile').value.trim(),
+            email: document.getElementById('editApplicantEmail').value.trim(),
+            city: document.getElementById('editApplicantCity').value.trim(),
+            state: document.getElementById('editApplicantState').value.trim(),
+            pin_code: document.getElementById('editApplicantPin').value.trim(),
+            permanent_address: document.getElementById('editApplicantPermanentAddress').value.trim(),
+            current_address: document.getElementById('editApplicantCurrentAddress').value.trim(),
+            loan_type: document.getElementById('editApplicantLoanType').value,
+            loan_amount: document.getElementById('editApplicantLoanAmount').value || null,
+            tenure_months: document.getElementById('editLoanTenure').value || null,
+            interest_rate: document.getElementById('editLoanInterestRate').value || null,
+            loan_purpose: document.getElementById('editLoanPurpose').value.trim(),
+            bank_name: document.getElementById('editBankName').value.trim(),
+            bank_account_number: document.getElementById('editBankAccount').value.trim(),
+            bank_ifsc_code: document.getElementById('editBankIfsc').value.trim(),
+            bank_type: document.getElementById('editBankType').value,
+            has_co_applicant: document.getElementById('editHasCoApplicant').checked,
+            co_applicant_name: document.getElementById('editCoApplicantName').value.trim(),
+            co_applicant_phone: document.getElementById('editCoApplicantPhone').value.trim(),
+            co_applicant_email: document.getElementById('editCoApplicantEmail').value.trim(),
+            has_guarantor: document.getElementById('editHasGuarantor').checked,
+            guarantor_name: document.getElementById('editGuarantorName').value.trim(),
+            guarantor_phone: document.getElementById('editGuarantorPhone').value.trim(),
+            guarantor_email: document.getElementById('editGuarantorEmail').value.trim(),
+            sm_name: document.getElementById('editSmName').value.trim(),
+            sm_phone_number: document.getElementById('editSmPhone').value.trim(),
+            sm_email: document.getElementById('editSmEmail').value.trim(),
+            is_sm_signed: document.getElementById('editIsSmSigned').checked,
+            sm_signed_at: document.getElementById('editSmSignedAt').value || null,
+            remarks: document.getElementById('editDisbursedRemarks').value.trim(),
+            processing_remarks: document.getElementById('editProcessingRemarks').value.trim(),
+        };
     }
     
     // Send request to update loan
@@ -1584,7 +1992,7 @@ function submitAction() {
                 'approve': 'Application approved successfully',
                 'reject': 'Application rejected successfully',
                 'disburse': 'Application disbursed successfully',
-                'forclose': 'Application marked as ForClose successfully'
+                'update_disbursed': 'Loan details updated successfully'
             };
             showSuccessMessage(actionMessages[currentAction]);
             

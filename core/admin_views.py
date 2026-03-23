@@ -12,11 +12,22 @@ from django.utils import timezone
 import json
 import logging
 
-from .models import LoanApplication, Applicant, ApplicantDocument, LoanAssignment, LoanStatusHistory, User, Agent, Loan, LoanDocument, ActivityLog, SubAdminEntry
+from .models import LoanApplication, Applicant, ApplicantDocument, LoanAssignment, LoanStatusHistory, User, Agent, Loan, LoanDocument, ActivityLog, SubAdminEntry, UserOnboardingProfile, UserOnboardingDocument
 from .decorators import admin_required
 from .loan_sync import extract_assignment_context, role_label, find_related_loan
+from .onboarding_utils import collect_onboarding_payload, collect_onboarding_documents, collect_onboarding_payload_from_source
 
 logger = logging.getLogger(__name__)
+
+FOLLOW_UP_PENDING_LABEL = 'Follow Up'
+
+
+def _has_revert_marker(value):
+    return 'revert remark' in str(value or '').lower()
+
+
+def _follow_up_pending_q():
+    return Q(status__in=['new_entry', 'waiting']) & Q(remarks__icontains='Revert Remark')
 
 
 def _split_name(full_name):
@@ -189,8 +200,10 @@ def admin_dashboard(request):
     """
     try:
         # Get all Loan counts by status (real-time)
-        new_entry_count = Loan.objects.filter(status='new_entry').count()
-        in_processing_count = Loan.objects.filter(status='waiting').count()
+        follow_up_pending_q = _follow_up_pending_q()
+        follow_up_pending_count = Loan.objects.filter(follow_up_pending_q).count()
+        new_entry_count = Loan.objects.filter(status='new_entry').exclude(remarks__icontains='Revert Remark').count()
+        in_processing_count = Loan.objects.filter(status='waiting').exclude(remarks__icontains='Revert Remark').count()
         followup_count = Loan.objects.filter(status='follow_up').count()
         approved_count = Loan.objects.filter(status='approved').count()
         rejected_count = Loan.objects.filter(status='rejected').count()
@@ -204,7 +217,7 @@ def admin_dashboard(request):
         total_subadmins = User.objects.filter(role='subadmin').count()
         
         # Calculate statistics
-        total_applications = (new_entry_count + in_processing_count + followup_count +
+        total_applications = (new_entry_count + in_processing_count + follow_up_pending_count + followup_count +
                             approved_count + rejected_count + disbursed_count)
         
         approval_rate = 0
@@ -224,6 +237,7 @@ def admin_dashboard(request):
             'new_entry_count': new_entry_count,
             'in_processing_count': in_processing_count,
             'followup_count': followup_count,
+            'follow_up_pending_count': follow_up_pending_count,
             'approved_count': approved_count,
             'rejected_count': rejected_count,
             'disbursed_count': disbursed_count,
@@ -271,12 +285,19 @@ def admin_all_loans(request):
             Q(user_id__icontains=search_query)
         )
 
+    follow_up_pending_q = _follow_up_pending_q()
+
     # Apply status filter if provided
-    if status_filter:
+    if status_filter == 'follow_up_pending':
+        loans = loans.filter(follow_up_pending_q)
+    elif status_filter:
         loans = loans.filter(status=status_filter)
+        if status_filter in ['new_entry', 'waiting']:
+            loans = loans.exclude(remarks__icontains='Revert Remark')
 
     enriched_loans = list(loans)
     for loan in enriched_loans:
+        follow_up_pending = loan.status in ['new_entry', 'waiting'] and _has_revert_marker(loan.remarks)
         creator = loan.created_by
         creator_name = (creator.get_full_name() or creator.username) if creator else '-'
         loan.created_under_display = f"{role_label(creator)} - {creator_name}" if creator else 'System'
@@ -286,6 +307,9 @@ def admin_all_loans(request):
             loan.assigned_to_display = f"Agent - {loan.assigned_agent.name}"
         else:
             loan.assigned_to_display = '-'
+        loan.follow_up_pending = follow_up_pending
+        loan.status_key_display = 'follow_up_pending' if follow_up_pending else loan.status
+        loan.status_display_text = FOLLOW_UP_PENDING_LABEL if follow_up_pending else loan.get_status_display()
         loan.assigned_by_display = extract_assignment_context(loan).get('assigned_by_display', '-')
     
     context = {
@@ -293,6 +317,7 @@ def admin_all_loans(request):
         'loans': enriched_loans,
         'search_query': search_query,
         'status_filter': status_filter,
+        'status_filter_display': FOLLOW_UP_PENDING_LABEL if status_filter == 'follow_up_pending' else (status_filter.replace('_', ' ').title() if status_filter else ''),
         'total_loans': len(enriched_loans),
     }
     return render(request, 'core/admin/all_loans.html', context)
@@ -308,11 +333,16 @@ def api_admin_dashboard_stats(request):
     """
     try:
         total_loans = Loan.objects.count()
+        follow_up_pending_q = _follow_up_pending_q()
+        follow_up_pending_count = Loan.objects.filter(follow_up_pending_q).count()
+        new_entry_count = Loan.objects.filter(status='new_entry').exclude(remarks__icontains='Revert Remark').count()
+        processing_count = Loan.objects.filter(status='waiting').exclude(remarks__icontains='Revert Remark').count()
         stats = {
             'total': total_loans,
-            'new_entry': Loan.objects.filter(status='new_entry').count(),
-            'processing': Loan.objects.filter(status='waiting').count(),
+            'new_entry': new_entry_count,
+            'processing': processing_count,
             'follow_up': Loan.objects.filter(status='follow_up').count(),
+            'follow_up_pending': follow_up_pending_count,
             'approved': Loan.objects.filter(status='approved').count(),
             'rejected': Loan.objects.filter(status='rejected').count(),
             'disbursed': Loan.objects.filter(status='disbursed').count(),
@@ -388,7 +418,7 @@ def api_get_all_loans(request):
             
             loans_data.append({
                 'id': loan.id,
-                'loan_id': f'LOAN-{loan.id:06d}',
+                'loan_id': loan.user_id or f'LOAN-{loan.id:06d}',
                 'applicant_name': loan.applicant.full_name if loan.applicant else 'N/A',
                 'applicant_email': loan.applicant.email if loan.applicant else 'N/A',
                 'loan_type': loan.applicant.loan_type if loan.applicant else 'N/A',
@@ -632,9 +662,15 @@ def api_admin_all_loans(request):
             'assigned_agent',
         )
         
+        follow_up_pending_q = _follow_up_pending_q()
+
         # Filter by status if specified
-        if status_filter:
+        if status_filter == 'follow_up_pending':
+            query = query.filter(follow_up_pending_q)
+        elif status_filter:
             query = query.filter(status=status_filter)
+            if status_filter in ['new_entry', 'waiting']:
+                query = query.exclude(remarks__icontains='Revert Remark')
         
         # Filter by search term
         if search:
@@ -648,13 +684,19 @@ def api_admin_all_loans(request):
         # Get loans data
         loans_data = []
         for loan in query.order_by('-created_at')[:100]:
+            is_follow_up_pending = loan.status in ['new_entry', 'waiting'] and _has_revert_marker(loan.remarks)
+            status_key = 'follow_up_pending' if is_follow_up_pending else loan.status
+            status_display = FOLLOW_UP_PENDING_LABEL if is_follow_up_pending else loan.get_status_display()
             loans_data.append({
                 'id': loan.id,
                 'applicant_name': loan.full_name or 'N/A',
                 'phone': loan.mobile_number or 'N/A',
                 'email': loan.email or 'N/A',
                 'loan_amount': float(loan.loan_amount) if loan.loan_amount else 0,
-                'status': loan.status,
+                'status': status_key,
+                'status_display': status_display,
+                'status_raw': loan.status,
+                'follow_up_pending': is_follow_up_pending,
                 'agent': loan.assigned_agent.user.get_full_name() if loan.assigned_agent else '-',
                 'employee': loan.assigned_employee.get_full_name() if loan.assigned_employee else '-',
                 'date_applied': loan.created_at.strftime('%Y-%m-%d') if loan.created_at else '-',
@@ -679,12 +721,17 @@ def api_admin_all_loans(request):
 def admin_subadmin_management(request):
     """Admin page to manage SubAdmins"""
     try:
-        subadmins = User.objects.filter(role='subadmin').annotate(
-            total_agents=Count('created_agents', distinct=True),
-            total_entries=Count('subadmin_entries', distinct=True),
-        ).order_by('-date_joined')
+        from .subadmin_views import _subadmin_managed_agents_qs, _subadmin_managed_employees_qs
+
+        subadmins = User.objects.filter(role='subadmin').order_by('-date_joined')
         subadmin_list = []
         for subadmin in subadmins:
+            managed_agents_count = _subadmin_managed_agents_qs(subadmin).count()
+            managed_employees_count = _subadmin_managed_employees_qs(subadmin).count()
+            entries_count = SubAdminEntry.objects.filter(subadmin=subadmin).count()
+            subadmin.total_agents = managed_agents_count
+            subadmin.total_employees = managed_employees_count
+            subadmin.total_entries = entries_count
             subadmin_list.append({
                 'id': subadmin.id,
                 'name': subadmin.get_full_name(),
@@ -693,8 +740,9 @@ def admin_subadmin_management(request):
                 'phone': subadmin.phone or '-',
                 'address': subadmin.address or '-',
                 'joined_on': subadmin.date_joined.strftime('%Y-%m-%d') if subadmin.date_joined else '-',
-                'total_agents': subadmin.total_agents,
-                'total_entries': subadmin.total_entries,
+                'total_agents': managed_agents_count,
+                'total_employees': managed_employees_count,
+                'total_entries': entries_count,
                 'is_active': subadmin.is_active,
                 'date_joined': subadmin.date_joined
             })
@@ -778,6 +826,20 @@ def api_admin_subadmin_full_details(request, subadmin_id):
             'total_customers': loans_qs.count(),
         }
 
+        onboarding = {}
+        documents = []
+        if hasattr(subadmin, 'onboarding_profile') and subadmin.onboarding_profile:
+            onboarding = subadmin.onboarding_profile.data or {}
+        if hasattr(subadmin, 'onboarding_documents'):
+            documents = [
+                {
+                    'type': doc.document_type or 'other',
+                    'url': doc.file.url if doc.file else '',
+                    'uploaded_at': doc.uploaded_at.strftime('%Y-%m-%d %H:%M') if doc.uploaded_at else '',
+                }
+                for doc in subadmin.onboarding_documents.all()
+            ]
+
         return JsonResponse({
             'success': True,
             'subadmin': {
@@ -792,6 +854,8 @@ def api_admin_subadmin_full_details(request, subadmin_id):
             },
             'summary': summary,
             'customers': customers,
+            'onboarding': onboarding,
+            'documents': documents,
         })
     except Exception as e:
         logger.error(f"Error in api_admin_subadmin_full_details: {str(e)}")
@@ -808,7 +872,8 @@ def api_create_subadmin(request):
         from django.core.files.base import ContentFile
         import base64
 
-        if request.content_type and 'application/json' in request.content_type:
+        is_json = bool(request.content_type and 'application/json' in request.content_type)
+        if is_json:
             raw_body = (request.body or b'').decode('utf-8').strip()
             if not raw_body:
                 return JsonResponse({
@@ -837,6 +902,7 @@ def api_create_subadmin(request):
         pin = (data.get('pin') or '').strip()
         state = (data.get('state') or '').strip()
         photo_base64 = data.get('photo', '') if isinstance(data, dict) else ''
+        photo_file = request.FILES.get('photo') if not is_json else None
 
         if not name:
             name = f"{first_name} {last_name}".strip()
@@ -891,7 +957,9 @@ def api_create_subadmin(request):
             subadmin.pin = pin
         
         # Handle photo upload
-        if photo_base64:
+        if photo_file:
+            subadmin.profile_photo = photo_file
+        elif photo_base64:
             try:
                 format, imgstr = photo_base64.split(';base64,')
                 ext = format.split('/')[-1]
@@ -904,6 +972,29 @@ def api_create_subadmin(request):
                 pass
         
         subadmin.save()
+
+        onboarding_payload = collect_onboarding_payload_from_source(data) if is_json else collect_onboarding_payload(request)
+        if onboarding_payload:
+            profile, _ = UserOnboardingProfile.objects.get_or_create(
+                user=subadmin,
+                defaults={'role': subadmin.role, 'data': onboarding_payload},
+            )
+            if profile.data != onboarding_payload or profile.role != subadmin.role:
+                profile.data = onboarding_payload
+                profile.role = subadmin.role
+                profile.save()
+
+        if not is_json:
+            for doc_type, doc_file in collect_onboarding_documents(request):
+                if not doc_file:
+                    continue
+                if doc_file.size > 10 * 1024 * 1024:
+                    continue
+                UserOnboardingDocument.objects.create(
+                    user=subadmin,
+                    document_type=doc_type or 'other',
+                    file=doc_file,
+                )
         
         return JsonResponse({
             'success': True,
@@ -961,6 +1052,66 @@ def api_get_subadmins(request):
             'success': False,
             'error': str(e)
         }, status=500)
+
+
+@login_required(login_url='admin_login')
+@admin_required
+@require_http_methods(['POST'])
+def api_update_subadmin(request, subadmin_id):
+    """Update a subadmin account."""
+    try:
+        data = json.loads(request.body or '{}')
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON payload'}, status=400)
+
+    subadmin = get_object_or_404(User, id=subadmin_id, role='subadmin')
+
+    username = (data.get('username') or '').strip()
+    email = (data.get('email') or '').strip()
+    phone = (data.get('phone') or '').strip()
+
+    if not username or not email or not phone:
+        return JsonResponse({
+            'success': False,
+            'error': 'Username, Email, and Phone are required.'
+        }, status=400)
+
+    if User.objects.filter(username=username).exclude(id=subadmin.id).exists():
+        return JsonResponse({'success': False, 'error': 'Username already exists'}, status=400)
+    if User.objects.filter(email=email).exclude(id=subadmin.id).exists():
+        return JsonResponse({'success': False, 'error': 'Email already exists'}, status=400)
+    if User.objects.filter(phone=phone).exclude(id=subadmin.id).exists():
+        return JsonResponse({'success': False, 'error': 'Phone already exists'}, status=400)
+
+    subadmin.username = username
+    subadmin.email = email
+    subadmin.phone = phone
+    subadmin.first_name = (data.get('first_name') or '').strip()
+    subadmin.last_name = (data.get('last_name') or '').strip()
+    subadmin.address = (data.get('address') or '').strip() or None
+
+    status_value = (data.get('status') or '').strip().lower()
+    if status_value in ['active', 'inactive']:
+        subadmin.is_active = status_value == 'active'
+
+    if data.get('password'):
+        subadmin.set_password(str(data.get('password')))
+
+    subadmin.save()
+
+    return JsonResponse({
+        'success': True,
+        'message': 'SubAdmin updated successfully',
+        'subadmin': {
+            'id': subadmin.id,
+            'name': subadmin.get_full_name() or subadmin.username,
+            'username': subadmin.username,
+            'email': subadmin.email,
+            'phone': subadmin.phone or '',
+            'address': subadmin.address or '',
+            'status': 'Active' if subadmin.is_active else 'Inactive',
+        }
+    })
 
 
 @login_required(login_url='admin_login')
@@ -1069,7 +1220,10 @@ def add_agent(request):
                     phone=phone,
                     status='active',
                     gender=gender or None,
-                    address=address
+                    address=address,
+                    city=request.POST.get('onb_perm_city', '').strip(),
+                    state=request.POST.get('onb_perm_state', '').strip(),
+                    pin_code=request.POST.get('onb_perm_pin', '').strip(),
                 )
                 if photo:
                     agent.profile_photo = photo
@@ -1084,6 +1238,28 @@ def add_agent(request):
             
             else:  # employee
                 success_msg = f'Employee {first_name} {last_name} created successfully with username: {username}'
+
+            onboarding_payload = collect_onboarding_payload(request)
+            if onboarding_payload:
+                profile, _ = UserOnboardingProfile.objects.get_or_create(
+                    user=user,
+                    defaults={'role': user.role, 'data': onboarding_payload},
+                )
+                if profile.data != onboarding_payload or profile.role != user.role:
+                    profile.data = onboarding_payload
+                    profile.role = user.role
+                    profile.save()
+
+            for doc_type, doc_file in collect_onboarding_documents(request):
+                if not doc_file:
+                    continue
+                if doc_file.size > 10 * 1024 * 1024:
+                    continue
+                UserOnboardingDocument.objects.create(
+                    user=user,
+                    document_type=doc_type or 'other',
+                    file=doc_file,
+                )
             
             messages.success(request, success_msg)
             return redirect('admin_all_agents' if role == 'agent' else 'admin_all_employees')
@@ -1136,6 +1312,7 @@ def admin_add_loan(request):
             applicant_name = (request.POST.get('name') or request.POST.get('applicant_name') or '').strip()
             applicant_email = (request.POST.get('email_id') or request.POST.get('applicant_email') or '').strip()
             applicant_mobile = (request.POST.get('mobile_no') or request.POST.get('applicant_mobile') or '').strip()
+            loan_uid = (request.POST.get('loan_uid') or '').strip()
             raw_loan_type = (request.POST.get('service_required') or request.POST.get('loan_type') or '').strip()
             raw_amount = (request.POST.get('loan_amount_required') or request.POST.get('loan_amount') or '').strip()
             raw_tenure = (request.POST.get('loan_tenure') or request.POST.get('tenure_months') or '').strip()
@@ -1143,6 +1320,10 @@ def admin_add_loan(request):
 
             if not applicant_name or not applicant_mobile or not raw_loan_type or not raw_amount:
                 messages.error(request, 'Please fill all required fields (Name, Mobile, Loan Type, Loan Amount).')
+                return redirect('admin_add_loan')
+
+            if loan_uid and Loan.objects.filter(user_id=loan_uid).exists():
+                messages.error(request, 'Loan ID already exists. Please enter a unique Loan ID.')
                 return redirect('admin_add_loan')
 
             loan_type_map = {
@@ -1281,6 +1462,7 @@ def admin_add_loan(request):
                 'applicant_email',
                 'mobile_no',
                 'applicant_mobile',
+                'loan_uid',
                 'service_required',
                 'loan_type',
                 'loan_amount_required',
@@ -1312,6 +1494,7 @@ def admin_add_loan(request):
 
             loan = Loan.objects.create(
                 full_name=applicant_name,
+                user_id=loan_uid or None,
                 email=applicant_email or None,
                 mobile_number=applicant_mobile,
                 city=city or None,

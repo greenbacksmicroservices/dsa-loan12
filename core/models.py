@@ -188,6 +188,11 @@ class Loan(models.Model):
     
     # Remarks
     remarks = models.TextField(blank=True, null=True)
+    sm_name = models.CharField(max_length=120, blank=True, null=True)
+    sm_phone_number = models.CharField(max_length=20, blank=True, null=True)
+    sm_email = models.EmailField(blank=True, null=True)
+    is_sm_signed = models.BooleanField(default=False)
+    sm_signed_at = models.DateTimeField(null=True, blank=True)
     
     # Metadata
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='created_loans')
@@ -504,6 +509,11 @@ class LoanApplication(models.Model):
     approved_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_loans')
     approval_notes = models.TextField(blank=True, null=True)
     approved_at = models.DateTimeField(null=True, blank=True)
+    sm_name = models.CharField(max_length=120, blank=True, null=True)
+    sm_phone_number = models.CharField(max_length=20, blank=True, null=True)
+    sm_email = models.EmailField(blank=True, null=True)
+    is_sm_signed = models.BooleanField(default=False)
+    sm_signed_at = models.DateTimeField(null=True, blank=True)
     
     # Rejection Fields
     rejected_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='rejected_loans')
@@ -652,6 +662,37 @@ class EmployeeProfile(models.Model):
         if self.total_loans == 0:
             return 0
         return round((self.approved_loans / self.total_loans) * 100, 2)
+
+
+class UserOnboardingProfile(models.Model):
+    """Store extended onboarding/KYC data for employees, agents, and subadmins"""
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='onboarding_profile')
+    role = models.CharField(max_length=20, blank=True, null=True)
+    data = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'user_onboarding_profiles'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Onboarding - {self.user.username}"
+
+
+class UserOnboardingDocument(models.Model):
+    """Documents uploaded during onboarding"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='onboarding_documents')
+    document_type = models.CharField(max_length=50, default='other', blank=True)
+    file = models.FileField(upload_to='user_documents/%Y/%m/%d/')
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'user_onboarding_documents'
+        ordering = ['-uploaded_at']
+
+    def __str__(self):
+        return f"{self.user.username} - {self.document_type}"
 
 
 class LoanStatusHistory(models.Model):

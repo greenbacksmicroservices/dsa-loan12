@@ -14,22 +14,40 @@
 
     <!-- Statistics Cards -->
     <div class="employee-stat-grid">
-        <a class="stat-card stat-total" href="{% url 'employee_loans_total' %}">
+        <a class="stat-card stat-new" href="{% url 'employee_loans_new_entry' %}">
             <div class="stat-top">
-                <span>Total Assigned</span>
-                <i class="bi bi-inbox"></i>
+                <span>New Entry</span>
+                <i class="bi bi-file-earmark-plus"></i>
             </div>
-            <div class="stat-number" id="stat-total">0</div>
-            <div class="stat-subtext">Click to view</div>
+            <div class="stat-number" id="stat-new-entry">0</div>
+            <div class="stat-subtext">Total New Applications - View Details -></div>
         </a>
 
-        <a class="stat-card stat-awaiting" href="{% url 'employee_loans_awaiting' %}">
+        <a class="stat-card stat-processing" href="{% url 'employee_loans_waiting' %}">
             <div class="stat-top">
-                <span>Awaiting Action</span>
+                <span>In Processing</span>
                 <i class="bi bi-hourglass-split"></i>
             </div>
-            <div class="stat-number" id="stat-processing">0</div>
-            <div class="stat-subtext">Click to view</div>
+            <div class="stat-number" id="stat-waiting">0</div>
+            <div class="stat-subtext">Pending Review - View Details -></div>
+        </a>
+
+        <a class="stat-card stat-banking" href="{% url 'employee_loans_followup' %}">
+            <div class="stat-top">
+                <span>Banking Processing</span>
+                <i class="bi bi-bank2"></i>
+            </div>
+            <div class="stat-number" id="stat-banking">0</div>
+            <div class="stat-subtext">Banking Processing Queue - View Details -></div>
+        </a>
+
+        <a class="stat-card stat-followup" href="{% url 'employee_loans_followup_pending' %}">
+            <div class="stat-top">
+                <span>Follow Up</span>
+                <i class="bi bi-arrow-repeat"></i>
+            </div>
+            <div class="stat-number" id="stat-follow-up-pending">0</div>
+            <div class="stat-subtext">Reverted for Correction - View Details -></div>
         </a>
 
         <a class="stat-card stat-approved" href="{% url 'employee_loans_approved' %}">
@@ -38,7 +56,7 @@
                 <i class="bi bi-check-circle"></i>
             </div>
             <div class="stat-number" id="stat-approved">0</div>
-            <div class="stat-subtext">Click to view</div>
+            <div class="stat-subtext">Successfully Approved - View Details -></div>
         </a>
 
         <a class="stat-card stat-rejected" href="{% url 'employee_loans_rejected' %}">
@@ -47,16 +65,7 @@
                 <i class="bi bi-x-circle"></i>
             </div>
             <div class="stat-number" id="stat-rejected">0</div>
-            <div class="stat-subtext">Click to view</div>
-        </a>
-
-        <a class="stat-card stat-followup" href="{% url 'employee_loans_followup' %}">
-            <div class="stat-top">
-                <span>Follow-up</span>
-                <i class="bi bi-telephone-forward"></i>
-            </div>
-            <div class="stat-number" id="stat-followup">0</div>
-            <div class="stat-subtext">Click to view</div>
+            <div class="stat-subtext">Rejected Applications - View Details -></div>
         </a>
 
         <a class="stat-card stat-disbursed" href="{% url 'employee_loans_disbursed' %}">
@@ -65,7 +74,7 @@
                 <i class="bi bi-cash-coin"></i>
             </div>
             <div class="stat-number" id="stat-disbursed">0</div>
-            <div class="stat-subtext">Click to view</div>
+            <div class="stat-subtext">Amount Disbursed - View Details -></div>
         </a>
     </div>
 
@@ -115,11 +124,12 @@
                             <select class="form-select border-0 bg-light" id="status-filter">
                                 <option value="">All Status</option>
                                 <option value="new_entry">New Entry</option>
-                                <option value="waiting">Waiting for Processing</option>
+                                <option value="waiting">In Processing</option>
+                                <option value="follow_up">Banking Processing</option>
+                                <option value="follow_up_pending">Follow Up</option>
                                 <option value="approved">Approved</option>
                                 <option value="rejected">Rejected</option>
                                 <option value="disbursed">Disbursed</option>
-                                <option value="follow_up">Required Follow-up</option>
                             </select>
                         </div>
                         <div class="col-md-3">
@@ -142,7 +152,7 @@
                                     <th>Applicant Name</th>
                                     <th>Phone</th>
                                     <th>Loan Type</th>
-                                    <th>Amount (₹)</th>
+                                    <th>Amount (â‚¹)</th>
                                     <th>Status</th>
                                     <th>Created Date</th>
                                     <th style="width: 180px;">Actions</th>
@@ -179,11 +189,11 @@
 
     .employee-stat-grid {
         display: grid;
-        grid-template-columns: repeat(6, minmax(170px, 1fr));
+        grid-template-columns: 1fr;
         gap: 16px;
         margin-bottom: 24px;
-        overflow-x: auto;
         padding-bottom: 6px;
+        align-items: stretch;
     }
 
     .stat-card {
@@ -196,7 +206,7 @@
         text-decoration: none;
         box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18);
         transition: transform 0.2s ease, box-shadow 0.2s ease;
-        min-height: 112px;
+        min-height: 170px;
         position: relative;
         overflow: hidden;
         border: 1px solid rgba(255, 255, 255, 0.12);
@@ -247,22 +257,34 @@
         opacity: 0.85;
     }
 
-    .stat-total { background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%); }
-    .stat-awaiting { background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%); }
+    .stat-new { background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%); }
+    .stat-processing { background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%); }
+    .stat-banking { background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); }
     .stat-approved { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
     .stat-rejected { background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%); }
-    .stat-followup { background: linear-gradient(135deg, #38bdf8 0%, #0ea5e9 100%); }
+    .stat-followup { background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); }
     .stat-disbursed { background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); }
 
-    @media (max-width: 992px) {
+    @media (min-width: 576px) {
         .employee-stat-grid {
-            grid-template-columns: repeat(3, minmax(160px, 1fr));
+            grid-template-columns: repeat(2, minmax(0, 1fr));
         }
     }
 
-    @media (max-width: 640px) {
+    @media (min-width: 992px) {
         .employee-stat-grid {
-            grid-template-columns: repeat(2, minmax(160px, 1fr));
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+    }
+
+    @media (min-width: 1200px) {
+        .employee-stat-grid {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+
+        .employee-stat-grid .stat-card {
+            aspect-ratio: 1 / 1;
+            min-height: 194px;
         }
     }
 
@@ -438,14 +460,12 @@
         })
         .then(data => {
             if (data.success) {
-                document.getElementById('stat-total').textContent = data.total_loans || 0;
-                document.getElementById('stat-processing').textContent = data.in_processing || 0;
+                document.getElementById('stat-new-entry').textContent = data.new_entry || 0;
+                document.getElementById('stat-waiting').textContent = data.waiting || 0;
+                document.getElementById('stat-banking').textContent = data.follow_up || 0;
+                document.getElementById('stat-follow-up-pending').textContent = data.follow_up_pending || 0;
                 document.getElementById('stat-approved').textContent = data.approved || 0;
                 document.getElementById('stat-rejected').textContent = data.rejected || 0;
-                const followupEl = document.getElementById('stat-followup');
-                if (followupEl) {
-                    followupEl.textContent = data.follow_up || 0;
-                }
                 document.getElementById('stat-disbursed').textContent = data.disbursed || 0;
                 renderStatusChart(data);
             }
@@ -458,10 +478,12 @@
         const canvas = document.getElementById('statusChart');
         if (!canvas) return;
 
-        const labels = ['Waiting', 'Follow-up', 'Approved', 'Rejected', 'Disbursed'];
+        const labels = ['New Entry', 'In Processing', 'Banking', 'Follow Up', 'Approved', 'Rejected', 'Disbursed'];
         const values = [
+            data.new_entry || 0,
             data.waiting || 0,
             data.follow_up || 0,
+            data.follow_up_pending || 0,
             data.approved || 0,
             data.rejected || 0,
             data.disbursed || 0
@@ -479,7 +501,7 @@
                 labels,
                 datasets: [{
                     data: values,
-                    backgroundColor: ['#f59e0b', '#0ea5e9', '#10b981', '#ef4444', '#6366f1']
+                    backgroundColor: ['#3b82f6', '#f59e0b', '#7c3aed', '#ea580c', '#10b981', '#ef4444', '#6366f1']
                 }]
             },
             options: {
@@ -597,6 +619,7 @@
             const statusBadges = {
                 'new_entry': 'bg-info',
                 'waiting': 'bg-warning text-dark',
+                'follow_up_pending': 'bg-warning text-dark',
                 'approved': 'bg-success',
                 'rejected': 'bg-danger',
                 'follow_up': 'bg-secondary',
@@ -606,6 +629,11 @@
             const badgeClass = statusBadges[loan.status] || 'bg-secondary';
             const photoUrl = loan.applicant_photo || '/static/images/default-avatar.svg';
             const statusLabel = loan.status_display || loan.status || 'N/A';
+            const isFollowUpPending = loan.status === 'follow_up_pending';
+            const actionClass = isFollowUpPending ? 'btn-outline-warning' : 'btn-outline-primary';
+            const actionLabel = isFollowUpPending ? 'Edit' : 'View';
+            const actionIcon = isFollowUpPending ? 'bi-pencil-square' : 'bi-eye';
+            const actionTitle = isFollowUpPending ? 'Edit Follow Up Details' : 'View Details';
 
             return `
                 <tr style="animation: fadeIn 0.3s ease-in-out;">
@@ -626,7 +654,7 @@
                         <span class="badge bg-secondary">${loan.loan_type || 'N/A'}</span>
                     </td>
                     <td>
-                        <strong>₹${formatAmount(loan.loan_amount)}</strong>
+                        <strong>â‚¹${formatAmount(loan.loan_amount)}</strong>
                     </td>
                     <td>
                         <span class="badge ${badgeClass}">${statusLabel}</span>
@@ -636,8 +664,8 @@
                         <small class="text-muted">${loan.created_time || ''}</small>
                     </td>
                     <td style="white-space: nowrap;">
-                        <button class="btn btn-sm btn-outline-primary" onclick="viewLoanDetails(${loan.id})" title="View Details">
-                            <i class="bi bi-eye"></i> View
+                        <button class="btn btn-sm ${actionClass}" onclick="viewLoanDetails(${loan.id})" title="${actionTitle}">
+                            <i class="bi ${actionIcon}"></i> ${actionLabel}
                         </button>
                     </td>
                 </tr>
@@ -677,3 +705,4 @@
 </script>
 
 {% endblock %}
+

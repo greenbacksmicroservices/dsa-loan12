@@ -365,7 +365,7 @@
             </div>
             <div class="step-item {% if step == 2 %}active{% endif %}{% if step > 2 %}completed{% endif %}">
                 <div class="step-number">{% if step > 2 %}✓{% else %}2{% endif %}</div>
-                <div class="step-label">Loan</div>
+                <div class="step-label">Bank</div>
             </div>
             <div class="step-item {% if step == 3 %}active{% endif %}{% if step > 3 %}completed{% endif %}">
                 <div class="step-number">{% if step > 3 %}✓{% else %}3{% endif %}</div>
@@ -473,49 +473,13 @@
                 </div>
             </div>
 
-            <!-- STEP 2: Loan & Bank Details -->
+            <!-- STEP 2: Bank Details -->
             {% elif step == 2 %}
             <div class="form-section">
-                <h3>💰 Loan & Bank Details</h3>
+                <h3>🏦 Bank Details</h3>
 
                 <div class="form-group">
-                    <label for="loan_type">Loan Type *</label>
-                    {{ form.loan_type }}
-                </div>
-
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                    <div class="form-group">
-                        <label for="loan_amount">Loan Amount (₹) *</label>
-                        {{ form.loan_amount }}
-                    </div>
-                    <div class="form-group">
-                        <label for="tenure_months">Tenure (Months) *</label>
-                        {{ form.tenure_months }}
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="interest_rate">Interest Rate (%) *</label>
-                    {{ form.interest_rate }}
-                </div>
-
-                <!-- EMI Display -->
-                <div class="emi-display" id="emiDisplay" style="display: none;">
-                    <h5>💵 Estimated Monthly EMI</h5>
-                    <div class="amount" id="emiAmount">₹0</div>
-                </div>
-
-                <div class="form-group">
-                    <label for="loan_purpose">Loan Purpose *</label>
-                    {{ form.loan_purpose }}
-                </div>
-
-                <hr style="margin: 30px 0;">
-
-                <h4 style="color: #333; margin-bottom: 20px;">🏦 Bank Details</h4>
-
-                <div class="form-group">
-                    <label for="bank_name">Bank Name *</label>
+                    <label for="bank_name">Bank Name</label>
                     {{ form.bank_name }}
                 </div>
 
@@ -525,7 +489,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="account_number">Bank Account Number *</label>
+                    <label for="account_number">Bank Account Number</label>
                     {{ form.account_number }}
                 </div>
 
@@ -632,16 +596,6 @@
                 </div>
 
                 <div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-                    <h5 style="color: #333; margin-bottom: 15px;">💰 Loan Details</h5>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; font-size: 14px;">
-                        <div><strong>Loan Type:</strong> {{ applicant_data.loan_type }}</div>
-                        <div><strong>Loan Amount:</strong> ₹{{ applicant_data.loan_amount }}</div>
-                        <div><strong>Tenure:</strong> {{ applicant_data.tenure_months }} months</div>
-                        <div><strong>Interest Rate:</strong> {{ applicant_data.interest_rate }}%</div>
-                    </div>
-                </div>
-
-                <div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
                     <h5 style="color: #333; margin-bottom: 15px;">🏦 Bank Details</h5>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; font-size: 14px;">
                         <div><strong>Bank Name:</strong> {{ applicant_data.bank_name }}</div>
@@ -686,46 +640,6 @@
             window.location.href = `/register/${role}/step/${previousStep}/`;
         }
     }
-
-    // EMI Calculator
-    {% if step == 2 %}
-    const loanAmountInput = document.querySelector('[name="loan_amount"]');
-    const tenureInput = document.querySelector('[name="tenure_months"]');
-    const interestInput = document.querySelector('[name="interest_rate"]');
-    const emiDisplay = document.getElementById('emiDisplay');
-    const emiAmount = document.getElementById('emiAmount');
-
-    function calculateEMI() {
-        const principal = parseFloat(loanAmountInput.value) || 0;
-        const tenure = parseInt(tenureInput.value) || 0;
-        const rate = parseFloat(interestInput.value) || 0;
-
-        if (principal > 0 && tenure > 0 && rate >= 0) {
-            const monthlyRate = rate / 100 / 12;
-            let emi;
-
-            if (monthlyRate > 0) {
-                const numerator = principal * monthlyRate * Math.pow(1 + monthlyRate, tenure);
-                const denominator = Math.pow(1 + monthlyRate, tenure) - 1;
-                emi = numerator / denominator;
-            } else {
-                emi = principal / tenure;
-            }
-
-            emiAmount.textContent = '₹' + emi.toLocaleString('en-IN', { maximumFractionDigits: 0 });
-            emiDisplay.style.display = 'block';
-        } else {
-            emiDisplay.style.display = 'none';
-        }
-    }
-
-    loanAmountInput.addEventListener('input', calculateEMI);
-    tenureInput.addEventListener('input', calculateEMI);
-    interestInput.addEventListener('input', calculateEMI);
-
-    // Initial calculation
-    calculateEMI();
-    {% endif %}
 
     // Drag and drop for file uploads
     {% if step == 3 %}

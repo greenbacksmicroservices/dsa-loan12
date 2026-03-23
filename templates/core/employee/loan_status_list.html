@@ -67,6 +67,8 @@
 <script>
 let ALL_LOANS = [];
 const PAGE_FILTER = '{{ status_key }}';
+let refreshTimer = null;
+let CURRENT_APPROVED_LOAN_ID = null;
 
 function getCookie(name) {
     return document.cookie.split('; ')
@@ -74,10 +76,59 @@ function getCookie(name) {
         ?.split('=')[1];
 }
 
+async function postJson(url, payload) {
+    const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify(payload || {})
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.success === false) {
+        throw new Error(data.error || data.message || 'Action failed');
+    }
+    return data;
+}
+
+function splitApprovalNotes(rawText) {
+    const lines = String(rawText || '')
+        .split('\n')
+        .map(line => line.trim())
+        .filter(Boolean);
+    const bankNotes = [];
+    const other = [];
+    lines.forEach(line => {
+        const lower = line.toLowerCase();
+        if (lower.startsWith('bank remark:')) {
+            bankNotes.push(line.replace(/^bank remark:\s*/i, ''));
+        } else if (lower.startsWith('bank details:')) {
+            bankNotes.push(line.replace(/^bank details:\s*/i, ''));
+        } else {
+            other.push(line);
+        }
+    });
+    return {
+        bankNotes: bankNotes.join('\n'),
+        approvalRemark: other.join('\n')
+    };
+}
+
 function filterByStatus(loans) {
     if (!PAGE_FILTER || PAGE_FILTER === 'total') return loans;
+    if (PAGE_FILTER === 'new_entry') {
+        return loans.filter(l => l.status === 'new_entry');
+    }
+    if (PAGE_FILTER === 'waiting') {
+        return loans.filter(l => l.status === 'waiting');
+    }
     if (PAGE_FILTER === 'awaiting') {
         return loans.filter(l => ['waiting', 'follow_up'].includes(l.status));
+    }
+    if (PAGE_FILTER === 'follow_up_pending') {
+        return loans.filter(l => l.status === 'follow_up_pending');
     }
     return loans.filter(l => l.status === PAGE_FILTER);
 }
@@ -143,6 +194,7 @@ function renderLoansTable(loans) {
         'new_entry': 'primary',
         'waiting': 'warning',
         'follow_up': 'info',
+        'follow_up_pending': 'warning',
         'approved': 'success',
         'rejected': 'danger',
         'disbursed': 'success'
@@ -150,8 +202,9 @@ function renderLoansTable(loans) {
 
     const statusLabels = {
         'new_entry': 'New Entry',
-        'waiting': 'Waiting',
-        'follow_up': 'Follow-up',
+        'waiting': 'In Processing',
+        'follow_up': 'Banking Processing',
+        'follow_up_pending': 'Follow Up',
         'approved': 'Approved',
         'rejected': 'Rejected',
         'disbursed': 'Disbursed'
@@ -182,15 +235,23 @@ function renderLoansTable(loans) {
                             <td><strong>₹ ${new Intl.NumberFormat('en-IN').format(l.loan_amount || 0)}</strong></td>
                             <td>
                                 <span class="badge" style="background: ${statusMap[l.status] === 'warning' ? '#ffc107' : statusMap[l.status] === 'success' ? '#28a745' : statusMap[l.status] === 'danger' ? '#dc3545' : statusMap[l.status] === 'info' ? '#17a2b8' : '#6c757d'}; font-size: 11px; padding: 5px 10px; border-radius: 12px;">
-                                    ${statusLabels[l.status] || l.status || 'Unknown'}
+                                    ${l.status_display || statusLabels[l.status] || l.status || 'Unknown'}
                                 </span>
                             </td>
                             <td style="font-size: 13px;">${l.assigned_date || 'N/A'}</td>
                             <td>
                                 <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                                    <a href="/employee/loan/${l.id}/detail/" class="btn btn-sm btn-success">View</a>
-                                    <button class="btn btn-sm btn-warning" type="button" onclick="openEditLoanModal(${l.id})">Edit</button>
-                                    <button class="btn btn-sm btn-danger" type="button" onclick="openDeleteLoanModal(${l.id})">Delete</button>
+                                    ${l.status === 'approved'
+                                        ? `<button class="btn btn-sm btn-primary" type="button" onclick="openApprovedProcessModal(${l.id})">Process</button>`
+                                        : (l.status === 'follow_up_pending'
+                                            ? `<a href="/employee/loan/${l.id}/detail/" class="btn btn-sm btn-warning">Edit</a>`
+                                            : `
+                                                <a href="/employee/loan/${l.id}/detail/" class="btn btn-sm btn-success">View</a>
+                                                <button class="btn btn-sm btn-warning" type="button" onclick="openEditLoanModal(${l.id})">Edit</button>
+                                                <button class="btn btn-sm btn-danger" type="button" onclick="openDeleteLoanModal(${l.id})">Delete</button>
+                                            `
+                                        )
+                                    }
                                 </div>
                             </td>
                         </tr>
@@ -213,6 +274,17 @@ function openEditLoanModal(loanId) {
     document.getElementById('editLoanTenure').value = loan.tenure_months || '';
     document.getElementById('editLoanType').value = (loan.loan_type || '').toLowerCase();
     document.getElementById('editLoanRemarks').value = loan.remarks || '';
+
+    const followUpSection = document.getElementById('followUpDocSection');
+    if (followUpSection) {
+        const isFollowUp = ['follow_up', 'follow_up_pending'].includes(loan.status);
+        followUpSection.style.display = isFollowUp ? 'block' : 'none';
+        if (isFollowUp) {
+            loadFollowUpDocChoices(loanId);
+        }
+        const filesInput = document.getElementById('followUpDocFiles');
+        if (filesInput) filesInput.value = '';
+    }
 
     const modal = new bootstrap.Modal(document.getElementById('editLoanModal'));
     modal.show();
@@ -274,9 +346,170 @@ async function submitDeleteLoan() {
     }
 }
 
+function populateFollowUpDocTypes(choices) {
+    const select = document.getElementById('followUpDocType');
+    if (!select) return;
+    select.innerHTML = '<option value="">Select document type</option>';
+    (choices || []).forEach(item => {
+        const opt = document.createElement('option');
+        opt.value = item.value;
+        opt.textContent = item.label;
+        select.appendChild(opt);
+    });
+}
+
+async function loadFollowUpDocChoices(loanId) {
+    try {
+        const res = await fetch(`/api/employee/loan/${loanId}/detail/`, {
+            method: 'GET',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include'
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.success) {
+            const loan = data.loan || data;
+            populateFollowUpDocTypes(loan.document_type_choices || []);
+        }
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+async function uploadFollowUpDocs() {
+    if (!CURRENT_EDIT_LOAN_ID) return;
+    const docType = document.getElementById('followUpDocType').value;
+    const filesInput = document.getElementById('followUpDocFiles');
+    const files = Array.from(filesInput?.files || []);
+    if (!docType) {
+        alert('Please select a document type.');
+        return;
+    }
+    if (!files.length) {
+        alert('Please choose at least one document.');
+        return;
+    }
+    const btn = document.getElementById('followUpUploadBtn');
+    if (btn) btn.disabled = true;
+    try {
+        for (const file of files) {
+            const formData = new FormData();
+            formData.append('document_type', docType);
+            formData.append('document_file', file);
+            const res = await fetch(`/api/employee/loan/${CURRENT_EDIT_LOAN_ID}/follow-up/document/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': getCookie('csrftoken') },
+                credentials: 'include',
+                body: formData
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || data.success === false) {
+                throw new Error(data.error || 'Document upload failed');
+            }
+        }
+        filesInput.value = '';
+        alert('Documents uploaded successfully.');
+    } catch (error) {
+        alert(error.message || 'Upload failed');
+    } finally {
+        if (btn) btn.disabled = false;
+    }
+}
+
+async function openApprovedProcessModal(loanId) {
+    CURRENT_APPROVED_LOAN_ID = loanId;
+    const modalEl = document.getElementById('approvedProcessModal');
+    if (!modalEl) return;
+
+    document.getElementById('approvedRejectReason').value = '';
+
+    try {
+        const res = await fetch(`/api/employee/loan/${loanId}/detail/`, {
+            method: 'GET',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include'
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+            throw new Error(data.error || 'Failed to load approval details');
+        }
+        const loan = data.loan || data;
+        const splitNotes = splitApprovalNotes(loan.approval_notes || '');
+
+        document.getElementById('approvedSmName').value = loan.sm_name || '-';
+        document.getElementById('approvedSmPhone').value = loan.sm_phone_number || '-';
+        document.getElementById('approvedSmEmail').value = loan.sm_email || '-';
+        document.getElementById('approvedBankNotes').value = splitNotes.bankNotes || '-';
+        document.getElementById('approvedApprovalRemark').value = splitNotes.approvalRemark || '-';
+        document.getElementById('approvedSignStatus').value = loan.is_sm_signed ? `Signed ${loan.sm_signed_at ? '(' + loan.sm_signed_at + ')' : ''}` : 'Pending';
+
+        document.getElementById('approvedDisburseAmount').value = loan.loan_amount || '';
+        document.getElementById('approvedDisburseDate').value = new Date().toISOString().slice(0, 10);
+
+        const signBtn = document.getElementById('approvedSignBtn');
+        if (signBtn) signBtn.disabled = !!loan.is_sm_signed;
+
+        new bootstrap.Modal(modalEl).show();
+    } catch (error) {
+        alert(error.message || 'Failed to load approval details');
+    }
+}
+
+async function submitApprovedSign() {
+    if (!CURRENT_APPROVED_LOAN_ID) return;
+    try {
+        await postJson(`/api/employee/loan/${CURRENT_APPROVED_LOAN_ID}/sign/`, {});
+        await loadLoans();
+        openApprovedProcessModal(CURRENT_APPROVED_LOAN_ID);
+    } catch (error) {
+        alert(error.message);
+    }
+}
+
+async function submitApprovedReject() {
+    if (!CURRENT_APPROVED_LOAN_ID) return;
+    const reason = document.getElementById('approvedRejectReason').value.trim();
+    if (!reason) {
+        alert('Rejection reason is required.');
+        return;
+    }
+    try {
+        await postJson(`/api/employee/loan/${CURRENT_APPROVED_LOAN_ID}/reject/`, {
+            rejection_reason: reason,
+            bank_remark: ''
+        });
+        bootstrap.Modal.getInstance(document.getElementById('approvedProcessModal')).hide();
+        await loadLoans();
+    } catch (error) {
+        alert(error.message);
+    }
+}
+
+async function submitApprovedDisburse() {
+    if (!CURRENT_APPROVED_LOAN_ID) return;
+    const amount = document.getElementById('approvedDisburseAmount').value;
+    const date = document.getElementById('approvedDisburseDate').value;
+    try {
+        await postJson(`/api/employee/loan/${CURRENT_APPROVED_LOAN_ID}/disburse/`, {
+            disbursement_amount: amount || null,
+            disbursement_date: date || null,
+            bank_remark: ''
+        });
+        bootstrap.Modal.getInstance(document.getElementById('approvedProcessModal')).hide();
+        await loadLoans();
+    } catch (error) {
+        alert(error.message);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     loadLoans();
-    setInterval(loadLoans, 30000);
+    refreshTimer = setInterval(loadLoans, 15000);
 
     document.getElementById('search-input').addEventListener('input', applyFilters);
     document.getElementById('reset-filters').addEventListener('click', () => {
@@ -284,6 +517,8 @@ document.addEventListener('DOMContentLoaded', () => {
         applyFilters();
     });
 });
+
+window.addEventListener('beforeunload', () => refreshTimer && clearInterval(refreshTimer));
 </script>
 
 <div class="modal fade" id="editLoanModal" tabindex="-1" aria-hidden="true">
@@ -317,6 +552,23 @@ document.addEventListener('DOMContentLoaded', () => {
                         <label class="form-label">Remarks</label>
                         <textarea class="form-control" rows="3" id="editLoanRemarks"></textarea>
                     </div>
+                    <div class="col-12" id="followUpDocSection" style="display:none;">
+                        <label class="form-label fw-semibold">Follow Up Documents</label>
+                        <div class="row g-2">
+                            <div class="col-md-4">
+                                <select id="followUpDocType" class="form-select">
+                                    <option value="">Select document type</option>
+                                </select>
+                            </div>
+                            <div class="col-md-5">
+                                <input id="followUpDocFiles" class="form-control" type="file" multiple>
+                            </div>
+                            <div class="col-md-3 d-grid">
+                                <button id="followUpUploadBtn" class="btn btn-outline-primary" type="button" onclick="uploadFollowUpDocs()">Upload Document(s)</button>
+                            </div>
+                        </div>
+                        <small class="text-muted">You can upload multiple documents in follow up.</small>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -342,6 +594,65 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="modal-footer">
                 <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 <button class="btn btn-danger" type="button" onclick="submitDeleteLoan()">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="approvedProcessModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Approved Loan Processing</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">SM Name *</label>
+                        <input type="text" class="form-control" id="approvedSmName" readonly>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">SM Phone Number *</label>
+                        <input type="text" class="form-control" id="approvedSmPhone" readonly>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">SM Email *</label>
+                        <input type="email" class="form-control" id="approvedSmEmail" readonly>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Bank Details Notes *</label>
+                        <textarea class="form-control" rows="2" id="approvedBankNotes" readonly></textarea>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Approval Remark</label>
+                        <textarea class="form-control" rows="2" id="approvedApprovalRemark" readonly></textarea>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Sign Status</label>
+                        <input type="text" class="form-control" id="approvedSignStatus" readonly>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Disbursement Amount</label>
+                        <input type="number" class="form-control" id="approvedDisburseAmount" min="0" step="0.01">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Disbursement Date</label>
+                        <input type="date" class="form-control" id="approvedDisburseDate">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Reject Reason *</label>
+                        <textarea class="form-control" rows="2" id="approvedRejectReason" placeholder="Required for reject"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer d-flex justify-content-between flex-wrap gap-2">
+                <div class="d-flex gap-2 flex-wrap">
+                    <button id="approvedSignBtn" class="btn btn-outline-success" type="button" onclick="submitApprovedSign()">Sign Tick</button>
+                    <button class="btn btn-danger" type="button" onclick="submitApprovedReject()">Reject</button>
+                    <button class="btn btn-primary" type="button" onclick="submitApprovedDisburse()">Disburse</button>
+                </div>
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>

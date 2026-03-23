@@ -9,6 +9,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
+import json
 from core.models import Loan, LoanDocument, ActivityLog, LoanApplication, Applicant
 
 @login_required
@@ -88,8 +89,11 @@ def approve_loan(request, loan_id):
         return JsonResponse({'error': 'Loan not found'}, status=404)
     
     # Check permission
-    if user.role == 'employee' and loan.assigned_employee != user:
-        return JsonResponse({'error': 'Unauthorized'}, status=403)
+    if user.role in ['admin', 'subadmin']:
+        pass
+    elif user.role == 'employee':
+        if loan.assigned_employee != user:
+            return JsonResponse({'error': 'Unauthorized'}, status=403)
     elif user.role == 'agent':
         from core.models import Agent
         try:
@@ -98,6 +102,8 @@ def approve_loan(request, loan_id):
                 return JsonResponse({'error': 'Unauthorized'}, status=403)
         except Agent.DoesNotExist:
             return JsonResponse({'error': 'Agent not found'}, status=403)
+    else:
+        return JsonResponse({'error': 'Unauthorized'}, status=403)
     
     # Update loan status
     loan.status = 'approved'
@@ -141,8 +147,11 @@ def reject_loan(request, loan_id):
         return JsonResponse({'error': 'Loan not found'}, status=404)
     
     # Check permission
-    if user.role == 'employee' and loan.assigned_employee != user:
-        return JsonResponse({'error': 'Unauthorized'}, status=403)
+    if user.role in ['admin', 'subadmin']:
+        pass
+    elif user.role == 'employee':
+        if loan.assigned_employee != user:
+            return JsonResponse({'error': 'Unauthorized'}, status=403)
     elif user.role == 'agent':
         from core.models import Agent
         try:
@@ -151,9 +160,19 @@ def reject_loan(request, loan_id):
                 return JsonResponse({'error': 'Unauthorized'}, status=403)
         except Agent.DoesNotExist:
             return JsonResponse({'error': 'Agent not found'}, status=403)
+    else:
+        return JsonResponse({'error': 'Unauthorized'}, status=403)
     
-    # Get rejection reason from POST data
-    reason = request.POST.get('reason', 'No reason provided')
+    # Get rejection reason from POST or JSON body
+    reason = request.POST.get('reason', '').strip()
+    if request.body:
+        try:
+            payload = json.loads(request.body.decode('utf-8') or '{}')
+            reason = payload.get('rejection_reason') or payload.get('reason') or reason
+        except json.JSONDecodeError:
+            pass
+    if not reason:
+        reason = 'No reason provided'
     
     # Update loan status
     loan.status = 'rejected'

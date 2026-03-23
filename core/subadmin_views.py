@@ -37,6 +37,7 @@ import json
 import logging
 
 logger = logging.getLogger(__name__)
+FOLLOW_UP_PENDING_LABEL = 'Follow Up'
 
 
 def _parse_request_data(request):
@@ -52,12 +53,31 @@ def _subadmin_tag(subadmin_user):
     return f"[subadmin:{subadmin_user.id}]"
 
 
-def _status_label(status_key):
+def _has_revert_marker(raw_text):
+    return 'revert remark ' in str(raw_text or '').lower()
+
+
+def _is_follow_up_pending_loan(loan_obj):
+    if not loan_obj:
+        return False
+    if loan_obj.status not in ['new_entry', 'waiting']:
+        return False
+    return _has_revert_marker(loan_obj.remarks)
+
+
+def _follow_up_pending_q():
+    return Q(status__in=['new_entry', 'waiting']) & Q(remarks__icontains='Revert Remark ')
+
+
+def _status_label(status_key, follow_up_pending=False):
+    if follow_up_pending:
+        return FOLLOW_UP_PENDING_LABEL
     labels = {
         'draft': 'Draft',
         'new_entry': 'New Entry',
         'waiting': 'In Processing',
         'follow_up': 'Banking Processing',
+        'follow_up_pending': FOLLOW_UP_PENDING_LABEL,
         'approved': 'Approved',
         'rejected': 'Rejected',
         'disbursed': 'Disbursed',
@@ -218,11 +238,38 @@ def _serialize_subadmin_loan_details(loan_obj):
                 'changed_at': row.changed_at.strftime('%Y-%m-%d %H:%M') if row.changed_at else '',
             })
 
+    sm_name = (
+        getattr(loan_app, 'sm_name', None)
+        if loan_app and getattr(loan_app, 'sm_name', None)
+        else loan_obj.sm_name
+    ) or '-'
+    sm_phone_number = (
+        getattr(loan_app, 'sm_phone_number', None)
+        if loan_app and getattr(loan_app, 'sm_phone_number', None)
+        else loan_obj.sm_phone_number
+    ) or '-'
+    sm_email = (
+        getattr(loan_app, 'sm_email', None)
+        if loan_app and getattr(loan_app, 'sm_email', None)
+        else loan_obj.sm_email
+    ) or '-'
+    is_sm_signed = bool(
+        (getattr(loan_app, 'is_sm_signed', False) if loan_app else False) or loan_obj.is_sm_signed
+    )
+    sm_signed_at = (
+        getattr(loan_app, 'sm_signed_at', None) if loan_app and getattr(loan_app, 'sm_signed_at', None)
+        else loan_obj.sm_signed_at
+    )
+    follow_up_pending = _is_follow_up_pending_loan(loan_obj)
+    status_key = 'follow_up_pending' if follow_up_pending else loan_obj.status
+
     return {
         'id': loan_obj.id,
         'loan_id': loan_obj.user_id or f"LOAN-{loan_obj.id:06d}",
-        'status': loan_obj.status,
-        'status_display': _status_label(loan_obj.status),
+        'status': status_key,
+        'status_raw': loan_obj.status,
+        'status_display': _status_label(loan_obj.status, follow_up_pending=follow_up_pending),
+        'follow_up_pending': follow_up_pending,
         'created_at': loan_obj.created_at.strftime('%Y-%m-%d %H:%M') if loan_obj.created_at else '',
         'updated_at': loan_obj.updated_at.strftime('%Y-%m-%d %H:%M') if loan_obj.updated_at else '',
         'created_under': created_by_display,
@@ -251,6 +298,11 @@ def _serialize_subadmin_loan_details(loan_obj):
         'bank_ifsc_code': loan_obj.bank_ifsc_code or '-',
         'bank_type': loan_obj.bank_type or '-',
         'bank_remark': _latest_bank_remark(loan_obj),
+        'sm_name': sm_name,
+        'sm_phone_number': sm_phone_number,
+        'sm_email': sm_email,
+        'is_sm_signed': is_sm_signed,
+        'sm_signed_at': sm_signed_at.strftime('%Y-%m-%d %H:%M') if sm_signed_at else '-',
 
         'co_applicant_name': loan_obj.co_applicant_name or '-',
         'co_applicant_phone': loan_obj.co_applicant_phone or '-',
@@ -342,13 +394,16 @@ def subadmin_dashboard(request):
     
     # Calculate statistics
     total_loans = all_loans.count()
+    follow_up_pending_q = _follow_up_pending_q()
+    follow_up_pending_count = all_loans.filter(follow_up_pending_q).count()
     
     # Loan status breakdown
     status_stats = {
         'total': total_loans,
-        'new_entry': all_loans.filter(status='new_entry').count(),
-        'waiting': all_loans.filter(status='waiting').count(),
+        'new_entry': all_loans.filter(status='new_entry').exclude(remarks__icontains='Revert Remark ').count(),
+        'waiting': all_loans.filter(status='waiting').exclude(remarks__icontains='Revert Remark ').count(),
         'follow_up': all_loans.filter(status='follow_up').count(),
+        'follow_up_pending': follow_up_pending_count,
         'approved': all_loans.filter(status='approved').count(),
         'rejected': all_loans.filter(status='rejected').count(),
         'disbursed': all_loans.filter(status='disbursed').count(),
@@ -359,6 +414,7 @@ def subadmin_dashboard(request):
     status_stats['new_entry_pct'] = int((status_stats['new_entry'] / total_for_percent) * 100)
     status_stats['waiting_pct'] = int((status_stats['waiting'] / total_for_percent) * 100)
     status_stats['follow_up_pct'] = int((status_stats['follow_up'] / total_for_percent) * 100)
+    status_stats['follow_up_pending_pct'] = int((status_stats['follow_up_pending'] / total_for_percent) * 100)
     status_stats['approved_pct'] = int((status_stats['approved'] / total_for_percent) * 100)
     status_stats['rejected_pct'] = int((status_stats['rejected'] / total_for_percent) * 100)
     status_stats['disbursed_pct'] = int((status_stats['disbursed'] / total_for_percent) * 100)
@@ -424,13 +480,15 @@ def api_subadmin_dashboard_stats(request):
     try:
         subadmin_user = request.user
         all_loans = _subadmin_scoped_loans_qs(subadmin_user)
+        follow_up_pending_q = _follow_up_pending_q()
         
         # Loan status breakdown
         status_stats = {
             'total': all_loans.count(),
-            'new_entry': all_loans.filter(status='new_entry').count(),
-            'waiting': all_loans.filter(status='waiting').count(),
+            'new_entry': all_loans.filter(status='new_entry').exclude(remarks__icontains='Revert Remark ').count(),
+            'waiting': all_loans.filter(status='waiting').exclude(remarks__icontains='Revert Remark ').count(),
             'follow_up': all_loans.filter(status='follow_up').count(),
+            'follow_up_pending': all_loans.filter(follow_up_pending_q).count(),
             'approved': all_loans.filter(status='approved').count(),
             'rejected': all_loans.filter(status='rejected').count(),
             'disbursed': all_loans.filter(status='disbursed').count(),
@@ -441,6 +499,7 @@ def api_subadmin_dashboard_stats(request):
         status_stats['new_entry_pct'] = int((status_stats['new_entry'] / total_for_percent) * 100)
         status_stats['waiting_pct'] = int((status_stats['waiting'] / total_for_percent) * 100)
         status_stats['follow_up_pct'] = int((status_stats['follow_up'] / total_for_percent) * 100)
+        status_stats['follow_up_pending_pct'] = int((status_stats['follow_up_pending'] / total_for_percent) * 100)
         status_stats['approved_pct'] = int((status_stats['approved'] / total_for_percent) * 100)
         status_stats['rejected_pct'] = int((status_stats['rejected'] / total_for_percent) * 100)
         status_stats['disbursed_pct'] = int((status_stats['disbursed'] / total_for_percent) * 100)
@@ -475,6 +534,7 @@ def api_subadmin_dashboard_stats(request):
             'waiting': status_stats['waiting'],
             'in_processing': status_stats['waiting'],
             'follow_up': status_stats['follow_up'],
+            'follow_up_pending': status_stats['follow_up_pending'],
             'banking_processing': status_stats['follow_up'],
             'approved': status_stats['approved'],
             'rejected': status_stats['rejected'],
@@ -505,6 +565,8 @@ def api_subadmin_recent_loans(request):
             creator = loan.created_by
             creator_name = (creator.get_full_name() or creator.username) if creator else '-'
             creator_role = _role_label(creator)
+            follow_up_pending = _is_follow_up_pending_loan(loan)
+            status_key = 'follow_up_pending' if follow_up_pending else loan.status
             rows.append({
                 'id': loan.id,
                 'loan_id': loan.user_id or f"LOAN-{loan.id}",
@@ -512,8 +574,10 @@ def api_subadmin_recent_loans(request):
                 'mobile_number': loan.mobile_number or '-',
                 'loan_type': loan.get_loan_type_display() if hasattr(loan, 'get_loan_type_display') else (loan.loan_type or '-'),
                 'loan_amount': float(loan.loan_amount or 0),
-                'status': loan.status,
-                'status_display': _status_label(loan.status),
+                'status': status_key,
+                'status_raw': loan.status,
+                'follow_up_pending': follow_up_pending,
+                'status_display': _status_label(loan.status, follow_up_pending=follow_up_pending),
                 'created_under': f"{creator_role} - {creator_name}",
                 'assigned_to': (
                     f"Employee - {loan.assigned_employee.get_full_name() or loan.assigned_employee.username}"
@@ -570,9 +634,14 @@ def subadmin_all_loans(request):
             Q(user_id__icontains=search_query)
         )
     
+    follow_up_pending_q = _follow_up_pending_q()
     # Status filter
-    if status_filter and status_filter != 'all':
+    if status_filter == 'follow_up_pending':
+        loans_qs = loans_qs.filter(follow_up_pending_q)
+    elif status_filter and status_filter != 'all':
         loans_qs = loans_qs.filter(status=status_filter)
+        if status_filter in ['new_entry', 'waiting']:
+            loans_qs = loans_qs.exclude(remarks__icontains='Revert Remark ')
     
     managed_agents_qs = _subadmin_managed_agents_qs(request.user)
     managed_employees_qs = _subadmin_managed_employees_qs(request.user)
@@ -614,9 +683,10 @@ def subadmin_all_loans(request):
     # Real-time counts (scoped)
     all_loans_count = scoped_loans.count()
     status_counts = {
-        'new_entry': scoped_loans.filter(status='new_entry').count(),
-        'waiting': scoped_loans.filter(status='waiting').count(),
+        'new_entry': scoped_loans.filter(status='new_entry').exclude(remarks__icontains='Revert Remark ').count(),
+        'waiting': scoped_loans.filter(status='waiting').exclude(remarks__icontains='Revert Remark ').count(),
         'follow_up': scoped_loans.filter(status='follow_up').count(),
+        'follow_up_pending': scoped_loans.filter(follow_up_pending_q).count(),
         'approved': scoped_loans.filter(status='approved').count(),
         'rejected': scoped_loans.filter(status='rejected').count(),
         'disbursed': scoped_loans.filter(status='disbursed').count(),
@@ -637,6 +707,8 @@ def subadmin_all_loans(request):
             assigned_to = f"Employee - {loan.assigned_employee.get_full_name() or loan.assigned_employee.username}"
         elif loan.assigned_agent:
             assigned_to = f"Agent - {loan.assigned_agent.name}"
+        follow_up_pending = _is_follow_up_pending_loan(loan)
+        status_key = 'follow_up_pending' if follow_up_pending else loan.status
 
         loans_list.append({
             'id': loan.id,
@@ -649,8 +721,11 @@ def subadmin_all_loans(request):
             'agent': loan.assigned_agent.name if loan.assigned_agent else 'Unassigned',
             'employee': loan.assigned_employee.get_full_name() if loan.assigned_employee else 'Unassigned',
             'assigned_to': assigned_to,
-            'status': loan.status,
-            'status_display': _status_label(loan.status),
+            'status': status_key,
+            'status_raw': loan.status,
+            'status_key': status_key,
+            'follow_up_pending': follow_up_pending,
+            'status_display': _status_label(loan.status, follow_up_pending=follow_up_pending),
             'created_under': f"{creator_role} - {creator_name}",
             'assigned_by': _extract_assignment_marker(loan),
             'created_date': loan.created_at,
@@ -677,6 +752,7 @@ def subadmin_all_loans(request):
             'new_entry': status_counts['new_entry'],
             'processing': status_counts['waiting'],
             'follow_up': status_counts['follow_up'],
+            'follow_up_pending': status_counts['follow_up_pending'],
             'approved': status_counts['approved'],
             'rejected': status_counts['rejected'],
             'disbursed': status_counts['disbursed'],
@@ -1046,9 +1122,10 @@ def subadmin_agent_detail(request, agent_id):
     # Status breakdown
     loan_stats = {
         'total': loans.count(),
-        'new_entry': loans.filter(status='new_entry').count(),
-        'waiting': loans.filter(status='waiting').count(),
+        'new_entry': loans.filter(status='new_entry').exclude(remarks__icontains='Revert Remark ').count(),
+        'waiting': loans.filter(status='waiting').exclude(remarks__icontains='Revert Remark ').count(),
         'follow_up': loans.filter(status='follow_up').count(),
+        'follow_up_pending': loans.filter(_follow_up_pending_q()).count(),
         'approved': loans.filter(status='approved').count(),
         'rejected': loans.filter(status='rejected').count(),
         'disbursed': loans.filter(status='disbursed').count(),
@@ -1100,6 +1177,8 @@ def subadmin_get_agent(request, agent_id):
                 assigned_to = f"Employee - {loan.assigned_employee.get_full_name() or loan.assigned_employee.username}"
             elif loan.assigned_agent:
                 assigned_to = f"Agent - {loan.assigned_agent.name}"
+            follow_up_pending = _is_follow_up_pending_loan(loan)
+            status_key = 'follow_up_pending' if follow_up_pending else loan.status
 
             customers.append({
                 'loan_id': loan.id,
@@ -1109,8 +1188,10 @@ def subadmin_get_agent(request, agent_id):
                 'email': loan.email or '-',
                 'loan_type': loan.get_loan_type_display() if hasattr(loan, 'get_loan_type_display') else (loan.loan_type or '-'),
                 'loan_amount': float(loan.loan_amount or 0),
-                'status': loan.status,
-                'status_display': _status_label(loan.status),
+                'status': status_key,
+                'status_raw': loan.status,
+                'follow_up_pending': follow_up_pending,
+                'status_display': _status_label(loan.status, follow_up_pending=follow_up_pending),
                 'source': source,
                 'assigned_to': assigned_to,
                 'under_whom': f"{owner_role} - {owner_name}",
@@ -1128,7 +1209,8 @@ def subadmin_get_agent(request, agent_id):
             'approved': scoped_loans_qs.filter(status='approved').count(),
             'rejected': scoped_loans_qs.filter(status='rejected').count(),
             'banking_processing': scoped_loans_qs.filter(status='follow_up').count(),
-            'waiting': scoped_loans_qs.filter(status='waiting').count(),
+            'follow_up_pending': scoped_loans_qs.filter(_follow_up_pending_q()).count(),
+            'waiting': scoped_loans_qs.filter(status='waiting').exclude(remarks__icontains='Revert Remark ').count(),
             'disbursed': scoped_loans_qs.filter(status='disbursed').count(),
             'total_customers': scoped_loans_qs.count(),
         }
@@ -1470,7 +1552,8 @@ def subadmin_employee_detail(request, employee_id):
         'total': loans.count(),
         'approved': loans.filter(status='approved').count(),
         'rejected': loans.filter(status='rejected').count(),
-        'pending': loans.filter(status__in=['waiting', 'follow_up']).count(),
+        'pending': loans.filter(status='waiting').exclude(remarks__icontains='Revert Remark ').count() + loans.filter(status='follow_up').count(),
+        'follow_up_pending': loans.filter(_follow_up_pending_q()).count(),
         'disbursed': loans.filter(status='disbursed').count(),
     }
     
@@ -1516,6 +1599,8 @@ def subadmin_get_employee(request, employee_id):
                 assigned_to = f"Employee - {loan.assigned_employee.get_full_name() or loan.assigned_employee.username}"
             elif loan.assigned_agent:
                 assigned_to = f"Agent - {loan.assigned_agent.name}"
+            follow_up_pending = _is_follow_up_pending_loan(loan)
+            status_key = 'follow_up_pending' if follow_up_pending else loan.status
 
             customers.append({
                 'loan_id': loan.id,
@@ -1525,8 +1610,10 @@ def subadmin_get_employee(request, employee_id):
                 'email': loan.email or '-',
                 'loan_type': loan.get_loan_type_display() if hasattr(loan, 'get_loan_type_display') else (loan.loan_type or '-'),
                 'loan_amount': float(loan.loan_amount or 0),
-                'status': loan.status,
-                'status_display': _status_label(loan.status),
+                'status': status_key,
+                'status_raw': loan.status,
+                'follow_up_pending': follow_up_pending,
+                'status_display': _status_label(loan.status, follow_up_pending=follow_up_pending),
                 'source': source,
                 'assigned_to': assigned_to,
                 'under_whom': f"{owner_role} - {owner_name}",
@@ -1544,7 +1631,8 @@ def subadmin_get_employee(request, employee_id):
             'approved': scoped_loans_qs.filter(status='approved').count(),
             'rejected': scoped_loans_qs.filter(status='rejected').count(),
             'banking_processing': scoped_loans_qs.filter(status='follow_up').count(),
-            'waiting': scoped_loans_qs.filter(status='waiting').count(),
+            'follow_up_pending': scoped_loans_qs.filter(_follow_up_pending_q()).count(),
+            'waiting': scoped_loans_qs.filter(status='waiting').exclude(remarks__icontains='Revert Remark ').count(),
             'disbursed': scoped_loans_qs.filter(status='disbursed').count(),
             'total_customers': scoped_loans_qs.count(),
         }

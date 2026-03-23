@@ -62,7 +62,7 @@
 
     <!-- Status Cards -->
     <div class="row mb-4">
-        <div class="col-md-3 mb-3">
+        <div class="col-lg-2 col-md-4 mb-3">
             <div class="card shadow-sm border-0">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start">
@@ -75,7 +75,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-3 mb-3">
+        <div class="col-lg-2 col-md-4 mb-3">
             <div class="card shadow-sm border-0">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start">
@@ -88,7 +88,20 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-3 mb-3">
+        <div class="col-lg-2 col-md-4 mb-3">
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-muted mb-1 small">Follow Up</p>
+                            <h3 class="mb-0 fw-bold text-warning">{{ follow_up_pending_count|default:0 }}</h3>
+                        </div>
+                        <i class="bi bi-arrow-repeat text-warning" style="font-size: 2rem; opacity: 0.3;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-2 col-md-4 mb-3">
             <div class="card shadow-sm border-0">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start">
@@ -101,7 +114,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-3 mb-3">
+        <div class="col-lg-2 col-md-4 mb-3">
             <div class="card shadow-sm border-0">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start">
@@ -130,6 +143,7 @@
                                 <option value="new_entry">New Entry</option>
                                 <option value="waiting">Processing</option>
                                 <option value="follow_up">Bank Stage</option>
+                                <option value="follow_up_pending">Follow Up</option>
                                 <option value="approved">Approved</option>
                                 <option value="rejected">Rejected</option>
                                 <option value="disbursed">Disbursed</option>
@@ -162,7 +176,7 @@
                     <small class="text-muted">Latest 10 entries with current stage</small>
                 </div>
                 <div class="table-responsive">
-                    <table class="table table-sm mb-0">
+                    <table class="table table-sm table-grid mb-0">
                         <thead>
                             <tr>
                                 <th>ID</th>
@@ -180,7 +194,9 @@
                                 <td>{{ loan.full_name }}</td>
                                 <td>&#8377;{{ loan.loan_amount|floatformat:0|default:"0" }}</td>
                                 <td>
-                                    {% if loan.status == 'draft' %}
+                                    {% if loan.has_revert_pending %}
+                                        <span class="stage-badge bg-warning text-dark">Follow Up</span>
+                                    {% elif loan.status == 'draft' %}
                                         <span class="stage-badge bg-secondary text-white">Draft</span>
                                     {% elif loan.status == 'new_entry' %}
                                         <span class="stage-badge bg-primary text-white">New Entry</span>
@@ -199,9 +215,13 @@
                                     {% endif %}
                                 </td>
                                 <td>
-                                    <span class="badge badge-{{ loan.status }} small">
-                                        {{ loan.get_status_display|default:loan.status }}
-                                    </span>
+                                    {% if loan.has_revert_pending %}
+                                        <span class="badge badge-follow_up small">Follow Up</span>
+                                    {% else %}
+                                        <span class="badge badge-{{ loan.status }} small">
+                                            {{ loan.get_status_display|default:loan.status }}
+                                        </span>
+                                    {% endif %}
                                 </td>
                                 <td>{{ loan.created_at|date:"d M, Y" }}</td>
                             </tr>
@@ -229,7 +249,7 @@
                 <div class="card-body p-0">
                     {% if loans %}
                     <div class="table-responsive">
-                        <table class="table table-hover mb-0" id="loans-table">
+                        <table class="table table-hover table-grid mb-0" id="loans-table">
                             <thead class="bg-light sticky-top">
                                 <tr>
                                     <th style="width: 15%"><small class="fw-600">Applicant Name</small></th>
@@ -244,7 +264,7 @@
                             </thead>
                             <tbody>
                                 {% for loan in loans %}
-                                <tr id="loan-row-{{ loan.id }}" class="status-{{ loan.status }} {% if focus_loan_id and focus_loan_id == loan.id|stringformat:'s' %}focus-row{% endif %}" data-status="{{ loan.status }}">
+                                <tr id="loan-row-{{ loan.id }}" class="status-{{ loan.status }} {% if focus_loan_id and focus_loan_id == loan.id|stringformat:'s' %}focus-row{% endif %}" data-status="{% if loan.has_revert_pending %}follow_up_pending{% else %}{{ loan.status }}{% endif %}">
                                     <td class="fw-600 align-middle">{{ loan.full_name }}</td>
                                     <td class="align-middle"><a href="tel:{{ loan.mobile_number }}">{{ loan.mobile_number }}</a></td>
                                     <td class="fw-bold align-middle text-primary">&#8377;{{ loan.loan_amount|floatformat:0|default:"0" }}</td>
@@ -254,20 +274,26 @@
                                         </span>
                                     </td>
                                     <td class="align-middle">
-                                        <span class="badge badge-{{ loan.status }} small">
-                                            {% if loan.status == 'draft' %} Draft
-                                            {% elif loan.status == 'new_entry' %} New Entry
-                                            {% elif loan.status == 'waiting' %} Processing
-                                            {% elif loan.status == 'follow_up' %} Bank Stage
-                                            {% elif loan.status == 'approved' %} Approved
-                                            {% elif loan.status == 'rejected' %} Rejected
-                                            {% elif loan.status == 'disbursed' %} Disbursed
-                                            {% else %} {{ loan.get_status_display }}
-                                            {% endif %}
-                                        </span>
+                                        {% if loan.has_revert_pending %}
+                                            <span class="badge badge-follow_up small">Follow Up</span>
+                                        {% else %}
+                                            <span class="badge badge-{{ loan.status }} small">
+                                                {% if loan.status == 'draft' %} Draft
+                                                {% elif loan.status == 'new_entry' %} New Entry
+                                                {% elif loan.status == 'waiting' %} Processing
+                                                {% elif loan.status == 'follow_up' %} Bank Stage
+                                                {% elif loan.status == 'approved' %} Approved
+                                                {% elif loan.status == 'rejected' %} Rejected
+                                                {% elif loan.status == 'disbursed' %} Disbursed
+                                                {% else %} {{ loan.get_status_display }}
+                                                {% endif %}
+                                            </span>
+                                        {% endif %}
                                     </td>
                                     <td class="align-middle">
-                                        {% if loan.status == 'draft' %}
+                                        {% if loan.has_revert_pending %}
+                                            <span class="stage-badge bg-warning text-dark">Follow Up</span>
+                                        {% elif loan.status == 'draft' %}
                                             <span class="stage-badge bg-secondary text-white">Draft</span>
                                         {% elif loan.status == 'new_entry' %}
                                             <span class="stage-badge bg-primary text-white">New Entry</span>
@@ -287,9 +313,15 @@
                                     </td>
                                     <td class="align-middle"><small class="text-muted">{{ loan.created_at|date:"d M, Y" }}</small></td>
                                     <td class="align-middle">
+                                        {% if loan.has_revert_pending %}
+                                        <a class="btn btn-sm btn-outline-warning" href="{% url 'agent_resubmit_reverted_loan' loan.id %}" title="Edit and Re-submit">
+                                            <i class="bi bi-pencil-square"></i> Re-submit
+                                        </a>
+                                        {% else %}
                                         <button class="btn btn-sm btn-outline-primary" onclick="viewLoanDetails({{ loan.id }}, '{{ loan.full_name }}')" title="View Details">
                                             <i class="bi bi-eye"></i> View
                                         </button>
+                                        {% endif %}
                                     </td>
                                 </tr>
                                 {% endfor %}

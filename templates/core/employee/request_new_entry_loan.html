@@ -1,4 +1,4 @@
-{% extends 'core/base.html' %}
+﻿{% extends 'core/base.html' %}
 {% load static %}
 
 {% block title %}{{ page_title_text|default:"Employee Loan Queue" }} - DSA Loan Management{% endblock %}
@@ -586,6 +586,7 @@
                 <option value="">All Statuses</option>
                 {% if page_mode == 'bank_processing' %}
                 <option value="Required Follow-up">Banking Processing</option>
+                <option value="Follow Up">Follow Up</option>
                 <option value="Approved">Approved</option>
                 <option value="Rejected">Rejected</option>
                 <option value="Disbursed">Disbursed</option>
@@ -774,6 +775,7 @@
             statusEl.value = DEFAULT_STATUS_FILTER;
         }
         loadAssignedLoans();
+        updateDashboardStats();
         
         // Auto-refresh list every 15 seconds
         refreshInterval = setInterval(() => {
@@ -875,6 +877,14 @@
             const statusClass = getStatusClass(loan.status);
             const applicantInitial = (loan.applicant_name || '?').charAt(0).toUpperCase();
             const daysAgo = Math.floor((new Date() - new Date(loan.assigned_date)) / (1000 * 60 * 60 * 24));
+            const safeApplicantName = JSON.stringify(loan.applicant_name || '');
+            const isFollowUpRow = loan.status === 'Follow Up';
+            const actionButtons = isFollowUpRow
+                ? `<button class="btn-action btn-process" onclick="openProcessPage(${loan.id})">Edit</button>`
+                : `
+                    <button class="btn-action btn-view" onclick="viewLoan(${loan.id}, ${safeApplicantName})">View</button>
+                    <button class="btn-action btn-process" onclick="openProcessPage(${loan.id})">${PAGE_MODE === 'bank_processing' ? 'Open' : 'Process'}</button>
+                `;
 
             row.innerHTML = `
                 <td>
@@ -900,8 +910,7 @@
                 </td>
                 <td>
                     <div class="action-buttons">
-                        <button class="btn-action btn-view" onclick="viewLoan(${loan.id}, '${loan.applicant_name}')">View</button>
-                        <button class="btn-action btn-process" onclick="openProcessPage(${loan.id})">${PAGE_MODE === 'bank_processing' ? 'Open' : 'Process'}</button>
+                        ${actionButtons}
                     </div>
                 </td>
             `;
@@ -1014,6 +1023,7 @@
                 showSuccess('Moved to Banking Processing successfully!');
                 closeModal('collect-modal');
                 loadAssignedLoans();
+                updateDashboardStats();
             } else {
                 showError(data.error || 'Failed to move to Banking Processing');
             }
@@ -1060,6 +1070,7 @@
                 showSuccess('Loan approved successfully!');
                 closeModal('approve-modal');
                 loadAssignedLoans();
+                updateDashboardStats();
             } else {
                 showError(data.error || 'Failed to approve loan');
             }
@@ -1107,6 +1118,7 @@
                 showSuccess('Loan rejected successfully!');
                 closeModal('reject-modal');
                 loadAssignedLoans();
+                updateDashboardStats();
             } else {
                 showError(data.error || 'Failed to reject loan');
             }
@@ -1160,6 +1172,7 @@
                 showSuccess('Loan marked as disbursed successfully!');
                 closeModal('disburse-modal');
                 loadAssignedLoans();
+                updateDashboardStats();
             } else {
                 showError(data.error || 'Failed to disburse loan');
             }
@@ -1177,6 +1190,7 @@
         const classMap = {
             'Waiting for Processing': 'waiting',
             'Required Follow-up': 'follow-up',
+            'Follow Up': 'follow-up',
             'Banking Processing': 'follow-up',
             'Approved': 'approved',
             'Rejected': 'rejected',
@@ -1187,6 +1201,8 @@
 
     function displayStatus(status) {
         if (status === 'Required Follow-up') return 'Banking Processing';
+        if (status === 'Follow Up') return 'Follow Up';
+        if (PAGE_MODE === 'bank_processing' && status === 'Approved') return 'Banking Processing Successful';
         return status;
     }
 
@@ -1246,4 +1262,5 @@
     });
 </script>
 {% endblock %}
+
 

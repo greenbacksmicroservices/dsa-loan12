@@ -224,6 +224,116 @@
         transform: scale(1.05);
     }
 
+    .download-modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.52);
+        z-index: 2500;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 18px;
+    }
+
+    .download-modal-overlay.active {
+        display: flex;
+    }
+
+    .download-modal {
+        width: min(560px, 100%);
+        border-radius: 12px;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 24px 36px rgba(15, 23, 42, 0.25);
+        overflow: hidden;
+    }
+
+    .download-modal-header {
+        padding: 14px 16px;
+        background: #f8fafc;
+        border-bottom: 1px solid #e2e8f0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .download-modal-title {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 700;
+        color: #0f172a;
+    }
+
+    .download-modal-body {
+        padding: 16px;
+        display: grid;
+        gap: 12px;
+    }
+
+    .download-field label {
+        display: block;
+        margin-bottom: 6px;
+        font-size: 12px;
+        font-weight: 700;
+        color: #334155;
+        text-transform: uppercase;
+        letter-spacing: .4px;
+    }
+
+    .download-field input,
+    .download-field select {
+        width: 100%;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        padding: 10px 12px;
+        font-size: 13px;
+    }
+
+    .download-search-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+    }
+
+    .download-search-btn {
+        border: none;
+        border-radius: 8px;
+        background: #0ea5e9;
+        color: #fff;
+        padding: 0 14px;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .download-modal-footer {
+        padding: 12px 16px 16px;
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        border-top: 1px solid #e2e8f0;
+        background: #f8fafc;
+    }
+
+    .download-modal-footer button {
+        border: none;
+        border-radius: 8px;
+        padding: 9px 14px;
+        font-weight: 700;
+        font-size: 13px;
+        cursor: pointer;
+    }
+
+    .download-cancel-btn {
+        background: #e2e8f0;
+        color: #334155;
+    }
+
+    .download-confirm-btn {
+        background: #2563eb;
+        color: #fff;
+    }
+
     @media (max-width: 768px) {
         .report-header {
             flex-direction: column;
@@ -298,7 +408,7 @@
                 </div>
             </li>
             <li class="report-list-item">
-                <span class="report-list-label">Required Follow-up</span>
+                <span class="report-list-label">Banking Processing</span>
                 <div>
                     <span class="report-list-value">{{ followup_count }}</span>
                     <span class="percentage">{{ followup_percent }}%</span>
@@ -387,8 +497,115 @@
     </div>
 </div>
 
+{{ download_people|json_script:"downloadPeopleData" }}
+
+<div class="download-modal-overlay" id="downloadReportModal">
+    <div class="download-modal">
+        <div class="download-modal-header">
+            <h3 class="download-modal-title">Download Reports CSV</h3>
+            <button type="button" onclick="closeDownloadModal()" style="background:none; border:none; font-size:22px; color:#64748b; cursor:pointer;">&times;</button>
+        </div>
+        <div class="download-modal-body">
+            <div class="download-field">
+                <label for="downloadNameSearch">Search Employee/Agent/SubAdmin</label>
+                <div class="download-search-row">
+                    <input type="text" id="downloadNameSearch" placeholder="Type team member name...">
+                    <button type="button" class="download-search-btn" onclick="findDownloadName()">Search</button>
+                </div>
+            </div>
+            <div class="download-field">
+                <label for="downloadPersonSelect">Select Team Member</label>
+                <select id="downloadPersonSelect"></select>
+            </div>
+            <div class="download-field">
+                <label for="downloadTimeInput">Download Time</label>
+                <input type="datetime-local" id="downloadTimeInput">
+            </div>
+        </div>
+        <div class="download-modal-footer">
+            <button type="button" class="download-cancel-btn" onclick="closeDownloadModal()">Cancel</button>
+            <button type="button" class="download-confirm-btn" onclick="confirmDownloadReport()">Download CSV</button>
+        </div>
+    </div>
+</div>
+
 <script>
+const downloadPeopleRaw = (() => {
+    const el = document.getElementById('downloadPeopleData');
+    if (!el) return [];
+    try {
+        return JSON.parse(el.textContent || '[]');
+    } catch (e) {
+        console.error('Unable to parse download names', e);
+        return [];
+    }
+})();
+
+function formatDateTimeLocal(date) {
+    const pad = (v) => String(v).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function populateDownloadPeople(filterText = '') {
+    const select = document.getElementById('downloadPersonSelect');
+    if (!select) return;
+    const q = String(filterText || '').trim().toLowerCase();
+    const filtered = downloadPeopleRaw.filter((person) => {
+        const name = String(person.name || '').toLowerCase();
+        const role = String(person.role || '').toLowerCase();
+        return !q || name.includes(q) || role.includes(q);
+    });
+
+    select.innerHTML = '';
+    if (!filtered.length) {
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = 'No match found';
+        select.appendChild(opt);
+        return;
+    }
+
+    filtered.forEach((person) => {
+        const opt = document.createElement('option');
+        opt.value = person.name;
+        opt.textContent = `${person.name} (${person.role})`;
+        select.appendChild(opt);
+    });
+}
+
+function findDownloadName() {
+    const searchInput = document.getElementById('downloadNameSearch');
+    populateDownloadPeople(searchInput ? searchInput.value : '');
+}
+
 function downloadReport() {
+    const modal = document.getElementById('downloadReportModal');
+    const timeInput = document.getElementById('downloadTimeInput');
+    const searchInput = document.getElementById('downloadNameSearch');
+    if (searchInput) searchInput.value = '';
+    if (timeInput) timeInput.value = formatDateTimeLocal(new Date());
+    populateDownloadPeople('');
+    if (modal) modal.classList.add('active');
+}
+
+function closeDownloadModal() {
+    const modal = document.getElementById('downloadReportModal');
+    if (modal) modal.classList.remove('active');
+}
+
+function confirmDownloadReport() {
+    const now = new Date();
+    const pad = (val) => String(val).padStart(2, '0');
+    const defaultTime = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
+    const selectedOption = document.getElementById('downloadPersonSelect')?.selectedOptions?.[0];
+    const selectedName = (selectedOption?.value || '').trim();
+    const selectedDisplay = (selectedOption?.textContent || '').trim();
+    const searchName = (document.getElementById('downloadNameSearch')?.value || '').trim();
+    const selectedPerson = selectedDisplay || selectedName || searchName || 'N/A';
+    const rawTime = document.getElementById('downloadTimeInput')?.value || '';
+    const downloadTime = rawTime ? rawTime.replace('T', ' ') : defaultTime;
+
     const reportData = [
         ['Total Applications', '{{ total_applications|default:0 }}'],
         ['Approved Applications', '{{ approved_count|default:0 }}'],
@@ -396,7 +613,7 @@ function downloadReport() {
         ['Disbursed Applications', '{{ disbursed_count|default:0 }}'],
         ['New Entry', '{{ new_count|default:0 }}'],
         ['In Processing', '{{ processing_count|default:0 }}'],
-        ['Required Follow-up', '{{ followup_count|default:0 }}'],
+        ['Banking Processing', '{{ followup_count|default:0 }}'],
         ['Total Amount', '{{ total_amount|default:0 }}'],
         ['Approved Amount', '{{ approved_amount|default:0 }}'],
         ['Disbursed Amount', '{{ disbursed_amount|default:0 }}'],
@@ -409,7 +626,17 @@ function downloadReport() {
         ['Total SubAdmins', '{{ total_subadmins|default:0 }}']
     ];
 
+    const metadataRows = [
+        ['Downloaded By', selectedPerson || 'N/A'],
+        ['Download Time', downloadTime],
+    ];
+
     let csvContent = 'Metric,Value\\n';
+    metadataRows.forEach(row => {
+        const safeMetric = String(row[0]).replace(/\"/g, '\"\"');
+        const safeValue = String(row[1]).replace(/\"/g, '\"\"');
+        csvContent += `\"${safeMetric}\",\"${safeValue}\"\\n`;
+    });
     reportData.forEach(row => {
         const safeMetric = String(row[0]).replace(/\"/g, '\"\"');
         const safeValue = String(row[1]).replace(/\"/g, '\"\"');
@@ -420,12 +647,33 @@ function downloadReport() {
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
-    link.setAttribute('download', 'reports-analytics.csv');
+    const fileStamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`;
+    link.setAttribute('download', `reports-analytics-${fileStamp}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+    closeDownloadModal();
 }
+
+document.addEventListener('click', function (event) {
+    const modal = document.getElementById('downloadReportModal');
+    if (modal && event.target === modal) {
+        closeDownloadModal();
+    }
+});
+
+document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape') {
+        closeDownloadModal();
+    }
+    if (event.key === 'Enter') {
+        const active = document.getElementById('downloadReportModal');
+        if (active && active.classList.contains('active') && document.activeElement && document.activeElement.id === 'downloadNameSearch') {
+            findDownloadName();
+        }
+    }
+});
 </script>
 {% endblock %}

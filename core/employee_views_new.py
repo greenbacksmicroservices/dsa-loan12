@@ -143,11 +143,18 @@ def employee_all_loans_api(request):
         status_filter = request.GET.get('status', '').strip()
         page = int(request.GET.get('page', 1))
         limit = int(request.GET.get('limit', 20))
+        follow_up_pending_label = 'follow_up_pending'
+        follow_up_pending_text = 'Revert Remark '
 
         # Primary source: Loan table
         queryset = Loan.objects.filter(
             assigned_employee=request.user
         ).select_related('assigned_agent', 'created_by').order_by('-created_at')
+
+        new_entry_count = 0
+        waiting_count = 0
+        banking_count = 0
+        follow_up_pending_count = 0
 
         # If no legacy loans, fallback to LoanApplication workflow table
         if not queryset.exists():
@@ -155,11 +162,13 @@ def employee_all_loans_api(request):
                 'new_entry': 'New Entry',
                 'waiting': 'Waiting for Processing',
                 'follow_up': 'Required Follow-up',
+                follow_up_pending_label: 'New Entry',
                 'approved': 'Approved',
                 'rejected': 'Rejected',
                 'disbursed': 'Disbursed',
             }
             reverse_workflow_status_map = {v: k for k, v in workflow_status_map.items()}
+            follow_up_pending_q = Q(status__in=['New Entry', 'Waiting for Processing']) & Q(approval_notes__icontains=follow_up_pending_text)
 
             app_qs = LoanApplication.objects.filter(
                 assigned_employee=request.user
@@ -172,12 +181,20 @@ def employee_all_loans_api(request):
                     Q(applicant__email__icontains=search)
                 )
 
-            if status_filter:
+            if status_filter == follow_up_pending_label:
+                app_qs = app_qs.filter(follow_up_pending_q)
+            elif status_filter:
                 mapped_status = workflow_status_map.get(status_filter)
                 if mapped_status:
                     app_qs = app_qs.filter(status=mapped_status)
+                    if mapped_status in ['New Entry', 'Waiting for Processing']:
+                        app_qs = app_qs.exclude(approval_notes__icontains=follow_up_pending_text)
 
             total_loans = app_qs.count()
+            new_entry_count = app_qs.filter(status='New Entry').exclude(approval_notes__icontains=follow_up_pending_text).count()
+            waiting_count = app_qs.filter(status='Waiting for Processing').exclude(approval_notes__icontains=follow_up_pending_text).count()
+            banking_count = app_qs.filter(status='Required Follow-up').count()
+            follow_up_pending_count = app_qs.filter(follow_up_pending_q).count()
             approved_count = app_qs.filter(status='Approved').count()
             rejected_count = app_qs.filter(status='Rejected').count()
             disbursed_count = app_qs.filter(status='Disbursed').count()
@@ -190,7 +207,20 @@ def employee_all_loans_api(request):
             for app in page_obj:
                 applicant = app.applicant
                 submitted_by = app.assigned_agent.name if app.assigned_agent else 'Unknown'
-                compact_status = reverse_workflow_status_map.get(app.status, status_filter or 'waiting')
+                is_follow_up_pending = (
+                    app.status in ['New Entry', 'Waiting for Processing']
+                    and follow_up_pending_text.lower() in str(app.approval_notes or '').lower()
+                )
+                compact_status = (
+                    follow_up_pending_label
+                    if is_follow_up_pending
+                    else reverse_workflow_status_map.get(app.status, status_filter or 'waiting')
+                )
+                status_display = (
+                    'Follow Up'
+                    if is_follow_up_pending
+                    else ('Banking Processing' if app.status == 'Required Follow-up' else app.status)
+                )
                 loans_data.append({
                     'id': app.id,
                     'loan_id': f'APP-{app.id:06d}',
@@ -205,7 +235,8 @@ def employee_all_loans_api(request):
                     'created_date': app.created_at.strftime('%Y-%m-%d') if app.created_at else '-',
                     'created_time': app.created_at.strftime('%H:%M') if app.created_at else '',
                     'status': compact_status,
-                    'status_display': app.status,
+                    'status_display': status_display,
+                    'follow_up_pending': is_follow_up_pending,
                 })
         else:
             if search:
@@ -215,10 +246,19 @@ def employee_all_loans_api(request):
                     Q(email__icontains=search)
                 )
 
-            if status_filter:
+            follow_up_pending_q = Q(status__in=['new_entry', 'waiting']) & Q(remarks__icontains=follow_up_pending_text)
+            if status_filter == follow_up_pending_label:
+                queryset = queryset.filter(follow_up_pending_q)
+            elif status_filter:
                 queryset = queryset.filter(status=status_filter)
+                if status_filter in ['new_entry', 'waiting']:
+                    queryset = queryset.exclude(remarks__icontains=follow_up_pending_text)
 
             total_loans = queryset.count()
+            new_entry_count = queryset.filter(status='new_entry').exclude(remarks__icontains=follow_up_pending_text).count()
+            waiting_count = queryset.filter(status='waiting').exclude(remarks__icontains=follow_up_pending_text).count()
+            banking_count = queryset.filter(status='follow_up').count()
+            follow_up_pending_count = queryset.filter(follow_up_pending_q).count()
             approved_count = queryset.filter(status='approved').count()
             rejected_count = queryset.filter(status='rejected').count()
             disbursed_count = queryset.filter(status='disbursed').count()
@@ -232,10 +272,20 @@ def employee_all_loans_api(request):
                 submitted_by = 'Unknown'
                 if loan.assigned_agent:
                     submitted_by = loan.assigned_agent.name or loan.assigned_agent.user.get_full_name() if loan.assigned_agent.user else 'Unknown'
+                is_follow_up_pending = (
+                    loan.status in ['new_entry', 'waiting']
+                    and follow_up_pending_text.lower() in str(loan.remarks or '').lower()
+                )
+                status_key = follow_up_pending_label if is_follow_up_pending else loan.status
+                status_display = (
+                    'Follow Up'
+                    if is_follow_up_pending
+                    else ('Banking Processing' if loan.status == 'follow_up' else loan.get_status_display())
+                )
 
                 loans_data.append({
                     'id': loan.id,
-                    'loan_id': f'LOAN-{loan.id:06d}',
+                    'loan_id': loan.user_id or f'LOAN-{loan.id:06d}',
                     'applicant_name': loan.full_name or 'N/A',
                     'mobile': loan.mobile_number or '',
                     'loan_type': loan.loan_type or 'N/A',
@@ -246,14 +296,19 @@ def employee_all_loans_api(request):
                     'assigned_date': loan.assigned_at.strftime('%Y-%m-%d') if loan.assigned_at else '-',
                     'created_date': loan.created_at.strftime('%Y-%m-%d') if loan.created_at else '-',
                     'created_time': loan.created_at.strftime('%H:%M') if loan.created_at else '',
-                    'status': loan.status,
-                    'status_display': loan.get_status_display(),
+                    'status': status_key,
+                    'status_display': status_display,
+                    'follow_up_pending': is_follow_up_pending,
                 })
         
         return Response({
             'success': True,
             'summary': {
                 'total_loans': total_loans,
+                'new_entry': new_entry_count,
+                'waiting': waiting_count,
+                'banking_processing': banking_count,
+                'follow_up_pending': follow_up_pending_count,
                 'approved': approved_count,
                 'rejected': rejected_count,
                 'disbursed': disbursed_count,
@@ -336,7 +391,7 @@ def employee_new_entry_requests_api(request):
             
             loans_data.append({
                 'id': loan.id,
-                'loan_id': f'LOAN-{loan.id:06d}',
+                    'loan_id': loan.user_id or f'LOAN-{loan.id:06d}',
                 'applicant_name': loan.full_name or 'N/A',
                 'loan_type': loan.loan_type or 'N/A',
                 'loan_amount': float(loan.loan_amount) if loan.loan_amount else 0,
@@ -462,7 +517,7 @@ def employee_loan_detail_api(request, loan_id):
             'success': True,
             'loan': {
                 'id': loan.id,
-                'loan_id': f'LOAN-{loan.id:06d}',
+                'loan_id': loan.user_id or f'LOAN-{loan.id:06d}',
                 'applicant': {
                     'full_name': loan.full_name,
                     'mobile_number': loan.mobile_number,

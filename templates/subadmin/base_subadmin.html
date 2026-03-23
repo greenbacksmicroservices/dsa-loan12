@@ -52,10 +52,27 @@
         .sidebar {
             width: 260px;
             flex-shrink: 0;
-            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+            background: linear-gradient(180deg, #0f172a 0%, #0b1220 100%);
             color: white;
             overflow-y: auto;
-            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 18px 34px rgba(2, 6, 23, 0.45);
+            position: relative;
+            border-right: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .sidebar::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(circle at 20% 12%, rgba(59,130,246,0.2), transparent 42%),
+                radial-gradient(circle at 85% 85%, rgba(16,185,129,0.12), transparent 46%);
+            pointer-events: none;
+        }
+
+        .sidebar > * {
+            position: relative;
+            z-index: 1;
         }
 
         .sidebar-header {
@@ -94,6 +111,7 @@
             padding: 20px 20px 16px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.08);
             text-align: center;
+            background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
         }
 
         .profile-photo {
@@ -131,35 +149,82 @@
         }
 
         .sidebar-nav {
-            padding: 10px 0;
+            padding: 10px;
             display: flex;
             flex-direction: column;
+            gap: 6px;
         }
 
         .sidebar-link {
             display: flex;
             align-items: center;
             gap: 12px;
-            padding: 12px 20px;
+            padding: 11px 12px;
             color: rgba(255, 255, 255, 0.8);
             text-decoration: none;
             font-size: 14px;
-            font-weight: 500;
-            border-left: 3px solid transparent;
+            font-weight: 600;
+            border-left: 0;
+            transition: all 0.2s ease;
+            border-radius: 12px;
+            position: relative;
+        }
+
+        .sidebar-link i {
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            background: rgba(255, 255, 255, 0.12);
             transition: all 0.2s ease;
         }
 
+        .sidebar-link::before {
+            content: "";
+            position: absolute;
+            left: -2px;
+            top: 8px;
+            bottom: 8px;
+            width: 3px;
+            border-radius: 999px;
+            background: #fff;
+            transform: scaleY(0);
+            transition: transform 0.2s ease;
+        }
+
         .sidebar-link:hover {
-            background-color: rgba(255, 255, 255, 0.1);
+            background-color: rgba(255, 255, 255, 0.13);
             color: white;
-            border-left-color: #4f46e5;
+            border-left-color: transparent;
+            transform: translateX(3px);
+        }
+
+        .sidebar-link:hover::before {
+            transform: scaleY(1);
+        }
+
+        .sidebar-link:hover i {
+            background: rgba(255, 255, 255, 0.22);
+            transform: scale(1.06);
         }
 
         .sidebar-link.active {
-            background-color: rgba(79, 70, 229, 0.2);
+            background: rgba(59, 130, 246, 0.24);
             color: white;
-            border-left-color: #4f46e5;
+            border-left-color: transparent;
             font-weight: 600;
+            box-shadow: inset 0 0 0 1px rgba(148, 197, 255, 0.35);
+        }
+
+        .sidebar-link.active::before {
+            transform: scaleY(1);
+        }
+
+        .sidebar-link.active i {
+            background: rgba(59, 130, 246, 0.38);
         }
 
         .sidebar-footer {
@@ -287,6 +352,47 @@
 
         .dropdown-menu a:last-child:hover {
             background-color: #fef2f2;
+        }
+
+        /* SubAdmin Table Grid Polish */
+        .page-content .table-wrap,
+        .page-content .table-responsive {
+            border: 1px solid #dbe3ef;
+            border-radius: 12px;
+            background: #fff;
+            overflow: auto;
+        }
+
+        .page-content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0;
+            background: #fff;
+        }
+
+        .page-content table thead tr {
+            background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%);
+        }
+
+        .page-content table th,
+        .page-content table td {
+            border: 1px solid #e2e8f0;
+            padding: 10px 12px;
+            vertical-align: middle;
+            font-size: 13px;
+        }
+
+        .page-content table th {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.35px;
+            color: #334155;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .page-content table tbody tr:hover {
+            background: #f8fafc;
         }
     </style>
     

@@ -39,6 +39,7 @@
                 <p><span class="text-gray-500">Bank:</span> {{ loan_payload.bank_name }}</p>
                 <p><span class="text-gray-500">Account:</span> {{ loan_payload.bank_account_number }}</p>
                 <p><span class="text-gray-500">IFSC:</span> {{ loan_payload.bank_ifsc_code }}</p>
+                <p><span class="text-gray-500">SM Sign:</span> {% if loan_payload.is_sm_signed %}☑ Signed{% if loan_payload.sm_signed_at and loan_payload.sm_signed_at != '-' %} ({{ loan_payload.sm_signed_at }}){% endif %}{% else %}☐ Pending{% endif %}</p>
                 <p><span class="text-gray-500">Bank Remark:</span> {{ loan_payload.bank_remark }}</p>
             </div>
         </div>

@@ -1,4 +1,4 @@
-@login_required(login_url='admin_login')
+hon@login_required(login_url='admin_login')
 @user_passes_test(is_admin, login_url='admin_login')
 @require_http_methods(["GET"])
 def employee_detail(request, employee_id):

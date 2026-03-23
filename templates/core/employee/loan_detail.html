@@ -105,8 +105,8 @@
                         </div>
                         <p class="sub-title mt-2">Bank Disbursement Details</p>
                         <div class="grid">
-                            <div><small>Bank Name *</small><strong id="bankName">-</strong></div>
-                            <div><small>Account Number *</small><strong id="account">-</strong></div>
+                            <div><small>Bank Name</small><strong id="bankName">-</strong></div>
+                            <div><small>Account Number</small><strong id="account">-</strong></div>
                             <div><small>IFSC Code *</small><strong id="ifsc">-</strong></div>
                             <div><small>Bank Type</small><strong id="bankType">-</strong></div>
                         </div>
@@ -131,21 +131,129 @@
                 </div>
             </div>
 
-            <div class="card bp-card mt-3">
+            <div class="card bp-card mt-3" id="followUpEditCard" style="display:none;">
                 <div class="card-body">
-                    <h6 class="sec"><i class="bi bi-pencil-square"></i> Bank Details Entry + Remark</h6>
-                    <label class="form-label fw-semibold">Bank Details Notes</label>
-                    <textarea id="bankDetails" class="form-control mb-2" rows="3" placeholder="Type bank verification details"></textarea>
-                    <label class="form-label fw-semibold">Remark Section</label>
-                    <textarea id="remark" class="form-control" rows="3" placeholder="Remark visible in admin/subadmin panel"></textarea>
-                    <small class="text-muted">If assigned by SubAdmin, details remain visible in both SubAdmin and Admin panels.</small>
+                    <h6 class="sec"><i class="bi bi-pencil-square"></i> Follow Up Edit Section</h6>
+                    <p class="section-note">Follow Up status me details/document update karke case ko dubara Banking Processing me bhejein.</p>
+                    <div class="row g-2">
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Applicant Name</label>
+                            <input id="editApplicantName" class="form-control" type="text" placeholder="Applicant name">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Mobile Number</label>
+                            <input id="editApplicantMobile" class="form-control" type="text" placeholder="Mobile number">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Email</label>
+                            <input id="editApplicantEmail" class="form-control" type="email" placeholder="Email">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">City</label>
+                            <input id="editCity" class="form-control" type="text" placeholder="City">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">State</label>
+                            <input id="editState" class="form-control" type="text" placeholder="State">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">PIN Code</label>
+                            <input id="editPinCode" class="form-control" type="text" placeholder="PIN Code">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">Loan Type</label>
+                            <select id="editLoanType" class="form-select">
+                                <option value="">Select</option>
+                                <option value="personal">Personal</option>
+                                <option value="lap">LAP</option>
+                                <option value="home">Home</option>
+                                <option value="business">Business</option>
+                                <option value="education">Education</option>
+                                <option value="car">Car</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">Loan Amount</label>
+                            <input id="editLoanAmount" class="form-control" type="number" min="0" step="0.01" placeholder="Amount">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">Tenure (Months)</label>
+                            <input id="editTenureMonths" class="form-control" type="number" min="0" placeholder="Tenure">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">Interest Rate (%)</label>
+                            <input id="editInterestRate" class="form-control" type="number" min="0" step="0.01" placeholder="Interest">
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label fw-semibold">Loan Purpose</label>
+                            <textarea id="editLoanPurpose" class="form-control" rows="2" placeholder="Loan purpose"></textarea>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">Bank Name</label>
+                            <input id="editBankName" class="form-control" type="text" placeholder="Bank name">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">Bank Type</label>
+                            <select id="editBankType" class="form-select">
+                                <option value="">Select</option>
+                                <option value="private">Private</option>
+                                <option value="government">Government</option>
+                                <option value="cooperative">Cooperative</option>
+                                <option value="nbfc">NBFC</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">Account Number</label>
+                            <input id="editAccountNumber" class="form-control" type="text" placeholder="Account number">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">IFSC Code</label>
+                            <input id="editIfscCode" class="form-control" type="text" placeholder="IFSC code">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Permanent Address</label>
+                            <textarea id="editPermanentAddress" class="form-control" rows="2" placeholder="Permanent address"></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Current Address</label>
+                            <textarea id="editCurrentAddress" class="form-control" rows="2" placeholder="Current address"></textarea>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label fw-semibold">Follow Up Edit Remark</label>
+                            <textarea id="editFollowUpRemark" class="form-control" rows="2" placeholder="Kya update kiya gaya hai"></textarea>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Document Type</label>
+                            <select id="editDocumentType" class="form-select">
+                                <option value="">Select document type</option>
+                            </select>
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label fw-semibold">Upload New Document</label>
+                            <input id="editDocumentFile" class="form-control" type="file" multiple>
+                        </div>
+                        <div class="col-md-3 d-flex align-items-end">
+                            <button id="uploadFollowUpDocBtn" class="btn btn-outline-primary w-100" type="button">Upload Document(s)</button>
+                        </div>
+                        <div class="col-md-12 d-flex justify-content-end">
+                            <button id="saveFollowUpEditBtn" class="btn btn-warning" type="button">Save Follow Up Details</button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <div class="card bp-card mt-3">
                 <div class="card-body">
-                    <h6 class="sec"><i class="bi bi-chat-left-text"></i> Remarks Timeline</h6>
-                    <div id="timeline"></div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6 class="sec mb-0"><i class="bi bi-chat-left-text"></i> Remarks Timeline</h6>
+                        <button id="timelineToggle" class="btn btn-link btn-sm px-0 text-decoration-none" type="button" data-bs-toggle="collapse" data-bs-target="#timelineCollapse" aria-expanded="false">
+                            Show
+                        </button>
+                    </div>
+                    <div class="collapse" id="timelineCollapse">
+                        <div id="timeline" class="mt-2"></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -159,12 +267,19 @@
                     <div class="meta"><small>Assigned Role</small><strong id="assignedRole">-</strong></div>
                     <div class="meta"><small>Assigned Date</small><strong id="assignedDate">-</strong></div>
                     <div class="meta"><small>Visibility</small><strong id="visibility">-</strong></div>
+                    <div class="meta"><small>SM Sign</small><strong id="smSignStatus">Pending</strong></div>
+                    <div class="form-check mt-2">
+                        <input class="form-check-input" type="checkbox" id="smSignTick" disabled>
+                        <label class="form-check-label small" for="smSignTick">Sign Tick</label>
+                    </div>
 
                     <div class="d-grid gap-2 mt-3">
                         <button id="collectBtn" class="btn btn-warning" style="display:none;">Move to Banking Processing</button>
+                        <button id="revertBtn" class="btn btn-outline-warning" style="display:none;">Revert to Agent</button>
                         <button id="approveBtn" class="btn btn-success" style="display:none;">Approve</button>
+                        <button id="signBtn" class="btn btn-outline-success" style="display:none;">Sign (Tick Mark)</button>
                         <button id="rejectBtn" class="btn btn-danger" style="display:none;">Reject</button>
-                        <button id="disburseBtn" class="btn btn-primary" style="display:none;">Disbursed</button>
+                        <button id="disburseBtn" class="btn btn-primary" style="display:none;">Submit to Disbursed</button>
                     </div>
                 </div>
             </div>
@@ -176,8 +291,61 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header"><h5 class="modal-title">Reject Loan</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
-            <div class="modal-body"><textarea id="rejectReason" class="form-control" rows="4" placeholder="Rejection reason"></textarea></div>
+            <div class="modal-body">
+                <label class="form-label">Rejection reason *</label>
+                <textarea id="rejectReason" class="form-control mb-2" rows="4" placeholder="Rejection reason"></textarea>
+                <label class="form-label">Internal bank note (optional)</label>
+                <textarea id="rejectBankNote" class="form-control" rows="2" placeholder="Visible in admin timeline"></textarea>
+            </div>
             <div class="modal-footer"><button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button><button id="confirmReject" class="btn btn-danger">Reject</button></div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="revertModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Revert to Agent</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <label class="form-label">Revert Remark *</label>
+                <textarea id="revertRemarkInput" class="form-control mb-2" rows="3" placeholder="Why are you reverting?"></textarea>
+                <label class="form-label">Bank Details Notes (optional)</label>
+                <textarea id="revertBankNote" class="form-control" rows="2" placeholder="Any banking verification note"></textarea>
+            </div>
+            <div class="modal-footer"><button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button><button id="confirmRevert" class="btn btn-warning">Send Back</button></div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="approveModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Approve Loan</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <div class="row g-2">
+                    <div class="col-md-4">
+                        <label class="form-label">SM Name *</label>
+                        <input id="approveSmName" class="form-control" type="text" placeholder="Enter SM name">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">SM Phone Number *</label>
+                        <input id="approveSmPhone" class="form-control" type="text" placeholder="Enter SM phone">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">SM Email *</label>
+                        <input id="approveSmEmail" class="form-control" type="email" placeholder="Enter SM email">
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label">Bank Details Notes *</label>
+                        <textarea id="approveBankDetails" class="form-control" rows="3" placeholder="Bank verification notes"></textarea>
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label">Approval Remark (visible in admin panel)</label>
+                        <textarea id="approveRemark" class="form-control" rows="3" placeholder="Any additional remark"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer"><button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button><button id="confirmApprove" class="btn btn-success">Confirm Approve</button></div>
         </div>
     </div>
 </div>
@@ -238,10 +406,19 @@ let timer = null;
 let authRedirectInProgress = false;
 const rejectModal = new bootstrap.Modal(document.getElementById('rejectModal'));
 const disburseModal = new bootstrap.Modal(document.getElementById('disburseModal'));
+const approveModalEl = document.getElementById('approveModal');
+const approveModal = new bootstrap.Modal(approveModalEl);
+const revertModal = new bootstrap.Modal(document.getElementById('revertModal'));
+const timelineCollapseEl = document.getElementById('timelineCollapse');
+const timelineToggle = document.getElementById('timelineToggle');
 
 const money = v => `Rs ${new Intl.NumberFormat('en-IN').format(v || 0)}`;
 const cookie = n => document.cookie.split('; ').find(r => r.startsWith(n + '='))?.split('=')[1];
-const wf = s => (s === 'Required Follow-up' || s === 'Banking Processing') ? 'Required Follow-up' : s;
+const wf = s => {
+    if (s === 'Required Follow-up' || s === 'Banking Processing') return 'Required Follow-up';
+    if (s === 'Follow Up') return 'Follow Up';
+    return s;
+};
 const isUnauthorizedResponse = (res) => res.status === 401 || res.status === 403 || res.redirected;
 const handleAuthFailure = () => {
     if (authRedirectInProgress) return;
@@ -255,8 +432,9 @@ const handleAuthFailure = () => {
 };
 
 const badge = s => {
-    const cls = { 'Waiting for Processing': 'warning text-dark', 'Required Follow-up': 'info text-dark', 'Approved': 'success', 'Rejected': 'danger', 'Disbursed': 'primary' };
-    const key = wf(s); const label = (s === 'Required Follow-up') ? 'Banking Processing' : (s || '-');
+    const cls = { 'Waiting for Processing': 'warning text-dark', 'Required Follow-up': 'info text-dark', 'Follow Up': 'warning text-dark', 'Approved': 'success', 'Rejected': 'danger', 'Disbursed': 'primary' };
+    const key = wf(s);
+    const label = (s === 'Required Follow-up') ? 'Banking Processing' : (s || '-');
     return `<span class="badge bg-${cls[key] || 'secondary'}">${label}</span>`;
 };
 
@@ -275,13 +453,23 @@ const timelineReason = (text) => {
     return 'Form details moved to Full Loan Application section.';
 };
 
-function note() {
-    const d = document.getElementById('bankDetails').value.trim();
-    const r = document.getElementById('remark').value.trim();
-    const out = [];
-    if (d) out.push(`Bank Details: ${d}`);
-    if (r) out.push(`Remark: ${r}`);
-    return out.join('\n');
+function smPayload() {
+    return {
+        sm_name: document.getElementById('approveSmName').value.trim(),
+        sm_phone_number: document.getElementById('approveSmPhone').value.trim(),
+        sm_email: document.getElementById('approveSmEmail').value.trim(),
+    };
+}
+
+function prefillApproveModal(v, force = false) {
+    if (!force && approveModalEl && approveModalEl.classList.contains('show')) {
+        return;
+    }
+    setInputValue('approveSmName', v.sm_name || '');
+    setInputValue('approveSmPhone', v.sm_phone_number || '');
+    setInputValue('approveSmEmail', v.sm_email || '');
+    setInputValue('approveBankDetails', '');
+    setInputValue('approveRemark', '');
 }
 
 function msg(type, text) {
@@ -299,6 +487,73 @@ async function call(url, body) {
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.error || 'Action failed');
     return data;
+}
+
+async function callForm(url, formData) {
+    const res = await fetch(url, {
+        method:'POST',
+        headers:{ 'X-CSRFToken': cookie('csrftoken') },
+        credentials:'same-origin',
+        body:formData
+    });
+    if (isUnauthorizedResponse(res)) {
+        handleAuthFailure();
+        throw new Error('Session expired');
+    }
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'Action failed');
+    return data;
+}
+
+function setInputValue(id, value) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.value = value === undefined || value === null ? '' : String(value);
+}
+
+function populateDocumentTypes(choices) {
+    const select = document.getElementById('editDocumentType');
+    if (!select) return;
+    const current = select.value;
+    const list = Array.isArray(choices) ? choices : [];
+    select.innerHTML = '<option value="">Select document type</option>';
+    list.forEach(item => {
+        const opt = document.createElement('option');
+        opt.value = item.value;
+        opt.textContent = item.label;
+        select.appendChild(opt);
+    });
+    if (current && list.some(item => item.value === current)) {
+        select.value = current;
+    }
+}
+
+function fillFollowUpEditFields(v) {
+    const isEditable = !!(v.follow_up_editable || v.follow_up_pending || wf(v.status) === 'Follow Up');
+    const card = document.getElementById('followUpEditCard');
+    if (card) {
+        card.style.display = isEditable ? 'block' : 'none';
+    }
+    if (!isEditable) return;
+
+    setInputValue('editApplicantName', v.applicant_name || '');
+    setInputValue('editApplicantMobile', v.mobile || '');
+    setInputValue('editApplicantEmail', v.email || '');
+    setInputValue('editCity', v.city || '');
+    setInputValue('editState', v.state || '');
+    setInputValue('editPinCode', v.pin_code || '');
+    setInputValue('editLoanType', (v.loan_type || '').toLowerCase());
+    setInputValue('editLoanAmount', v.loan_amount || '');
+    setInputValue('editTenureMonths', v.tenure_months || '');
+    setInputValue('editInterestRate', v.interest_rate || '');
+    setInputValue('editLoanPurpose', v.loan_purpose || '');
+    setInputValue('editBankName', v.bank_name || '');
+    setInputValue('editBankType', (v.bank_type || '').toLowerCase());
+    setInputValue('editAccountNumber', v.account_number || '');
+    setInputValue('editIfscCode', v.ifsc_code || '');
+    setInputValue('editPermanentAddress', v.permanent_address || '');
+    setInputValue('editCurrentAddress', v.current_address || '');
+    populateDocumentTypes(v.document_type_choices || []);
 }
 
 function fill() {
@@ -373,6 +628,12 @@ function fill() {
     set('manualRemark', v.remarks || fromMap('remarks suggestions', 'remark'));
     set('declarationText', v.declaration || 'I hereby declare that the above information given by me is true and correct.');
 
+    prefillApproveModal(v);
+    set('smSignStatus', v.is_sm_signed ? `Signed (${v.sm_signed_at || 'Now'})` : 'Pending');
+    const smSignTick = document.getElementById('smSignTick');
+    if (smSignTick) smSignTick.checked = !!v.is_sm_signed;
+    fillFollowUpEditFields(v);
+
     const existingLoans = Array.isArray(v.existing_loans) ? v.existing_loans : [];
     document.getElementById('existingLoans').innerHTML = existingLoans.length ? existingLoans.map((item, idx) => `
         <div class="stack-item">
@@ -427,10 +688,42 @@ function fill() {
     `).join('') : '<div class="text-muted small">No remarks yet.</div>';
 
     const s = wf(v.status);
-    ['collectBtn','approveBtn','rejectBtn','disburseBtn'].forEach(id => document.getElementById(id).style.display = 'none');
-    if (s === 'Waiting for Processing') { document.getElementById('collectBtn').style.display = 'block'; document.getElementById('rejectBtn').style.display = 'block'; }
-    else if (s === 'Required Follow-up') { document.getElementById('approveBtn').style.display = 'block'; document.getElementById('rejectBtn').style.display = 'block'; document.getElementById('disburseBtn').style.display = 'block'; }
-    else if (s === 'Approved') { document.getElementById('rejectBtn').style.display = 'block'; document.getElementById('disburseBtn').style.display = 'block'; }
+    const isFollowUpPending = !!(v.follow_up_pending || v.follow_up_editable || s === 'Follow Up');
+    const collectBtn = document.getElementById('collectBtn');
+    const revertBtn = document.getElementById('revertBtn');
+    const approveBtn = document.getElementById('approveBtn');
+    const rejectBtn = document.getElementById('rejectBtn');
+    const signBtn = document.getElementById('signBtn');
+    const disburseBtn = document.getElementById('disburseBtn');
+
+    ['collectBtn','revertBtn','approveBtn','rejectBtn','signBtn','disburseBtn'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+    });
+
+    if (collectBtn) {
+        collectBtn.textContent = 'Move to Banking Processing';
+        collectBtn.disabled = false;
+    }
+    if (signBtn) {
+        signBtn.textContent = v.is_sm_signed ? 'Signed (Tick Marked)' : 'Sign (Tick Mark)';
+        signBtn.disabled = !!v.is_sm_signed;
+    }
+
+    if (s === 'Waiting for Processing') {
+        if (collectBtn) collectBtn.style.display = 'block';
+        if (rejectBtn) rejectBtn.style.display = 'block';
+    } else if (isFollowUpPending) {
+        if (collectBtn) collectBtn.style.display = 'block';
+    } else if (s === 'Required Follow-up') {
+        if (approveBtn) approveBtn.style.display = 'block';
+        if (revertBtn) revertBtn.style.display = 'block';
+        if (rejectBtn) rejectBtn.style.display = 'block';
+    } else if (s === 'Approved') {
+        if (signBtn) signBtn.style.display = 'block';
+        if (rejectBtn) rejectBtn.style.display = 'block';
+        if (disburseBtn) disburseBtn.style.display = 'block';
+    }
 }
 
 async function load() {
@@ -454,18 +747,163 @@ async function load() {
     }
 }
 
-document.getElementById('collectBtn').onclick = async () => { try { const d = await call(`/api/employee/loan/${loanId}/collect/`, { bank_remark: note() }); msg('success', d.message || 'Updated'); setTimeout(load, 300); } catch(e) { msg('danger', e.message); } };
-document.getElementById('approveBtn').onclick = async () => { try { const d = await call(`/api/employee/loan/${loanId}/approve/`, { approval_notes: document.getElementById('remark').value.trim(), bank_remark: note() }); msg('success', d.message || 'Approved'); setTimeout(load, 300); } catch(e) { msg('danger', e.message); } };
+document.getElementById('collectBtn').onclick = async () => {
+    try {
+        const d = await call(`/api/employee/loan/${loanId}/collect/`, { bank_remark: '' });
+        msg('success', d.message || 'Updated');
+        setTimeout(load, 300);
+    } catch(e) {
+        msg('danger', e.message);
+    }
+};
+document.getElementById('revertBtn').onclick = () => {
+    setInputValue('revertRemarkInput', '');
+    setInputValue('revertBankNote', '');
+    revertModal.show();
+};
+document.getElementById('approveBtn').onclick = () => {
+    prefillApproveModal(loan || {}, true);
+    approveModal.show();
+};
+document.getElementById('saveFollowUpEditBtn').onclick = async () => {
+    const payload = {
+        full_name: document.getElementById('editApplicantName').value.trim(),
+        mobile: document.getElementById('editApplicantMobile').value.trim(),
+        email: document.getElementById('editApplicantEmail').value.trim(),
+        city: document.getElementById('editCity').value.trim(),
+        state: document.getElementById('editState').value.trim(),
+        pin_code: document.getElementById('editPinCode').value.trim(),
+        loan_type: document.getElementById('editLoanType').value.trim(),
+        loan_amount: document.getElementById('editLoanAmount').value.trim(),
+        tenure_months: document.getElementById('editTenureMonths').value.trim(),
+        interest_rate: document.getElementById('editInterestRate').value.trim(),
+        loan_purpose: document.getElementById('editLoanPurpose').value.trim(),
+        bank_name: document.getElementById('editBankName').value.trim(),
+        bank_type: document.getElementById('editBankType').value.trim(),
+        account_number: document.getElementById('editAccountNumber').value.trim(),
+        ifsc_code: document.getElementById('editIfscCode').value.trim(),
+        permanent_address: document.getElementById('editPermanentAddress').value.trim(),
+        current_address: document.getElementById('editCurrentAddress').value.trim(),
+        edit_remark: document.getElementById('editFollowUpRemark').value.trim(),
+    };
+    try {
+        const d = await call(`/api/employee/loan/${loanId}/follow-up/update/`, payload);
+        msg('success', d.message || 'Follow Up details updated');
+        document.getElementById('editFollowUpRemark').value = '';
+        setTimeout(load, 300);
+    } catch (e) {
+        msg('danger', e.message);
+    }
+};
+document.getElementById('uploadFollowUpDocBtn').onclick = async () => {
+    const documentType = document.getElementById('editDocumentType').value;
+    const fileInput = document.getElementById('editDocumentFile');
+    const files = Array.from(fileInput.files || []);
+
+    if (!documentType) {
+        msg('danger', 'Please select document type.');
+        return;
+    }
+    if (!files.length) {
+        msg('danger', 'Please choose at least one document file.');
+        return;
+    }
+    const btn = document.getElementById('uploadFollowUpDocBtn');
+    btn.disabled = true;
+    try {
+        for (const file of files) {
+            const formData = new FormData();
+            formData.append('document_type', documentType);
+            formData.append('document_file', file);
+            await callForm(`/api/employee/loan/${loanId}/follow-up/document/`, formData);
+        }
+        msg('success', files.length > 1 ? 'Documents uploaded' : 'Document uploaded');
+        fileInput.value = '';
+        setTimeout(load, 300);
+    } catch (e) {
+        msg('danger', e.message);
+    } finally {
+        btn.disabled = false;
+    }
+};
 document.getElementById('rejectBtn').onclick = () => rejectModal.show();
+document.getElementById('signBtn').onclick = async () => {
+    try {
+        const d = await call(`/api/employee/loan/${loanId}/sign/`, {});
+        msg('success', d.message || 'Sign updated');
+        setTimeout(load, 300);
+    } catch(e) { msg('danger', e.message); }
+};
 document.getElementById('disburseBtn').onclick = () => { document.getElementById('disburseAmount').value = loan?.loan_amount || ''; document.getElementById('disburseDate').value = new Date().toISOString().slice(0,10); disburseModal.show(); };
 document.getElementById('confirmReject').onclick = async () => {
     const reason = document.getElementById('rejectReason').value.trim();
+    const bankNote = document.getElementById('rejectBankNote').value.trim();
     if (!reason) { msg('danger', 'Rejection reason is required.'); return; }
-    try { const d = await call(`/api/employee/loan/${loanId}/reject/`, { rejection_reason: reason, bank_remark: note() }); rejectModal.hide(); document.getElementById('rejectReason').value = ''; msg('success', d.message || 'Rejected'); setTimeout(load, 300); } catch(e) { msg('danger', e.message); }
+    try {
+        const d = await call(`/api/employee/loan/${loanId}/reject/`, { rejection_reason: reason, bank_remark: bankNote || '' });
+        rejectModal.hide();
+        document.getElementById('rejectReason').value = '';
+        document.getElementById('rejectBankNote').value = '';
+        msg('success', d.message || 'Rejected');
+        setTimeout(load, 300);
+    } catch(e) { msg('danger', e.message); }
+};
+document.getElementById('confirmRevert').onclick = async () => {
+    const revertRemark = document.getElementById('revertRemarkInput').value.trim();
+    const bankNote = document.getElementById('revertBankNote').value.trim();
+    if (!revertRemark) { msg('danger', 'Revert remark is required.'); return; }
+    try {
+        const d = await call(`/api/employee/loan/${loanId}/revert/`, { revert_remark: revertRemark, bank_remark: bankNote || '' });
+        revertModal.hide();
+        msg('success', d.message || 'Reverted to agent');
+        setTimeout(load, 300);
+    } catch(e) { msg('danger', e.message); }
+};
+document.getElementById('confirmApprove').onclick = async () => {
+    const sm = smPayload();
+    const bankDetailsText = document.getElementById('approveBankDetails').value.trim();
+    const approvalRemark = document.getElementById('approveRemark').value.trim();
+    if (!sm.sm_name || !sm.sm_phone_number || !sm.sm_email) {
+        msg('danger', 'SM Name, Phone, and Email are required for approval.');
+        return;
+    }
+    const phoneDigits = sm.sm_phone_number.replace(/\D/g, '');
+    if (phoneDigits.length < 10 || phoneDigits.length > 15) {
+        msg('danger', 'Enter a valid SM phone number (10-15 digits).');
+        return;
+    }
+    if (!bankDetailsText) {
+        msg('danger', 'Bank Details Notes is required for approval.');
+        return;
+    }
+    try {
+        const d = await call(`/api/employee/loan/${loanId}/approve/`, {
+            approval_notes: approvalRemark,
+            bank_remark: bankDetailsText,
+            ...sm,
+        });
+        approveModal.hide();
+        msg('success', d.message || 'Approved');
+        setTimeout(load, 300);
+    } catch(e) { msg('danger', e.message); }
 };
 document.getElementById('confirmDisburse').onclick = async () => {
-    try { const d = await call(`/api/employee/loan/${loanId}/disburse/`, { disbursement_amount: document.getElementById('disburseAmount').value || null, disbursement_date: document.getElementById('disburseDate').value || null, bank_remark: note() }); disburseModal.hide(); msg('success', d.message || 'Disbursed'); setTimeout(load, 300); } catch(e) { msg('danger', e.message); }
+    try {
+        const d = await call(`/api/employee/loan/${loanId}/disburse/`, {
+            disbursement_amount: document.getElementById('disburseAmount').value || null,
+            disbursement_date: document.getElementById('disburseDate').value || null,
+            bank_remark: '',
+        });
+        disburseModal.hide();
+        msg('success', d.message || 'Disbursed');
+        setTimeout(load, 300);
+    } catch(e) { msg('danger', e.message); }
 };
+
+if (timelineCollapseEl && timelineToggle) {
+    timelineCollapseEl.addEventListener('shown.bs.collapse', () => { timelineToggle.textContent = 'Hide'; });
+    timelineCollapseEl.addEventListener('hidden.bs.collapse', () => { timelineToggle.textContent = 'Show'; });
+}
 
 document.addEventListener('DOMContentLoaded', () => { load(); timer = setInterval(load, 15000); });
 window.addEventListener('beforeunload', () => timer && clearInterval(timer));

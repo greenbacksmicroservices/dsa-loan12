@@ -55,7 +55,7 @@
         color: #fff;
         box-shadow: 0 10px 24px rgba(15, 23, 42, 0.18);
         transition: transform .25s ease, box-shadow .25s ease;
-        min-height: 150px;
+        min-height: 178px;
     }
     .admin-like-card:hover {
         transform: translateY(-4px);
@@ -112,10 +112,18 @@
     .grad-new { background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%); }
     .grad-processing { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
     .grad-banking { background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); }
+    .grad-follow-up { background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); }
     .grad-approved { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
     .grad-rejected { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); }
     .grad-disbursed { background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); }
     .grad-total { background: linear-gradient(135deg, #1f2937 0%, #111827 100%); }
+
+    @media (min-width: 1280px) {
+        .admin-like-card {
+            aspect-ratio: 1 / 1;
+            min-height: 210px;
+        }
+    }
 </style>
 {% endblock %}
 
@@ -126,7 +134,7 @@
         <p class="text-sm text-gray-600 mt-1">Live status view for all applications under your team.</p>
     </div>
 
-    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-7 gap-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <a href="{% url 'subadmin_all_loans' %}?status=new_entry" class="admin-like-card grad-new">
             <div class="admin-like-top"><span>New Entry</span><i class="fas fa-plus-circle admin-like-icon"></i></div>
             <p id="stat-new-entry" class="admin-like-count">0</p>
@@ -145,6 +153,13 @@
             <div class="admin-like-top"><span>Bank Processing</span><i class="fas fa-university admin-like-icon"></i></div>
             <p id="stat-banking-processing" class="admin-like-count">0</p>
             <p class="admin-like-sub">Need Follow-up</p>
+            <p class="admin-like-link">Click to view</p>
+        </a>
+
+        <a href="{% url 'subadmin_all_loans' %}?status=follow_up_pending" class="admin-like-card grad-follow-up">
+            <div class="admin-like-top"><span>Follow Up</span><i class="fas fa-history admin-like-icon"></i></div>
+            <p id="stat-follow-up-pending" class="admin-like-count">0</p>
+            <p class="admin-like-sub">Reverted Cases</p>
             <p class="admin-like-link">Click to view</p>
         </a>
 
@@ -200,6 +215,10 @@
                 <div class="status-legend-item">
                     <div class="status-legend-left"><span class="status-dot" style="background:#7c3aed;"></span><span class="text-sm text-gray-700">Bank Processing</span></div>
                     <div class="status-value-wrap"><div id="count-banking-processing" class="status-count">0</div><div id="pct-banking-processing" class="status-pct">0%</div></div>
+                </div>
+                <div class="status-legend-item">
+                    <div class="status-legend-left"><span class="status-dot" style="background:#ea580c;"></span><span class="text-sm text-gray-700">Follow Up</span></div>
+                    <div class="status-value-wrap"><div id="count-follow-up-pending" class="status-count">0</div><div id="pct-follow-up-pending" class="status-pct">0%</div></div>
                 </div>
                 <div class="status-legend-item">
                     <div class="status-legend-left"><span class="status-dot" style="background:#059669;"></span><span class="text-sm text-gray-700">Approved</span></div>
@@ -265,6 +284,7 @@ function statusBadgeClass(statusKey) {
         new_entry: 'bg-blue-100 text-blue-800',
         waiting: 'bg-amber-100 text-amber-800',
         follow_up: 'bg-cyan-100 text-cyan-800',
+        follow_up_pending: 'bg-orange-100 text-orange-800',
         approved: 'bg-emerald-100 text-emerald-800',
         rejected: 'bg-rose-100 text-rose-800',
         disbursed: 'bg-indigo-100 text-indigo-800',
@@ -282,20 +302,20 @@ function refreshDashboard() {
     loadRecentLoans();
 }
 
-function updateStatusDistributionChart(newEntry, waiting, banking, approved, rejected, disbursed) {
+function updateStatusDistributionChart(newEntry, waiting, banking, followUpPending, approved, rejected, disbursed) {
     const chartElement = document.getElementById('status-distribution-chart');
     if (!chartElement) return;
 
-    const values = [newEntry, waiting, banking, approved, rejected, disbursed];
+    const values = [newEntry, waiting, banking, followUpPending, approved, rejected, disbursed];
 
     if (!statusDistributionChart) {
         statusDistributionChart = new Chart(chartElement, {
             type: 'doughnut',
             data: {
-                labels: ['New Entry', 'In Processing', 'Bank Processing', 'Approved', 'Rejected', 'Disbursed'],
+                labels: ['New Entry', 'In Processing', 'Bank Processing', 'Follow Up', 'Approved', 'Rejected', 'Disbursed'],
                 datasets: [{
                     data: values,
-                    backgroundColor: ['#2563eb', '#d97706', '#7c3aed', '#059669', '#dc2626', '#0891b2'],
+                    backgroundColor: ['#2563eb', '#d97706', '#7c3aed', '#ea580c', '#059669', '#dc2626', '#0891b2'],
                     borderWidth: 0,
                     hoverOffset: 8,
                 }],
@@ -342,6 +362,7 @@ function loadDashboardStats() {
             const newEntry = Number(stats.new_entry || 0);
             const waiting = Number(stats.waiting || stats.in_processing || 0);
             const banking = Number(stats.follow_up || stats.banking_processing || 0);
+            const followUpPending = Number(stats.follow_up_pending || 0);
             const approved = Number(stats.approved || 0);
             const rejected = Number(stats.rejected || 0);
             const disbursed = Number(stats.disbursed || 0);
@@ -350,6 +371,7 @@ function loadDashboardStats() {
             document.getElementById('stat-new-entry').textContent = newEntry.toLocaleString('en-IN');
             document.getElementById('stat-processing').textContent = waiting.toLocaleString('en-IN');
             document.getElementById('stat-banking-processing').textContent = banking.toLocaleString('en-IN');
+            document.getElementById('stat-follow-up-pending').textContent = followUpPending.toLocaleString('en-IN');
             document.getElementById('stat-approved').textContent = approved.toLocaleString('en-IN');
             document.getElementById('stat-rejected').textContent = rejected.toLocaleString('en-IN');
             document.getElementById('stat-disbursed').textContent = disbursed.toLocaleString('en-IN');
@@ -357,6 +379,7 @@ function loadDashboardStats() {
             document.getElementById('count-new').textContent = newEntry.toLocaleString('en-IN');
             document.getElementById('count-processing').textContent = waiting.toLocaleString('en-IN');
             document.getElementById('count-banking-processing').textContent = banking.toLocaleString('en-IN');
+            document.getElementById('count-follow-up-pending').textContent = followUpPending.toLocaleString('en-IN');
             document.getElementById('count-approved').textContent = approved.toLocaleString('en-IN');
             document.getElementById('count-rejected').textContent = rejected.toLocaleString('en-IN');
             document.getElementById('count-disbursed').textContent = disbursed.toLocaleString('en-IN');
@@ -364,11 +387,12 @@ function loadDashboardStats() {
             document.getElementById('pct-new').textContent = `${((newEntry / safeTotal) * 100).toFixed(1)}%`;
             document.getElementById('pct-processing').textContent = `${((waiting / safeTotal) * 100).toFixed(1)}%`;
             document.getElementById('pct-banking-processing').textContent = `${((banking / safeTotal) * 100).toFixed(1)}%`;
+            document.getElementById('pct-follow-up-pending').textContent = `${((followUpPending / safeTotal) * 100).toFixed(1)}%`;
             document.getElementById('pct-approved').textContent = `${((approved / safeTotal) * 100).toFixed(1)}%`;
             document.getElementById('pct-rejected').textContent = `${((rejected / safeTotal) * 100).toFixed(1)}%`;
             document.getElementById('pct-disbursed').textContent = `${((disbursed / safeTotal) * 100).toFixed(1)}%`;
 
-            updateStatusDistributionChart(newEntry, waiting, banking, approved, rejected, disbursed);
+            updateStatusDistributionChart(newEntry, waiting, banking, followUpPending, approved, rejected, disbursed);
 
             const updatedAt = document.getElementById('status-updated-at');
             if (updatedAt) {

@@ -297,6 +297,166 @@
             border-left-color: #4f46e5;
         }
 
+        /* Unified Sidebar Polish (Employee + Agent) */
+        body.employee-theme .sidebar,
+        body.agent-theme .sidebar {
+            box-shadow: 0 20px 35px rgba(15, 23, 42, 0.35);
+            border-right: 1px solid rgba(255,255,255,0.08);
+        }
+
+        body.agent-theme .sidebar {
+            background: linear-gradient(180deg, #0f766e 0%, #115e59 100%);
+        }
+
+        body.employee-theme .sidebar,
+        body.agent-theme .sidebar {
+            padding-top: 16px;
+        }
+
+        body.employee-theme .sidebar-header,
+        body.agent-theme .sidebar-header {
+            padding: 18px 18px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        body.agent-theme .brand-badge {
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 16px;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 14px rgba(20, 184, 166, 0.35);
+        }
+
+        body.agent-theme .brand-text {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            color: #f8fafc;
+        }
+
+        body.employee-theme .sidebar-profile-section,
+        body.agent-theme .sidebar-profile-section {
+            padding: 16px 16px 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.09);
+            margin-bottom: 8px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
+        }
+
+        body.employee-theme .sidebar-menu,
+        body.agent-theme .sidebar-menu {
+            padding: 10px 10px 2px;
+        }
+
+        body.employee-theme .sidebar-menu a,
+        body.agent-theme .sidebar-menu a {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 6px;
+            border-left: 0;
+            border-radius: 12px;
+            font-weight: 600;
+            padding: 10px 12px 10px 10px;
+            transition: all 0.22s ease;
+            position: relative;
+        }
+
+        body.employee-theme .sidebar-menu a i,
+        body.agent-theme .sidebar-menu a i {
+            width: 28px;
+            height: 28px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 9px;
+            background: rgba(255, 255, 255, 0.12);
+            margin-right: 0;
+            font-size: 14px;
+            opacity: 0.95;
+            transition: transform 0.2s ease, background 0.2s ease;
+        }
+
+        body.employee-theme .sidebar-menu a::after,
+        body.agent-theme .sidebar-menu a::after {
+            content: '';
+            position: absolute;
+            left: -2px;
+            top: 8px;
+            bottom: 8px;
+            width: 3px;
+            border-radius: 999px;
+            background: #ffffff;
+            transform: scaleY(0);
+            transition: transform 0.2s ease;
+        }
+
+        body.employee-theme .sidebar-menu a:hover,
+        body.agent-theme .sidebar-menu a:hover {
+            border-left: 0;
+            transform: translateX(3px);
+            background: rgba(255,255,255,0.15);
+        }
+
+        body.employee-theme .sidebar-menu a:hover::after,
+        body.agent-theme .sidebar-menu a:hover::after {
+            transform: scaleY(1);
+        }
+
+        body.employee-theme .sidebar-menu a:hover i,
+        body.agent-theme .sidebar-menu a:hover i {
+            background: rgba(255, 255, 255, 0.24);
+            transform: scale(1.06);
+        }
+
+        body.employee-theme .sidebar-menu a.active,
+        body.agent-theme .sidebar-menu a.active {
+            border-left: 0;
+            background: rgba(255,255,255,0.22);
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.24);
+        }
+
+        body.employee-theme .sidebar-menu a.active::after,
+        body.agent-theme .sidebar-menu a.active::after {
+            transform: scaleY(1);
+        }
+
+        body.employee-theme .sidebar-menu a.active i {
+            background: rgba(79, 70, 229, 0.35);
+        }
+
+        body.agent-theme .sidebar-menu a.active {
+            background: rgba(16, 185, 129, 0.26);
+        }
+
+        body.agent-theme .sidebar-menu a.active i {
+            background: rgba(16, 185, 129, 0.35);
+        }
+
+        body.employee-theme .topbar,
+        body.agent-theme .topbar {
+            border-bottom: 1px solid #e2e8f0;
+            box-shadow: 0 4px 14px rgba(15,23,42,0.06);
+        }
+
+        body.employee-theme .table-responsive,
+        body.agent-theme .table-responsive {
+            border: 1px solid #dbe3ef;
+            border-radius: 12px;
+            overflow: auto;
+            background: #fff;
+        }
+
+        body.employee-theme .main-content .table,
+        body.agent-theme .main-content .table {
+            margin-bottom: 0;
+        }
+
         .sidebar-company {
             margin: 10px 20px 8px;
             padding: 0;
@@ -1128,7 +1288,7 @@
     
     {% block extra_css %}{% endblock %}
 </head>
-<body data-role="{% if user.is_authenticated %}{{ user.role }}{% else %}guest{% endif %}" class="{% if user.is_authenticated and user.role == 'employee' %}employee-theme{% endif %}">
+<body data-role="{% if user.is_authenticated %}{{ user.role }}{% else %}guest{% endif %}" class="{% if user.is_authenticated and user.role == 'employee' %}employee-theme{% elif user.is_authenticated and user.role == 'agent' %}agent-theme{% endif %}">
     {% if user.is_authenticated %}
     <!-- Mobile Toggle Button -->
     <button class="mobile-toggle" onclick="toggleSidebar()">
@@ -1142,6 +1302,9 @@
             {% if user.role == 'employee' %}
                 <div class="brand-badge">EM</div>
                 <div class="brand-text">Employee</div>
+            {% elif user.role == 'agent' %}
+                <div class="brand-badge">AG</div>
+                <div class="brand-text">Agent</div>
             {% else %}
                 <h4 style="margin: 0; font-weight: 700;">DSA</h4>
             {% endif %}

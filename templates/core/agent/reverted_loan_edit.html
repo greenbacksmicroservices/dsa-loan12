@@ -1,0 +1,136 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Reverted Loan Edit{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h3 class="mb-1">Reverted Application Correction</h3>
+            <p class="text-muted mb-0">Update details, upload corrected document, then re-submit to Banking Processing.</p>
+        </div>
+        <a href="{% url 'agent_my_applications' %}" class="btn btn-outline-secondary btn-sm">Back</a>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <small class="text-muted d-block">Applicant</small>
+                    <strong>{{ loan.full_name }}</strong>
+                </div>
+                <div class="col-md-4">
+                    <small class="text-muted d-block">Loan Amount</small>
+                    <strong>Rs {{ loan.loan_amount|floatformat:0 }}</strong>
+                </div>
+                <div class="col-md-4">
+                    <small class="text-muted d-block">Current Status</small>
+                    <strong>{{ loan.get_status_display }}</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-warning shadow-sm mb-3">
+        <div class="card-header bg-warning-subtle">
+            <strong>Bank Revert Remarks</strong>
+        </div>
+        <div class="card-body">
+            {% if revert_remarks %}
+                <ul class="mb-0">
+                    {% for line in revert_remarks %}
+                    <li>{{ line }}</li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="text-muted mb-0">No revert remarks found.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" class="card border-0 shadow-sm">
+        {% csrf_token %}
+        <div class="card-body">
+            <h5 class="mb-3">Update & Re-submit</h5>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Loan Purpose</label>
+                    <textarea name="loan_purpose" rows="2" class="form-control" placeholder="Update loan purpose if needed">{{ loan.loan_purpose }}</textarea>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Agent Reply Remark *</label>
+                    <textarea name="agent_remark" rows="2" class="form-control" placeholder="Write what was corrected..." required></textarea>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Bank Name</label>
+                    <input type="text" name="bank_name" class="form-control" value="{{ loan.bank_name|default:'' }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Bank Account Number</label>
+                    <input type="text" name="bank_account_number" class="form-control" value="{{ loan.bank_account_number|default:'' }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Bank IFSC</label>
+                    <input type="text" name="bank_ifsc_code" class="form-control" value="{{ loan.bank_ifsc_code|default:'' }}">
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Document Type (optional)</label>
+                    <select name="document_type" class="form-select">
+                        <option value="">Select document type</option>
+                        {% for doc_value, doc_label in document_type_choices %}
+                        <option value="{{ doc_value }}">{{ doc_label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Upload Corrected Document (optional)</label>
+                    <input type="file" name="updated_document" class="form-control">
+                </div>
+            </div>
+
+            <div class="mt-4 d-flex justify-content-end gap-2">
+                <a href="{% url 'agent_my_applications' %}" class="btn btn-outline-secondary">Cancel</a>
+                <button type="submit" class="btn btn-success">Re-submit to Banking Processing</button>
+            </div>
+        </div>
+    </form>
+
+    <div class="card border-0 shadow-sm mt-3">
+        <div class="card-header bg-light"><strong>Current Documents</strong></div>
+        <div class="card-body">
+            {% if documents %}
+                <div class="table-responsive">
+                    <table class="table table-sm table-grid">
+                        <thead>
+                            <tr>
+                                <th>Type</th>
+                                <th>Uploaded</th>
+                                <th>File</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for doc in documents %}
+                            <tr>
+                                <td>{{ doc.get_document_type_display }}</td>
+                                <td>{{ doc.uploaded_at|date:"d M Y H:i" }}</td>
+                                <td>
+                                    {% if doc.file %}
+                                    <a href="{{ doc.file.url }}" target="_blank">Open</a>
+                                    {% else %}
+                                    -
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="text-muted mb-0">No documents uploaded.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

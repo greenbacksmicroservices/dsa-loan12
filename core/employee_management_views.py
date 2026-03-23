@@ -12,7 +12,8 @@ from django.db.models import Q, Count, Sum
 from django.core.paginator import Paginator
 import json
 
-from .models import User, EmployeeProfile, LoanApplication, Loan
+from .models import User, EmployeeProfile, LoanApplication, Loan, UserOnboardingProfile, UserOnboardingDocument
+from .onboarding_utils import collect_onboarding_payload, collect_onboarding_documents
 from .decorators import admin_required
 from django.contrib.auth.models import Group
 
@@ -144,9 +145,9 @@ def api_add_employee(request):
         password = request.POST.get('password', '').strip()
         gender = request.POST.get('gender', 'Other').strip()
         address = request.POST.get('address', '').strip()
-        pin_code = request.POST.get('pin_code', '').strip()
-        state = request.POST.get('state', '').strip()
-        city = request.POST.get('city', '').strip()
+        pin_code = request.POST.get('pin_code', '').strip() or request.POST.get('onb_perm_pin', '').strip()
+        state = request.POST.get('state', '').strip() or request.POST.get('onb_perm_state', '').strip()
+        city = request.POST.get('city', '').strip() or request.POST.get('onb_perm_city', '').strip()
         profile_photo = request.FILES.get('profile_photo', None)
         
         # Validation
@@ -238,6 +239,28 @@ def api_add_employee(request):
             user=user,
             employee_role='loan_processor',
         )
+
+        onboarding_payload = collect_onboarding_payload(request)
+        if onboarding_payload:
+            profile, _ = UserOnboardingProfile.objects.get_or_create(
+                user=user,
+                defaults={'role': user.role, 'data': onboarding_payload},
+            )
+            if profile.data != onboarding_payload or profile.role != user.role:
+                profile.data = onboarding_payload
+                profile.role = user.role
+                profile.save()
+
+        for doc_type, doc_file in collect_onboarding_documents(request):
+            if not doc_file:
+                continue
+            if doc_file.size > 10 * 1024 * 1024:
+                continue
+            UserOnboardingDocument.objects.create(
+                user=user,
+                document_type=doc_type or 'other',
+                file=doc_file,
+            )
         
         return JsonResponse({
             'success': True,
@@ -473,6 +496,20 @@ def api_get_employee(request, employee_id):
             'total_customers': total_applications,
         }
 
+        onboarding = {}
+        documents = []
+        if hasattr(user, 'onboarding_profile') and user.onboarding_profile:
+            onboarding = user.onboarding_profile.data or {}
+        if hasattr(user, 'onboarding_documents'):
+            documents = [
+                {
+                    'type': doc.document_type or 'other',
+                    'url': doc.file.url if doc.file else '',
+                    'uploaded_at': doc.uploaded_at.strftime('%Y-%m-%d %H:%M') if doc.uploaded_at else '',
+                }
+                for doc in user.onboarding_documents.all()
+            ]
+
         return JsonResponse({
             'success': True,
             'employee': {
@@ -496,6 +533,8 @@ def api_get_employee(request, employee_id):
             ,
             'summary': summary,
             'customers': customers,
+            'onboarding': onboarding,
+            'documents': documents,
         })
     
     except Exception as e:

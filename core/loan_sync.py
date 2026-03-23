@@ -351,6 +351,11 @@ def sync_loan_to_application(loan_obj, assigned_by_user=None, create_if_missing=
             assigned_agent=loan_obj.assigned_agent,
             assigned_at=loan_obj.assigned_at if mapped_status in ["Waiting for Processing", "Required Follow-up"] else None,
             assigned_by=assigner,
+            sm_name=loan_obj.sm_name,
+            sm_phone_number=loan_obj.sm_phone_number,
+            sm_email=loan_obj.sm_email,
+            is_sm_signed=bool(loan_obj.is_sm_signed),
+            sm_signed_at=loan_obj.sm_signed_at,
         )
         return loan_app
 
@@ -408,6 +413,26 @@ def sync_loan_to_application(loan_obj, assigned_by_user=None, create_if_missing=
         loan_app.assigned_by = assigner
         update_fields.append("assigned_by")
 
+    if loan_app.sm_name != loan_obj.sm_name:
+        loan_app.sm_name = loan_obj.sm_name
+        update_fields.append("sm_name")
+
+    if loan_app.sm_phone_number != loan_obj.sm_phone_number:
+        loan_app.sm_phone_number = loan_obj.sm_phone_number
+        update_fields.append("sm_phone_number")
+
+    if loan_app.sm_email != loan_obj.sm_email:
+        loan_app.sm_email = loan_obj.sm_email
+        update_fields.append("sm_email")
+
+    if bool(loan_app.is_sm_signed) != bool(loan_obj.is_sm_signed):
+        loan_app.is_sm_signed = bool(loan_obj.is_sm_signed)
+        update_fields.append("is_sm_signed")
+
+    if loan_app.sm_signed_at != loan_obj.sm_signed_at:
+        loan_app.sm_signed_at = loan_obj.sm_signed_at
+        update_fields.append("sm_signed_at")
+
     if update_fields:
         loan_app._skip_sync_to_loan = True
         loan_app.save(update_fields=update_fields + ["updated_at"])
@@ -452,6 +477,11 @@ def sync_application_to_loan(loan_app):
         "assigned_agent": loan_app.assigned_agent,
         "assigned_at": effective_assigned_at,
         "action_taken_at": timezone.now() if mapped_status in ["approved", "rejected", "disbursed"] else loan_obj.action_taken_at,
+        "sm_name": loan_app.sm_name,
+        "sm_phone_number": loan_app.sm_phone_number,
+        "sm_email": loan_app.sm_email,
+        "is_sm_signed": bool(loan_app.is_sm_signed),
+        "sm_signed_at": loan_app.sm_signed_at,
         "updated_at": timezone.now(),
     }
 

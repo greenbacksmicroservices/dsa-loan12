@@ -176,15 +176,22 @@ function renderLoansTable(loans) {
                         <td style="padding: 12px; border: none; font-size: 13px;">${l.assigned_date || 'N/A'}</td>
                         <td style="padding: 12px; border: none;">
                             <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                                <a href="/employee/loan/${l.id}/detail/" class="btn btn-sm btn-success" title="View details">
-                                    <i class="bi bi-eye"></i> View
-                                </a>
-                                <button class="btn btn-sm btn-warning" type="button" onclick="openEditLoanModal(${l.id})">
-                                    <i class="bi bi-pencil-square"></i> Edit
-                                </button>
-                                <button class="btn btn-sm btn-danger" type="button" onclick="openDeleteLoanModal(${l.id})">
-                                    <i class="bi bi-trash"></i> Delete
-                                </button>
+                                ${l.status === 'follow_up_pending'
+                                    ? `<a href="/employee/loan/${l.id}/detail/" class="btn btn-sm btn-warning" title="Edit follow up">
+                                        <i class="bi bi-pencil-square"></i> Edit
+                                       </a>`
+                                    : `
+                                        <a href="/employee/loan/${l.id}/detail/" class="btn btn-sm btn-success" title="View details">
+                                            <i class="bi bi-eye"></i> View
+                                        </a>
+                                        <button class="btn btn-sm btn-warning" type="button" onclick="openEditLoanModal(${l.id})">
+                                            <i class="bi bi-pencil-square"></i> Edit
+                                        </button>
+                                        <button class="btn btn-sm btn-danger" type="button" onclick="openDeleteLoanModal(${l.id})">
+                                            <i class="bi bi-trash"></i> Delete
+                                        </button>
+                                    `
+                                }
                             </div>
                         </td>
                     </tr>

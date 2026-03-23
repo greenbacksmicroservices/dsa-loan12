@@ -193,7 +193,7 @@
             <div class="sub-section-title">Name & Contact Details</div>
             <div class="form-row">
                 <div class="form-group">
-                    <label>Name <span class="required">*</span></label>
+                    <label>Name</label>
                     <input type="text" class="form-control" name="name" placeholder="Full name as per ID proof" required>
                     <div class="helper-text">Enter full name exactly as it appears in official documents</div>
                 </div>
@@ -205,6 +205,14 @@
                 <div class="form-group">
                     <label>Alternate Mobile</label>
                     <input type="tel" class="form-control" name="alternate_mobile" placeholder="Alternate contact number" pattern="[0-9]{10}" maxlength="10">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Loan ID (Manual)</label>
+                    <input type="text" class="form-control" name="loan_uid" placeholder="Enter manual loan ID (optional)">
+                    <div class="helper-text">Leave blank to auto-generate</div>
                 </div>
             </div>
 
@@ -666,14 +674,14 @@
                     <input type="text" class="form-control" name="ref1_name" placeholder="Full name" required>
                 </div>
                 <div class="form-group">
-                    <label>Mobile No. <span class="required">*</span></label>
+                    <label>Mobile No.</label>
                     <input type="tel" class="form-control" name="ref1_mobile" placeholder="10-digit mobile number" pattern="[0-9]{10}" maxlength="10" required>
                 </div>
             </div>
 
             <div class="form-row full-width">
                 <div class="form-group">
-                    <label>Address <span class="required">*</span></label>
+                    <label>Address</label>
                     <textarea class="form-control" name="ref1_address" placeholder="Residential address" required></textarea>
                 </div>
             </div>
@@ -682,18 +690,18 @@
             <div class="sub-section-title" style="margin-top: 30px;">Reference #2</div>
             <div class="form-row">
                 <div class="form-group">
-                    <label>Name <span class="required">*</span></label>
+                    <label>Name</label>
                     <input type="text" class="form-control" name="ref2_name" placeholder="Full name" required>
                 </div>
                 <div class="form-group">
-                    <label>Mobile No. <span class="required">*</span></label>
+                    <label>Mobile No.</label>
                     <input type="tel" class="form-control" name="ref2_mobile" placeholder="10-digit mobile number" pattern="[0-9]{10}" maxlength="10" required>
                 </div>
             </div>
 
             <div class="form-row full-width">
                 <div class="form-group">
-                    <label>Address <span class="required">*</span></label>
+                    <label>Address</label>
                     <textarea class="form-control" name="ref2_address" placeholder="Residential address" required></textarea>
                 </div>
             </div>
@@ -731,12 +739,12 @@
             <div class="sub-section-title">Bank Disbursement Details</div>
             <div class="form-row">
                 <div class="form-group">
-                    <label>Bank Name <span class="required">*</span></label>
+                    <label>Bank Name</label>
                     <input type="text" class="form-control" name="bank_name" placeholder="Enter your bank name" required>
                     <span class="helper-text">Name of your bank for loan disbursement</span>
                 </div>
                 <div class="form-group">
-                    <label>Account Number <span class="required">*</span></label>
+                    <label>Account Number</label>
                     <input type="text" class="form-control" name="account_number" placeholder="Enter your account number" required>
                     <span class="helper-text">Your bank account number for disbursement</span>
                 </div>

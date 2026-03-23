@@ -285,6 +285,16 @@ def employee_loan_status_list(request, status_key):
             'subtitle': 'All loans currently assigned to you',
             'badge': 'All Status'
         },
+        'new_entry': {
+            'title': 'New Entry Loans',
+            'subtitle': 'Fresh applications waiting for first action',
+            'badge': 'New Entry'
+        },
+        'waiting': {
+            'title': 'In Processing Loans',
+            'subtitle': 'Applications waiting for employee review',
+            'badge': 'In Processing'
+        },
         'awaiting': {
             'title': 'Awaiting Action',
             'subtitle': 'Waiting and follow-up loans that need your action',
@@ -301,9 +311,14 @@ def employee_loan_status_list(request, status_key):
             'badge': 'Rejected'
         },
         'follow_up': {
-            'title': 'Follow-up Loans',
-            'subtitle': 'Loans marked for follow-up',
-            'badge': 'Follow-up'
+            'title': 'Banking Processing Loans',
+            'subtitle': 'Loans currently in banking verification stage',
+            'badge': 'Banking Processing'
+        },
+        'follow_up_pending': {
+            'title': 'Follow Up Loans',
+            'subtitle': 'Reverted loans waiting for correction',
+            'badge': 'Follow Up'
         },
         'disbursed': {
             'title': 'Disbursed Loans',

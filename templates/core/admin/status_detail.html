@@ -147,6 +147,96 @@
         background: #f7fafc;
         border-color: #667eea;
     }
+
+    .action-btn {
+        padding: 8px 12px;
+        border: none;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        color: #fff;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .action-btn.view { background: #3b82f6; }
+    .action-btn.assign { background: #10b981; }
+    .action-btn.collect { background: #0ea5e9; }
+    .action-btn.approve { background: #16a34a; }
+    .action-btn.reject { background: #dc2626; }
+    .action-btn.revert { background: #f97316; }
+    .action-btn.sign { background: #059669; }
+    .action-btn.disburse { background: #2563eb; }
+
+    .admin-action-modal {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.55);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        padding: 20px;
+    }
+
+    .admin-action-modal.active { display: flex; }
+
+    .admin-action-card {
+        background: #fff;
+        border-radius: 12px;
+        width: min(560px, 95vw);
+        box-shadow: 0 20px 35px rgba(0,0,0,0.2);
+        overflow: hidden;
+    }
+
+    .admin-action-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px 18px;
+        border-bottom: 1px solid #e5e7eb;
+        background: #f8fafc;
+    }
+
+    .admin-action-body {
+        padding: 16px 18px;
+        display: grid;
+        gap: 12px;
+    }
+
+    .admin-action-body label {
+        font-size: 12px;
+        font-weight: 600;
+        color: #374151;
+        display: block;
+        margin-bottom: 6px;
+    }
+
+    .admin-action-body input,
+    .admin-action-body textarea {
+        width: 100%;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 10px 12px;
+        font-size: 13px;
+        font-family: inherit;
+    }
+
+    .admin-action-footer {
+        padding: 12px 18px 16px;
+        border-top: 1px solid #e5e7eb;
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        background: #f9fafb;
+    }
+
+    .admin-action-footer .btn-cancel {
+        background: #e5e7eb;
+        color: #374151;
+    }
 </style>
 
 <div class="status-container">
@@ -254,14 +344,46 @@
                         {% endif %}
                         <td style="padding: 15px 20px;">
                             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                                <button onclick="viewDetails({{ app.id }}, '{{ app.applicant.full_name }}', '{{ app.applicant.email }}', '{{ app.applicant.mobile }}', '{{ app.applicant.loan_type }}', '{{ app.applicant.loan_amount }}')" 
-                                    style="padding: 8px 14px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600;">
+                                <button type="button" class="action-btn view"
+                                    onclick="viewDetails({{ app.id }}, '{{ app.applicant.full_name|escapejs }}', '{{ app.applicant.email|default:''|escapejs }}', '{{ app.applicant.mobile|default:''|escapejs }}', '{{ app.applicant.loan_type|default:''|escapejs }}', '{{ app.applicant.loan_amount|default:''|escapejs }}')">
                                     <i class="fas fa-eye"></i> View
                                 </button>
                                 {% if status_name == 'New Entry' %}
-                                <button onclick="assignToEmployee({{ app.id }}, '{{ app.applicant.full_name }}')" 
-                                    style="padding: 8px 14px; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600;">
+                                <button type="button" class="action-btn assign"
+                                    onclick="assignToEmployee({{ app.id }}, '{{ app.applicant.full_name|escapejs }}')">
                                     <i class="fas fa-user-check"></i> Assign
+                                </button>
+                                {% endif %}
+                                {% if status_name == 'Waiting for Processing' %}
+                                <button type="button" class="action-btn collect"
+                                    onclick="openAdminAction('collect', {{ app.id }}, '{{ app.applicant.full_name|escapejs }}')">
+                                    <i class="fas fa-university"></i> Bank Process
+                                </button>
+                                <button type="button" class="action-btn reject"
+                                    onclick="openAdminAction('reject', {{ app.id }}, '{{ app.applicant.full_name|escapejs }}')">
+                                    <i class="fas fa-times-circle"></i> Reject
+                                </button>
+                                {% elif status_name == 'Required Follow-up' or status_name == 'Banking Processing' %}
+                                <button type="button" class="action-btn approve"
+                                    onclick="openAdminAction('approve', {{ app.id }}, '{{ app.applicant.full_name|escapejs }}')">
+                                    <i class="fas fa-check-circle"></i> Approve
+                                </button>
+                                <button type="button" class="action-btn reject"
+                                    onclick="openAdminAction('reject', {{ app.id }}, '{{ app.applicant.full_name|escapejs }}')">
+                                    <i class="fas fa-times-circle"></i> Reject
+                                </button>
+                                <button type="button" class="action-btn revert"
+                                    onclick="openAdminAction('revert', {{ app.id }}, '{{ app.applicant.full_name|escapejs }}')">
+                                    <i class="fas fa-undo"></i> Revert
+                                </button>
+                                {% elif status_name == 'Approved' %}
+                                <button type="button" class="action-btn sign"
+                                    onclick="openAdminAction('sign', {{ app.id }}, '{{ app.applicant.full_name|escapejs }}')">
+                                    <i class="fas fa-signature"></i> SM Sign
+                                </button>
+                                <button type="button" class="action-btn disburse"
+                                    onclick="openAdminAction('disburse', {{ app.id }}, '{{ app.applicant.full_name|escapejs }}')">
+                                    <i class="fas fa-money-bill-wave"></i> Disburse
                                 </button>
                                 {% endif %}
                             </div>
@@ -272,6 +394,21 @@
             </table>
         </div>
         {% endif %}
+    </div>
+</div>
+
+<!-- Admin Action Modal -->
+<div id="adminActionModal" class="admin-action-modal">
+    <div class="admin-action-card">
+        <div class="admin-action-header">
+            <h3 id="adminActionTitle" style="margin: 0; font-size: 16px; font-weight: 700; color: #111827;">Action</h3>
+            <button type="button" onclick="closeAdminActionModal()" style="background: none; border: none; font-size: 22px; cursor: pointer; color: #6b7280;">&times;</button>
+        </div>
+        <div class="admin-action-body" id="adminActionBody"></div>
+        <div class="admin-action-footer">
+            <button type="button" class="action-btn btn-cancel" onclick="closeAdminActionModal()">Cancel</button>
+            <button type="button" class="action-btn approve" id="adminActionConfirm" onclick="confirmAdminAction()">Confirm</button>
+        </div>
     </div>
 </div>
 
@@ -497,10 +634,259 @@ function assignToEmployee(appId, applicantName) {
     window.location.href = `/admin/assign-application/${appId}/?applicant=${encodeURIComponent(applicantName)}`;
 }
 
+let currentAdminAction = null;
+let currentAdminAppId = null;
+let currentAdminApplicant = '';
+
+function openAdminAction(action, appId, applicantName) {
+    currentAdminAction = action;
+    currentAdminAppId = appId;
+    currentAdminApplicant = applicantName || '';
+
+    const modal = document.getElementById('adminActionModal');
+    const title = document.getElementById('adminActionTitle');
+    const body = document.getElementById('adminActionBody');
+    const confirmBtn = document.getElementById('adminActionConfirm');
+
+    if (!modal || !title || !body || !confirmBtn) return;
+
+    const safeName = currentAdminApplicant || 'this applicant';
+
+    if (action === 'collect') {
+        title.textContent = 'Move To Banking Processing';
+        confirmBtn.className = 'action-btn collect';
+        confirmBtn.textContent = 'Move';
+        body.innerHTML = `
+            <div style="font-size: 13px; color: #374151;">Move <strong>${safeName}</strong> to Banking Processing.</div>
+            <div>
+                <label for="adminCollectRemark">Bank Remark (Optional)</label>
+                <textarea id="adminCollectRemark" rows="3" placeholder="Banking verification remark..."></textarea>
+            </div>
+        `;
+    } else if (action === 'approve') {
+        title.textContent = 'Approve Loan';
+        confirmBtn.className = 'action-btn approve';
+        confirmBtn.textContent = 'Approve';
+        body.innerHTML = `
+            <div style="font-size: 13px; color: #374151;">Approving <strong>${safeName}</strong>.</div>
+            <div>
+                <label for="adminSmName">SM Name *</label>
+                <input id="adminSmName" type="text" placeholder="Enter SM name">
+            </div>
+            <div>
+                <label for="adminSmPhone">SM Phone *</label>
+                <input id="adminSmPhone" type="text" placeholder="Enter SM phone number">
+            </div>
+            <div>
+                <label for="adminSmEmail">SM Email *</label>
+                <input id="adminSmEmail" type="email" placeholder="Enter SM email">
+            </div>
+            <div>
+                <label for="adminApprovalNotes">Approval Notes (Optional)</label>
+                <textarea id="adminApprovalNotes" rows="3" placeholder="Approval notes..."></textarea>
+            </div>
+            <div>
+                <label for="adminBankRemark">Bank Remark (Optional)</label>
+                <textarea id="adminBankRemark" rows="2" placeholder="Bank verification remark..."></textarea>
+            </div>
+        `;
+    } else if (action === 'reject') {
+        title.textContent = 'Reject Loan';
+        confirmBtn.className = 'action-btn reject';
+        confirmBtn.textContent = 'Reject';
+        body.innerHTML = `
+            <div style="font-size: 13px; color: #374151;">Rejecting <strong>${safeName}</strong>.</div>
+            <div>
+                <label for="adminRejectReason">Rejection Reason *</label>
+                <textarea id="adminRejectReason" rows="3" placeholder="Reason for rejection..."></textarea>
+            </div>
+            <div>
+                <label for="adminRejectBankRemark">Bank Remark (Optional)</label>
+                <textarea id="adminRejectBankRemark" rows="2" placeholder="Banking verification remark..."></textarea>
+            </div>
+        `;
+    } else if (action === 'revert') {
+        title.textContent = 'Revert To Agent';
+        confirmBtn.className = 'action-btn revert';
+        confirmBtn.textContent = 'Revert';
+        body.innerHTML = `
+            <div style="font-size: 13px; color: #374151;">Revert <strong>${safeName}</strong> back to agent for correction.</div>
+            <div>
+                <label for="adminRevertRemark">Revert Remark *</label>
+                <textarea id="adminRevertRemark" rows="3" placeholder="Explain what needs correction..."></textarea>
+            </div>
+        `;
+    } else if (action === 'sign') {
+        title.textContent = 'SM Sign-Off';
+        confirmBtn.className = 'action-btn sign';
+        confirmBtn.textContent = 'Sign';
+        body.innerHTML = `
+            <div style="font-size: 13px; color: #374151;">Mark SM sign-off for <strong>${safeName}</strong>.</div>
+            <div style="font-size: 12px; color: #6b7280;">Ensure SM details are already added before signing.</div>
+        `;
+    } else if (action === 'disburse') {
+        title.textContent = 'Mark As Disbursed';
+        confirmBtn.className = 'action-btn disburse';
+        confirmBtn.textContent = 'Disburse';
+        const today = new Date().toISOString().slice(0, 10);
+        body.innerHTML = `
+            <div style="font-size: 13px; color: #374151;">Disburse loan for <strong>${safeName}</strong>.</div>
+            <div>
+                <label for="adminDisburseAmount">Disbursement Amount *</label>
+                <input id="adminDisburseAmount" type="number" min="0" step="0.01" placeholder="Amount">
+            </div>
+            <div>
+                <label for="adminDisburseDate">Disbursement Date *</label>
+                <input id="adminDisburseDate" type="date" value="${today}">
+            </div>
+            <div>
+                <label for="adminDisburseRemark">Bank Remark (Optional)</label>
+                <textarea id="adminDisburseRemark" rows="2" placeholder="Banking verification remark..."></textarea>
+            </div>
+        `;
+    } else {
+        return;
+    }
+
+    confirmBtn.dataset.originalText = confirmBtn.textContent;
+    modal.classList.add('active');
+}
+
+function closeAdminActionModal() {
+    const modal = document.getElementById('adminActionModal');
+    if (modal) modal.classList.remove('active');
+    currentAdminAction = null;
+    currentAdminAppId = null;
+    currentAdminApplicant = '';
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+async function confirmAdminAction() {
+    if (!currentAdminAction || !currentAdminAppId) return;
+
+    const confirmBtn = document.getElementById('adminActionConfirm');
+    if (confirmBtn) {
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = 'Processing...';
+    }
+
+    let endpoint = '';
+    let payload = {};
+
+    try {
+        if (currentAdminAction === 'collect') {
+            endpoint = `/api/employee/loan/${currentAdminAppId}/collect/`;
+            payload = { bank_remark: (document.getElementById('adminCollectRemark')?.value || '').trim() };
+        } else if (currentAdminAction === 'approve') {
+            const smName = (document.getElementById('adminSmName')?.value || '').trim();
+            const smPhone = (document.getElementById('adminSmPhone')?.value || '').trim();
+            const smEmail = (document.getElementById('adminSmEmail')?.value || '').trim();
+            if (!smName || !smPhone || !smEmail) {
+                alert('SM name, phone, and email are required.');
+                throw new Error('Missing SM details');
+            }
+            endpoint = `/api/employee/loan/${currentAdminAppId}/approve/`;
+            payload = {
+                sm_name: smName,
+                sm_phone_number: smPhone,
+                sm_email: smEmail,
+                approval_notes: (document.getElementById('adminApprovalNotes')?.value || '').trim(),
+                bank_remark: (document.getElementById('adminBankRemark')?.value || '').trim(),
+            };
+        } else if (currentAdminAction === 'reject') {
+            const reason = (document.getElementById('adminRejectReason')?.value || '').trim();
+            if (!reason) {
+                alert('Rejection reason is required.');
+                throw new Error('Missing rejection reason');
+            }
+            endpoint = `/api/employee/loan/${currentAdminAppId}/reject/`;
+            payload = {
+                rejection_reason: reason,
+                bank_remark: (document.getElementById('adminRejectBankRemark')?.value || '').trim(),
+            };
+        } else if (currentAdminAction === 'revert') {
+            const remark = (document.getElementById('adminRevertRemark')?.value || '').trim();
+            if (!remark) {
+                alert('Revert remark is required.');
+                throw new Error('Missing revert remark');
+            }
+            endpoint = `/api/employee/loan/${currentAdminAppId}/revert/`;
+            payload = { revert_remark: remark };
+        } else if (currentAdminAction === 'sign') {
+            endpoint = `/api/employee/loan/${currentAdminAppId}/sign/`;
+            payload = {};
+        } else if (currentAdminAction === 'disburse') {
+            const amount = (document.getElementById('adminDisburseAmount')?.value || '').trim();
+            const date = (document.getElementById('adminDisburseDate')?.value || '').trim();
+            if (!amount || !date) {
+                alert('Disbursement amount and date are required.');
+                throw new Error('Missing disbursement details');
+            }
+            endpoint = `/api/employee/loan/${currentAdminAppId}/disburse/`;
+            payload = {
+                disbursement_amount: amount,
+                disbursement_date: date,
+                bank_remark: (document.getElementById('adminDisburseRemark')?.value || '').trim(),
+            };
+        } else {
+            throw new Error('Unknown action');
+        }
+
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+            body: JSON.stringify(payload),
+        });
+
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || data.success === false) {
+            throw new Error(data.error || data.message || 'Action failed');
+        }
+
+        alert(data.message || 'Action completed successfully');
+        closeAdminActionModal();
+        window.location.reload();
+    } catch (error) {
+        if (error.message && error.message !== 'Missing SM details' && error.message !== 'Missing rejection reason' && error.message !== 'Missing revert remark' && error.message !== 'Missing disbursement details') {
+            alert(error.message || 'Action failed');
+        }
+    } finally {
+        if (confirmBtn) {
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = confirmBtn.dataset.originalText || 'Confirm';
+        }
+    }
+}
+
+document.addEventListener('click', function(event) {
+    const modal = document.getElementById('adminActionModal');
+    if (modal && event.target === modal) {
+        closeAdminActionModal();
+    }
+});
+
 // Close modal with ESC key
 document.addEventListener('keydown', function(event) {
     if (event.key === 'Escape') {
         closeDetailsModal();
+        closeAdminActionModal();
     }
 });
 </script>

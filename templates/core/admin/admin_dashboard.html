@@ -6,22 +6,30 @@
 
 {% block content %}
 <style>
+    .stats-row-primary,
+    .stats-row-secondary {
+        --bs-gutter-x: 1rem;
+        --bs-gutter-y: 1rem;
+    }
+
     .stat-card {
-        padding: 25px;
+        padding: 16px;
         border-radius: 12px;
         color: white;
-        text-align: center;
+        text-align: left;
         position: relative;
         overflow: hidden;
         cursor: pointer;
         transition: all 0.3s ease;
         text-decoration: none;
         display: block;
-        margin-bottom: 20px;
+        min-height: 190px;
+        height: 100%;
+        border: 1px solid rgba(255,255,255,0.18);
     }
 
     .stat-card:hover {
-        transform: translateY(-8px);
+        transform: translateY(-6px);
         box-shadow: 0 12px 24px rgba(0,0,0,0.15);
     }
 
@@ -44,40 +52,45 @@
     .stat-card-content {
         position: relative;
         z-index: 2;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
     }
 
     .stat-icon {
-        font-size: 36px;
-        margin-bottom: 10px;
+        font-size: 28px;
+        margin-bottom: 8px;
         display: block;
-        opacity: 0.9;
+        opacity: 0.95;
     }
 
     .stat-card h3 {
-        margin: 10px 0;
-        font-size: 16px;
+        margin: 6px 0;
+        font-size: 15px;
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.5px;
     }
 
     .stat-card .number {
-        font-size: 42px;
+        font-size: 38px;
         font-weight: 700;
-        margin: 15px 0;
+        margin: 8px 0 4px;
         line-height: 1;
     }
 
     .stat-card p {
         font-size: 13px;
-        margin: 10px 0 0 0;
+        margin: 0;
         opacity: 0.95;
-        font-weight: 500;
+        font-weight: 600;
+        min-height: 38px;
     }
 
     .stat-card .view-link {
         display: inline-block;
-        margin-top: 12px;
+        margin-top: auto;
+        align-self: flex-start;
         padding: 8px 15px;
         background: rgba(255,255,255,0.2);
         border-radius: 6px;
@@ -102,6 +115,10 @@
         background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
     }
 
+    .card-followup-pending {
+        background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+    }
+
     .card-success {
         background: linear-gradient(135deg, #10b981 0%, #059669 100%);
     }
@@ -122,12 +139,26 @@
         box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         margin-bottom: 25px;
     }
+
+    @media (min-width: 992px) {
+        .stats-row-primary .stat-card,
+        .stats-row-secondary .stat-card {
+            aspect-ratio: 1 / 1;
+            min-height: 210px;
+        }
+    }
+
+    @media (max-width: 991.98px) {
+        .stat-card {
+            min-height: 170px;
+        }
+    }
 </style>
 
 <div class="container-fluid">
     <!-- ROW 1: Main Statistics Cards - Clickable -->
-    <div class="row">
-        <div class="col-lg-2 col-md-4 col-sm-6 col-12">
+    <div class="row stats-row-primary">
+        <div class="col-xl-3 col-md-6 col-12">
             <a href="/admin/all-loans/?status=new_entry" class="stat-card card-primary" title="View New Entries">
                 <div class="stat-card-content">
                     <i class="fas fa-file-alt stat-icon"></i>
@@ -139,7 +170,7 @@
             </a>
         </div>
 
-        <div class="col-lg-2 col-md-4 col-sm-6 col-12">
+        <div class="col-xl-3 col-md-6 col-12">
             <a href="/admin/all-loans/?status=waiting" class="stat-card card-warning" title="View In Processing">
                 <div class="stat-card-content">
                     <i class="fas fa-hourglass-half stat-icon"></i>
@@ -151,7 +182,7 @@
             </a>
         </div>
 
-        <div class="col-lg-2 col-md-4 col-sm-6 col-12">
+        <div class="col-xl-3 col-md-6 col-12">
             <a href="/admin/all-loans/?status=follow_up" class="stat-card card-secondary" title="View Banking Processing">
                 <div class="stat-card-content">
                     <i class="fas fa-phone-volume stat-icon"></i>
@@ -163,7 +194,21 @@
             </a>
         </div>
 
-        <div class="col-lg-2 col-md-4 col-sm-6 col-12">
+        <div class="col-xl-3 col-md-6 col-12">
+            <a href="/admin/all-loans/?status=follow_up_pending" class="stat-card card-followup-pending" title="View Follow Up">
+                <div class="stat-card-content">
+                    <i class="fas fa-rotate-left stat-icon"></i>
+                    <h3>Follow Up</h3>
+                    <div class="number" id="stat-follow-up-pending">{{ follow_up_pending_count }}</div>
+                    <p>Reverted for Correction</p>
+                    <span class="view-link">View Details -></span>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <div class="row stats-row-secondary mt-1">
+        <div class="col-xl-4 col-md-6 col-12">
             <a href="/admin/all-loans/?status=approved" class="stat-card card-success" title="View Approved">
                 <div class="stat-card-content">
                     <i class="fas fa-check-circle stat-icon"></i>
@@ -175,7 +220,7 @@
             </a>
         </div>
 
-        <div class="col-lg-2 col-md-4 col-sm-6 col-12">
+        <div class="col-xl-4 col-md-6 col-12">
             <a href="/admin/all-loans/?status=rejected" class="stat-card card-danger" title="View Rejected">
                 <div class="stat-card-content">
                     <i class="fas fa-ban stat-icon"></i>
@@ -187,7 +232,7 @@
             </a>
         </div>
 
-        <div class="col-lg-2 col-md-4 col-sm-6 col-12">
+        <div class="col-xl-4 col-md-12 col-12">
             <a href="/admin/all-loans/?status=disbursed" class="stat-card card-info" title="View Disbursed">
                 <div class="stat-card-content">
                     <i class="fas fa-money-bill-wave stat-icon"></i>
@@ -329,14 +374,15 @@
             statusChart = new Chart(ctx2, {
                 type: 'doughnut',
                 data: {
-                    labels: ['New Entry', 'In Processing', 'Banking Processing', 'Approved', 'Rejected', 'Disbursed'],
+                    labels: ['New Entry', 'In Processing', 'Banking Processing', 'Follow Up', 'Approved', 'Rejected', 'Disbursed'],
                     datasets: [
                         {
-                            data: [1, 0, 0, 2, 1, 1],
+                            data: [1, 0, 0, 0, 2, 1, 1],
                             backgroundColor: [
                                 '#3b82f6',
                                 '#f59e0b',
                                 '#8b5cf6',
+                                '#f97316',
                                 '#10b981',
                                 '#ef4444',
                                 '#06b6d4'
@@ -378,6 +424,7 @@
             setText('stat-new-entry', stats.new_entries);
             setText('stat-processing', stats.waiting);
             setText('stat-followup', stats.follow_up);
+            setText('stat-follow-up-pending', stats.follow_up_pending);
             setText('stat-approved', stats.approved);
             setText('stat-rejected', stats.rejected);
             setText('stat-disbursed', stats.disbursed);
@@ -387,6 +434,7 @@
                     stats.new_entries || 0,
                     stats.waiting || 0,
                     stats.follow_up || 0,
+                    stats.follow_up_pending || 0,
                     stats.approved || 0,
                     stats.rejected || 0,
                     stats.disbursed || 0
