@@ -393,7 +393,7 @@
         .then(r => r.text())
         .then(html => {
             // If response contains a redirect or success message
-            alert('✓ Loan assigned successfully!\n\nStatus: Waiting for Processing\nAssigned for: 24 hours\n\nIf not checked within 24 hours, it will return to New Loan Applications.');
+            alert('✓ Loan assigned successfully!\n\nStatus: Document Pending\nAssigned for: 24 hours\n\nIf not checked within 24 hours, it will return to New Loan Applications.');
             window.location.href = '/admin/new-entries/';
         })
         .catch(error => {

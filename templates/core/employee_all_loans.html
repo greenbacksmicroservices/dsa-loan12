@@ -311,7 +311,7 @@
             <option value="rejected">Rejected</option>
             <option value="disbursed">Disbursed</option>
         </select>
-        <a href="/admin/add-loan/" class="btn-action btn-primary">
+        <a href="{% url 'employee_add_loan' %}" class="btn-action btn-primary">
             <i class="bi bi-plus-circle"></i> Add New Loan
         </a>
     </div>
@@ -495,7 +495,7 @@
                         <div class="empty-icon"><i class="bi bi-inbox"></i></div>
                         <div class="empty-title">No Loans Found</div>
                         <div class="empty-text">You haven't created any loans yet. Get started by creating your first loan application.</div>
-                        <a href="/admin/add-loan/" class="empty-btn">Create Your First Loan</a>
+                        <a href="{% url 'employee_add_loan' %}" class="empty-btn">Create Your First Loan</a>
                     </div>
                 </td>
             </tr>

@@ -34,14 +34,14 @@
 
 <div class="card-container">
     <div class="insight-card c-new">
-        <p class="status-title">New Entry</p>
+        <p class="status-title">New Application</p>
         <h2 class="main-value" id="stat-new-entry">0</h2>
         <p class="description">Total New Applications</p>
         <a href="#" class="view-details" style="color:#4c51bf" onclick="filterByStatus('new_entry'); return false;">View Details →</a>
     </div>
 
     <div class="insight-card c-process">
-        <p class="status-title">In Processing</p>
+        <p class="status-title">Document Pending</p>
         <h2 class="main-value" id="stat-waiting">0</h2>
         <p class="description">Pending Review</p>
         <a href="#" class="view-details" style="color:#d69e2e" onclick="filterByStatus('waiting'); return false;">View Details →</a>
@@ -369,7 +369,7 @@
         pieChartInstance = new Chart(ctx, {
             type: 'pie',
             data: {
-                labels: ['Approved', 'Waiting', 'Rejected', 'Disbursed', 'New Entry', 'Banking Processing'],
+                labels: ['Approved', 'Document Pending', 'Rejected', 'Disbursed', 'New Application', 'Banking Processing'],
                 datasets: [{
                     data: chartData,
                     backgroundColor: [
@@ -377,7 +377,7 @@
                         '#f59e0b',  // Amber - Waiting
                         '#ef4444',  // Red - Rejected
                         '#3b82f6',  // Blue - Disbursed
-                        '#6366f1',  // Indigo - New Entry
+                        '#6366f1',  // Indigo - New Application
                         '#f97316'   // Orange - Banking Processing
                     ],
                     borderWidth: 2,
@@ -680,4 +680,3 @@
 </script>
 <script src="{% static 'js/admin-data-manager.js' %}"></script>
 {% endblock %}
-

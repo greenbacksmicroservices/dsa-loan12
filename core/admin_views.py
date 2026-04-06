@@ -16,6 +16,7 @@ from .models import LoanApplication, Applicant, ApplicantDocument, LoanAssignmen
 from .decorators import admin_required
 from .loan_sync import extract_assignment_context, role_label, find_related_loan
 from .onboarding_utils import collect_onboarding_payload, collect_onboarding_documents, collect_onboarding_payload_from_source
+from .followup_utils import auto_move_overdue_to_follow_up
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +29,17 @@ def _has_revert_marker(value):
 
 def _follow_up_pending_q():
     return Q(status__in=['new_entry', 'waiting']) & Q(remarks__icontains='Revert Remark')
+
+
+def _ui_status_label(status_text):
+    normalized = str(status_text or '').strip().lower()
+    if normalized in ['new entry', 'new_entry', 'draft']:
+        return 'New Application'
+    if normalized in ['waiting for processing', 'in processing', 'waiting', 'processing']:
+        return 'Document Pending'
+    if normalized in ['required follow-up', 'required follow up']:
+        return 'Banking Processing'
+    return status_text
 
 
 def _split_name(full_name):
@@ -199,6 +211,8 @@ def admin_dashboard(request):
     ADMIN DASHBOARD - Shows real statistics and summary
     """
     try:
+        auto_move_overdue_to_follow_up()
+
         # Get all Loan counts by status (real-time)
         follow_up_pending_q = _follow_up_pending_q()
         follow_up_pending_count = Loan.objects.filter(follow_up_pending_q).count()
@@ -270,6 +284,7 @@ def admin_all_loans(request):
     # Get search and status filter parameters
     search_query = request.GET.get('q', '').strip()
     status_filter = request.GET.get('status', '').strip()
+    auto_move_overdue_to_follow_up()
     
     # Start with all loans ordered by creation date (newest first)
     loans = Loan.objects.select_related(
@@ -309,7 +324,7 @@ def admin_all_loans(request):
             loan.assigned_to_display = '-'
         loan.follow_up_pending = follow_up_pending
         loan.status_key_display = 'follow_up_pending' if follow_up_pending else loan.status
-        loan.status_display_text = FOLLOW_UP_PENDING_LABEL if follow_up_pending else loan.get_status_display()
+        loan.status_display_text = FOLLOW_UP_PENDING_LABEL if follow_up_pending else _ui_status_label(loan.get_status_display())
         loan.assigned_by_display = extract_assignment_context(loan).get('assigned_by_display', '-')
     
     context = {
@@ -426,7 +441,7 @@ def api_get_all_loans(request):
                 'agent_name': agent_name,
                 'employee_name': employee_name,
                 'status': loan.status,
-                'status_display': loan.get_status_display(),
+                'status_display': _ui_status_label(loan.get_status_display()),
                 'submitted_date': loan.created_at.strftime('%Y-%m-%d'),
                 'last_updated_date': loan.updated_at.strftime('%Y-%m-%d'),
             })
@@ -686,7 +701,7 @@ def api_admin_all_loans(request):
         for loan in query.order_by('-created_at')[:100]:
             is_follow_up_pending = loan.status in ['new_entry', 'waiting'] and _has_revert_marker(loan.remarks)
             status_key = 'follow_up_pending' if is_follow_up_pending else loan.status
-            status_display = FOLLOW_UP_PENDING_LABEL if is_follow_up_pending else loan.get_status_display()
+            status_display = FOLLOW_UP_PENDING_LABEL if is_follow_up_pending else _ui_status_label(loan.get_status_display())
             loans_data.append({
                 'id': loan.id,
                 'applicant_name': loan.full_name or 'N/A',
@@ -804,7 +819,7 @@ def api_admin_subadmin_full_details(request, subadmin_id):
                 'loan_type': loan.get_loan_type_display() if hasattr(loan, 'get_loan_type_display') else loan.loan_type,
                 'loan_amount': float(loan.loan_amount or 0),
                 'status': loan.status,
-                'status_display': loan.get_status_display(),
+                'status_display': _ui_status_label(loan.get_status_display()),
                 'assigned_to': assigned_to,
                 'assigned_by': _extract_assignment_marker(loan),
                 'owner_name': owner_name,
@@ -1309,7 +1324,13 @@ def admin_add_loan(request):
         # Keeps redirects consistent with normal employee/agent login flow
         return redirect('login')
 
-    if request.user.role not in ['admin', 'employee']:
+    current_role = request.user.role
+    self_add_loan_route = (
+        'admin_add_loan' if current_role == 'admin'
+        else ('employee_add_loan' if current_role == 'employee' else 'subadmin_add_loan')
+    )
+
+    if current_role not in ['admin', 'employee', 'subadmin']:
         messages.error(request, 'Access denied.')
         return redirect('dashboard')
 
@@ -1326,11 +1347,11 @@ def admin_add_loan(request):
 
             if not applicant_name or not applicant_mobile or not raw_loan_type or not raw_amount:
                 messages.error(request, 'Please fill all required fields (Name, Mobile, Loan Type, Loan Amount).')
-                return redirect('admin_add_loan')
+                return redirect(self_add_loan_route)
 
             if loan_uid and Loan.objects.filter(user_id=loan_uid).exists():
                 messages.error(request, 'Loan ID already exists. Please enter a unique Loan ID.')
-                return redirect('admin_add_loan')
+                return redirect(self_add_loan_route)
 
             loan_type_map = {
                 'personal loan': 'personal',
@@ -1341,10 +1362,14 @@ def admin_add_loan(request):
                 'home': 'home',
                 'business loan': 'business',
                 'business': 'business',
+                'auto loan': 'car',
+                'auto': 'car',
                 'education loan': 'education',
                 'education': 'education',
                 'car loan': 'car',
                 'car': 'car',
+                'security loan': 'other',
+                'security': 'other',
                 'credit card': 'other',
                 'other': 'other',
             }
@@ -1354,7 +1379,7 @@ def admin_add_loan(request):
                 loan_amount = float(raw_amount)
             except (TypeError, ValueError):
                 messages.error(request, 'Invalid loan amount.')
-                return redirect('admin_add_loan')
+                return redirect(self_add_loan_route)
 
             tenure_months = None
             if raw_tenure:
@@ -1437,6 +1462,7 @@ def admin_add_loan(request):
                 'loan3_bounce': 'Loan 3 Any Bounce',
                 'loan3_cleared': 'Loan 3 Cleared',
                 'charges_or_fee': 'Charges/Fee',
+                'service_required_other': 'Service Required (Other)',
                 'cibil_score': 'CIBIL Score',
                 'aadhar_number': 'Aadhar Number',
                 'pan_number': 'PAN Number',
@@ -1517,7 +1543,7 @@ def admin_add_loan(request):
                 bank_account_number=(request.POST.get('account_number') or '').strip() or None,
                 bank_ifsc_code=(request.POST.get('ifsc_code') or '').strip() or None,
                 status='new_entry',
-                applicant_type='agent' if request.user.role == 'agent' else 'employee',
+                applicant_type='employee',
                 assigned_employee=request.user if request.user.role == 'employee' else None,
                 assigned_at=timezone.now() if request.user.role == 'employee' else None,
                 assigned_agent=agent_profile,
@@ -1531,16 +1557,37 @@ def admin_add_loan(request):
                     ('pan', 'pan_card'),
                     ('aadhaar', 'aadhaar_card'),
                     ('aadhar', 'aadhaar_card'),
+                    ('co applicant pan', 'co_applicant_pan'),
+                    ('co-applicant pan', 'co_applicant_pan'),
+                    ('co applicant aadhar', 'co_applicant_aadhaar'),
+                    ('co-applicant aadhar', 'co_applicant_aadhaar'),
+                    ('co applicant aadhaar', 'co_applicant_aadhaar'),
+                    ('co-applicant aadhaar', 'co_applicant_aadhaar'),
+                    ('co applicant photo', 'co_applicant_photo'),
+                    ('co-applicant photo', 'co_applicant_photo'),
                     ('soa', 'soa_existing_loan'),
                     ('forclos', 'forclosure_document'),
                     ('forclose', 'forclosure_document'),
                     ('forclosure', 'forclosure_document'),
                     ('photo', 'applicant_photo'),
+                    ('permanent address', 'permanent_address_proof'),
+                    ('recent address', 'current_address_proof'),
+                    ('current address', 'current_address_proof'),
                     ('salary slip', 'salary_slip'),
                     ('bank statement', 'bank_statement'),
                     ('form 16', 'form_16'),
                     ('service book', 'service_book'),
                     ('property', 'property_documents'),
+                    ('patta', 'property_documents'),
+                    ('pauti', 'property_documents'),
+                    ('ror', 'property_documents'),
+                    ('bda approval', 'property_documents'),
+                    ('rc', 'other_rc'),
+                    ('insurance certificate', 'other_insurance_certificate'),
+                    ('insurance', 'other_insurance'),
+                    ('gst', 'other_gst'),
+                    ('business vintage', 'other_business_vintage'),
+                    ('itr', 'other_itr_with_computation'),
                 ]
                 for token, mapped in type_map:
                     if token in normalized:
@@ -1573,11 +1620,13 @@ def admin_add_loan(request):
             messages.success(request, f'Loan application submitted successfully! ID: {loan.id}')
             if request.user.role == 'admin':
                 return redirect('admin_all_loans')
+            if request.user.role == 'subadmin':
+                return redirect('subadmin_all_loans')
             return redirect('employee_all_loans')
         except Exception as e:
             logger.error(f"Error creating loan: {str(e)}")
             messages.error(request, f'Error creating loan application: {str(e)}')
-            return redirect('admin_add_loan')
+            return redirect(self_add_loan_route)
 
     recent_qs = Loan.objects.filter(created_by=request.user).order_by('-created_at')[:8]
     recent_loans = [{
@@ -1910,7 +1959,7 @@ def admin_new_entries(request):
     applications = LoanApplication.objects.filter(status='New Entry').select_related('applicant', 'assigned_employee', 'assigned_agent', 'assigned_by').order_by('-created_at')
     
     context = {
-        'page_title': 'New Entry Applications',
+        'page_title': 'New Applications',
         'applications': applications,
         'status_name': 'New Entry',
     }
@@ -1924,7 +1973,7 @@ def admin_in_processing(request):
     applications = LoanApplication.objects.filter(status='Waiting for Processing').select_related('applicant', 'assigned_employee', 'assigned_agent', 'assigned_by').order_by('-created_at')
     
     context = {
-        'page_title': 'In Processing Applications',
+        'page_title': 'Document Pending Applications',
         'applications': applications,
         'status_name': 'Waiting for Processing',
     }
@@ -2110,4 +2159,3 @@ def api_get_application_details(request, app_id):
         return JsonResponse(data)
     except LoanApplication.DoesNotExist:
         return JsonResponse({'success': False, 'message': 'Application not found'}, status=404)
-

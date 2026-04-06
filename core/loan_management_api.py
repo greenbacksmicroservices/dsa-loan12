@@ -17,6 +17,7 @@ from .models import (
     ActivityLog, LoanDocument, LoanApplication, Applicant
 )
 from .decorators import admin_required, employee_required
+from .followup_utils import auto_move_overdue_to_follow_up
 
 
 def _follow_up_pending_q():
@@ -362,6 +363,8 @@ def api_dashboard_stats(request):
     Get real-time dashboard statistics
     Returns counts and percentages for all statuses
     """
+    auto_move_overdue_to_follow_up()
+
     if request.user.role == 'admin':
         # Admin gets all statistics
         base_qs = Loan.objects.all()

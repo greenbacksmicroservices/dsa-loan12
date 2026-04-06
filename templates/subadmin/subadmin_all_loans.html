@@ -27,11 +27,11 @@
             <p class="text-2xl font-bold mt-1">{{ stats.total|default:0 }}</p>
         </a>
         <a href="{% url 'subadmin_all_loans' %}?status=new_entry" class="bg-blue-600 text-white rounded-lg p-4">
-            <p class="text-xs uppercase">New Entry</p>
+            <p class="text-xs uppercase">New Application</p>
             <p class="text-2xl font-bold mt-1">{{ stats.new_entry|default:0 }}</p>
         </a>
         <a href="{% url 'subadmin_all_loans' %}?status=waiting" class="bg-amber-500 text-white rounded-lg p-4">
-            <p class="text-xs uppercase">In Processing</p>
+            <p class="text-xs uppercase">Document Pending</p>
             <p class="text-2xl font-bold mt-1">{{ stats.processing|default:0 }}</p>
         </a>
         <a href="{% url 'subadmin_all_loans' %}?status=follow_up" class="bg-cyan-600 text-white rounded-lg p-4">
@@ -63,8 +63,8 @@
 
             <select name="status" class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500">
                 <option value="all" {% if status_filter == 'all' or not status_filter %}selected{% endif %}>All Status</option>
-                <option value="new_entry" {% if status_filter == 'new_entry' %}selected{% endif %}>New Entry</option>
-                <option value="waiting" {% if status_filter == 'waiting' %}selected{% endif %}>In Processing</option>
+                <option value="new_entry" {% if status_filter == 'new_entry' %}selected{% endif %}>New Application</option>
+                <option value="waiting" {% if status_filter == 'waiting' %}selected{% endif %}>Document Pending</option>
                 <option value="follow_up" {% if status_filter == 'follow_up' %}selected{% endif %}>Bank Processing</option>
                 <option value="follow_up_pending" {% if status_filter == 'follow_up_pending' %}selected{% endif %}>Follow Up</option>
                 <option value="approved" {% if status_filter == 'approved' %}selected{% endif %}>Approved</option>
@@ -88,6 +88,12 @@
 
             <input type="date" name="date_from" value="{{ date_from }}" class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500">
             <input type="date" name="date_to" value="{{ date_to }}" class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500">
+            <select name="per_page" class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500">
+                <option value="10" {% if per_page == 10 %}selected{% endif %}>10 / page</option>
+                <option value="25" {% if per_page == 25 %}selected{% endif %}>25 / page</option>
+                <option value="50" {% if per_page == 50 %}selected{% endif %}>50 / page</option>
+                <option value="100" {% if per_page == 100 %}selected{% endif %}>100 / page</option>
+            </select>
 
             <div class="xl:col-span-7 flex gap-2 justify-end">
                 <a href="{% url 'subadmin_all_loans' %}" class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">Reset</a>
@@ -128,21 +134,21 @@
                             <td class="px-4 py-3 text-sm font-semibold text-gray-900">Rs. {{ loan.amount|default:0 }}</td>
                             <td class="px-4 py-3 text-sm">
                                 {% if loan.status_key == 'follow_up_pending' %}
-                                    <span class="px-2 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-800">{{ loan.status_display }}</span>
+                                    <span class="px-2 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-800">{% if loan.status_display == 'New Entry' %}New Application{% elif loan.status_display == 'Waiting for Processing' or loan.status_display == 'In Processing' %}Document Pending{% else %}{{ loan.status_display }}{% endif %}</span>
                                 {% elif loan.status == 'new_entry' %}
-                                    <span class="px-2 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">{{ loan.status_display }}</span>
+                                    <span class="px-2 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">{% if loan.status_display == 'New Entry' %}New Application{% elif loan.status_display == 'Waiting for Processing' or loan.status_display == 'In Processing' %}Document Pending{% else %}{{ loan.status_display }}{% endif %}</span>
                                 {% elif loan.status == 'waiting' %}
-                                    <span class="px-2 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">{{ loan.status_display }}</span>
+                                    <span class="px-2 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">{% if loan.status_display == 'New Entry' %}New Application{% elif loan.status_display == 'Waiting for Processing' or loan.status_display == 'In Processing' %}Document Pending{% else %}{{ loan.status_display }}{% endif %}</span>
                                 {% elif loan.status == 'follow_up' %}
-                                    <span class="px-2 py-1 rounded-full text-xs font-semibold bg-cyan-100 text-cyan-800">{{ loan.status_display }}</span>
+                                    <span class="px-2 py-1 rounded-full text-xs font-semibold bg-cyan-100 text-cyan-800">{% if loan.status_display == 'New Entry' %}New Application{% elif loan.status_display == 'Waiting for Processing' or loan.status_display == 'In Processing' %}Document Pending{% else %}{{ loan.status_display }}{% endif %}</span>
                                 {% elif loan.status == 'approved' %}
-                                    <span class="px-2 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">{{ loan.status_display }}</span>
+                                    <span class="px-2 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">{% if loan.status_display == 'New Entry' %}New Application{% elif loan.status_display == 'Waiting for Processing' or loan.status_display == 'In Processing' %}Document Pending{% else %}{{ loan.status_display }}{% endif %}</span>
                                 {% elif loan.status == 'rejected' %}
-                                    <span class="px-2 py-1 rounded-full text-xs font-semibold bg-rose-100 text-rose-800">{{ loan.status_display }}</span>
+                                    <span class="px-2 py-1 rounded-full text-xs font-semibold bg-rose-100 text-rose-800">{% if loan.status_display == 'New Entry' %}New Application{% elif loan.status_display == 'Waiting for Processing' or loan.status_display == 'In Processing' %}Document Pending{% else %}{{ loan.status_display }}{% endif %}</span>
                                 {% elif loan.status == 'disbursed' %}
-                                    <span class="px-2 py-1 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-800">{{ loan.status_display }}</span>
+                                    <span class="px-2 py-1 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-800">{% if loan.status_display == 'New Entry' %}New Application{% elif loan.status_display == 'Waiting for Processing' or loan.status_display == 'In Processing' %}Document Pending{% else %}{{ loan.status_display }}{% endif %}</span>
                                 {% else %}
-                                    <span class="px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-800">{{ loan.status_display }}</span>
+                                    <span class="px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-800">{% if loan.status_display == 'New Entry' %}New Application{% elif loan.status_display == 'Waiting for Processing' or loan.status_display == 'In Processing' %}Document Pending{% else %}{{ loan.status_display }}{% endif %}</span>
                                 {% endif %}
                             </td>
                             <td class="px-4 py-3 text-sm text-gray-700">{{ loan.created_under }}</td>
@@ -169,21 +175,41 @@
         </div>
     </div>
 
-    {% if is_paginated %}
-    <div class="flex justify-center gap-2">
-        {% if page_obj.has_previous %}
-            <a href="?page=1&q={{ search_query }}&status={{ status_filter }}&agent={{ agent_filter }}&employee={{ employee_filter }}&date_from={{ date_from }}&date_to={{ date_to }}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">First</a>
-            <a href="?page={{ page_obj.previous_page_number }}&q={{ search_query }}&status={{ status_filter }}&agent={{ agent_filter }}&employee={{ employee_filter }}&date_from={{ date_from }}&date_to={{ date_to }}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Previous</a>
-        {% endif %}
-
-        <span class="px-4 py-2 text-gray-600">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
-
-        {% if page_obj.has_next %}
-            <a href="?page={{ page_obj.next_page_number }}&q={{ search_query }}&status={{ status_filter }}&agent={{ agent_filter }}&employee={{ employee_filter }}&date_from={{ date_from }}&date_to={{ date_to }}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Next</a>
-            <a href="?page={{ page_obj.paginator.num_pages }}&q={{ search_query }}&status={{ status_filter }}&agent={{ agent_filter }}&employee={{ employee_filter }}&date_from={{ date_from }}&date_to={{ date_to }}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Last</a>
-        {% endif %}
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 px-4 py-3">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+            <form method="get" class="inline-flex items-center gap-2 text-sm text-gray-600">
+                <input type="hidden" name="q" value="{{ search_query }}">
+                <input type="hidden" name="status" value="{{ status_filter }}">
+                <input type="hidden" name="agent" value="{{ agent_filter }}">
+                <input type="hidden" name="employee" value="{{ employee_filter }}">
+                <input type="hidden" name="date_from" value="{{ date_from }}">
+                <input type="hidden" name="date_to" value="{{ date_to }}">
+                <span>Show</span>
+                <select name="per_page" onchange="this.form.submit()" class="px-2 py-1 border border-gray-300 rounded-lg text-sm">
+                    <option value="10" {% if per_page == 10 %}selected{% endif %}>10</option>
+                    <option value="25" {% if per_page == 25 %}selected{% endif %}>25</option>
+                    <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
+                    <option value="100" {% if per_page == 100 %}selected{% endif %}>100</option>
+                </select>
+                <span>Entries</span>
+            </form>
+            <div class="text-sm text-gray-600">
+                Showing {{ showing_start }} to {{ showing_end }} of {{ page_obj.paginator.count }} Entries
+            </div>
+            <div class="flex items-center gap-2">
+                {% if page_obj.has_previous %}
+                    <a href="?page={{ page_obj.previous_page_number }}&q={{ search_query }}&status={{ status_filter }}&agent={{ agent_filter }}&employee={{ employee_filter }}&date_from={{ date_from }}&date_to={{ date_to }}&per_page={{ per_page }}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Previous</a>
+                {% else %}
+                    <span class="px-4 py-2 border border-gray-200 rounded-lg text-gray-400 cursor-not-allowed">Previous</span>
+                {% endif %}
+                {% if page_obj.has_next %}
+                    <a href="?page={{ page_obj.next_page_number }}&q={{ search_query }}&status={{ status_filter }}&agent={{ agent_filter }}&employee={{ employee_filter }}&date_from={{ date_from }}&date_to={{ date_to }}&per_page={{ per_page }}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Next</a>
+                {% else %}
+                    <span class="px-4 py-2 border border-gray-200 rounded-lg text-gray-400 cursor-not-allowed">Next</span>
+                {% endif %}
+            </div>
+        </div>
     </div>
-    {% endif %}
 </div>
 
 <div id="assign-modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4">
@@ -305,6 +331,29 @@ function loanDetailsSection(title, rows) {
     `;
 }
 
+function normalizeStatusLabel(status) {
+    if (status === 'New Entry') return 'New Application';
+    if (status === 'Waiting for Processing' || status === 'In Processing') return 'Document Pending';
+    return status || '-';
+}
+
+function splitLeaderFromRemark(text) {
+    const source = String(text || '').trim();
+    if (!source) return { leaderName: '-', remark: '-' };
+    const lines = source.split('\n');
+    let leaderName = '-';
+    const filtered = lines.filter((line) => {
+        const match = line.match(/^\s*leader name\s*:\s*(.+)$/i);
+        if (match && match[1]) {
+            leaderName = match[1].trim();
+            return false;
+        }
+        return true;
+    });
+    const remark = filtered.join('\n').trim();
+    return { leaderName, remark: remark || '-' };
+}
+
 function openLoanDetailsModal(loanId) {
     const modal = document.getElementById('loan-details-modal');
     const container = document.getElementById('loan-details-content');
@@ -322,20 +371,21 @@ function openLoanDetailsModal(loanId) {
             const data = payload.data || {};
             const docs = data.documents || [];
             const history = data.status_timeline || [];
+            const remarkMeta = splitLeaderFromRemark(data.bank_remark);
 
             const docsHtml = docs.length
                 ? `<div class="overflow-x-auto"><table class="w-full text-sm border border-gray-200"><thead class="bg-gray-50"><tr><th class="px-3 py-2 text-left">Document</th><th class="px-3 py-2 text-left">Source</th><th class="px-3 py-2 text-left">Uploaded</th><th class="px-3 py-2 text-left">File</th></tr></thead><tbody>${docs.map(doc => `<tr class="border-t border-gray-200"><td class="px-3 py-2">${doc.name || '-'}</td><td class="px-3 py-2">${doc.source || '-'}</td><td class="px-3 py-2">${doc.uploaded_at || '-'}</td><td class="px-3 py-2"><a href="${doc.url}" target="_blank" class="text-blue-600 hover:text-blue-800">Open</a></td></tr>`).join('')}</tbody></table></div>`
                 : '<p class="text-sm text-gray-500">No documents uploaded.</p>';
 
             const historyHtml = history.length
-                ? `<div class="overflow-x-auto"><table class="w-full text-sm border border-gray-200"><thead class="bg-gray-50"><tr><th class="px-3 py-2 text-left">From</th><th class="px-3 py-2 text-left">To</th><th class="px-3 py-2 text-left">By</th><th class="px-3 py-2 text-left">Date</th><th class="px-3 py-2 text-left">Remark</th></tr></thead><tbody>${history.map(row => `<tr class="border-t border-gray-200"><td class="px-3 py-2">${row.from_status || '-'}</td><td class="px-3 py-2">${row.to_status || '-'}</td><td class="px-3 py-2">${row.changed_by || '-'}</td><td class="px-3 py-2">${row.changed_at || '-'}</td><td class="px-3 py-2">${row.reason || '-'}</td></tr>`).join('')}</tbody></table></div>`
+                ? `<div class="overflow-x-auto"><table class="w-full text-sm border border-gray-200"><thead class="bg-gray-50"><tr><th class="px-3 py-2 text-left">From</th><th class="px-3 py-2 text-left">To</th><th class="px-3 py-2 text-left">By</th><th class="px-3 py-2 text-left">Date</th><th class="px-3 py-2 text-left">Remark</th></tr></thead><tbody>${history.map(row => `<tr class="border-t border-gray-200"><td class="px-3 py-2">${normalizeStatusLabel(row.from_status)}</td><td class="px-3 py-2">${normalizeStatusLabel(row.to_status)}</td><td class="px-3 py-2">${row.changed_by || '-'}</td><td class="px-3 py-2">${row.changed_at || '-'}</td><td class="px-3 py-2">${row.reason || '-'}</td></tr>`).join('')}</tbody></table></div>`
                 : '<p class="text-sm text-gray-500">No status history found.</p>';
 
             container.innerHTML = `
                 <div class="space-y-4">
                     ${loanDetailsSection('Application Info', [
                         { label: 'Loan ID', value: data.loan_id },
-                        { label: 'Status', value: data.status_display },
+                        { label: 'Status', value: normalizeStatusLabel(data.status_display) },
                         { label: 'Created Under', value: data.created_under },
                         { label: 'Assigned Employee', value: data.assigned_employee },
                         { label: 'Assigned Agent', value: data.assigned_agent },
@@ -366,11 +416,12 @@ function openLoanDetailsModal(loanId) {
                         { label: 'Account Number', value: data.bank_account_number },
                         { label: 'IFSC', value: data.bank_ifsc_code },
                         { label: 'Bank Type', value: data.bank_type },
-                        { label: 'SM Name', value: data.sm_name },
+                        { label: 'Channel Partner Name', value: data.sm_name },
+                        { label: 'Leader Name', value: remarkMeta.leaderName },
                         { label: 'SM Phone', value: data.sm_phone_number },
                         { label: 'SM Email', value: data.sm_email },
                         { label: 'SM Sign', value: data.is_sm_signed ? `☑ Signed (${data.sm_signed_at || '-'})` : '☐ Pending' },
-                        { label: 'Bank Remark', value: data.bank_remark },
+                        { label: 'Bank Remark', value: remarkMeta.remark },
                         { label: 'Internal Remark', value: data.remarks },
                     ])}
 

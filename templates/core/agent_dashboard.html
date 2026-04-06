@@ -659,13 +659,13 @@ function getStatusColor(status) {
 
 function getStatusLabel(status) {
     const labelMap = {
-        'new_entry': 'New Entry',
-        'waiting_for_processing': 'Processing',
+        'new_entry': 'New Application',
+        'waiting_for_processing': 'Document Pending',
         'follow_up': 'Follow-up',
         'approved': 'Approved',
         'rejected': 'Rejected',
         'disbursed': 'Disbursed',
-        'processing': 'Processing',
+        'processing': 'Document Pending',
     };
     return labelMap[status] || status;
 }

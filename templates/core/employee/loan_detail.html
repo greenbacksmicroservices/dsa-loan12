@@ -71,7 +71,7 @@
                     </div>
 
                     <div class="section-box">
-                        <h6 class="section-title">SECTION 3: EXISTING LOAN DETAILS</h6>
+                        <h6 class="section-title">SECTION 3: LOAN TYPE</h6>
                         <p class="section-note">Provide details of all existing loans or EMI commitments.</p>
                         <div id="existingLoans" class="stack-box"></div>
                     </div>
@@ -96,7 +96,7 @@
                     </div>
 
                     <div class="section-box">
-                        <h6 class="section-title">SECTION 6: FINANCIAL & BANK DETAILS</h6>
+                        <h6 class="section-title">SECTION 6: BALANCE TRANSFER (IF ANY)</h6>
                         <p class="sub-title">Credit & Identity Details</p>
                         <div class="grid">
                             <div><small>CIBIL Score *</small><strong id="cibil">-</strong></div>
@@ -318,15 +318,19 @@
             <div class="modal-header"><h5 class="modal-title">Approve Loan</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
                 <div class="row g-2">
-                    <div class="col-md-4">
-                        <label class="form-label">SM Name *</label>
-                        <input id="approveSmName" class="form-control" type="text" placeholder="Enter SM name">
+                    <div class="col-md-3">
+                        <label class="form-label">Channel Partner Name *</label>
+                        <input id="approveSmName" class="form-control" type="text" placeholder="Enter channel partner name">
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
+                        <label class="form-label">Leader Name *</label>
+                        <input id="approveLeaderName" class="form-control" type="text" placeholder="Enter leader name">
+                    </div>
+                    <div class="col-md-3">
                         <label class="form-label">SM Phone Number *</label>
                         <input id="approveSmPhone" class="form-control" type="text" placeholder="Enter SM phone">
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label class="form-label">SM Email *</label>
                         <input id="approveSmEmail" class="form-control" type="email" placeholder="Enter SM email">
                     </div>
@@ -436,9 +440,11 @@ const handleAuthFailure = () => {
 };
 
 const badge = s => {
-    const cls = { 'Waiting for Processing': 'warning text-dark', 'Required Follow-up': 'info text-dark', 'Follow Up': 'warning text-dark', 'Approved': 'success', 'Rejected': 'danger', 'Disbursed': 'primary' };
+    const cls = { 'Waiting for Processing': 'warning text-dark', 'Document Pending': 'warning text-dark', 'Required Follow-up': 'info text-dark', 'Follow Up': 'warning text-dark', 'Approved': 'success', 'Rejected': 'danger', 'Disbursed': 'primary' };
     const key = wf(s);
-    const label = (s === 'Required Follow-up') ? 'Banking Processing' : (s || '-');
+    const label = (s === 'Required Follow-up')
+        ? 'Banking Processing'
+        : (s === 'Waiting for Processing' ? 'Document Pending' : (s === 'New Entry' ? 'New Application' : (s || '-')));
     return `<span class="badge bg-${cls[key] || 'secondary'}">${label}</span>`;
 };
 
@@ -457,6 +463,12 @@ const timelineReason = (text) => {
     return 'Form details moved to Full Loan Application section.';
 };
 
+const parseLeaderNameFromNotes = (text) => {
+    const source = String(text || '');
+    const match = source.match(/lead receive leader name:\s*(.+)/i) || source.match(/leader name:\s*(.+)/i);
+    return match && match[1] ? match[1].trim() : '';
+};
+
 function smPayload() {
     return {
         sm_name: document.getElementById('approveSmName').value.trim(),
@@ -470,6 +482,7 @@ function prefillApproveModal(v, force = false) {
         return;
     }
     setInputValue('approveSmName', v.sm_name || '');
+    setInputValue('approveLeaderName', parseLeaderNameFromNotes(v.approval_notes || ''));
     setInputValue('approveSmPhone', v.sm_phone_number || '');
     setInputValue('approveSmEmail', v.sm_email || '');
     setInputValue('approveBankDetails', '');
@@ -643,11 +656,9 @@ function fill() {
                 <div><small>Bank/Finance Name</small><strong>${item.bank_name || '-'}</strong></div>
                 <div><small>Amount Taken</small><strong>${money(item.amount_taken || 0)}</strong></div>
                 <div><small>EMI Left</small><strong>${item.emi_left || '-'}</strong></div>
-                <div><small>Amount Left</small><strong>${money(item.amount_left || 0)}</strong></div>
+                <div><small>Outstanding Amount</small><strong>${money(item.amount_left || 0)}</strong></div>
                 <div><small>Years/Months</small><strong>${item.tenure || '-'}</strong></div>
                 <div><small>EMI Amount</small><strong>${money(item.emi_amount || 0)}</strong></div>
-                <div><small>Any Bounce</small><strong>${item.any_bounce || '-'}</strong></div>
-                <div><small>Cleared</small><strong>${item.cleared ? 'Yes' : 'No'}</strong></div>
             </div>
         </div>
     `).join('') : '<div class="text-muted small">No existing loans reported.</div>';
@@ -655,7 +666,7 @@ function fill() {
     const references = Array.isArray(v.references) ? v.references : [];
     document.getElementById('references').innerHTML = references.length ? references.map((item, idx) => `
         <div class="stack-item">
-            <div class="title">Reference #${idx + 1}</div>
+            <div class="title">${idx === 0 ? 'Reference #1 (Colleague)' : 'Reference #2 (Family or Friends)'}</div>
             <div class="stack-grid">
                 <div><small>Name</small><strong>${item.name || '-'}</strong></div>
                 <div><small>Mobile No.</small><strong>${item.mobile_number || '-'}</strong></div>
@@ -856,12 +867,17 @@ document.getElementById('confirmRevert').onclick = async () => {
 };
 document.getElementById('confirmApprove').onclick = async () => {
     const sm = smPayload();
+    const leaderName = document.getElementById('approveLeaderName').value.trim();
     const bankDetailsText = document.getElementById('approveBankDetails').value.trim();
     const signatureDoneYesEl = document.getElementById('approveSignatureDoneYes');
     const signatureDoneNoEl = document.getElementById('approveSignatureDoneNo');
     const signatureDone = signatureDoneYesEl?.checked ? true : (signatureDoneNoEl?.checked ? false : null);
     if (!sm.sm_name || !sm.sm_phone_number || !sm.sm_email) {
-        msg('danger', 'SM Name, Phone, and Email are required for approval.');
+        msg('danger', 'Channel Partner Name, SM Phone, and SM Email are required for approval.');
+        return;
+    }
+    if (!leaderName) {
+        msg('danger', 'Leader Name is required for approval.');
         return;
     }
     const phoneDigits = sm.sm_phone_number.replace(/\D/g, '');
@@ -878,10 +894,11 @@ document.getElementById('confirmApprove').onclick = async () => {
         return;
     }
     try {
+        const bankRemark = [`Leader Name: ${leaderName}`, bankDetailsText].filter(Boolean).join('\n');
         const d = await call(`/api/employee/loan/${loanId}/approve/`, {
             // Approval remark is intentionally removed from UI; backend will handle notes.
             approval_notes: '',
-            bank_remark: bankDetailsText,
+            bank_remark: bankRemark,
             is_sm_signed: signatureDone,
             ...sm,
         });

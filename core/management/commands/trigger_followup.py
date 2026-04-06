@@ -1,6 +1,6 @@
 """
 Management command to automatically trigger follow-up for loan applications
-that have been in "Waiting for Processing" status for 24+ hours
+that have been in "Waiting for Processing" status for 4+ hours
 without action by assigned employee
 """
 from django.core.management.base import BaseCommand
@@ -9,15 +9,15 @@ from datetime import timedelta
 from core.models import LoanApplication, ActivityLog
 
 class Command(BaseCommand):
-    help = 'Automatically move loan applications to Required Follow-up after 24 hours without action'
+    help = 'Automatically move loan applications to Required Follow-up after 4 hours without action'
 
     def handle(self, *args, **options):
         now = timezone.now()
-        cutoff_time = now - timedelta(hours=24)
+        cutoff_time = now - timedelta(hours=4)
         
         # Find all loan applications that:
         # 1. Are in "Waiting for Processing" status
-        # 2. Were assigned more than 24 hours ago
+        # 2. Were assigned more than 4 hours ago
         # 3. Have not been approved, rejected, or already moved to follow-up
         overdue_applications = LoanApplication.objects.filter(
             status='Waiting for Processing',
@@ -35,7 +35,7 @@ class Command(BaseCommand):
                 # Log the activity
                 ActivityLog.objects.create(
                     action='auto_followup_triggered',
-                    description=f'Automatic follow-up triggered for {app.applicant.full_name} after 24 hours without action',
+                    description=f'Automatic follow-up triggered for {app.applicant.full_name} after 4 hours without action',
                 )
                 
                 count += 1

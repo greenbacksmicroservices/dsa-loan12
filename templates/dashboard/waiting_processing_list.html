@@ -1,13 +1,13 @@
 {% extends 'core/base.html' %}
 
-{% block title %}Waiting for Processing{% endblock %}
+{% block title %}Document Pending{% endblock %}
 
 {% block content %}
 <div class="container-fluid mt-4">
     <!-- Header -->
     <div class="page-header mb-4">
         <div class="d-flex justify-content-between align-items-center">
-            <h2><i class="bi bi-hourglass-split"></i> Waiting for Processing</h2>
+            <h2><i class="bi bi-hourglass-split"></i> Document Pending</h2>
             <div class="btn-group" role="group">
                 <button type="button" class="btn btn-outline-secondary" onclick="location.reload()">
                     <i class="bi bi-arrow-clockwise"></i> Refresh
@@ -28,7 +28,7 @@
             <div class="card shadow-sm">
                 <div class="card-body text-center">
                     <h3 class="text-warning">{{ loans.count }}</h3>
-                    <p class="text-muted mb-0">Total Waiting</p>
+                    <p class="text-muted mb-0">Total Document Pending</p>
                 </div>
             </div>
         </div>
@@ -37,7 +37,7 @@
     <!-- Applications Table -->
     <div class="card shadow-sm">
         <div class="card-header bg-primary text-white">
-            <h5 class="mb-0"><i class="bi bi-table"></i> Waiting Applications</h5>
+            <h5 class="mb-0"><i class="bi bi-table"></i> Document Pending Applications</h5>
         </div>
         <div class="card-body p-0">
             {% if loans %}

@@ -26,7 +26,10 @@ def _getlist(source, key):
 
 
 def collect_onboarding_payload_from_source(source):
-    full_name = _get(source, 'onb_full_name') or _get(source, 'full_name') or _get(source, 'name')
+    first_name = _get(source, 'first_name')
+    last_name = _get(source, 'last_name')
+    composed_name = " ".join([part for part in [first_name, last_name] if part]).strip()
+    full_name = _get(source, 'onb_full_name') or _get(source, 'full_name') or _get(source, 'name') or composed_name
     mobile = _get(source, 'onb_mobile') or _get(source, 'phone')
     email = _get(source, 'onb_email') or _get(source, 'email')
     gender = _get(source, 'onb_gender') or _get(source, 'gender')

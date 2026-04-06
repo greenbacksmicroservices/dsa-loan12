@@ -570,7 +570,7 @@
 <div class="request-loan-container">
     <div class="request-loan-header">
         <div>
-            <h1>{{ page_title_text|default:"Request New Entry Loans" }}</h1>
+            <h1>{{ page_title_text|default:"Request New Application Loans" }}</h1>
             <p style="margin: 0.5rem 0 0 0; opacity: 0.9;">{{ page_subtitle_text|default:"Read full loan details first, then click Process to open Bank Processing page." }}</p>
         </div>
     </div>
@@ -591,7 +591,7 @@
                 <option value="Rejected">Rejected</option>
                 <option value="Disbursed">Disbursed</option>
                 {% else %}
-                <option value="Waiting for Processing">Waiting for Processing</option>
+                <option value="Waiting for Processing">Document Pending</option>
                 {% endif %}
             </select>
             <input type="date" id="filter-from-date" placeholder="From Date">
@@ -1189,6 +1189,7 @@
     function getStatusClass(status) {
         const classMap = {
             'Waiting for Processing': 'waiting',
+            'Document Pending': 'waiting',
             'Required Follow-up': 'follow-up',
             'Follow Up': 'follow-up',
             'Banking Processing': 'follow-up',
@@ -1200,6 +1201,8 @@
     }
 
     function displayStatus(status) {
+        if (status === 'Waiting for Processing') return 'Document Pending';
+        if (status === 'New Entry') return 'New Application';
         if (status === 'Required Follow-up') return 'Banking Processing';
         if (status === 'Follow Up') return 'Follow Up';
         if (PAGE_MODE === 'bank_processing' && status === 'Approved') return 'Banking Processing Successful';

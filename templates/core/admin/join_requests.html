@@ -136,6 +136,13 @@ function showJoinMessage(type, text) {
     }, 4200);
 }
 
+function formatPanelStatus(status) {
+    const normalized = String(status || '').trim().toLowerCase();
+    if (normalized === 'new entry') return 'New Application';
+    if (normalized === 'in processing' || normalized === 'waiting for processing') return 'Document Pending';
+    return status || '-';
+}
+
 async function loadJoinRequests() {
     try {
         const res = await fetch('/api/admin/join-requests/', {
@@ -178,7 +185,7 @@ function renderJoinRows() {
             <td>${esc(row.bank_name || '-')}<br><span style="font-size:11px;color:#64748b;">${esc(row.account_number || '-')}</span></td>
             <td>${esc(row.documents_count || 0)}</td>
             <td>${esc(row.request_date || '-')}</td>
-            <td><span class="st-badge">${esc(row.status || '-')}</span></td>
+            <td><span class="st-badge">${esc(formatPanelStatus(row.status))}</span></td>
             <td>${esc(row.assigned_employee || '-')}<br><span style="font-size:11px;color:#64748b;">${esc(row.assigned_agent || '-')}</span></td>
             <td>
                 <div class="jr-actions">
@@ -202,15 +209,15 @@ function renderStackRows(items, kind) {
                 <small>Loan #${idx + 1}</small>
                 <strong>${esc(loan.bank_name || '-')}</strong>
                 <div style="font-size:12px; margin-top:4px; color:#334155;">
-                    Amount Taken: Rs ${inr(loan.amount_taken)} | EMI Left: ${esc(loan.emi_left || '-')} | Amount Left: Rs ${inr(loan.amount_left)}<br>
-                    Years/Months: ${esc(loan.tenure || '-')} | EMI Amount: Rs ${inr(loan.emi_amount)} | Any Bounce: ${esc(loan.any_bounce || '-')} | Cleared: ${loan.cleared ? 'Yes' : 'No'}
+                    Amount Taken: Rs ${inr(loan.amount_taken)} | EMI Left: ${esc(loan.emi_left || '-')} | Outstanding Amount: Rs ${inr(loan.amount_left)}<br>
+                    Years/Months: ${esc(loan.tenure || '-')} | EMI Amount: Rs ${inr(loan.emi_amount)}
                 </div>
             </div>
         `).join('');
     }
     return items.map((ref, idx) => `
         <div class="jr-item" style="margin-bottom:8px;">
-            <small>Reference #${idx + 1}</small>
+            <small>${idx === 0 ? 'Reference #1 (Colleague)' : (idx === 1 ? 'Reference #2 (Family or Friends)' : `Reference #${idx + 1}`)}</small>
             <strong>${esc(ref.name || '-')}</strong>
             <div style="font-size:12px; margin-top:4px; color:#334155;">
                 Mobile: ${esc(ref.mobile_number || '-')}<br>
@@ -255,7 +262,7 @@ async function openJoinModal(applicationId) {
                     <div class="jr-item"><small>Application ID</small><strong>${esc(row.application_id || '-')}</strong></div>
                     <div class="jr-item"><small>Request Date</small><strong>${esc(row.request_date || '-')}</strong></div>
                     <div class="jr-item"><small>Last Updated</small><strong>${esc(row.updated_at || '-')}</strong></div>
-                    <div class="jr-item"><small>Status</small><strong>${esc(row.status || '-')}</strong></div>
+                    <div class="jr-item"><small>Status</small><strong>${esc(formatPanelStatus(row.status))}</strong></div>
                     <div class="jr-item"><small>Assigned Employee</small><strong>${esc(row.assigned_employee || '-')}</strong></div>
                     <div class="jr-item"><small>Assigned Agent</small><strong>${esc(row.assigned_agent || '-')}</strong></div>
                     <div class="jr-item"><small>Assigned By</small><strong>${esc(row.assigned_by || '-')}</strong></div>
@@ -306,7 +313,7 @@ async function openJoinModal(applicationId) {
             </div>
 
             <div class="jr-sec">
-                <h4>SECTION 3: EXISTING LOAN DETAILS</h4>
+                <h4>SECTION 3: LOAN TYPE</h4>
                 <p style="margin:0 0 8px 0; color:#64748b; font-size:12px;">Provide details of all existing loans or EMI commitments.</p>
                 ${renderStackRows(row.existing_loans, 'existing')}
             </div>
@@ -330,7 +337,7 @@ async function openJoinModal(applicationId) {
             </div>
 
             <div class="jr-sec">
-                <h4>SECTION 6: FINANCIAL & BANK DETAILS</h4>
+                <h4>SECTION 6: BALANCE TRANSFER (IF ANY)</h4>
                 <p style="margin:0 0 8px 0; color:#64748b; font-size:12px;">Provide your financial and bank details for verification and loan disbursement.</p>
                 <div class="jr-grid">
                     <div class="jr-item"><small>CIBIL Score *</small><strong>${esc(row.cibil_score || '-')}</strong></div>

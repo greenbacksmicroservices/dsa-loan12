@@ -1,6 +1,6 @@
 """
 DSA LOS - Dashboard Views & Status Management
-Production-ready status-based UI control with 24-hour auto-follow-up logic
+Production-ready status-based UI control with 4-hour auto-follow-up logic
 """
 
 from django.shortcuts import render, redirect
@@ -74,11 +74,11 @@ def prevent_form_rendering(status):
 def check_and_move_to_followup():
     """
     Celery-like background task (can be called via cron or Celery)
-    Auto-move applications from Waiting to Follow-up after 24 hours
+    Auto-move applications from Waiting to Follow-up after 4 hours
     """
-    cutoff_time = timezone.now() - timedelta(hours=24)
+    cutoff_time = timezone.now() - timedelta(hours=4)
     
-    # Find all waiting applications assigned >24 hours ago with no action
+    # Find all waiting applications assigned >4 hours ago with no action
     applications_to_move = LoanApplication.objects.filter(
         status='Waiting for Processing',
         assigned_at__lt=cutoff_time,
@@ -95,7 +95,7 @@ def check_and_move_to_followup():
         
         ActivityLog.objects.create(
             action='status_updated',
-            description=f"Auto-moved {app.applicant.full_name} from Waiting to Follow-up (24hr timeout)",
+            description=f"Auto-moved {app.applicant.full_name} from Waiting to Follow-up (4hr timeout)",
             user=None  # System action
         )
         moved_count += 1
@@ -300,7 +300,7 @@ def required_followup_list(request):
         app_list.append({
             'obj': app,
             'delay_hours': int(delay_hours),
-            'is_overdue': delay_hours > 24,
+            'is_overdue': delay_hours > 4,
         })
     
     context = {
@@ -514,7 +514,7 @@ def get_dashboard_stats(request):
                 status__in=['Approved', 'Rejected', 'Disbursed']
             ).count(),
             'approval_rate': f"{(LoanApplication.objects.filter(status='Approved').count() / max(LoanApplication.objects.count(), 1) * 100):.1f}%",
-            'avg_processing_time': '24 hours',  # Can be calculated from timestamps
+            'avg_processing_time': '4 hours',  # Can be calculated from timestamps
         }
     elif request.user.role == 'employee':
         stats = {
@@ -548,14 +548,14 @@ def get_dashboard_stats(request):
 
 
 # ============================================================================
-# HELPER - Check and trigger 24-hour auto follow-up
+# HELPER - Check and trigger 4-hour auto follow-up
 # ============================================================================
 
 @login_required
 @admin_required
 def trigger_followup_check(request):
     """
-    Admin endpoint to manually trigger 24-hour check
+    Admin endpoint to manually trigger 4-hour check
     (In production, use Celery beat or cron job)
     """
     moved_count = check_and_move_to_followup()

@@ -47,6 +47,17 @@
         background: #fff7cc !important;
         outline: 2px solid #facc15;
     }
+
+    .followup-alert {
+        border: 2px solid #dc2626 !important;
+        animation: followupPulse 1.2s infinite;
+    }
+
+    @keyframes followupPulse {
+        0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.55); }
+        70% { box-shadow: 0 0 0 10px rgba(220, 38, 38, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+    }
 </style>
 
 <div class="container-fluid mt-4">
@@ -76,11 +87,11 @@
             </div>
         </div>
         <div class="col-lg-2 col-md-4 mb-3">
-            <div class="card shadow-sm border-0">
+            <div class="card shadow-sm border-0 {% if follow_up_pending_count %}followup-alert{% endif %}">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
-                            <p class="text-muted mb-1 small">Processing</p>
+                            <p class="text-muted mb-1 small">Document Pending</p>
                             <h3 class="mb-0 fw-bold text-warning">{{ processing_count }}</h3>
                         </div>
                         <i class="bi bi-hourglass-split text-warning" style="font-size: 2rem; opacity: 0.3;"></i>
@@ -140,8 +151,8 @@
                             <select id="status-filter" class="form-select form-select-sm" onchange="filterByStatus(this.value)">
                                 <option value="">All Loans</option>
                                 <option value="draft">Draft</option>
-                                <option value="new_entry">New Entry</option>
-                                <option value="waiting">Processing</option>
+                                <option value="new_entry">New Application</option>
+                                <option value="waiting">Document Pending</option>
                                 <option value="follow_up">Bank Stage</option>
                                 <option value="follow_up_pending">Follow Up</option>
                                 <option value="approved">Approved</option>
@@ -199,9 +210,9 @@
                                     {% elif loan.status == 'draft' %}
                                         <span class="stage-badge bg-secondary text-white">Draft</span>
                                     {% elif loan.status == 'new_entry' %}
-                                        <span class="stage-badge bg-primary text-white">New Entry</span>
+                                        <span class="stage-badge bg-primary text-white">New Application</span>
                                     {% elif loan.status == 'waiting' %}
-                                        <span class="stage-badge bg-warning text-dark">Processing</span>
+                                        <span class="stage-badge bg-warning text-dark">Document Pending</span>
                                     {% elif loan.status == 'follow_up' %}
                                         <span class="stage-badge bg-info text-dark">Bank Stage</span>
                                     {% elif loan.status == 'approved' %}
@@ -219,7 +230,10 @@
                                         <span class="badge badge-follow_up small">Follow Up</span>
                                     {% else %}
                                         <span class="badge badge-{{ loan.status }} small">
-                                            {{ loan.get_status_display|default:loan.status }}
+                                            {% if loan.status == 'new_entry' %} New Application
+                                            {% elif loan.status == 'waiting' %} Document Pending
+                                            {% else %} {{ loan.get_status_display|default:loan.status }}
+                                            {% endif %}
                                         </span>
                                     {% endif %}
                                 </td>
@@ -279,8 +293,8 @@
                                         {% else %}
                                             <span class="badge badge-{{ loan.status }} small">
                                                 {% if loan.status == 'draft' %} Draft
-                                                {% elif loan.status == 'new_entry' %} New Entry
-                                                {% elif loan.status == 'waiting' %} Processing
+                                                {% elif loan.status == 'new_entry' %} New Application
+                                                {% elif loan.status == 'waiting' %} Document Pending
                                                 {% elif loan.status == 'follow_up' %} Bank Stage
                                                 {% elif loan.status == 'approved' %} Approved
                                                 {% elif loan.status == 'rejected' %} Rejected
@@ -296,9 +310,9 @@
                                         {% elif loan.status == 'draft' %}
                                             <span class="stage-badge bg-secondary text-white">Draft</span>
                                         {% elif loan.status == 'new_entry' %}
-                                            <span class="stage-badge bg-primary text-white">New Entry</span>
+                                            <span class="stage-badge bg-primary text-white">New Application</span>
                                         {% elif loan.status == 'waiting' %}
-                                            <span class="stage-badge bg-warning text-dark">Processing</span>
+                                            <span class="stage-badge bg-warning text-dark">Document Pending</span>
                                         {% elif loan.status == 'follow_up' %}
                                             <span class="stage-badge bg-info text-dark">Bank Stage</span>
                                         {% elif loan.status == 'approved' %}
@@ -390,6 +404,32 @@ function filterTable() {
     });
 }
 
+function sanitizeAgentVisibleRemarks(rawText) {
+    const blockedTokens = [
+        'lead receive channel partner name',
+        'lead receive leader name',
+        'lead receive source',
+        'lead receive description',
+        'channel partner name',
+        'leader name',
+        'sm phone number',
+        'sm email',
+        'bank details notes',
+        'bank details note'
+    ];
+
+    const cleaned = String(rawText || '')
+        .split(/\r?\n/)
+        .filter((line) => {
+            const lower = line.toLowerCase();
+            return !blockedTokens.some((token) => lower.includes(token));
+        })
+        .join('\n')
+        .trim();
+
+    return cleaned || 'No remarks';
+}
+
 function viewLoanDetails(loanId, loanName) {
     const modal = new bootstrap.Modal(document.getElementById('loanDetailsModal'));
     const body = document.getElementById('loan-details-body');
@@ -415,8 +455,8 @@ function viewLoanDetails(loanId, loanName) {
         
         const statusText = {
             'draft': 'Draft',
-            'new_entry': 'New Entry',
-            'waiting': 'Processing',
+            'new_entry': 'New Application',
+            'waiting': 'Document Pending',
             'follow_up': 'Bank Stage',
             'approved': 'Approved',
             'rejected': 'Rejected',
@@ -463,7 +503,7 @@ function viewLoanDetails(loanId, loanName) {
                 </div>
                 <div class="col-12 mb-3">
                     <label class="form-label small text-muted">Remarks</label>
-                    <p class="form-control-plaintext">${loan.remarks || 'No remarks'}</p>
+                    <p class="form-control-plaintext">${sanitizeAgentVisibleRemarks(loan.remarks)}</p>
                 </div>
             </div>
         `;

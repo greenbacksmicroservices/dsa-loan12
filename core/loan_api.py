@@ -32,6 +32,17 @@ def _is_follow_up_pending(loan_obj, loan_app_obj=None):
     return _has_revert_marker(getattr(loan_app_obj, 'approval_notes', '')) if loan_app_obj else False
 
 
+def _ui_status_label(status_text):
+    normalized = str(status_text or '').strip().lower()
+    if normalized in ['new entry', 'new_entry', 'draft']:
+        return 'New Application'
+    if normalized in ['waiting for processing', 'in processing', 'waiting', 'processing']:
+        return 'Document Pending'
+    if normalized in ['required follow-up', 'required follow up']:
+        return 'Banking Processing'
+    return status_text
+
+
 # ============= LOAN MANAGEMENT API ENDPOINTS =============
 
 @login_required(login_url='admin_login')
@@ -232,7 +243,7 @@ def api_loan_details(request, loan_id):
         applicant = loan_app.applicant if loan_app else None
         assignment_context = extract_assignment_context(loan, loan_app)
         follow_up_pending = _is_follow_up_pending(loan, loan_app)
-        status_display = FOLLOW_UP_PENDING_LABEL if follow_up_pending else loan.get_status_display()
+        status_display = FOLLOW_UP_PENDING_LABEL if follow_up_pending else _ui_status_label(loan.get_status_display())
         status_key = 'follow_up_pending' if follow_up_pending else loan.status
 
         disbursed_at_dt = getattr(loan_app, 'disbursed_at', None) if loan_app else None
@@ -277,45 +288,69 @@ def api_loan_details(request, loan_id):
 
         # Existing loans (Section 3)
         existing_loans = []
-        for idx in [1, 2, 3]:
+        loan_index_pattern = re.compile(r'^(?:existing\s+)?loan\s+(\d+)\s+')
+        dynamic_loan_indexes = sorted({
+            int(match.group(1))
+            for key in extra_info.keys()
+            for match in [loan_index_pattern.match(str(key or ''))]
+            if match
+        })
+        loan_indexes = dynamic_loan_indexes if dynamic_loan_indexes else [1, 2, 3]
+
+        for idx in loan_indexes:
             bank_name = get_extra(
+                f'existing loan {idx} bank/finance name',
+                f'existing loan {idx} bank finance name',
+                f'existing loan {idx} bank name',
+                f'existing loan {idx} bank',
                 f'loan {idx} bank/finance name',
                 f'loan {idx} bank',
                 f'loan{idx}_bank',
                 default=''
             )
             amount_taken = get_extra(
+                f'existing loan {idx} amount taken',
                 f'loan {idx} amount taken',
                 f'loan{idx}_amount_taken',
                 default=''
             )
             emi_left = get_extra(
+                f'existing loan {idx} emi left',
                 f'loan {idx} emi left',
                 f'loan{idx}_emi_left',
                 default=''
             )
             amount_left = get_extra(
+                f'existing loan {idx} amount left',
                 f'loan {idx} amount left',
                 f'loan{idx}_amount_left',
                 default=''
             )
             tenure = get_extra(
+                f'existing loan {idx} years/months',
+                f'existing loan {idx} duration',
+                f'existing loan {idx} tenure',
                 f'loan {idx} years/months',
                 f'loan {idx} duration',
                 f'loan{idx}_duration',
                 default=''
             )
             emi_amount = get_extra(
+                f'existing loan {idx} emi amount',
                 f'loan {idx} emi amount',
                 f'loan{idx}_emi_over',
                 default=''
             )
             any_bounce = get_extra(
+                f'existing loan {idx} any bounce',
+                f'existing loan {idx} bounce',
+                f'existing loan {idx} emi cross',
                 f'loan {idx} any bounce',
                 f'loan{idx}_bounce',
                 default=''
             )
             cleared = get_extra(
+                f'existing loan {idx} cleared',
                 f'loan {idx} cleared',
                 f'loan{idx}_cleared',
                 default=''
@@ -736,7 +771,7 @@ def api_loan_reject(request, loan_id):
         return JsonResponse({
             'success': True,
             'message': 'Loan rejected successfully',
-            'new_status': loan.get_status_display()
+            'new_status': _ui_status_label(loan.get_status_display())
         })
     
     except json.JSONDecodeError:
@@ -815,7 +850,7 @@ def api_loan_disburse(request, loan_id):
         return JsonResponse({
             'success': True,
             'message': 'Loan disbursed successfully',
-            'new_status': loan.get_status_display(),
+            'new_status': _ui_status_label(loan.get_status_display()),
             'disbursed_at': now.isoformat()
         })
     
@@ -889,10 +924,14 @@ def api_update_disbursed_details(request, loan_id):
                 'home': 'home',
                 'business loan': 'business',
                 'business': 'business',
+                'auto loan': 'car',
+                'auto': 'car',
                 'education loan': 'education',
                 'education': 'education',
                 'car loan': 'car',
                 'car': 'car',
+                'security loan': 'other',
+                'security': 'other',
                 'other': 'other',
             }
             normalized = mapping.get(raw, raw)
@@ -1225,7 +1264,7 @@ def api_update_disbursed_details(request, loan_id):
             'success': True,
             'message': 'Disbursed details updated successfully' if is_disbursed_context else 'Loan details updated successfully',
             'data': {
-                'status': (loan_app.status if loan_app else loan.get_status_display()) if not is_disbursed_context else 'Disbursed',
+                'status': _ui_status_label(loan_app.status if loan_app else loan.get_status_display()) if not is_disbursed_context else 'Disbursed',
                 'disbursement_amount': (
                     float((loan_app.disbursement_amount if loan_app and loan_app.disbursement_amount is not None else (disbursement_amount or 0)))
                     if is_disbursed_context else 0

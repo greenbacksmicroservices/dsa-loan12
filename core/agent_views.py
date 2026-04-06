@@ -15,6 +15,7 @@ from openpyxl import Workbook
 
 from .models import Loan, Agent, Complaint, User, LoanDocument, LoanStatusHistory, AgentAssignment
 from .loan_sync import sync_loan_to_application
+from .followup_utils import auto_move_overdue_to_follow_up
 from .role_decorators import agent_required
 
 
@@ -179,10 +180,14 @@ def agent_add_loan(request):
                 'loan against property': 'lap',
                 'business': 'business',
                 'business loan': 'business',
+                'auto': 'car',
+                'auto loan': 'car',
                 'education': 'education',
                 'education loan': 'education',
                 'car': 'car',
                 'car loan': 'car',
+                'security': 'other',
+                'security loan': 'other',
                 'credit card': 'other',
                 'other': 'other',
             }
@@ -200,6 +205,95 @@ def agent_add_loan(request):
                     pin_code = str(pin_int).zfill(6)
                 except ValueError:
                     pin_code = '000000'
+
+            remarks_field_map = {
+                'alternate_mobile': 'Alternate Mobile',
+                'fathers_name': 'Father Name',
+                'mothers_name': 'Mother Name',
+                'dob': 'Date of Birth',
+                'gender': 'Gender',
+                'marital_status': 'Marital Status',
+                'permanent_address': 'Permanent Address',
+                'permanent_landmark': 'Permanent Landmark',
+                'permanent_city': 'Permanent City',
+                'permanent_pin': 'Permanent PIN',
+                'present_address': 'Present Address',
+                'present_landmark': 'Present Landmark',
+                'present_city': 'Present City',
+                'present_pin': 'Present PIN',
+                'occupation': 'Occupation',
+                'date_of_joining': 'Date of Joining',
+                'year_of_experience': 'Experience (Years)',
+                'additional_income': 'Additional Income',
+                'company_name': 'Company Name',
+                'official_email_id': 'Official Email ID',
+                'designation': 'Designation',
+                'previous_company': 'Previous Company',
+                'company_address': 'Company Address',
+                'company_landmark': 'Company Landmark',
+                'salary': 'Salary',
+                'gross_salary': 'Gross Salary',
+                'net_salary': 'Net Salary',
+                'extra_income': 'Additional Income',
+                'business_address': 'Business Address',
+                'business_landmark': 'Business Landmark',
+                'business_pin': 'Business PIN',
+                'nature_of_business': 'Nature of Business',
+                'stock_value': 'Stock Value',
+                'no_of_employees': 'Number of Employees',
+                'itr_details': 'ITR Details',
+                'charges_or_fee': 'Charges/Fee',
+                'loan_purpose': 'Loan Purpose',
+                'service_required_other': 'Service Required (Other)',
+                'cibil_score': 'CIBIL Score',
+                'aadhar_number': 'Aadhar Number',
+                'pan_number': 'PAN Number',
+                'bank_name': 'Bank Name',
+                'account_number': 'Account Number',
+                'ifsc_code': 'IFSC Code',
+                'bank_type': 'Bank Type',
+                'ref1_name': 'Reference 1 Name',
+                'ref1_mobile': 'Reference 1 Mobile',
+                'ref1_address': 'Reference 1 Address',
+                'ref2_name': 'Reference 2 Name',
+                'ref2_mobile': 'Reference 2 Mobile',
+                'ref2_address': 'Reference 2 Address',
+                'remarks_suggestions': 'Remarks/Suggestions',
+                'declaration': 'Declaration',
+            }
+            remarks_lines = []
+            for field_name, label in remarks_field_map.items():
+                value = (request.POST.get(field_name) or '').strip()
+                if value:
+                    remarks_lines.append(f"{label}: {value}")
+
+            handled_fields = set(remarks_field_map.keys())
+            skip_fields = {
+                'csrfmiddlewaretoken',
+                'name',
+                'email_id',
+                'mobile_no',
+                'loan_uid',
+                'service_required',
+                'loan_amount_required',
+                'loan_tenure',
+                'interest_rate',
+                'same_as_permanent',
+                'save_as_draft',
+            }
+            for key, raw_value in request.POST.items():
+                if key in handled_fields or key in skip_fields or key.endswith('[]'):
+                    continue
+                value = (raw_value or '').strip()
+                if not value:
+                    continue
+                remarks_lines.append(f"{key.replace('_', ' ').title()}: {value}")
+
+            document_names = [(name or '').strip() for name in request.POST.getlist('document_name[]')]
+            for idx, doc_name in enumerate(document_names, start=1):
+                if doc_name:
+                    remarks_lines.append(f"Document {idx}: {doc_name}")
+            remarks_blob = "\n".join(remarks_lines) if remarks_lines else None
             
             loan = Loan.objects.create(
                 # Applicant Information - CORRECTED FIELD NAMES FROM FORM
@@ -239,26 +333,8 @@ def agent_add_loan(request):
                 created_by=request.user,
                 
                 # Additional Information
-                remarks=request.POST.get('remarks_suggestions', '').strip(),
+                remarks=remarks_blob,
             )
-            
-            # Store additional info in remarks if needed
-            extra_info = f"\n\nADDITIONAL INFO:\n"
-            extra_info += f"PAN: {request.POST.get('pan_number')}\n"
-            extra_info += f"Aadhar: {request.POST.get('aadhar_number')}\n"
-            extra_info += f"DOB: {request.POST.get('dob')}\n"
-            extra_info += f"Gender: {request.POST.get('gender')}\n"
-            extra_info += f"Occupation: {request.POST.get('occupation')}\n"
-            extra_info += f"Employer: {request.POST.get('company_name')}\n"
-            extra_info += f"Annual Income: {request.POST.get('annual_income')}\n"
-            extra_info += f"Bank Account No: {request.POST.get('account_number')}\n"
-            extra_info += f"CIBIL Score: {request.POST.get('cibil_score')}\n"
-            extra_info += f"Service Required: {request.POST.get('service_required')}"
-            
-            if loan.remarks:
-                loan.remarks += extra_info
-            else:
-                loan.remarks = extra_info
             
             # Handle photo upload
             if 'applicant_photo' in request.FILES:
@@ -272,7 +348,6 @@ def agent_add_loan(request):
             # Save loan documents (SOA/Forcloser/etc.) created via document inputs.
             # Admin's add-loan flow uses `document_name[]` + `document_file[]`; we do the same here
             # so that agent-created loans also show documents in view pages.
-            document_names = [(name or '').strip() for name in request.POST.getlist('document_name[]')]
             documents_files = request.FILES.getlist('document_file[]')
 
             if documents_files:
@@ -282,16 +357,37 @@ def agent_add_loan(request):
                         ('pan', 'pan_card'),
                         ('aadhaar', 'aadhaar_card'),
                         ('aadhar', 'aadhaar_card'),
+                        ('co applicant pan', 'co_applicant_pan'),
+                        ('co-applicant pan', 'co_applicant_pan'),
+                        ('co applicant aadhar', 'co_applicant_aadhaar'),
+                        ('co-applicant aadhar', 'co_applicant_aadhaar'),
+                        ('co applicant aadhaar', 'co_applicant_aadhaar'),
+                        ('co-applicant aadhaar', 'co_applicant_aadhaar'),
+                        ('co applicant photo', 'co_applicant_photo'),
+                        ('co-applicant photo', 'co_applicant_photo'),
                         ('soa', 'soa_existing_loan'),
                         ('forclos', 'forclosure_document'),
                         ('forclose', 'forclosure_document'),
                         ('forclosure', 'forclosure_document'),
                         ('photo', 'applicant_photo'),
+                        ('permanent address', 'permanent_address_proof'),
+                        ('recent address', 'current_address_proof'),
+                        ('current address', 'current_address_proof'),
                         ('salary slip', 'salary_slip'),
                         ('bank statement', 'bank_statement'),
                         ('form 16', 'form_16'),
                         ('service book', 'service_book'),
                         ('property', 'property_documents'),
+                        ('patta', 'property_documents'),
+                        ('pauti', 'property_documents'),
+                        ('ror', 'property_documents'),
+                        ('bda approval', 'property_documents'),
+                        ('rc', 'other_rc'),
+                        ('insurance certificate', 'other_insurance_certificate'),
+                        ('insurance', 'other_insurance'),
+                        ('gst', 'other_gst'),
+                        ('business vintage', 'other_business_vintage'),
+                        ('itr', 'other_itr_with_computation'),
                     ]
                     for token, mapped in type_map:
                         if token in normalized:
@@ -1014,6 +1110,8 @@ def api_agent_dashboard_stats(request):
     API endpoint for real-time dashboard statistics.
     Returns JSON data for live count updates.
     """
+    auto_move_overdue_to_follow_up()
+
     agent = Agent.objects.get(user=request.user)
     agent_loans = get_agent_loan_queryset(request.user, agent)
     follow_up_pending_count = agent_loans.filter(_follow_up_pending_q()).count()
@@ -1272,4 +1370,3 @@ def get_stage_label(status):
         'disbursed': 'Disbursed',
     }
     return stage_map.get(status, 'Processing')
-

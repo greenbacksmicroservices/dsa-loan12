@@ -60,6 +60,19 @@
     .loans-table tbody tr {
         border-bottom: 1px solid #e5e7eb;
     }
+
+    .approved-lead-toggle {
+        border-style: dashed;
+        font-weight: 600;
+    }
+
+    .approved-lead-toggle i {
+        transition: transform 0.2s ease;
+    }
+
+    .approved-lead-toggle i.is-open {
+        transform: rotate(180deg);
+    }
 </style>
 {% endblock %}
 
@@ -69,6 +82,8 @@ let ALL_LOANS = [];
 const PAGE_FILTER = '{{ status_key }}';
 let refreshTimer = null;
 let CURRENT_APPROVED_LOAN_ID = null;
+let PAGE_SIZE = 10;
+let CURRENT_PAGE = 1;
 
 function getCookie(name) {
     return document.cookie.split('; ')
@@ -100,10 +115,110 @@ function splitApprovalNotes(rawText) {
         .filter(Boolean);
     const bankNotes = [];
     const other = [];
+    const leadReceive = {
+        channelPartnerName: '',
+        leaderName: '',
+        source: '',
+        description: ''
+    };
+    const normalizeLeadSource = (value) => {
+        const raw = String(value || '').trim();
+        if (!raw) return '';
+        const normalized = raw
+            .toLowerCase()
+            .replace(/[._-]+/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+        const sourceMap = {
+            'open market': 'Open Market',
+            'phone call': 'Phone Call',
+            'phone': 'Phone Call',
+            'call': 'Phone Call',
+            'email': 'Email',
+            'e mail': 'Email',
+            'mail': 'Email',
+            'whatsapp': 'WhatsApp',
+            'whats app': 'WhatsApp',
+            'friends': 'Friends',
+            'friend': 'Friends',
+            'family member': 'Family Member',
+            'family meamber': 'Family Member',
+            'social media': 'Social Media',
+            'social': 'Social Media',
+            'other': 'Other'
+        };
+        return sourceMap[normalized] || '';
+    };
+    const captureLeadReceiveLine = (text) => {
+        const normalized = String(text || '').trim();
+        const lower = normalized.toLowerCase();
+        if (lower.startsWith('lead receive channel partner name:')) {
+            leadReceive.channelPartnerName = normalized.replace(/^lead receive channel partner name:\s*/i, '');
+            return true;
+        }
+        if (lower.startsWith('channel partner name:')) {
+            leadReceive.channelPartnerName = normalized.replace(/^channel partner name:\s*/i, '');
+            return true;
+        }
+        if (lower.startsWith('lead receive leader name:')) {
+            leadReceive.leaderName = normalized.replace(/^lead receive leader name:\s*/i, '');
+            return true;
+        }
+        if (lower.startsWith('leader name:')) {
+            leadReceive.leaderName = normalized.replace(/^leader name:\s*/i, '');
+            return true;
+        }
+        if (lower.startsWith('lead receive name:')) {
+            leadReceive.channelPartnerName = normalized.replace(/^lead receive name:\s*/i, '');
+            return true;
+        }
+        if (lower.startsWith('lead receive phone:')) {
+            leadReceive.leaderName = normalized.replace(/^lead receive phone:\s*/i, '');
+            return true;
+        }
+        if (lower.startsWith('lead receive source:')) {
+            leadReceive.source = normalizeLeadSource(normalized.replace(/^lead receive source:\s*/i, ''));
+            return true;
+        }
+        if (lower.startsWith('lead source:')) {
+            leadReceive.source = normalizeLeadSource(normalized.replace(/^lead source:\s*/i, ''));
+            return true;
+        }
+        if (lower.startsWith('lead receive from:')) {
+            leadReceive.source = normalizeLeadSource(normalized.replace(/^lead receive from:\s*/i, ''));
+            return true;
+        }
+        if (lower.startsWith('lead receive whatsapp no:')) {
+            const legacyWhatsapp = normalized.replace(/^lead receive whatsapp no:\s*/i, '');
+            leadReceive.source = normalizeLeadSource(legacyWhatsapp) || 'WhatsApp';
+            return true;
+        }
+        if (lower.startsWith('lead receive whatsapp:')) {
+            const legacyWhatsapp = normalized.replace(/^lead receive whatsapp:\s*/i, '');
+            leadReceive.source = normalizeLeadSource(legacyWhatsapp) || 'WhatsApp';
+            return true;
+        }
+        if (lower.startsWith('lead receive description:')) {
+            leadReceive.description = normalized.replace(/^lead receive description:\s*/i, '');
+            return true;
+        }
+        return false;
+    };
     lines.forEach(line => {
         const lower = line.toLowerCase();
+        if (captureLeadReceiveLine(line)) {
+            return;
+        }
         if (lower.startsWith('bank remark:')) {
-            bankNotes.push(line.replace(/^bank remark:\s*/i, ''));
+            const remarkText = line.replace(/^bank remark:\s*/i, '');
+            if (captureLeadReceiveLine(remarkText)) {
+                return;
+            }
+            if (remarkText.toLowerCase().startsWith('bank details:')) {
+                bankNotes.push(remarkText.replace(/^bank details:\s*/i, ''));
+            } else {
+                bankNotes.push(remarkText);
+            }
         } else if (lower.startsWith('bank details:')) {
             bankNotes.push(line.replace(/^bank details:\s*/i, ''));
         } else {
@@ -112,8 +227,79 @@ function splitApprovalNotes(rawText) {
     });
     return {
         bankNotes: bankNotes.join('\n'),
-        approvalRemark: other.join('\n')
+        approvalRemark: other.join('\n'),
+        leadReceive
     };
+}
+
+function setLeadReceiveToggleState(isOpen) {
+    const icon = document.getElementById('approvedLeadReceiveToggleIcon');
+    if (!icon) return;
+    icon.classList.toggle('is-open', !!isOpen);
+}
+
+function resetLeadReceiveCollapse() {
+    const collapseEl = document.getElementById('approvedLeadReceiveBox');
+    if (!collapseEl) return;
+    if (collapseEl.classList.contains('show')) {
+        bootstrap.Collapse.getOrCreateInstance(collapseEl, { toggle: false }).hide();
+    }
+    setLeadReceiveToggleState(false);
+}
+
+function setLeadReceiveValues(values = {}) {
+    const channelPartnerEl = document.getElementById('approvedLeadChannelPartnerName');
+    const leaderNameEl = document.getElementById('approvedLeadLeaderName');
+    const topLeaderEl = document.getElementById('approvedLeaderName');
+    const leadSourceEl = document.getElementById('approvedLeadSource');
+    const leadDescriptionEl = document.getElementById('approvedLeadDescription');
+    if (channelPartnerEl) channelPartnerEl.value = values.channelPartnerName || values.name || '';
+    if (leaderNameEl) leaderNameEl.value = values.leaderName || values.phone || '';
+    if (topLeaderEl) topLeaderEl.value = values.leaderName || values.phone || '';
+    if (leadSourceEl) leadSourceEl.value = values.source || '';
+    if (leadDescriptionEl) leadDescriptionEl.value = values.description || '';
+}
+
+function collectLeadReceiveValues() {
+    const channelPartnerName = (
+        document.getElementById('approvedLeadChannelPartnerName')?.value
+        || document.getElementById('approvedSmName')?.value
+        || ''
+    ).trim();
+    const leaderName = (
+        document.getElementById('approvedLeaderName')?.value
+        || document.getElementById('approvedLeadLeaderName')?.value
+        || ''
+    ).trim();
+    const leadSource = (document.getElementById('approvedLeadSource')?.value || '').trim();
+    const leadDescription = (document.getElementById('approvedLeadDescription')?.value || '').trim();
+    return {
+        channelPartnerName,
+        leaderName,
+        leadSource,
+        leadDescription
+    };
+}
+
+function buildLeadReceiveRemark() {
+    const values = collectLeadReceiveValues();
+    const parts = [];
+    if (values.channelPartnerName) parts.push(`Lead Receive Channel Partner Name: ${values.channelPartnerName}`);
+    if (values.leaderName) parts.push(`Lead Receive Leader Name: ${values.leaderName}`);
+    if (values.leadSource) parts.push(`Lead Receive Source: ${values.leadSource}`);
+    if (values.leadDescription) parts.push(`Lead Receive Description: ${values.leadDescription}`);
+    return parts.join('\n');
+}
+
+function buildApprovedBankRemarkPayload() {
+    const bankNotesEl = document.getElementById('approvedBankNotes');
+    const bankNotesRaw = (bankNotesEl?.value || '').trim();
+    const bankNotes = bankNotesRaw === '-' ? '' : bankNotesRaw;
+    const leadRemark = buildLeadReceiveRemark();
+    const parts = [];
+    if (bankNotes) parts.push(`Bank Details: ${bankNotes}`);
+    if (leadRemark) parts.push(leadRemark);
+    return parts.join('\n');
 }
 
 function filterByStatus(loans) {
@@ -133,9 +319,24 @@ function filterByStatus(loans) {
     return loans.filter(l => l.status === PAGE_FILTER);
 }
 
+function normalizeStatusLabel(displayValue, statusKey, statusMap) {
+    const raw = String(displayValue || '').trim().toLowerCase();
+    if (raw === 'new entry') return 'New Application';
+    if (raw === 'in processing' || raw === 'waiting for processing') return 'Document Pending';
+    if (displayValue) return displayValue;
+    return statusMap[statusKey] || statusKey || 'Unknown';
+}
+
 async function loadLoans() {
     try {
-        const res = await fetch('/api/employee/all-loans/', {
+        const params = new URLSearchParams();
+        if (PAGE_FILTER && !['total', 'awaiting'].includes(PAGE_FILTER)) {
+            params.set('status', PAGE_FILTER);
+        }
+        // We paginate on client side here, so fetch a large window from API.
+        params.set('limit', '2000');
+
+        const res = await fetch(`/api/employee/all-loans/?${params.toString()}`, {
             method: 'GET',
             headers: {
                 'X-CSRFToken': getCookie('csrftoken'),
@@ -162,9 +363,12 @@ async function loadLoans() {
     }
 }
 
-function applyFilters() {
+function applyFilters(resetPage = true) {
     const search = document.getElementById('search-input').value.toLowerCase().trim();
     let loans = filterByStatus(ALL_LOANS);
+    if (resetPage) {
+        CURRENT_PAGE = 1;
+    }
 
     if (search) {
         loans = loans.filter(l => {
@@ -190,6 +394,15 @@ function renderLoansTable(loans) {
         return;
     }
 
+    const totalRows = loans.length;
+    const totalPages = Math.max(1, Math.ceil(totalRows / PAGE_SIZE));
+    if (CURRENT_PAGE > totalPages) {
+        CURRENT_PAGE = totalPages;
+    }
+    const startIndex = (CURRENT_PAGE - 1) * PAGE_SIZE;
+    const endIndex = Math.min(startIndex + PAGE_SIZE, totalRows);
+    const pageRows = loans.slice(startIndex, endIndex);
+
     const statusMap = {
         'new_entry': 'primary',
         'waiting': 'warning',
@@ -201,8 +414,8 @@ function renderLoansTable(loans) {
     };
 
     const statusLabels = {
-        'new_entry': 'New Entry',
-        'waiting': 'In Processing',
+        'new_entry': 'New Application',
+        'waiting': 'Document Pending',
         'follow_up': 'Banking Processing',
         'follow_up_pending': 'Follow Up',
         'approved': 'Approved',
@@ -226,7 +439,7 @@ function renderLoansTable(loans) {
                     </tr>
                 </thead>
                 <tbody>
-                    ${loans.map((l, idx) => `
+                    ${pageRows.map((l, idx) => `
                         <tr style="background: ${idx % 2 === 0 ? '#f8f9ff' : 'white'};">
                             <td>${(() => { const initial = (l.applicant_name || 'N').charAt(0).toUpperCase(); const photo = l.applicant_photo ? `<div class="table-avatar"><img src="${l.applicant_photo}" alt="${l.applicant_name || 'Applicant'}"></div>` : `<div class="table-avatar-fallback">${initial}</div>`; return photo; })()}</td>
                             <td><strong>${l.loan_id || '#' + l.id}</strong></td>
@@ -235,7 +448,7 @@ function renderLoansTable(loans) {
                             <td><strong>₹ ${new Intl.NumberFormat('en-IN').format(l.loan_amount || 0)}</strong></td>
                             <td>
                                 <span class="badge" style="background: ${statusMap[l.status] === 'warning' ? '#ffc107' : statusMap[l.status] === 'success' ? '#28a745' : statusMap[l.status] === 'danger' ? '#dc3545' : statusMap[l.status] === 'info' ? '#17a2b8' : '#6c757d'}; font-size: 11px; padding: 5px 10px; border-radius: 12px;">
-                                    ${l.status_display || statusLabels[l.status] || l.status || 'Unknown'}
+                                    ${normalizeStatusLabel(l.status_display, l.status, statusLabels)}
                                 </span>
                             </td>
                             <td style="font-size: 13px;">${l.assigned_date || 'N/A'}</td>
@@ -259,7 +472,56 @@ function renderLoansTable(loans) {
                 </tbody>
             </table>
         </div>
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-3">
+            <div class="d-inline-flex align-items-center gap-2 text-muted" style="font-size:13px;">
+                <span>Show</span>
+                <select id="statusTablePageSize" class="form-select form-select-sm" style="width: auto;">
+                    <option value="10">10</option>
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                </select>
+                <span>Entries</span>
+            </div>
+            <div class="text-muted" style="font-size:13px;">
+                Showing ${totalRows ? startIndex + 1 : 0} to ${endIndex} of ${totalRows} Entries
+            </div>
+            <div class="d-inline-flex align-items-center gap-2">
+                <button id="statusTablePrevBtn" class="btn btn-outline-secondary btn-sm" ${CURRENT_PAGE <= 1 ? 'disabled' : ''}>Previous</button>
+                <button id="statusTableNextBtn" class="btn btn-outline-secondary btn-sm" ${CURRENT_PAGE >= totalPages ? 'disabled' : ''}>Next</button>
+            </div>
+        </div>
     `;
+
+    const pageSizeSelect = document.getElementById('statusTablePageSize');
+    if (pageSizeSelect) {
+        pageSizeSelect.value = String(PAGE_SIZE);
+        pageSizeSelect.addEventListener('change', () => {
+            PAGE_SIZE = Number(pageSizeSelect.value || 10);
+            CURRENT_PAGE = 1;
+            renderLoansTable(loans);
+        });
+    }
+
+    const prevBtn = document.getElementById('statusTablePrevBtn');
+    if (prevBtn) {
+        prevBtn.addEventListener('click', () => {
+            if (CURRENT_PAGE > 1) {
+                CURRENT_PAGE -= 1;
+                renderLoansTable(loans);
+            }
+        });
+    }
+
+    const nextBtn = document.getElementById('statusTableNextBtn');
+    if (nextBtn) {
+        nextBtn.addEventListener('click', () => {
+            if (CURRENT_PAGE < totalPages) {
+                CURRENT_PAGE += 1;
+                renderLoansTable(loans);
+            }
+        });
+    }
 }
 
 let CURRENT_EDIT_LOAN_ID = null;
@@ -441,10 +703,18 @@ async function openApprovedProcessModal(loanId) {
         const loan = data.loan || data;
         const splitNotes = splitApprovalNotes(loan.approval_notes || '');
 
-        document.getElementById('approvedSmName').value = loan.sm_name || '-';
+        const channelPartnerName = (loan.sm_name || '').trim() || splitNotes.leadReceive?.channelPartnerName || '-';
+        document.getElementById('approvedSmName').value = channelPartnerName;
+        const leaderValue = splitNotes.leadReceive?.leaderName || '';
+        const topLeaderInput = document.getElementById('approvedLeaderName');
+        if (topLeaderInput) {
+            topLeaderInput.value = leaderValue;
+        }
         document.getElementById('approvedSmPhone').value = loan.sm_phone_number || '-';
         document.getElementById('approvedSmEmail').value = loan.sm_email || '-';
         document.getElementById('approvedBankNotes').value = splitNotes.bankNotes || '-';
+        setLeadReceiveValues(splitNotes.leadReceive || {});
+        resetLeadReceiveCollapse();
 
         // Signature Done Yes/No
         const yesEl = document.getElementById('approvedSignatureDoneYes');
@@ -472,8 +742,12 @@ async function submitApprovedSign() {
         if (!yesEl || !noEl) throw new Error('Signature Done options not found in modal.');
         if (!yesEl.checked && !noEl.checked) throw new Error('Please select Signature Done: Yes or No.');
         const signatureDone = yesEl.checked ? true : false;
+        const bankRemark = buildApprovedBankRemarkPayload();
 
-        await postJson(`/api/employee/loan/${CURRENT_APPROVED_LOAN_ID}/sign/`, { is_sm_signed: signatureDone });
+        await postJson(`/api/employee/loan/${CURRENT_APPROVED_LOAN_ID}/sign/`, {
+            is_sm_signed: signatureDone,
+            bank_remark: bankRemark || ''
+        });
         await loadLoans();
         openApprovedProcessModal(CURRENT_APPROVED_LOAN_ID);
     } catch (error) {
@@ -488,10 +762,11 @@ async function submitApprovedReject() {
         alert('Rejection reason is required.');
         return;
     }
+    const bankRemark = buildApprovedBankRemarkPayload();
     try {
         await postJson(`/api/employee/loan/${CURRENT_APPROVED_LOAN_ID}/reject/`, {
             rejection_reason: reason,
-            bank_remark: ''
+            bank_remark: bankRemark || ''
         });
         bootstrap.Modal.getInstance(document.getElementById('approvedProcessModal')).hide();
         await loadLoans();
@@ -504,11 +779,12 @@ async function submitApprovedDisburse() {
     if (!CURRENT_APPROVED_LOAN_ID) return;
     const amount = document.getElementById('approvedDisburseAmount').value;
     const date = document.getElementById('approvedDisburseDate').value;
+    const bankRemark = buildApprovedBankRemarkPayload();
     try {
         await postJson(`/api/employee/loan/${CURRENT_APPROVED_LOAN_ID}/disburse/`, {
             disbursement_amount: amount || null,
             disbursement_date: date || null,
-            bank_remark: ''
+            bank_remark: bankRemark || ''
         });
         bootstrap.Modal.getInstance(document.getElementById('approvedProcessModal')).hide();
         await loadLoans();
@@ -518,14 +794,31 @@ async function submitApprovedDisburse() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    const titleEl = document.querySelector('h2.h5');
+    const badgeEl = document.getElementById('filter-badge');
+    if (PAGE_FILTER === 'new_entry') {
+        if (titleEl) titleEl.textContent = 'New Application Loans';
+        if (badgeEl) badgeEl.textContent = 'New Application';
+    }
+    if (PAGE_FILTER === 'waiting') {
+        if (titleEl) titleEl.textContent = 'Document Pending Loans';
+        if (badgeEl) badgeEl.textContent = 'Document Pending';
+    }
+
     loadLoans();
     refreshTimer = setInterval(loadLoans, 15000);
 
-    document.getElementById('search-input').addEventListener('input', applyFilters);
+    document.getElementById('search-input').addEventListener('input', () => applyFilters(true));
     document.getElementById('reset-filters').addEventListener('click', () => {
         document.getElementById('search-input').value = '';
-        applyFilters();
+        applyFilters(true);
     });
+
+    const leadReceiveCollapse = document.getElementById('approvedLeadReceiveBox');
+    if (leadReceiveCollapse) {
+        leadReceiveCollapse.addEventListener('show.bs.collapse', () => setLeadReceiveToggleState(true));
+        leadReceiveCollapse.addEventListener('hide.bs.collapse', () => setLeadReceiveToggleState(false));
+    }
 });
 
 window.addEventListener('beforeunload', () => refreshTimer && clearInterval(refreshTimer));
@@ -618,15 +911,19 @@ window.addEventListener('beforeunload', () => refreshTimer && clearInterval(refr
             </div>
             <div class="modal-body">
                 <div class="row g-3">
-                    <div class="col-md-4">
-                        <label class="form-label">SM Name *</label>
+                    <div class="col-md-3">
+                        <label class="form-label">Channel Partner Name *</label>
                         <input type="text" class="form-control" id="approvedSmName" readonly>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
+                        <label class="form-label">Leader Name</label>
+                        <input type="text" class="form-control" id="approvedLeaderName" placeholder="Enter leader name">
+                    </div>
+                    <div class="col-md-3">
                         <label class="form-label">SM Phone Number *</label>
                         <input type="text" class="form-control" id="approvedSmPhone" readonly>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label class="form-label">SM Email *</label>
                         <input type="email" class="form-control" id="approvedSmEmail" readonly>
                     </div>
@@ -654,6 +951,51 @@ window.addEventListener('beforeunload', () => refreshTimer && clearInterval(refr
                     <div class="col-md-4">
                         <label class="form-label">Disbursement Date</label>
                         <input type="date" class="form-control" id="approvedDisburseDate">
+                    </div>
+                    <div class="col-12">
+                        <button
+                            class="btn btn-outline-primary w-100 d-flex justify-content-between align-items-center approved-lead-toggle"
+                            type="button"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#approvedLeadReceiveBox"
+                            aria-expanded="false"
+                            aria-controls="approvedLeadReceiveBox"
+                        >
+                            <span><i class="bi bi-person-plus"></i> Lead Receive</span>
+                            <i id="approvedLeadReceiveToggleIcon" class="bi bi-chevron-down"></i>
+                        </button>
+                        <div class="collapse mt-2" id="approvedLeadReceiveBox">
+                            <div class="card card-body bg-light border-0">
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Channel Partner Name</label>
+                                        <input type="text" class="form-control" id="approvedLeadChannelPartnerName" placeholder="Channel Partner Name">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Leader Name</label>
+                                        <input type="text" class="form-control" id="approvedLeadLeaderName" placeholder="Leader Name">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Lead Source</label>
+                                        <select class="form-select" id="approvedLeadSource">
+                                            <option value="">Select Lead Source</option>
+                                            <option value="Open Market">Open Market</option>
+                                            <option value="Phone Call">Phone Call</option>
+                                            <option value="Email">Email</option>
+                                            <option value="WhatsApp">WhatsApp</option>
+                                            <option value="Friends">Friends</option>
+                                            <option value="Family Member">Family Member</option>
+                                            <option value="Social Media">Social Media</option>
+                                            <option value="Other">Other</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Description</label>
+                                        <input type="text" class="form-control" id="approvedLeadDescription" placeholder="Lead Description">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div class="col-12">
                         <label class="form-label">Reject Reason *</label>

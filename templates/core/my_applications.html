@@ -1,7 +1,7 @@
 {% extends 'core/base.html' %}
 {% load static %}
 
-{% block title %}My Applications - Waiting for Processing{% endblock %}
+{% block title %}My Applications - Document Pending{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -199,7 +199,7 @@
     <!-- Header Section -->
     <div class="header-section">
         <h2>
-            <i class="bi bi-hourglass-split"></i> Waiting for Processing
+            <i class="bi bi-hourglass-split"></i> Document Pending
         </h2>
         <div class="badge-count">
             <i class="bi bi-file-earmark-check"></i> {{ app_count }} Applications
@@ -216,7 +216,9 @@
                             <h3>{{ app.applicant.full_name }}</h3>
                             <p class="app-card-subtitle">{{ app.applicant.get_role_display }}</p>
                         </div>
-                        <span class="status-badge">{{ app.status }}</span>
+                        <span class="status-badge">
+                            {% if app.status == 'Waiting for Processing' %}Document Pending{% elif app.status == 'New Entry' %}New Application{% else %}{{ app.status }}{% endif %}
+                        </span>
                     </div>
                     <div class="app-card-body">
                         <div class="app-info">

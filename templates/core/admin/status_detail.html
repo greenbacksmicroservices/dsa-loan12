@@ -251,9 +251,9 @@
             <div>
                 <h1 class="header-title">
                     {% if status_name == 'New Entry' %}
-                        <i class="fas fa-file-alt"></i> New Entry Applications
+                        <i class="fas fa-file-alt"></i> New Applications
                     {% elif status_name == 'Waiting for Processing' %}
-                        <i class="fas fa-hourglass-half"></i> In Processing
+                        <i class="fas fa-hourglass-half"></i> Document Pending
                     {% elif status_name == 'Required Follow-up' or status_name == 'Banking Processing' %}
                         <i class="fas fa-university"></i> Banking Processing
                     {% elif status_name == 'Approved' %}
@@ -281,7 +281,7 @@
         {% if applications|length == 0 %}
         <div class="empty-state">
             <i class="fas fa-inbox"></i>
-            <h3>No {{ status_name|lower }} applications found</h3>
+            <h3>No {% if status_name == 'New Entry' %}new application{% elif status_name == 'Waiting for Processing' %}document pending{% else %}{{ status_name|lower }}{% endif %} applications found</h3>
             <p>Currently, there are no applications in this status.</p>
         </div>
         {% else %}
@@ -567,10 +567,10 @@ function viewDetails(appId, fullName, email, phone, loanType, loanAmount) {
                                 </div>
                             </div>
 
-                            <!-- SECTION 6: FINANCIAL & BANK DETAILS -->
+                            <!-- SECTION 6: BALANCE TRANSFER (IF ANY) -->
                             <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
                                 <h4 style="margin: 0 0 15px 0; color: #1f2937; font-weight: 700; font-size: 16px; border-bottom: 2px solid #667eea; padding-bottom: 10px;">
-                                    <i class="fas fa-credit-card" style="color: #667eea; margin-right: 8px;"></i> Financial & Bank Details
+                                    <i class="fas fa-credit-card" style="color: #667eea; margin-right: 8px;"></i> Balance Transfer (If Any)
                                 </h4>
                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                                     <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">CIBIL Score</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.cibil_score || '-'}</p></div>
@@ -670,8 +670,12 @@ function openAdminAction(action, appId, applicantName) {
         body.innerHTML = `
             <div style="font-size: 13px; color: #374151;">Approving <strong>${safeName}</strong>.</div>
             <div>
-                <label for="adminSmName">SM Name *</label>
-                <input id="adminSmName" type="text" placeholder="Enter SM name">
+                <label for="adminSmName">Channel Partner Name *</label>
+                <input id="adminSmName" type="text" placeholder="Enter channel partner name">
+            </div>
+            <div>
+                <label for="adminLeaderName">Leader Name *</label>
+                <input id="adminLeaderName" type="text" placeholder="Enter leader name">
             </div>
             <div>
                 <label for="adminSmPhone">SM Phone *</label>
@@ -793,19 +797,24 @@ async function confirmAdminAction() {
             payload = { bank_remark: (document.getElementById('adminCollectRemark')?.value || '').trim() };
         } else if (currentAdminAction === 'approve') {
             const smName = (document.getElementById('adminSmName')?.value || '').trim();
+            const leaderName = (document.getElementById('adminLeaderName')?.value || '').trim();
             const smPhone = (document.getElementById('adminSmPhone')?.value || '').trim();
             const smEmail = (document.getElementById('adminSmEmail')?.value || '').trim();
-            if (!smName || !smPhone || !smEmail) {
-                alert('SM name, phone, and email are required.');
+            if (!smName || !leaderName || !smPhone || !smEmail) {
+                alert('Channel partner name, leader name, phone, and email are required.');
                 throw new Error('Missing SM details');
             }
             endpoint = `/api/employee/loan/${currentAdminAppId}/approve/`;
+            const bankRemark = [
+                `Leader Name: ${leaderName}`,
+                (document.getElementById('adminBankRemark')?.value || '').trim()
+            ].filter(Boolean).join('\n');
             payload = {
                 sm_name: smName,
                 sm_phone_number: smPhone,
                 sm_email: smEmail,
                 approval_notes: (document.getElementById('adminApprovalNotes')?.value || '').trim(),
-                bank_remark: (document.getElementById('adminBankRemark')?.value || '').trim(),
+                bank_remark: bankRemark,
             };
         } else if (currentAdminAction === 'reject') {
             const reason = (document.getElementById('adminRejectReason')?.value || '').trim();

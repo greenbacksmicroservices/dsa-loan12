@@ -1,16 +1,16 @@
 {% extends "subadmin/base_subadmin.html" %}
 {% load static %}
 
-{% block title %}My Entries - SubAdmin{% endblock %}
-{% block page_title %}My Entries{% endblock %}
+{% block title %}My Applications - SubAdmin{% endblock %}
+{% block page_title %}My Applications{% endblock %}
 
 {% block content %}
 <div class="space-y-6">
     <!-- Header -->
     <div class="flex justify-between items-center">
         <div>
-            <h1 class="text-3xl font-bold text-gray-900">📋 All My Entries</h1>
-            <p class="text-gray-600 mt-1">Manage all your loan entries</p>
+            <h1 class="text-3xl font-bold text-gray-900">📋 All My Applications</h1>
+            <p class="text-gray-600 mt-1">Manage all your loan applications</p>
         </div>
         <a href="{% url 'subadmin_dashboard' %}" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
             <i class="fas fa-arrow-left"></i> Back to Dashboard
@@ -54,7 +54,9 @@
                             <td class="px-6 py-4 text-gray-700">{% if entry.interest_rate %}{{ entry.interest_rate }}%{% else %}N/A{% endif %}</td>
                             <td class="px-6 py-4">
                                 {% if entry.status == "New Entry" %}
-                                    <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-semibold">New Entry</span>
+                                    <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-semibold">New Application</span>
+                                {% elif entry.status == "Waiting for Processing" or entry.status == "In Processing" %}
+                                    <span class="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-semibold">Document Pending</span>
                                 {% elif entry.status == "Approved" %}
                                     <span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-semibold">Approved</span>
                                 {% elif entry.status == "Rejected" %}

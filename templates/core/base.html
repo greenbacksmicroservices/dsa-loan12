@@ -1472,7 +1472,7 @@
             </li>
             <li class="sidebar-divider"></li>
             <li>
-                <a href="{% url 'admin_add_loan' %}" class="{% if request.resolver_match.url_name == 'admin_add_loan' %}active{% endif %}">
+                <a href="{% url 'employee_add_loan' %}" class="{% if request.resolver_match.url_name == 'employee_add_loan' %}active{% endif %}">
                     <i class="bi bi-plus-circle"></i>
                     <span>Add New Loan</span>
                 </a>
@@ -1487,7 +1487,7 @@
             <li>
                 <a href="/employee/new-entry-request/" class="{% if request.resolver_match.url_name == 'employee_new_entry_request' %}active{% endif %}">
                     <i class="bi bi-inbox"></i>
-                    <span>New Entry Request</span>
+                    <span>New Application Request</span>
                 </a>
             </li>
             <li>
@@ -1517,6 +1517,59 @@
             </li>
             {% endif %}
 
+            {% if user.role == 'subadmin' %}
+            <li>
+                <a href="{% url 'subadmin_dashboard' %}" class="{% if request.resolver_match.url_name == 'subadmin_dashboard' %}active{% endif %}">
+                    <i class="bi bi-speedometer2"></i>
+                    <span>Dashboard</span>
+                </a>
+            </li>
+            <li class="sidebar-divider"></li>
+            <li>
+                <a href="{% url 'subadmin_add_loan' %}" class="{% if request.resolver_match.url_name == 'subadmin_add_loan' %}active{% endif %}">
+                    <i class="bi bi-plus-circle"></i>
+                    <span>Add New Loan</span>
+                </a>
+            </li>
+            <li>
+                <a href="{% url 'subadmin_all_loans' %}" class="{% if request.resolver_match.url_name == 'subadmin_all_loans' %}active{% endif %}">
+                    <i class="bi bi-list-check"></i>
+                    <span>All Loans</span>
+                </a>
+            </li>
+            <li>
+                <a href="{% url 'subadmin_my_agents' %}" class="{% if request.resolver_match.url_name == 'subadmin_my_agents' %}active{% endif %}">
+                    <i class="bi bi-people"></i>
+                    <span>My Agents</span>
+                </a>
+            </li>
+            <li>
+                <a href="{% url 'subadmin_my_employees' %}" class="{% if request.resolver_match.url_name == 'subadmin_my_employees' %}active{% endif %}">
+                    <i class="bi bi-person-badge"></i>
+                    <span>My Employees</span>
+                </a>
+            </li>
+            <li class="sidebar-divider"></li>
+            <li>
+                <a href="{% url 'subadmin_reports' %}" class="{% if request.resolver_match.url_name == 'subadmin_reports' %}active{% endif %}">
+                    <i class="bi bi-file-earmark-bar-graph"></i>
+                    <span>Reports</span>
+                </a>
+            </li>
+            <li>
+                <a href="{% url 'subadmin_complaints' %}" class="{% if request.resolver_match.url_name == 'subadmin_complaints' %}active{% endif %}">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <span>Complaints</span>
+                </a>
+            </li>
+            <li>
+                <a href="{% url 'subadmin_settings' %}" class="{% if request.resolver_match.url_name == 'subadmin_settings' %}active{% endif %}">
+                    <i class="bi bi-gear"></i>
+                    <span>Settings</span>
+                </a>
+            </li>
+            {% endif %}
+
             <li class="sidebar-divider"></li>
         </ul>
         <div class="sidebar-company">&copy; Greenbacks Micro Services</div>
@@ -1531,6 +1584,9 @@
                     <div class="topbar-subtitle">{{ user.get_full_name|default:user.username }}</div>
                 {% elif user.role == 'employee' %}
                     <div class="topbar-title">Employee Panel</div>
+                    <div class="topbar-subtitle">{{ user.get_full_name|default:user.username }}</div>
+                {% elif user.role == 'subadmin' %}
+                    <div class="topbar-title">SubAdmin Panel</div>
                     <div class="topbar-subtitle">{{ user.get_full_name|default:user.username }}</div>
                 {% else %}
                     <div class="topbar-title">Dashboard</div>
@@ -1600,5 +1656,3 @@
     {% block extra_js %}{% endblock %}
 </body>
 </html>
-
-

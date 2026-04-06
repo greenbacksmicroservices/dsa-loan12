@@ -42,7 +42,7 @@
             </div>
             <div class="card-content">
                 <div class="card-number" x-text="loans.filter(l => l.status === 'processing').length">0</div>
-                <div class="card-label">In Processing</div>
+                <div class="card-label">Document Pending</div>
             </div>
         </div>
 
@@ -81,7 +81,7 @@
         <select x-model="filterStatus" @change="loadAssignedLoans()" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
             <option value="">All Status</option>
             <option value="assigned">Assigned</option>
-            <option value="processing">Processing</option>
+            <option value="processing">Document Pending</option>
             <option value="approved">Approved</option>
             <option value="rejected">Rejected</option>
         </select>

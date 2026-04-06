@@ -713,7 +713,9 @@
                         </div>
                         <div class="detail-field">
                             <span class="field-label">Current Status</span>
-                            <span class="field-value" style="color: #667eea; font-weight: 700;">{{ loan_app.status }}</span>
+                            <span class="field-value" style="color: #667eea; font-weight: 700;">
+                                {% if loan_app.status == 'New Entry' %}New Application{% elif loan_app.status == 'Waiting for Processing' %}Document Pending{% else %}{{ loan_app.status }}{% endif %}
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -814,7 +816,7 @@
                         <i class="bi bi-person-check"></i> Assign to Employee
                     </div>
                     <p style="color: #495057; margin-bottom: 15px;">
-                        Assign this application to an employee for processing. Status will change to "Waiting for Processing" with a 24-hour follow-up timer.
+                        Assign this application to an employee for processing. Status will change to "Document Pending" with a 24-hour follow-up timer.
                     </p>
                     
                     <form method="post" action="{% url 'admin_assign_employee' applicant.id %}">

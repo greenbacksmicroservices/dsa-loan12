@@ -393,8 +393,8 @@
                     <label>Filter by Status</label>
                     <select name="status">
                         <option value="">All Statuses</option>
-                        <option value="New Entry" {% if status_filter == 'New Entry' %}selected{% endif %}>New Entry</option>
-                        <option value="Waiting for Processing" {% if status_filter == 'Waiting for Processing' %}selected{% endif %}>Waiting for Processing</option>
+                        <option value="New Entry" {% if status_filter == 'New Entry' %}selected{% endif %}>New Application</option>
+                        <option value="Waiting for Processing" {% if status_filter == 'Waiting for Processing' %}selected{% endif %}>Document Pending</option>
                         <option value="Required Follow-up" {% if status_filter == 'Required Follow-up' %}selected{% endif %}>Required Follow-up</option>
                         <option value="Approved" {% if status_filter == 'Approved' %}selected{% endif %}>Approved</option>
                         <option value="Rejected" {% if status_filter == 'Rejected' %}selected{% endif %}>Rejected</option>

@@ -79,7 +79,7 @@ def get_application_detail_context(application, user):
             - can_edit_form: bool - True ONLY if New Entry + admin
             - form_fields_editable: bool - Match can_edit_form
             - hours_waiting: int - For Waiting status
-            - is_overdue: bool - For 24-hour threshold
+            - is_overdue: bool - For 4-hour threshold
     """
     context = {
         'application': application,
@@ -102,7 +102,7 @@ def get_application_detail_context(application, user):
         hours_waiting = int((timezone.now() - application.assigned_at).total_seconds() / 3600)
         context['hours_waiting'] = hours_waiting
         context['hours_remaining'] = max(0, 24 - hours_waiting)
-        context['is_overdue'] = hours_waiting > 24
+        context['is_overdue'] = hours_waiting > 4
     
     # Add timeline events
     context['timeline_events'] = []

@@ -752,10 +752,10 @@
             </div>
 
             <div class="section-card">
-                <div class="section-title">SECTION 3: EXISTING LOAN DETAILS</div>
+                <div class="section-title">SECTION 3: LOAN TYPE</div>
                 <div class="form-grid full">
                     <div class="form-group">
-                        <label>Existing Loan Details</label>
+                        <label>Loan Type Details</label>
                         <textarea name="onb_existing_loans" placeholder="No data available"></textarea>
                     </div>
                 </div>
@@ -842,7 +842,7 @@
             </div>
 
             <div class="section-card">
-                <div class="section-title">SECTION 6: FINANCIAL & BANK DETAILS</div>
+                <div class="section-title">SECTION 6: BALANCE TRANSFER (IF ANY)</div>
                 <div class="form-grid">
                     <div class="form-group">
                         <label>CIBIL Score</label>
@@ -1269,8 +1269,8 @@
                     ['Additional Income', s2.additional_income],
                     ['Extra Income Details', s2.extra_income_details],
                 ])}
-                ${renderOnboardingSection('SECTION 3: Existing Loan Details', [
-                    ['Existing Loans', s3.existing_loan_details],
+                ${renderOnboardingSection('SECTION 3: Loan Type', [
+                    ['Loan Type Details', s3.existing_loan_details],
                 ])}
                 ${renderOnboardingSection('SECTION 4: Loan Request', [
                     ['Service Required', s4.service_required],
@@ -1283,7 +1283,7 @@
                     <summary style="font-weight:700; color:#111827; cursor:pointer;">SECTION 5: References</summary>
                     <div style="margin-top:10px;">${refsHtml}</div>
                 </details>
-                ${renderOnboardingSection('SECTION 6: Financial & Bank Details', [
+                ${renderOnboardingSection('SECTION 6: Balance Transfer (If Any)', [
                     ['CIBIL Score', s6.cibil_score],
                     ['Aadhar Number', s6.aadhar_number],
                     ['PAN Number', s6.pan_number],

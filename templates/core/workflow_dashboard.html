@@ -177,7 +177,7 @@
     <div class="workflow-stats">
         <div class="stat-box">
             <div class="stat-number">{{ stats.new_entry_count }}</div>
-            <div class="stat-label">New Entry</div>
+            <div class="stat-label">New Application</div>
         </div>
         <div class="stat-box">
             <div class="stat-number">{{ stats.waiting_count }}</div>
@@ -201,9 +201,9 @@
         </div>
     </div>
     
-    <!-- New Entry Applications -->
+    <!-- New Applications -->
     <div class="section-header">
-        <span><i class="fas fa-inbox"></i> New Entry Applications</span>
+        <span><i class="fas fa-inbox"></i> New Applications</span>
         <span class="section-count">{{ stats.new_entry_count }}</span>
     </div>
     
@@ -226,7 +226,7 @@
                         <td>{{ app.applicant.full_name }}</td>
                         <td>{{ app.applicant.get_loan_type_display }}</td>
                         <td>â‚¹{{ app.applicant.loan_amount }}</td>
-                        <td><span class="status-badge badge-new">{{ app.status }}</span></td>
+                        <td><span class="status-badge badge-new">{% if app.status == 'New Entry' %}New Application{% elif app.status == 'Waiting for Processing' %}Document Pending{% else %}{{ app.status }}{% endif %}</span></td>
                         <td>{{ app.created_at|date:"M d, Y" }}</td>
                         <td>
                             <div class="action-buttons">
@@ -250,9 +250,9 @@
         </div>
     {% endif %}
     
-    <!-- Waiting for Processing -->
+    <!-- Document Pending -->
     <div class="section-header">
-        <span><i class="fas fa-hourglass-half"></i> Waiting for Processing <a href="{% url 'waiting_applications' %}" class="btn btn-sm btn-light ml-2" style="margin-left: 10px;">View All</a></span>
+        <span><i class="fas fa-hourglass-half"></i> Document Pending <a href="{% url 'waiting_applications' %}" class="btn btn-sm btn-light ml-2" style="margin-left: 10px;">View All</a></span>
         <span class="section-count">{{ stats.waiting_count }}</span>
     </div>
     
@@ -297,7 +297,7 @@
                                 {% endif %}
                             {% endif %}
                         </td>
-                        <td><span class="status-badge badge-waiting">{{ item.app.status }}</span></td>
+                        <td><span class="status-badge badge-waiting">{% if item.app.status == 'Waiting for Processing' %}Document Pending{% elif item.app.status == 'New Entry' %}New Application{% else %}{{ item.app.status }}{% endif %}</span></td>
                         <td>
                             <div class="action-buttons">
                                 <a href="{% url 'view_application' item.app.applicant.id %}" class="btn btn-sm btn-info">
@@ -318,7 +318,7 @@
     {% else %}
         <div class="empty-state">
             <i class="fas fa-check-circle"></i>
-            <p>No applications waiting for processing</p>
+            <p>No document pending applications</p>
         </div>
     {% endif %}
     
@@ -361,7 +361,7 @@
                         <td>
                             <span class="badge bg-danger">{{ item.follow_up_count }}x</span>
                         </td>
-                        <td><span class="status-badge badge-follow-up">{{ item.app.status }}</span></td>
+                        <td><span class="status-badge badge-follow-up">{% if item.app.status == 'Required Follow-up' %}Banking Processing{% else %}{{ item.app.status }}{% endif %}</span></td>
                         <td>
                             <div class="action-buttons">
                                 <a href="{% url 'follow_up_details' item.app.applicant.id %}" class="btn btn-sm btn-warning">
@@ -586,7 +586,7 @@ function triggerFollowUp(applicantId) {
 }
 
 function changeStatus(applicantId) {
-    const newStatus = prompt('Enter new status:\n1. Waiting for Processing\n2. Banking Processing\n3. Approved\n4. Rejected\n5. Disbursed');
+    const newStatus = prompt('Enter new status:\n1. Document Pending\n2. Banking Processing\n3. Approved\n4. Rejected\n5. Disbursed');
     
     const statusMap = {
         '1': 'Waiting for Processing',

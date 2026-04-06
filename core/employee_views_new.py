@@ -25,6 +25,8 @@ from decimal import Decimal
 from datetime import timedelta
 
 from .models import User, Loan, LoanApplication, Agent, ActivityLog, LoanDocument
+from .followup_utils import auto_move_overdue_to_follow_up
+from .loan_sync import find_related_loan_application
 
 # ============================================================
 # EMPLOYEE DASHBOARD
@@ -52,13 +54,25 @@ def employee_dashboard_stats(request):
         return Response({'error': 'Only employees can access'}, status=status.HTTP_403_FORBIDDEN)
     
     try:
+        auto_move_overdue_to_follow_up()
+
         # Get all loans assigned to this employee
         loans = Loan.objects.filter(assigned_employee=request.user)
+        follow_up_pending_marker = 'revert remark '
+
+        def is_follow_up_pending(loan_obj):
+            if loan_obj.status not in ['new_entry', 'waiting']:
+                return False
+            if follow_up_pending_marker in str(loan_obj.remarks or '').lower():
+                return True
+            related_app = find_related_loan_application(loan_obj)
+            return follow_up_pending_marker in str(getattr(related_app, 'approval_notes', '') or '').lower()
         
         # Calculate stats
         total_loans = loans.count()
-        waiting_count = loans.filter(status='waiting').count()
+        waiting_count = sum(1 for loan in loans if loan.status == 'waiting' and not is_follow_up_pending(loan))
         follow_up_count = loans.filter(status='follow_up').count()
+        follow_up_pending_count = sum(1 for loan in loans if is_follow_up_pending(loan))
         in_processing = waiting_count + follow_up_count
         approved = loans.filter(status='approved').count()
         rejected = loans.filter(status='rejected').count()
@@ -75,6 +89,7 @@ def employee_dashboard_stats(request):
             'in_processing': in_processing,
             'waiting': waiting_count,
             'follow_up': follow_up_count,
+            'follow_up_pending': follow_up_pending_count,
             'approved': approved,
             'rejected': rejected,
             'disbursed': disbursed,
@@ -138,18 +153,25 @@ def employee_all_loans_api(request):
         }, status=status.HTTP_200_OK)
     
     try:
+        auto_move_overdue_to_follow_up()
+
         # Get filter parameters
         search = request.GET.get('search', '').strip()
         status_filter = request.GET.get('status', '').strip()
         page = int(request.GET.get('page', 1))
-        limit = int(request.GET.get('limit', 20))
+        raw_limit = request.GET.get('limit')
+        try:
+            limit = int(raw_limit) if raw_limit not in [None, ''] else 2000
+        except (TypeError, ValueError):
+            limit = 2000
+        limit = max(1, min(limit, 5000))
         follow_up_pending_label = 'follow_up_pending'
         follow_up_pending_text = 'Revert Remark '
 
         # Primary source: Loan table
         queryset = Loan.objects.filter(
             assigned_employee=request.user
-        ).select_related('assigned_agent', 'created_by').order_by('-created_at')
+        ).select_related('assigned_agent', 'created_by').order_by('-updated_at', '-created_at')
 
         new_entry_count = 0
         waiting_count = 0
@@ -172,7 +194,7 @@ def employee_all_loans_api(request):
 
             app_qs = LoanApplication.objects.filter(
                 assigned_employee=request.user
-            ).select_related('applicant', 'assigned_agent', 'assigned_by').order_by('-created_at')
+            ).select_related('applicant', 'assigned_agent', 'assigned_by').order_by('-updated_at', '-created_at')
 
             if search:
                 app_qs = app_qs.filter(
@@ -246,44 +268,102 @@ def employee_all_loans_api(request):
                     Q(email__icontains=search)
                 )
 
-            follow_up_pending_q = Q(status__in=['new_entry', 'waiting']) & Q(remarks__icontains=follow_up_pending_text)
+            legacy_loans = list(queryset)
+            follow_up_marker = follow_up_pending_text.lower()
+            follow_up_pending_cache = {}
+
+            def is_follow_up_pending_loan(loan_obj):
+                cached = follow_up_pending_cache.get(loan_obj.id)
+                if cached is not None:
+                    return cached
+                if loan_obj.status not in ['new_entry', 'waiting']:
+                    follow_up_pending_cache[loan_obj.id] = False
+                    return False
+
+                legacy_has_marker = follow_up_marker in str(loan_obj.remarks or '').lower()
+                if legacy_has_marker:
+                    follow_up_pending_cache[loan_obj.id] = True
+                    return True
+
+                related_app = find_related_loan_application(loan_obj)
+                app_has_marker = follow_up_marker in str(getattr(related_app, 'approval_notes', '') or '').lower()
+                follow_up_pending_cache[loan_obj.id] = app_has_marker
+                return app_has_marker
+
+            linked_application_ids = set()
+            for legacy_loan in legacy_loans:
+                related_app = find_related_loan_application(legacy_loan)
+                if related_app:
+                    linked_application_ids.add(related_app.id)
+
+            workflow_pending_rows = []
+            if status_filter in ['', follow_up_pending_label]:
+                workflow_pending_qs = LoanApplication.objects.filter(
+                    assigned_employee=request.user,
+                    status__in=['New Entry', 'Waiting for Processing'],
+                    approval_notes__icontains=follow_up_pending_text,
+                ).select_related('applicant', 'assigned_agent').exclude(id__in=linked_application_ids).order_by('-updated_at', '-created_at')
+
+                search_lower = search.lower() if search else ''
+                for app in workflow_pending_qs:
+                    applicant = app.applicant
+                    loan_identifier = f'APP-{app.id:06d}'
+                    name_value = applicant.full_name or ''
+                    mobile_value = applicant.mobile or ''
+                    email_value = applicant.email or ''
+                    if search_lower:
+                        if (
+                            search_lower not in name_value.lower()
+                            and search_lower not in mobile_value.lower()
+                            and search_lower not in email_value.lower()
+                            and search_lower not in loan_identifier.lower()
+                        ):
+                            continue
+
+                    submitted_by = app.assigned_agent.name if app.assigned_agent else 'Unknown'
+                    workflow_pending_rows.append({
+                        'id': app.id,
+                        'loan_id': loan_identifier,
+                        'applicant_name': name_value or 'N/A',
+                        'mobile': mobile_value,
+                        'loan_type': applicant.loan_type or 'N/A',
+                        'loan_amount': float(applicant.loan_amount) if applicant.loan_amount else 0,
+                        'tenure_months': applicant.tenure_months or 0,
+                        'remarks': app.approval_notes or app.rejection_reason or '',
+                        'submitted_by': submitted_by,
+                        'assigned_date': app.assigned_at.strftime('%Y-%m-%d') if app.assigned_at else '-',
+                        'created_date': app.created_at.strftime('%Y-%m-%d') if app.created_at else '-',
+                        'created_time': app.created_at.strftime('%H:%M') if app.created_at else '',
+                        'status': follow_up_pending_label,
+                        'status_display': 'Follow Up',
+                        'follow_up_pending': True,
+                        '_sort_ts': app.updated_at or app.created_at,
+                    })
+
             if status_filter == follow_up_pending_label:
-                queryset = queryset.filter(follow_up_pending_q)
+                legacy_loans = [loan for loan in legacy_loans if is_follow_up_pending_loan(loan)]
             elif status_filter:
-                queryset = queryset.filter(status=status_filter)
-                if status_filter in ['new_entry', 'waiting']:
-                    queryset = queryset.exclude(remarks__icontains=follow_up_pending_text)
+                legacy_loans = [
+                    loan for loan in legacy_loans
+                    if loan.status == status_filter and not (
+                        status_filter in ['new_entry', 'waiting'] and is_follow_up_pending_loan(loan)
+                    )
+                ]
+                workflow_pending_rows = []
 
-            total_loans = queryset.count()
-            new_entry_count = queryset.filter(status='new_entry').exclude(remarks__icontains=follow_up_pending_text).count()
-            waiting_count = queryset.filter(status='waiting').exclude(remarks__icontains=follow_up_pending_text).count()
-            banking_count = queryset.filter(status='follow_up').count()
-            follow_up_pending_count = queryset.filter(follow_up_pending_q).count()
-            approved_count = queryset.filter(status='approved').count()
-            rejected_count = queryset.filter(status='rejected').count()
-            disbursed_count = queryset.filter(status='disbursed').count()
-
-            from django.core.paginator import Paginator
-            paginator = Paginator(queryset, limit)
-            page_obj = paginator.get_page(page)
-
-            loans_data = []
-            for loan in page_obj:
+            legacy_rows = []
+            for loan in legacy_loans:
                 submitted_by = 'Unknown'
                 if loan.assigned_agent:
                     submitted_by = loan.assigned_agent.name or loan.assigned_agent.user.get_full_name() if loan.assigned_agent.user else 'Unknown'
-                is_follow_up_pending = (
-                    loan.status in ['new_entry', 'waiting']
-                    and follow_up_pending_text.lower() in str(loan.remarks or '').lower()
-                )
+                is_follow_up_pending = is_follow_up_pending_loan(loan)
                 status_key = follow_up_pending_label if is_follow_up_pending else loan.status
                 status_display = (
                     'Follow Up'
                     if is_follow_up_pending
                     else ('Banking Processing' if loan.status == 'follow_up' else loan.get_status_display())
                 )
-
-                loans_data.append({
+                legacy_rows.append({
                     'id': loan.id,
                     'loan_id': loan.user_id or f'LOAN-{loan.id:06d}',
                     'applicant_name': loan.full_name or 'N/A',
@@ -299,7 +379,30 @@ def employee_all_loans_api(request):
                     'status': status_key,
                     'status_display': status_display,
                     'follow_up_pending': is_follow_up_pending,
+                    '_sort_ts': loan.updated_at or loan.created_at,
                 })
+
+            combined_rows = legacy_rows + workflow_pending_rows
+            combined_rows.sort(key=lambda row: row.get('_sort_ts') or timezone.now(), reverse=True)
+
+            total_loans = len(combined_rows)
+            new_entry_count = sum(1 for row in combined_rows if row['status'] == 'new_entry')
+            waiting_count = sum(1 for row in combined_rows if row['status'] == 'waiting')
+            banking_count = sum(1 for row in combined_rows if row['status'] == 'follow_up')
+            follow_up_pending_count = sum(1 for row in combined_rows if row['status'] == follow_up_pending_label)
+            approved_count = sum(1 for row in combined_rows if row['status'] == 'approved')
+            rejected_count = sum(1 for row in combined_rows if row['status'] == 'rejected')
+            disbursed_count = sum(1 for row in combined_rows if row['status'] == 'disbursed')
+
+            from django.core.paginator import Paginator
+            paginator = Paginator(combined_rows, limit)
+            page_obj = paginator.get_page(page)
+
+            loans_data = []
+            for row in page_obj:
+                row_payload = dict(row)
+                row_payload.pop('_sort_ts', None)
+                loans_data.append(row_payload)
         
         return Response({
             'success': True,
@@ -358,6 +461,8 @@ def employee_new_entry_requests_api(request):
         return Response({'error': 'Only employees can access'}, status=status.HTTP_403_FORBIDDEN)
     
     try:
+        auto_move_overdue_to_follow_up()
+
         # Get filter parameters
         search = request.GET.get('search', '').strip()
         page = int(request.GET.get('page', 1))

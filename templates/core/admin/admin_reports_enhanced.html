@@ -394,14 +394,14 @@
         </div>
         <ul class="report-list">
             <li class="report-list-item">
-                <span class="report-list-label">New Entry</span>
+                <span class="report-list-label">New Application</span>
                 <div>
                     <span class="report-list-value">{{ new_count }}</span>
                     <span class="percentage">{{ new_percent }}%</span>
                 </div>
             </li>
             <li class="report-list-item">
-                <span class="report-list-label">In Processing</span>
+                <span class="report-list-label">Document Pending</span>
                 <div>
                     <span class="report-list-value">{{ processing_count }}</span>
                     <span class="percentage">{{ processing_percent }}%</span>
@@ -611,8 +611,8 @@ function confirmDownloadReport() {
         ['Approved Applications', '{{ approved_count|default:0 }}'],
         ['Rejected Applications', '{{ rejected_count|default:0 }}'],
         ['Disbursed Applications', '{{ disbursed_count|default:0 }}'],
-        ['New Entry', '{{ new_count|default:0 }}'],
-        ['In Processing', '{{ processing_count|default:0 }}'],
+        ['New Application', '{{ new_count|default:0 }}'],
+        ['Document Pending', '{{ processing_count|default:0 }}'],
         ['Banking Processing', '{{ followup_count|default:0 }}'],
         ['Total Amount', '{{ total_amount|default:0 }}'],
         ['Approved Amount', '{{ approved_amount|default:0 }}'],

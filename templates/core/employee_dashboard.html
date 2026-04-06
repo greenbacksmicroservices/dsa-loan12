@@ -47,14 +47,14 @@
             </div>
         </div>
 
-        <!-- In Processing Card - Orange/Red -->
+        <!-- Document Pending Card - Orange/Red -->
         <div class="col-lg-3 col-md-6 col-sm-12">
             <div style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); border-radius: 12px; padding: 20px; color: white; box-shadow: 0 8px 24px rgba(249, 115, 22, 0.15); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative; overflow: hidden; cursor: pointer; height: 100%;" onclick="window.location.href='{% url 'employee_new_entry_request' %}?status=waiting'">
                 <div style="position: absolute; top: -40%; right: -40%; width: 150px; height: 150px; background: rgba(255,255,255,0.1); border-radius: 50%; pointer-events: none;"></div>
                 <div style="position: relative; z-index: 2;">
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
                         <div>
-                            <p style="font-size: 12px; opacity: 0.85; margin: 0; font-weight: 500; letter-spacing: 0.5px;">IN PROCESSING</p>
+                            <p style="font-size: 12px; opacity: 0.85; margin: 0; font-weight: 500; letter-spacing: 0.5px;">DOCUMENT PENDING</p>
                         </div>
                         <i class="bi bi-hourglass-split" style="font-size: 24px; opacity: 0.8;"></i>
                     </div>
@@ -316,7 +316,7 @@
             statusChart = new Chart(statusCtx, {
                 type: 'doughnut',
                 data: {
-                    labels: ['Approved', 'Rejected', 'Disbursed', 'In Processing'],
+                    labels: ['Approved', 'Rejected', 'Disbursed', 'Document Pending'],
                     datasets: [{
                         data: [
                             data.approved || 0,

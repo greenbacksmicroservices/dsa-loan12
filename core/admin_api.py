@@ -103,7 +103,7 @@ def api_admin_processing_requests(request):
                 } if loan.assigned_agent else {'id': None, 'name': 'Unassigned', 'type': 'none'},
                 'assigned_at': loan.assigned_at.isoformat() if loan.assigned_at else None,
                 'hours_since_assignment': hours_since,
-                'requires_followup': loan.requires_follow_up or hours_since >= 24,
+                'requires_followup': loan.requires_follow_up or hours_since >= 4,
                 'action_buttons': {
                     'approve': user.role in ['admin', 'employee', 'agent'],
                     'reject': user.role in ['admin', 'employee', 'agent'],

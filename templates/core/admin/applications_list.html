@@ -330,7 +330,7 @@
                         <td>{{ app.applicant.phone_number }}</td>
                         <td>
                             <span class="status-badge badge-{% if app.status == 'New Entry' %}new-entry{% elif app.status == 'Waiting for Processing' %}processing{% elif app.status == 'Required Follow-up' %}follow-up{% elif app.status == 'Approved' %}approved{% elif app.status == 'Rejected' %}rejected{% elif app.status == 'Disbursed' %}disbursed{% endif %}">
-                                {{ app.status }}
+                                {% if app.status == 'New Entry' %}New Application{% elif app.status == 'Waiting for Processing' %}Document Pending{% else %}{{ app.status }}{% endif %}
                             </span>
                         </td>
                         <td>

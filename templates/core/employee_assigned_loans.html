@@ -618,7 +618,7 @@ function renderLoans(loans) {
                 <div>
                     <h3>${loan.applicant_name}</h3>
                 </div>
-                <span class="status-badge ${getStatusClass(loan.status)}">${loan.status}</span>
+                <span class="status-badge ${getStatusClass(loan.status)}">${displayStatus(loan.status)}</span>
             </div>
             
             <div class="card-body">
@@ -818,11 +818,19 @@ function renderLoans(loans) {
 function getStatusClass(status) {
     const statusMap = {
         'New Entry': 'pending',
+        'New Application': 'pending',
         'Waiting for Processing': 'under-review',
+        'Document Pending': 'under-review',
         'Approved': 'approved',
         'Rejected': 'rejected',
     };
     return statusMap[status] || 'pending';
+}
+
+function displayStatus(status) {
+    if (status === 'New Entry') return 'New Application';
+    if (status === 'Waiting for Processing' || status === 'In Processing') return 'Document Pending';
+    return status;
 }
 
 function approveLoan(loanId) {

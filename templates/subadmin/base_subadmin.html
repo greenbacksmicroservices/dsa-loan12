@@ -429,6 +429,11 @@
                     <i class="fas fa-briefcase"></i>
                     <span>All Loans</span>
                 </a>
+
+                <a href="{% url 'subadmin_add_loan' %}" class="sidebar-link {% if request.resolver_match.url_name == 'subadmin_add_loan' %}active{% endif %}">
+                    <i class="fas fa-plus-circle"></i>
+                    <span>Add New Loan</span>
+                </a>
                 
                 <!-- Staff Management -->
                 <a href="{% url 'subadmin_my_agents' %}" class="sidebar-link {% if request.resolver_match.url_name == 'subadmin_my_agents' %}active{% endif %}">

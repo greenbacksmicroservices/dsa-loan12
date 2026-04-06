@@ -19,14 +19,14 @@
 
     <div class="card-container">
         <a class="insight-card c-new text-decoration-none" href="{% url 'agent_my_applications' %}?status=new_entry">
-            <p class="status-title">New Entry</p>
+            <p class="status-title">New Application</p>
             <h2 class="main-value" id="stat-new-entry">0</h2>
             <p class="description">Total New Applications</p>
             <span class="view-details" style="color:#4c51bf;">View Details →</span>
         </a>
 
         <a class="insight-card c-process text-decoration-none" href="{% url 'agent_my_applications' %}?status=waiting">
-            <p class="status-title">In Processing</p>
+            <p class="status-title">Document Pending</p>
             <h2 class="main-value" id="stat-waiting">0</h2>
             <p class="description">Pending Review</p>
             <span class="view-details" style="color:#d69e2e;">View Details →</span>
@@ -39,7 +39,7 @@
             <span class="view-details" style="color:#319795;">View Details →</span>
         </a>
 
-        <a class="insight-card c-follow text-decoration-none" href="{% url 'agent_my_applications' %}?status=follow_up_pending">
+        <a class="insight-card c-follow text-decoration-none" href="{% url 'agent_my_applications' %}?status=follow_up_pending" id="follow-up-card">
             <p class="status-title">Follow Up</p>
             <h2 class="main-value" id="stat-followup-pending">0</h2>
             <p class="description">Reverted for Correction</p>
@@ -99,8 +99,8 @@
                 <select id="filterRecent" class="form-select form-select-sm">
                     <option value="">All Status</option>
                     <option value="draft">Draft</option>
-                    <option value="new_entry">New Entry</option>
-                    <option value="waiting">Processing</option>
+                    <option value="new_entry">New Application</option>
+                    <option value="waiting">Document Pending</option>
                     <option value="follow_up">Bank Stage</option>
                     <option value="follow_up_pending">Follow Up</option>
                     <option value="approved">Approved</option>
@@ -186,7 +186,7 @@ function renderCharts(data) {
     recordChartInstance = new Chart(barEl, {
         type: 'bar',
         data: {
-            labels: ['New Entry', 'In Processing', 'Banking', 'Follow Up', 'Approved', 'Rejected', 'Disbursed'],
+            labels: ['New Application', 'Document Pending', 'Banking', 'Follow Up', 'Approved', 'Rejected', 'Disbursed'],
             datasets: [{
                 data: [
                     data.new_entry || 0,
@@ -212,7 +212,7 @@ function renderCharts(data) {
     statusChartInstance = new Chart(pieEl, {
         type: 'doughnut',
         data: {
-            labels: ['New Entry', 'In Processing', 'Banking Processing', 'Follow Up', 'Approved', 'Rejected', 'Disbursed'],
+            labels: ['New Application', 'Document Pending', 'Banking Processing', 'Follow Up', 'Approved', 'Rejected', 'Disbursed'],
             datasets: [{
                 data: [
                     data.new_entry || 0,
@@ -257,8 +257,14 @@ function renderEntryRows(entries) {
     }
 
     tbody.innerHTML = entries.map((entry) => {
-        const statusLabel = entry.status_label || (entry.status || '').replaceAll('_', ' ');
-        const stage = entry.stage || 'Processing';
+        const statusLabel = (() => {
+            const raw = entry.status_label || (entry.status || '').replaceAll('_', ' ');
+            const normalized = String(raw || '').trim().toLowerCase();
+            if (normalized === 'new entry') return 'New Application';
+            if (normalized === 'in processing' || normalized === 'waiting for processing') return 'Document Pending';
+            return raw;
+        })();
+        const stage = entry.stage || 'Document Pending';
         const detailUrl = entry.detail_url || `/agent/my-applications/?loan_id=${entry.id}`;
         return `
             <tr>
@@ -289,6 +295,10 @@ function loadDashboardStats() {
             document.getElementById('stat-approved').textContent = data.approved || 0;
             document.getElementById('stat-rejected').textContent = data.rejected || 0;
             document.getElementById('stat-disbursed').textContent = data.disbursed || 0;
+            const followCard = document.getElementById('follow-up-card');
+            if (followCard) {
+                followCard.classList.toggle('followup-alert', Number(data.follow_up_pending || 0) > 0);
+            }
             renderCharts(data);
             updateTimestamp();
         })
@@ -414,6 +424,17 @@ document.addEventListener('DOMContentLoaded', () => {
     .c-approved { color: #48bb78; }
     .c-rejected { color: #f56565; }
     .c-disbursed { color: #4299e1; }
+
+    .followup-alert {
+        border: 2px solid #dc2626 !important;
+        animation: followupPulse 1.2s infinite;
+    }
+
+    @keyframes followupPulse {
+        0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.55); }
+        70% { box-shadow: 0 0 0 10px rgba(220, 38, 38, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+    }
 
 .agent-dashboard {
     --panel-bg: #ffffff;

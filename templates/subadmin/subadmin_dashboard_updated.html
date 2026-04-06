@@ -78,7 +78,7 @@
         <h3 class="text-lg font-bold text-gray-900 mb-4">Loan Status Overview</h3>
         <div class="space-y-3">
             <div class="flex items-center justify-between">
-                <span class="text-gray-700">New Entry</span>
+                <span class="text-gray-700">New Application</span>
                 <div class="w-64 bg-gray-200 rounded-full h-2.5">
                     <div class="bg-blue-500 h-2.5 rounded-full" style="width: {{ stats.new_entry_percent|default:0 }}%"></div>
                 </div>
@@ -108,16 +108,16 @@
         </div>
     </div>
 
-    <!-- ADD NEW ENTRY SECTION -->
+    <!-- ADD NEW APPLICATION SECTION -->
     <div class="bg-white rounded-lg shadow p-6">
         <div class="flex justify-between items-center mb-6">
-            <h3 class="text-2xl font-bold text-gray-900">➕ Add New Entry</h3>
+            <h3 class="text-2xl font-bold text-gray-900">➕ Add New Application</h3>
             <button onclick="toggleAddEntryForm()" class="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:shadow-lg transition">
-                <i class="fas fa-plus"></i> Add Entry
+                <i class="fas fa-plus"></i> Add Application
             </button>
         </div>
 
-        <!-- Add Entry Form -->
+        <!-- Add Application Form -->
         <div id="addEntryForm" class="hidden bg-gray-50 p-6 rounded-lg border-2 border-purple-200 mb-6">
             <form method="POST" action="{% url 'subadmin_add_entry' %}" id="entryForm">
                 {% csrf_token %}
@@ -180,7 +180,7 @@
                 <!-- Submit Buttons -->
                 <div class="flex gap-3">
                     <button type="submit" class="px-6 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:shadow-lg transition font-semibold">
-                        <i class="fas fa-check"></i> Submit Entry
+                        <i class="fas fa-check"></i> Submit Application
                     </button>
                     <button type="button" onclick="toggleAddEntryForm()" class="px-6 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition font-semibold">
                         Cancel
@@ -189,9 +189,9 @@
             </form>
         </div>
 
-        <!-- Recent Entries Table -->
+        <!-- Recent Applications Table -->
         <div class="mt-8">
-            <h4 class="text-lg font-bold text-gray-900 mb-4">📋 Recent Entries</h4>
+            <h4 class="text-lg font-bold text-gray-900 mb-4">📋 Recent Applications</h4>
             <div class="overflow-x-auto">
                 <table class="w-full border-collapse">
                     <thead>
@@ -223,7 +223,9 @@
                                 <td class="px-4 py-3 text-gray-700">{{ entry.loan_tenure }} mo</td>
                                 <td class="px-4 py-3">
                                     {% if entry.status == "New Entry" %}
-                                        <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-semibold">{{ entry.status }}</span>
+                                        <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-semibold">New Application</span>
+                                    {% elif entry.status == "Waiting for Processing" or entry.status == "In Processing" %}
+                                        <span class="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-semibold">Document Pending</span>
                                     {% elif entry.status == "Approved" %}
                                         <span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-semibold">{{ entry.status }}</span>
                                     {% elif entry.status == "Rejected" %}
@@ -244,7 +246,7 @@
                             <tr>
                                 <td colspan="9" class="px-4 py-4 text-center text-gray-500">
                                     <i class="fas fa-inbox text-3xl mb-2"></i>
-                                    <p>No entries yet. Click "Add Entry" to create one!</p>
+                                    <p>No applications yet. Click "Add Application" to create one!</p>
                                 </td>
                             </tr>
                         {% endif %}
@@ -252,10 +254,10 @@
                 </table>
             </div>
 
-            <!-- View All Entries Link -->
+            <!-- View All Applications Link -->
             <div class="mt-4 text-center">
                 <a href="{% url 'subadmin_entries' %}" class="text-purple-600 hover:text-purple-800 font-semibold">
-                    View All Entries <i class="fas fa-arrow-right"></i>
+                    View All Applications <i class="fas fa-arrow-right"></i>
                 </a>
             </div>
         </div>

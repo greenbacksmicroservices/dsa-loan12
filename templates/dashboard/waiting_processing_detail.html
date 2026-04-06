@@ -1,13 +1,13 @@
 {% extends 'core/base.html' %}
 
-{% block title %}Waiting for Processing - {{ loan.full_name }}{% endblock %}
+{% block title %}Document Pending - {{ loan.full_name }}{% endblock %}
 
 {% block content %}
 <div class="container-fluid mt-4">
     <!-- Header -->
     <div class="page-header mb-4">
         <div class="d-flex justify-content-between align-items-center">
-            <h2><i class="bi bi-hourglass-split"></i> Waiting for Processing</h2>
+            <h2><i class="bi bi-hourglass-split"></i> Document Pending</h2>
             <a href="{% url 'waiting_list' %}" class="btn btn-outline-secondary">
                 <i class="bi bi-arrow-left"></i> Back to List
             </a>
@@ -64,7 +64,7 @@
                                 <tr>
                                     <th>Status:</th>
                                     <td>
-                                        <span class="badge bg-warning text-dark">{{ loan.get_status_display }}</span>
+                                        <span class="badge bg-warning text-dark">{% if loan.get_status_display == 'Waiting for Processing' %}Document Pending{% elif loan.get_status_display == 'New Entry' %}New Application{% else %}{{ loan.get_status_display }}{% endif %}</span>
                                     </td>
                                 </tr>
                                 <tr>

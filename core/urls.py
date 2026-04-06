@@ -157,6 +157,7 @@ urlpatterns = [
     
     # Employee Dashboard & Views
     path('employee/dashboard/', employee_views.employee_dashboard, name='employee_dashboard'),
+    path('employee/add-loan/', admin_views.admin_add_loan, name='employee_add_loan'),
     path('employee/assigned-loans/', employee_views.employee_assigned_loans, name='employee_assigned_loans'),
     path('employee/profile/', employee_views.employee_profile, name='employee_profile'),
     path('employee/settings/', employee_views.employee_settings, name='employee_settings'),
@@ -523,7 +524,6 @@ urlpatterns = [
     path('api/admin/loan/<int:loan_id>/reassign/', admin_assign_views.admin_reassign_loan, name='api_admin_reassign_loan'),
     path('api/admin/loan/<int:loan_id>/assignment-status/', admin_assign_views.admin_get_assignment_status, name='api_admin_assignment_status'),
 ]
-
 
 
 

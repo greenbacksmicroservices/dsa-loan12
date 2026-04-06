@@ -76,7 +76,7 @@ def check_and_trigger_followups():
     """
     Move overdue waiting applications to Banking Process (stored as Required Follow-up).
     """
-    cutoff_time = timezone.now() - timedelta(hours=24)
+    cutoff_time = timezone.now() - timedelta(hours=4)
     overdue_applications = LoanApplication.objects.filter(
         status="Waiting for Processing",
         assigned_at__lte=cutoff_time,
@@ -89,7 +89,7 @@ def check_and_trigger_followups():
         app.trigger_follow_up()
         ActivityLog.objects.create(
             action="status_updated",
-            description=f"Auto moved to Banking Process for {app.applicant.full_name} after 24h wait",
+            description=f"Auto moved to Banking Process for {app.applicant.full_name} after 4h wait",
             user=None,
         )
         count += 1

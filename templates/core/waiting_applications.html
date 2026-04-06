@@ -1,7 +1,7 @@
 {% extends 'core/base.html' %}
 {% load static %}
 
-{% block title %}Waiting for Processing Applications{% endblock %}
+{% block title %}Document Pending Applications{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -115,7 +115,7 @@
     </a>
     
     <div class="page-header">
-        <h1><i class="fas fa-hourglass-half"></i> Waiting for Processing</h1>
+        <h1><i class="fas fa-hourglass-half"></i> Document Pending</h1>
         <span class="app-count">{{ count }} Applications</span>
     </div>
     
@@ -180,7 +180,9 @@
                         {% endif %}
                     </td>
                     <td>
-                        <span class="badge" style="background-color: #ffc107; color: #000;">{{ item.app.status }}</span>
+                        <span class="badge" style="background-color: #ffc107; color: #000;">
+                            {% if item.app.status == 'Waiting for Processing' %}Document Pending{% elif item.app.status == 'New Entry' %}New Application{% else %}{{ item.app.status }}{% endif %}
+                        </span>
                     </td>
                     <td>
                         <div class="action-buttons">

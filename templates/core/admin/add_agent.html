@@ -316,8 +316,9 @@
             <!-- BASIC INFORMATION -->
             <div class="form-section">
                 <div class="form-section-title">
-                    <i class="fas fa-user"></i> Basic Information
+                    <i class="fas fa-user"></i> SECTION 1: APPLICANT INFORMATION
                 </div>
+                <p class="field-hint" style="margin: 0 0 16px 0;">Provide accurate personal information. This will be verified during processing.</p>
 
                 <div class="form-row">
                     <div class="form-group">
@@ -365,16 +366,103 @@
                 <div class="form-row full">
                     <div class="form-group">
                         <label>Address</label>
-                        <textarea name="address" rows="3" placeholder="Street, City, State"></textarea>
+                        <textarea name="address" id="permAddress" rows="3" placeholder="Street, City, State"></textarea>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Alternate Mobile</label>
+                        <input type="tel" name="onb_alt_mobile" placeholder="Optional">
+                    </div>
+                    <div class="form-group">
+                        <label>Father's Name</label>
+                        <input type="text" name="onb_father_name" placeholder="Optional">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Mother's Name</label>
+                        <input type="text" name="onb_mother_name" placeholder="Optional">
+                    </div>
+                    <div class="form-group">
+                        <label>Date of Birth</label>
+                        <input type="date" name="onb_dob">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Marital Status</label>
+                        <input type="text" name="onb_marital_status" placeholder="Single / Married / Other">
+                    </div>
+                    <div class="form-group">
+                        <label>Permanent Landmark</label>
+                        <input type="text" name="onb_perm_landmark" id="permLandmark" placeholder="Landmark">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Permanent State</label>
+                        <input type="text" name="onb_perm_state" id="permState" placeholder="State">
+                    </div>
+                    <div class="form-group">
+                        <label>Permanent City</label>
+                        <input type="text" name="onb_perm_city" id="permCity" placeholder="City">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Permanent PIN Code</label>
+                        <input type="text" name="onb_perm_pin" id="permPin" placeholder="PIN Code">
+                    </div>
+                    <div class="form-group">
+                        <label style="display: inline-flex; align-items: center; gap: 8px; margin-top: 32px;">
+                            <input type="checkbox" id="presentSame" name="onb_present_same">
+                            Present Address same as Permanent
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-row full">
+                    <div class="form-group">
+                        <label>Present Address</label>
+                        <textarea name="onb_present_address" id="presentAddress" rows="3" placeholder="Present address"></textarea>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Present Landmark</label>
+                        <input type="text" name="onb_present_landmark" id="presentLandmark" placeholder="Landmark">
+                    </div>
+                    <div class="form-group">
+                        <label>Present State</label>
+                        <input type="text" name="onb_present_state" id="presentState" placeholder="State">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Present City</label>
+                        <input type="text" name="onb_present_city" id="presentCity" placeholder="City">
+                    </div>
+                    <div class="form-group">
+                        <label>Present PIN Code</label>
+                        <input type="text" name="onb_present_pin" id="presentPin" placeholder="PIN Code">
                     </div>
                 </div>
             </div>
 
-            <!-- PROFILE PHOTO -->
+            <!-- LOGIN & PROFILE -->
             <div class="form-section">
                 <div class="form-section-title">
-                    <i class="fas fa-image"></i> Profile Photo
+                    <i class="fas fa-image"></i> LOGIN & PROFILE
                 </div>
+                <p class="field-hint" style="margin: 0 0 16px 0;">Create login access and upload profile photo.</p>
                 <div class="form-group">
                     <div class="photo-upload" id="photoUpload">
                         <input type="file" id="photo" name="photo" accept="image/*" style="display: none;">
@@ -389,6 +477,225 @@
                         </div>
                     </div>
                 </div>
+            </div>
+
+            <div class="form-section">
+                <div class="form-section-title">
+                    <i class="fas fa-briefcase"></i> SECTION 2: OCCUPATION & INCOME DETAILS
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Occupation</label>
+                        <input type="text" name="onb_occupation" placeholder="Occupation">
+                    </div>
+                    <div class="form-group">
+                        <label>Date of Joining</label>
+                        <input type="date" name="onb_joining_date">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Year of Experience</label>
+                        <input type="text" name="onb_experience_years" placeholder="Years">
+                    </div>
+                    <div class="form-group">
+                        <label>Additional Income (if any)</label>
+                        <input type="text" name="onb_additional_income" placeholder="Optional">
+                    </div>
+                </div>
+                <div class="form-row full">
+                    <div class="form-group">
+                        <label>Extra Income Details</label>
+                        <textarea name="onb_extra_income_details" rows="3" placeholder="Extra income details"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="form-section-title">
+                    <i class="fas fa-coins"></i> SECTION 3: LOAN TYPE
+                </div>
+                <p class="field-hint" style="margin: 0 0 12px 0;">Provide details of all existing loans or EMI commitments.</p>
+                <div class="form-row full">
+                    <div class="form-group">
+                        <label>Loan Type Details</label>
+                        <textarea name="onb_existing_loans" rows="3" placeholder="No data available"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="form-section-title">
+                    <i class="fas fa-hand-holding-usd"></i> SECTION 4: LOAN REQUEST
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Service Required</label>
+                        <select name="onb_service_required">
+                            <option value="">Select</option>
+                            <option value="Personal Loan">Personal Loan</option>
+                            <option value="Business Loan">Business Loan</option>
+                            <option value="Home Loan">Home Loan</option>
+                            <option value="Education Loan">Education Loan</option>
+                            <option value="Car Loan">Car Loan</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Loan Amount Required</label>
+                        <input type="text" name="onb_loan_amount_required" placeholder="Amount">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Loan Tenure (Months)</label>
+                        <input type="text" name="onb_loan_tenure" placeholder="Tenure">
+                    </div>
+                    <div class="form-group">
+                        <label>Any Charges or Fee</label>
+                        <input type="text" name="onb_charges_fee" placeholder="No charges">
+                    </div>
+                </div>
+                <div class="form-row full">
+                    <div class="form-group">
+                        <label>Loan Purpose</label>
+                        <textarea name="onb_loan_purpose" rows="3" placeholder="Purpose"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="form-section-title">
+                    <i class="fas fa-address-book"></i> SECTION 5: REFERENCES
+                </div>
+                <p class="field-hint" style="margin: 0 0 12px 0;">Provide contact details of two reliable references.</p>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Reference #1 (Colleague) Name</label>
+                        <input type="text" name="ref_name" placeholder="Reference name">
+                    </div>
+                    <div class="form-group">
+                        <label>Reference Phone</label>
+                        <input type="text" name="ref_phone" placeholder="Phone">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Reference Email</label>
+                        <input type="email" name="ref_email" placeholder="Email">
+                    </div>
+                    <div class="form-group">
+                        <label>Relation</label>
+                        <input type="text" name="ref_relation" placeholder="Relation">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Reference #2 (Family or Friends) Name</label>
+                        <input type="text" name="ref_name" placeholder="Reference name">
+                    </div>
+                    <div class="form-group">
+                        <label>Reference Phone</label>
+                        <input type="text" name="ref_phone" placeholder="Phone">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Reference Email</label>
+                        <input type="email" name="ref_email" placeholder="Email">
+                    </div>
+                    <div class="form-group">
+                        <label>Relation</label>
+                        <input type="text" name="ref_relation" placeholder="Relation">
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="form-section-title">
+                    <i class="fas fa-university"></i> SECTION 6: BALANCE TRANSFER (IF ANY)
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>CIBIL Score</label>
+                        <input type="text" name="onb_cibil" placeholder="CIBIL Score">
+                    </div>
+                    <div class="form-group">
+                        <label>Aadhar Number</label>
+                        <input type="text" name="onb_aadhar" placeholder="Aadhar Number">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>PAN Number</label>
+                        <input type="text" name="onb_pan" placeholder="PAN Number">
+                    </div>
+                    <div class="form-group">
+                        <label>Bank Name</label>
+                        <input type="text" name="onb_bank_name" placeholder="Bank Name">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Account Number</label>
+                        <input type="text" name="onb_account_number" placeholder="Account Number">
+                    </div>
+                    <div class="form-group">
+                        <label>IFSC Code</label>
+                        <input type="text" name="onb_ifsc" placeholder="IFSC Code">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Bank Type</label>
+                        <select name="onb_bank_type">
+                            <option value="">Select</option>
+                            <option value="Private">Private</option>
+                            <option value="Government">Government</option>
+                            <option value="Cooperative">Cooperative</option>
+                            <option value="NBFC">NBFC</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Remarks / Suggestions (if any)</label>
+                        <input type="text" name="onb_bank_remarks" placeholder="Remarks">
+                    </div>
+                </div>
+                <div class="form-row full">
+                    <label style="display: inline-flex; align-items: center; gap: 8px; font-weight: 600;">
+                        <input type="checkbox" name="onb_declaration">
+                        I hereby declare that the above information given by me is true and correct.
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="form-section-title">
+                    <i class="fas fa-file-upload"></i> SECTION 7: DOCUMENTS
+                </div>
+                <div id="onboardingDocumentRows">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Document Type</label>
+                            <select name="document_type">
+                                <option value="pan_card">PAN Card</option>
+                                <option value="aadhaar_card">Aadhaar Card</option>
+                                <option value="photo">Applicant Photo</option>
+                                <option value="address_proof">Address Proof</option>
+                                <option value="salary_slip">Salary Slip</option>
+                                <option value="bank_statement">Bank Statement</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Upload File</label>
+                            <input type="file" name="document_file">
+                        </div>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-secondary" style="margin-top: 12px;" onclick="addOnboardingDocumentRow()">
+                    <i class="fas fa-plus"></i> Add Another Document
+                </button>
             </div>
 
             <!-- ACTION BUTTONS -->
@@ -446,6 +753,68 @@
             photoInput.dispatchEvent(event);
         }
     });
+
+    function addOnboardingDocumentRow() {
+        const container = document.getElementById('onboardingDocumentRows');
+        if (!container) return;
+        const row = document.createElement('div');
+        row.className = 'form-row';
+        row.innerHTML = `
+            <div class="form-group">
+                <label>Document Type</label>
+                <select name="document_type">
+                    <option value="pan_card">PAN Card</option>
+                    <option value="aadhaar_card">Aadhaar Card</option>
+                    <option value="photo">Applicant Photo</option>
+                    <option value="address_proof">Address Proof</option>
+                    <option value="salary_slip">Salary Slip</option>
+                    <option value="bank_statement">Bank Statement</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Upload File</label>
+                <input type="file" name="document_file">
+            </div>
+        `;
+        container.appendChild(row);
+    }
+
+    const presentSameCheckbox = document.getElementById('presentSame');
+    if (presentSameCheckbox) {
+        presentSameCheckbox.addEventListener('change', function() {
+            const checked = this.checked;
+            const permAddress = document.getElementById('permAddress')?.value || '';
+            const permLandmark = document.getElementById('permLandmark')?.value || '';
+            const permState = document.getElementById('permState')?.value || '';
+            const permCity = document.getElementById('permCity')?.value || '';
+            const permPin = document.getElementById('permPin')?.value || '';
+
+            const presentAddress = document.getElementById('presentAddress');
+            const presentLandmark = document.getElementById('presentLandmark');
+            const presentState = document.getElementById('presentState');
+            const presentCity = document.getElementById('presentCity');
+            const presentPin = document.getElementById('presentPin');
+
+            if (!presentAddress || !presentLandmark || !presentState || !presentCity || !presentPin) {
+                return;
+            }
+
+            if (checked) {
+                presentAddress.value = permAddress;
+                presentLandmark.value = permLandmark;
+                presentState.value = permState;
+                presentCity.value = permCity;
+                presentPin.value = permPin;
+            } else {
+                presentAddress.value = '';
+                presentLandmark.value = '';
+                presentState.value = '';
+                presentCity.value = '';
+                presentPin.value = '';
+            }
+        });
+    }
 
     // Form validation
     document.getElementById('agentForm').addEventListener('submit', (e) => {

@@ -225,14 +225,14 @@
 
     <div class="card-container">
         <a href="{% url 'subadmin_all_loans' %}?status=new_entry" class="insight-card c-new">
-            <p class="status-title">New Entry</p>
+            <p class="status-title">New Application</p>
             <h2 class="main-value" id="stat-new-entry">0</h2>
             <p class="description">Total New Applications</p>
             <span class="view-details" style="color:#4c51bf;">View Details →</span>
         </a>
 
         <a href="{% url 'subadmin_all_loans' %}?status=waiting" class="insight-card c-process">
-            <p class="status-title">In Processing</p>
+            <p class="status-title">Document Pending</p>
             <h2 class="main-value" id="stat-processing">0</h2>
             <p class="description">Pending Review</p>
             <span class="view-details" style="color:#d69e2e;">View Details →</span>
@@ -294,11 +294,11 @@
             </div>
             <div class="lg:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div class="status-legend-item">
-                    <div class="status-legend-left"><span class="status-dot" style="background:#2563eb;"></span><span class="text-sm text-gray-700">New Entry</span></div>
+                    <div class="status-legend-left"><span class="status-dot" style="background:#2563eb;"></span><span class="text-sm text-gray-700">New Application</span></div>
                     <div class="status-value-wrap"><div id="count-new" class="status-count">0</div><div id="pct-new" class="status-pct">0%</div></div>
                 </div>
                 <div class="status-legend-item">
-                    <div class="status-legend-left"><span class="status-dot" style="background:#d97706;"></span><span class="text-sm text-gray-700">In Processing</span></div>
+                    <div class="status-legend-left"><span class="status-dot" style="background:#d97706;"></span><span class="text-sm text-gray-700">Document Pending</span></div>
                     <div class="status-value-wrap"><div id="count-processing" class="status-count">0</div><div id="pct-processing" class="status-pct">0%</div></div>
                 </div>
                 <div class="status-legend-item">
@@ -401,7 +401,7 @@ function updateStatusDistributionChart(newEntry, waiting, banking, followUpPendi
         statusDistributionChart = new Chart(chartElement, {
             type: 'doughnut',
             data: {
-                labels: ['New Entry', 'In Processing', 'Bank Processing', 'Follow Up', 'Approved', 'Rejected', 'Disbursed'],
+                labels: ['New Application', 'Document Pending', 'Bank Processing', 'Follow Up', 'Approved', 'Rejected', 'Disbursed'],
                 datasets: [{
                     data: values,
                     backgroundColor: ['#2563eb', '#d97706', '#7c3aed', '#ea580c', '#059669', '#dc2626', '#0891b2'],

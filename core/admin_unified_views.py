@@ -100,7 +100,7 @@ def admin_loan_detail(request, applicant_id):
         time_diff = timezone.now() - loan_app.assigned_at
         hours_since_assignment = int(time_diff.total_seconds() / 3600)
         minutes_since = int((time_diff.total_seconds() % 3600) / 60)
-        follow_up_due = loan_app.assigned_at + timedelta(hours=24)
+        follow_up_due = loan_app.assigned_at + timedelta(hours=4)
         is_overdue = timezone.now() > follow_up_due
     
     # Get application status history if available
@@ -204,8 +204,8 @@ def admin_loan_details_all(request):
     
     # Apply overdue filter
     if only_overdue:
-        # Only show loans waiting for processing that are overdue 24 hours
-        loans = loans.filter(status='Waiting for Processing', assigned_at__lt=timezone.now() - timedelta(hours=24))
+        # Only show loans waiting for processing that are overdue 4 hours
+        loans = loans.filter(status='Waiting for Processing', assigned_at__lt=timezone.now() - timedelta(hours=4))
     
     # Apply sorting
     valid_sorts = ['-created_at', 'created_at', 'applicant__full_name', 'loan_amount', '-loan_amount']
@@ -229,7 +229,7 @@ def admin_loan_details_all(request):
         if loan.assigned_at and loan.status == 'Waiting for Processing':
             time_diff = timezone.now() - loan.assigned_at
             hours_since = int(time_diff.total_seconds() / 3600)
-            follow_up_due = loan.assigned_at + timedelta(hours=24)
+            follow_up_due = loan.assigned_at + timedelta(hours=4)
             is_overdue = timezone.now() > follow_up_due
         
         loan_list.append({
@@ -252,7 +252,7 @@ def admin_loan_details_all(request):
     
     overdue_count = LoanApplication.objects.filter(
         status='Waiting for Processing',
-        assigned_at__lt=timezone.now() - timedelta(hours=24)
+        assigned_at__lt=timezone.now() - timedelta(hours=4)
     ).count()
     
     context = {
@@ -424,7 +424,7 @@ def api_dashboard_stats(request):
         'disbursed': LoanApplication.objects.filter(status='Disbursed').count(),
         'overdue': LoanApplication.objects.filter(
             status='Waiting for Processing',
-            assigned_at__lt=timezone.now() - timedelta(hours=24)
+            assigned_at__lt=timezone.now() - timedelta(hours=4)
         ).count(),
         'timestamp': timezone.now().isoformat(),
     }

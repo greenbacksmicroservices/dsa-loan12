@@ -1,7 +1,7 @@
 # Celery Tasks for Loan Application Workflow Automation
 """
 Automated workflow tasks:
-- Check for 24-hour old waiting applications
+- Check for 4-hour old waiting applications
 - Move to Required Follow-up status
 - Send notifications
 - Log activities
@@ -22,14 +22,14 @@ logger = logging.getLogger(__name__)
 @shared_task(bind=True, max_retries=3)
 def check_and_trigger_follow_ups(self):
     """
-    Check for applications waiting > 24 hours and move to follow-up status.
+    Check for applications waiting > 4 hours and move to follow-up status.
     Runs every 1 hour via Celery beat.
     """
     try:
-        # Get current time minus 24 hours
-        cutoff_time = timezone.now() - timedelta(hours=24)
+        # Get current time minus 4 hours
+        cutoff_time = timezone.now() - timedelta(hours=4)
         
-        # Find applications that are "Waiting for Processing" and older than 24 hours
+        # Find applications that are "Waiting for Processing" and older than 4 hours
         applications_needing_followup = LoanApplication.objects.filter(
             status='Waiting for Processing',
             assigned_at__lt=cutoff_time,
@@ -56,7 +56,7 @@ def check_and_trigger_follow_ups(self):
                 # Create activity log
                 ActivityLog.objects.create(
                     action='follow_up_triggered',
-                    description=f"Application {application.applicant.full_name} moved to Required Follow-up (24+ hours waiting)",
+                    description=f"Application {application.applicant.full_name} moved to Required Follow-up (4+ hours waiting)",
                     user=None,  # System action
                 )
                 
@@ -95,7 +95,7 @@ def send_follow_up_notifications(application, assigned_user, admin_users):
             message = f"""
             Hello {assigned_user.first_name},
             
-            The loan application for {applicant_name} has been waiting for processing for over 24 hours.
+            The loan application for {applicant_name} has been waiting for processing for over 4 hours.
             
             Loan Details:
             - Applicant: {applicant_name}
@@ -122,7 +122,7 @@ def send_follow_up_notifications(application, assigned_user, admin_users):
             if admin_user.email:
                 subject = f"ALERT: Follow-up Required - {applicant_name}"
                 message = f"""
-                SYSTEM ALERT: 24-Hour Follow-up Triggered
+                SYSTEM ALERT: 4-Hour Follow-up Triggered
                 
                 Application: {applicant_name}
                 Loan Type: {application.applicant.get_loan_type_display()}
@@ -208,7 +208,7 @@ class WorkflowScheduler:
             from django.utils import timezone
             from datetime import timedelta
             
-            cutoff_time = timezone.now() - timedelta(hours=24)
+            cutoff_time = timezone.now() - timedelta(hours=4)
             applications_needing_followup = LoanApplication.objects.filter(
                 status='Waiting for Processing',
                 assigned_at__lt=cutoff_time,

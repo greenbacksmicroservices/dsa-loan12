@@ -246,7 +246,7 @@
         <div class="timeline">
             <div class="timeline-item">
                 <div class="timeline-time">Application Started</div>
-                <div class="timeline-desc">Status: New Entry</div>
+                <div class="timeline-desc">Status: New Application</div>
             </div>
             
             <div class="timeline-item">
@@ -258,7 +258,7 @@
                         Agent {{ loan_app.assigned_agent.name }}
                     {% endif %}
                 </div>
-                <div class="timeline-desc">Status: Waiting for Processing</div>
+                <div class="timeline-desc">Status: Document Pending</div>
             </div>
             
             <div class="timeline-item active">
@@ -325,7 +325,7 @@
 
 <script>
 function changeStatus() {
-    const newStatus = prompt('Enter new status:\n1. Waiting for Processing\n2. Required Follow-up\n3. Approved\n4. Rejected\n5. Disbursed');
+    const newStatus = prompt('Enter new status:\n1. Document Pending\n2. Required Follow-up\n3. Approved\n4. Rejected\n5. Disbursed');
     
     const statusMap = {
         '1': 'Waiting for Processing',

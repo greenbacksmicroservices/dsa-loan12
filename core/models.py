@@ -168,7 +168,7 @@ class Loan(models.Model):
     assigned_agent = models.ForeignKey(Agent, on_delete=models.SET_NULL, null=True, blank=True, related_name='loans')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='new_entry')
     
-    # Assignment & Follow-up Tracking (for 24-hour rule)
+    # Assignment & Follow-up Tracking (for 4-hour rule)
     assigned_at = models.DateTimeField(null=True, blank=True)  # When assigned to employee/agent
     action_taken_at = models.DateTimeField(null=True, blank=True)  # When approved/rejected
     follow_up_triggered_at = models.DateTimeField(null=True, blank=True)  # When auto-moved to follow-up
@@ -199,9 +199,9 @@ class Loan(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
-    # Helper methods for 24-hour follow-up automation
+    # Helper methods for 4-hour follow-up automation
     def is_overdue_for_followup(self):
-        """Check if 24 hours have passed since assignment without action"""
+        """Check if 4 hours have passed since assignment without action"""
         from django.utils import timezone
         from datetime import timedelta
         
@@ -209,7 +209,7 @@ class Loan(models.Model):
             return False
         
         time_elapsed = timezone.now() - self.assigned_at
-        return time_elapsed >= timedelta(hours=24)
+        return time_elapsed >= timedelta(hours=4)
     
     def get_hours_since_assignment(self):
         """Get hours elapsed since assignment"""
@@ -576,9 +576,9 @@ class LoanApplication(models.Model):
     
     @property
     def requires_follow_up(self):
-        """Check if application has been waiting > 24 hours"""
+        """Check if application has been waiting > 4 hours"""
         if self.is_waiting and self.hours_since_assignment:
-            return self.hours_since_assignment > 24
+            return self.hours_since_assignment > 4
         return False
     
     def trigger_follow_up(self):
@@ -858,6 +858,5 @@ class SubAdminEntry(models.Model):
     
     def __str__(self):
         return f"{self.applicant_name} - {self.loan_type} (â‚¹{self.loan_amount})"
-
 
 

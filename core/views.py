@@ -8,6 +8,7 @@ from django.core.paginator import Paginator
 from django.utils import timezone
 from datetime import datetime, timedelta
 import logging
+import re
 from rest_framework import viewsets, status
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
@@ -30,6 +31,7 @@ from .loan_sync import (
     find_related_loan_application,
     sync_loan_to_application,
 )
+from .followup_utils import auto_move_overdue_to_follow_up
 
 logger = logging.getLogger(__name__)
 
@@ -277,7 +279,7 @@ def admin_new_entries(request):
     applications = LoanApplication.objects.filter(status='New Entry').select_related('applicant', 'assigned_employee', 'assigned_agent').order_by('-created_at')
     
     context = {
-        'page_title': 'New Entry Applications',
+        'page_title': 'New Applications',
         'applications': applications,
         'status_name': 'New Entry',
         'status_icon': 'fa-file-alt',
@@ -296,7 +298,7 @@ def admin_in_processing(request):
     applications = LoanApplication.objects.filter(status='Waiting for Processing').select_related('applicant', 'assigned_employee', 'assigned_agent').order_by('-created_at')
     
     context = {
-        'page_title': 'In Processing Applications',
+        'page_title': 'Document Pending Applications',
         'applications': applications,
         'status_name': 'In Processing',
         'status_icon': 'fa-hourglass-half',
@@ -2349,7 +2351,7 @@ def workflow_stats(request):
             'total': LoanApplication.objects.count(),
             'requires_follow_up': LoanApplication.objects.filter(
                 status='Waiting for Processing'
-            ).count(),  # Will be calculated based on 24-hour rule
+            ).count(),  # Will be calculated based on 4-hour rule
         }
     else:
         # Employees/Agents see only their assigned applications
@@ -2854,7 +2856,7 @@ def api_get_my_assignments(request):
             'assigned_at': app.assigned_at.isoformat() if app.assigned_at else None,
             'hours_since_assignment': app.hours_since_assignment if app.hours_since_assignment else 0,
             'requires_follow_up': app.requires_follow_up,
-            'is_overdue': app.hours_since_assignment > 24 if app.hours_since_assignment else False,
+            'is_overdue': app.hours_since_assignment > 4 if app.hours_since_assignment else False,
             'documents_count': app.documents.count(),
             'follow_up_count': app.follow_up_count,
         })
@@ -3219,16 +3221,100 @@ def employee_dashboard_stats(request):
                 'disbursed': 0,
             }, status=status.HTTP_200_OK)
 
-        # Get all applications assigned to this employee
-        assignments = LoanApplication.objects.filter(assigned_employee=request.user)
-        follow_up_pending_app_q = Q(status__in=['New Entry', 'Waiting for Processing']) & Q(approval_notes__icontains='Revert Remark ')
-        follow_up_pending_legacy_q = Q(status__in=['new_entry', 'waiting']) & Q(remarks__icontains='Revert Remark ')
+        auto_move_overdue_to_follow_up()
 
-        # Fallback to legacy Loan table when workflow records are missing.
-        if assignments.exists():
-            follow_up_pending_count = assignments.filter(follow_up_pending_app_q).count()
-            new_entry_count = assignments.filter(status='New Entry').exclude(approval_notes__icontains='Revert Remark ').count()
-            waiting_count = assignments.filter(status='Waiting for Processing').exclude(approval_notes__icontains='Revert Remark ').count()
+        follow_up_pending_marker = 'revert remark '
+
+        def _app_is_follow_up_pending(app_obj):
+            if not app_obj or app_obj.status not in ['New Entry', 'Waiting for Processing']:
+                return False
+            return follow_up_pending_marker in str(app_obj.approval_notes or '').lower()
+
+        def _legacy_is_follow_up_pending(loan_obj):
+            if not loan_obj or loan_obj.status not in ['new_entry', 'waiting']:
+                return False
+            if follow_up_pending_marker in str(loan_obj.remarks or '').lower():
+                return True
+            return _app_is_follow_up_pending(find_related_loan_application(loan_obj))
+
+        # Primary source: legacy Loan table (used across employee panel APIs/templates).
+        legacy_assignments = list(Loan.objects.filter(assigned_employee=request.user))
+
+        if legacy_assignments:
+            related_app_ids = set()
+            for legacy in legacy_assignments:
+                related_app = find_related_loan_application(legacy)
+                if related_app:
+                    related_app_ids.add(related_app.id)
+
+            # Add workflow-only records not mapped to a legacy loan yet.
+            workflow_only_assignments = list(
+                LoanApplication.objects.filter(assigned_employee=request.user).exclude(id__in=related_app_ids)
+            )
+
+            legacy_new_entry = sum(
+                1 for loan in legacy_assignments
+                if loan.status == 'new_entry' and not _legacy_is_follow_up_pending(loan)
+            )
+            legacy_waiting = sum(
+                1 for loan in legacy_assignments
+                if loan.status == 'waiting' and not _legacy_is_follow_up_pending(loan)
+            )
+            legacy_banking = sum(1 for loan in legacy_assignments if loan.status == 'follow_up')
+            legacy_follow_up_pending = sum(1 for loan in legacy_assignments if _legacy_is_follow_up_pending(loan))
+            legacy_approved = sum(1 for loan in legacy_assignments if loan.status == 'approved')
+            legacy_rejected = sum(1 for loan in legacy_assignments if loan.status == 'rejected')
+            legacy_disbursed = sum(1 for loan in legacy_assignments if loan.status == 'disbursed')
+
+            workflow_new_entry = sum(
+                1 for app in workflow_only_assignments
+                if app.status == 'New Entry' and not _app_is_follow_up_pending(app)
+            )
+            workflow_waiting = sum(
+                1 for app in workflow_only_assignments
+                if app.status == 'Waiting for Processing' and not _app_is_follow_up_pending(app)
+            )
+            workflow_banking = sum(1 for app in workflow_only_assignments if app.status == BANKING_PROCESS_STATUS)
+            workflow_follow_up_pending = sum(1 for app in workflow_only_assignments if _app_is_follow_up_pending(app))
+            workflow_approved = sum(1 for app in workflow_only_assignments if app.status == 'Approved')
+            workflow_rejected = sum(1 for app in workflow_only_assignments if app.status == 'Rejected')
+            workflow_disbursed = sum(1 for app in workflow_only_assignments if app.status == 'Disbursed')
+
+            new_entry_count = legacy_new_entry + workflow_new_entry
+            waiting_count = legacy_waiting + workflow_waiting
+            banking_count = legacy_banking + workflow_banking
+            follow_up_pending_count = legacy_follow_up_pending + workflow_follow_up_pending
+            approved_count = legacy_approved + workflow_approved
+            rejected_count = legacy_rejected + workflow_rejected
+            disbursed_count = legacy_disbursed + workflow_disbursed
+            total_assigned = len(legacy_assignments) + len(workflow_only_assignments)
+
+            stats = {
+                'success': True,
+                'total_assigned': total_assigned,
+                'total_loans': total_assigned,
+                'new_entry': new_entry_count,
+                'waiting': waiting_count,
+                'processing': waiting_count,
+                'in_processing': waiting_count + banking_count,
+                'approved': approved_count,
+                'rejected': rejected_count,
+                'follow_up': banking_count,
+                'follow_up_pending': follow_up_pending_count,
+                'banking_process': banking_count,
+                'disbursed': disbursed_count,
+            }
+        else:
+            assignments = LoanApplication.objects.filter(assigned_employee=request.user)
+            follow_up_pending_count = sum(1 for app in assignments if _app_is_follow_up_pending(app))
+            new_entry_count = sum(
+                1 for app in assignments
+                if app.status == 'New Entry' and not _app_is_follow_up_pending(app)
+            )
+            waiting_count = sum(
+                1 for app in assignments
+                if app.status == 'Waiting for Processing' and not _app_is_follow_up_pending(app)
+            )
             banking_count = assignments.filter(status=BANKING_PROCESS_STATUS).count()
             stats = {
                 'success': True,
@@ -3244,27 +3330,6 @@ def employee_dashboard_stats(request):
                 'follow_up_pending': follow_up_pending_count,
                 'banking_process': banking_count,
                 'disbursed': assignments.filter(status='Disbursed').count(),
-            }
-        else:
-            legacy_assignments = Loan.objects.filter(assigned_employee=request.user)
-            new_entry_count = legacy_assignments.filter(status='new_entry').exclude(remarks__icontains='Revert Remark ').count()
-            processing_count = legacy_assignments.filter(status='waiting').exclude(remarks__icontains='Revert Remark ').count()
-            follow_up_count = legacy_assignments.filter(status='follow_up').count()
-            follow_up_pending_count = legacy_assignments.filter(follow_up_pending_legacy_q).count()
-            stats = {
-                'success': True,
-                'total_assigned': legacy_assignments.count(),
-                'total_loans': legacy_assignments.count(),
-                'new_entry': new_entry_count,
-                'waiting': processing_count,
-                'processing': processing_count,
-                'in_processing': processing_count + follow_up_count,
-                'approved': legacy_assignments.filter(status='approved').count(),
-                'rejected': legacy_assignments.filter(status='rejected').count(),
-                'follow_up': follow_up_count,
-                'follow_up_pending': follow_up_pending_count,
-                'banking_process': follow_up_count,
-                'disbursed': legacy_assignments.filter(status='disbursed').count(),
             }
         return Response(stats, status=status.HTTP_200_OK)
     except Exception as e:
@@ -3620,13 +3685,13 @@ def loan_entries_view(request):
 def loan_waiting_view(request):
     """Waiting for Processing - Assigned loans"""
     return render(request, 'core/admin/loan_waiting.html', {
-        'page_title': 'Waiting for Processing'
+        'page_title': 'Document Pending'
     })
 
 
 @admin_required
 def loan_followup_view(request):
-    """Required Follow-up - Loans with 24h+ no action"""
+    """Required Follow-up - Loans with 4h+ no action"""
     return render(request, 'core/admin/loan_followup.html', {
         'page_title': 'Required Follow-up'
     })
@@ -3930,11 +3995,13 @@ def api_dashboard_stats(request):
     now = timezone.now()
     
     try:
+        auto_move_overdue_to_follow_up()
+
         new_entry_count = LoanApplication.objects.filter(status='New Entry').count()
         waiting_count = LoanApplication.objects.filter(status='Waiting for Processing').count()
         
-        # Follow-up: loans assigned > 24h ago with no action
-        followup_cutoff = now - timedelta(hours=24)
+        # Follow-up: loans assigned > 4h ago with no action
+        followup_cutoff = now - timedelta(hours=4)
         followup_count = LoanApplication.objects.filter(
             status='Waiting for Processing',
             assigned_at__lt=followup_cutoff,
@@ -4297,7 +4364,7 @@ def employee_request_new_entry_loan(request):
     """
     return render(request, 'core/employee/request_new_entry_loan.html', {
         'page_mode': 'new_entry',
-        'page_title_text': 'Request New Entry Loans',
+        'page_title_text': 'Request New Application Loans',
         'page_subtitle_text': 'Assigned fresh requests waiting for initial review.',
         'default_status_filter': 'Waiting for Processing',
     })
@@ -4338,13 +4405,21 @@ def _is_follow_up_pending_legacy(loan_obj):
         return False
     if loan_obj.status not in ['new_entry', 'waiting']:
         return False
-    return _has_revert_marker(loan_obj.remarks)
+    if _has_revert_marker(loan_obj.remarks):
+        return True
+    related_app = find_related_loan_application(loan_obj)
+    return _has_revert_marker(getattr(related_app, 'approval_notes', '')) if related_app else False
 
 
 def _ui_status_label(status_text, follow_up_pending=False):
     if follow_up_pending:
         return FOLLOW_UP_PENDING_LABEL
-    if status_text == BANKING_PROCESS_STATUS:
+    normalized = str(status_text or '').strip().lower()
+    if normalized in ['new entry', 'new_entry', 'draft']:
+        return 'New Application'
+    if normalized in ['waiting for processing', 'in processing', 'waiting', 'processing']:
+        return 'Document Pending'
+    if status_text == BANKING_PROCESS_STATUS or normalized == 'required follow-up':
         return 'Banking Processing'
     return status_text
 
@@ -4666,15 +4741,50 @@ def _parse_float_safe(value, default=0):
 
 def _extract_existing_loans_from_parsed(parsed_details):
     rows = []
-    for idx in [1, 2, 3]:
-        bank_name = _get_parsed_value(parsed_details, f'loan {idx} bank finance name', f'loan {idx} bank name', f'loan {idx} bank')
-        amount_taken = _get_parsed_value(parsed_details, f'loan {idx} amount taken')
-        emi_left = _get_parsed_value(parsed_details, f'loan {idx} emi left')
-        amount_left = _get_parsed_value(parsed_details, f'loan {idx} amount left')
-        years_months = _get_parsed_value(parsed_details, f'loan {idx} years months', f'loan {idx} years/months')
-        emi_amount = _get_parsed_value(parsed_details, f'loan {idx} emi amount')
-        any_bounce = _get_parsed_value(parsed_details, f'loan {idx} any bounce', f'loan {idx} bounce')
-        cleared = _get_parsed_value(parsed_details, f'loan {idx} cleared')
+    details_map = parsed_details or {}
+    loan_index_pattern = re.compile(r'^(?:existing\s+)?loan\s+(\d+)\s+')
+    dynamic_indexes = sorted({
+        int(match.group(1))
+        for key in details_map.keys()
+        for match in [loan_index_pattern.match(str(key or ''))]
+        if match
+    })
+    indexes = dynamic_indexes if dynamic_indexes else [1, 2, 3]
+
+    for idx in indexes:
+        bank_name = _get_parsed_value(
+            details_map,
+            f'existing loan {idx} bank finance name',
+            f'existing loan {idx} bank name',
+            f'existing loan {idx} bank',
+            f'loan {idx} bank finance name',
+            f'loan {idx} bank name',
+            f'loan {idx} bank',
+        )
+        amount_taken = _get_parsed_value(details_map, f'existing loan {idx} amount taken', f'loan {idx} amount taken')
+        emi_left = _get_parsed_value(details_map, f'existing loan {idx} emi left', f'loan {idx} emi left')
+        amount_left = _get_parsed_value(details_map, f'existing loan {idx} amount left', f'loan {idx} amount left')
+        years_months = _get_parsed_value(
+            details_map,
+            f'existing loan {idx} years months',
+            f'existing loan {idx} years/months',
+            f'existing loan {idx} duration',
+            f'existing loan {idx} tenure',
+            f'loan {idx} years months',
+            f'loan {idx} years/months',
+            f'loan {idx} duration',
+            f'loan {idx} tenure',
+        )
+        emi_amount = _get_parsed_value(details_map, f'existing loan {idx} emi amount', f'loan {idx} emi amount')
+        any_bounce = _get_parsed_value(
+            details_map,
+            f'existing loan {idx} any bounce',
+            f'existing loan {idx} bounce',
+            f'existing loan {idx} emi cross',
+            f'loan {idx} any bounce',
+            f'loan {idx} bounce',
+        )
+        cleared = _get_parsed_value(details_map, f'existing loan {idx} cleared', f'loan {idx} cleared')
         if any([bank_name, amount_taken, emi_left, amount_left, years_months, emi_amount, any_bounce, cleared]):
             rows.append({
                 'bank_name': bank_name or '-',
@@ -4709,6 +4819,8 @@ def employee_assigned_loans_list(request):
         }, status=status.HTTP_200_OK)
 
     try:
+        auto_move_overdue_to_follow_up()
+
         status_filter = request.GET.get('status', '').strip()
         from_date = request.GET.get('from_date', '').strip()
         to_date = request.GET.get('to_date', '').strip()
@@ -4895,8 +5007,8 @@ def employee_assigned_loan_detail(request, loan_id):
         if not raw_status:
             return '-'
         mapping = {
-            'new_entry': 'New Entry',
-            'waiting': 'Waiting for Processing',
+            'new_entry': 'New Application',
+            'waiting': 'Document Pending',
             'follow_up': 'Banking Processing',
             'follow_up_pending': FOLLOW_UP_PENDING_LABEL,
             'approved': 'Approved',
@@ -5844,16 +5956,23 @@ def employee_sign_off_loan(request, loan_id):
         # Backward compatible default: if client doesn't send is_sm_signed, treat as "Yes".
         signature_done_raw = requested.get('is_sm_signed', requested.get('signature_done', None))
         signature_done = True if signature_done_raw is None else bool(signature_done_raw)
+        bank_remark = str(requested.get('bank_remark', '')).strip()
 
         signer = request.user.get_full_name() or request.user.username or 'System'
         sign_reason = f"SM Signature Done: {'Yes' if signature_done else 'No'} (by {signer})"
+        bank_remark_reason = f"Bank Remark: {bank_remark}" if bank_remark else ''
+        sign_reason_with_remark = (
+            _append_note_line(sign_reason, bank_remark_reason)
+            if bank_remark_reason
+            else sign_reason
+        )
 
         prev = bool(loan.is_sm_signed)
         if signature_done:
             if not prev:
                 loan.is_sm_signed = True
                 loan.sm_signed_at = timezone.now()
-                loan.approval_notes = _append_note_line(loan.approval_notes, sign_reason)
+                loan.approval_notes = _append_note_line(loan.approval_notes, sign_reason_with_remark)
                 loan.save(update_fields=['is_sm_signed', 'sm_signed_at', 'approval_notes', 'updated_at'])
 
                 LoanStatusHistory.objects.create(
@@ -5861,17 +5980,25 @@ def employee_sign_off_loan(request, loan_id):
                     from_status='approved',
                     to_status='approved',
                     changed_by=request.user,
-                    reason=sign_reason,
+                    reason=sign_reason_with_remark,
                     is_auto_triggered=False,
                 )
 
-                _append_related_loan_remark(loan, sign_reason, status_override='approved')
+                _append_related_loan_remark(loan, sign_reason_with_remark, status_override='approved')
+            elif bank_remark_reason:
+                loan.approval_notes = _append_note_line(loan.approval_notes, bank_remark_reason)
+                loan.save(update_fields=['approval_notes', 'updated_at'])
+                _append_related_loan_remark(loan, bank_remark_reason, status_override='approved')
         else:
             if prev:
                 loan.is_sm_signed = False
                 loan.sm_signed_at = None
-                loan.approval_notes = _append_note_line(loan.approval_notes, sign_reason)
+                loan.approval_notes = _append_note_line(loan.approval_notes, sign_reason_with_remark)
                 loan.save(update_fields=['is_sm_signed', 'sm_signed_at', 'approval_notes', 'updated_at'])
+            elif bank_remark_reason:
+                loan.approval_notes = _append_note_line(loan.approval_notes, bank_remark_reason)
+                loan.save(update_fields=['approval_notes', 'updated_at'])
+                _append_related_loan_remark(loan, bank_remark_reason, status_override='approved')
 
         return Response({
             'success': True,
@@ -5902,22 +6029,35 @@ def employee_sign_off_loan(request, loan_id):
             requested = request.data or {}
             signature_done_raw = requested.get('is_sm_signed', requested.get('signature_done', None))
             signature_done = True if signature_done_raw is None else bool(signature_done_raw)
+            bank_remark = str(requested.get('bank_remark', '')).strip()
 
             signer = request.user.get_full_name() or request.user.username or 'System'
             sign_reason = f"SM Signature Done: {'Yes' if signature_done else 'No'} (by {signer})"
+            bank_remark_reason = f"Bank Remark: {bank_remark}" if bank_remark else ''
+            sign_reason_with_remark = (
+                _append_note_line(sign_reason, bank_remark_reason)
+                if bank_remark_reason
+                else sign_reason
+            )
 
             prev = bool(getattr(legacy, 'is_sm_signed', False))
             if signature_done:
                 if not prev:
                     legacy.is_sm_signed = True
                     legacy.sm_signed_at = timezone.now()
-                    legacy.remarks = _append_note_line(legacy.remarks, sign_reason)
+                    legacy.remarks = _append_note_line(legacy.remarks, sign_reason_with_remark)
+                    legacy.save()
+                elif bank_remark_reason:
+                    legacy.remarks = _append_note_line(legacy.remarks, bank_remark_reason)
                     legacy.save()
             else:
                 if prev:
                     legacy.is_sm_signed = False
                     legacy.sm_signed_at = None
-                    legacy.remarks = _append_note_line(legacy.remarks, sign_reason)
+                    legacy.remarks = _append_note_line(legacy.remarks, sign_reason_with_remark)
+                    legacy.save()
+                elif bank_remark_reason:
+                    legacy.remarks = _append_note_line(legacy.remarks, bank_remark_reason)
                     legacy.save()
 
             synced_application = sync_loan_to_application(
@@ -5931,7 +6071,7 @@ def employee_sign_off_loan(request, loan_id):
                     from_status='approved',
                     to_status='approved',
                     changed_by=request.user,
-                    reason=sign_reason,
+                    reason=sign_reason_with_remark,
                     is_auto_triggered=False,
                 )
 
@@ -6395,5 +6535,3 @@ def employee_disburse_loan(request, loan_id):
             return Response({'success': False, 'error': 'Loan not found'}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         return Response({'success': False, 'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-

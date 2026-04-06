@@ -15,14 +15,14 @@
     <!-- Statistics Cards -->
     <div class="card-container">
         <a class="insight-card c-new" href="{% url 'employee_loans_new_entry' %}">
-            <p class="status-title">New Entry</p>
+            <p class="status-title">New Application</p>
             <h2 class="main-value" id="stat-new-entry">0</h2>
             <p class="description">Total New Applications</p>
             <span class="view-details" style="color:#4c51bf;">View Details →</span>
         </a>
 
         <a class="insight-card c-process" href="{% url 'employee_loans_waiting' %}">
-            <p class="status-title">In Processing</p>
+            <p class="status-title">Document Pending</p>
             <h2 class="main-value" id="stat-waiting">0</h2>
             <p class="description">Pending Review</p>
             <span class="view-details" style="color:#d69e2e;">View Details →</span>
@@ -35,7 +35,7 @@
             <span class="view-details" style="color:#319795;">View Details →</span>
         </a>
 
-        <a class="insight-card c-follow" href="{% url 'employee_loans_followup_pending' %}">
+        <a class="insight-card c-follow" href="{% url 'employee_loans_followup_pending' %}" id="follow-up-card">
             <p class="status-title">Follow Up</p>
             <h2 class="main-value" id="stat-follow-up-pending">0</h2>
             <p class="description">Reverted for Correction</p>
@@ -180,6 +180,17 @@
     .c-approved { color: #48bb78; }
     .c-rejected { color: #f56565; }
     .c-disbursed { color: #4299e1; }
+
+    .followup-alert {
+        border: 2px solid #dc2626 !important;
+        animation: followupPulse 1.2s infinite;
+    }
+
+    @keyframes followupPulse {
+        0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.55); }
+        70% { box-shadow: 0 0 0 10px rgba(220, 38, 38, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+    }
 
     .employee-dashboard-heading {
         position: sticky;
@@ -416,7 +427,17 @@
                 loadAllLoansHistory();
             }
             loadMonthlyChart();
-        }, 30000);
+        }, 10000);
+
+        window.addEventListener('focus', function() {
+            loadEmployeeDashboardStats();
+        });
+
+        document.addEventListener('visibilitychange', function() {
+            if (!document.hidden) {
+                loadEmployeeDashboardStats();
+            }
+        });
 
         // Search and filter functionality
         const searchBox = document.getElementById('search-box');
@@ -480,6 +501,11 @@
                 document.getElementById('stat-approved').textContent = data.approved || 0;
                 document.getElementById('stat-rejected').textContent = data.rejected || 0;
                 document.getElementById('stat-disbursed').textContent = data.disbursed || 0;
+
+                const followCard = document.getElementById('follow-up-card');
+                if (followCard) {
+                    followCard.classList.toggle('followup-alert', Number(data.follow_up_pending || 0) > 0);
+                }
                 renderStatusChart(data);
             }
         })
@@ -491,7 +517,7 @@
         const canvas = document.getElementById('statusChart');
         if (!canvas) return;
 
-        const labels = ['New Entry', 'In Processing', 'Banking', 'Follow Up', 'Approved', 'Rejected', 'Disbursed'];
+        const labels = ['New Application', 'Document Pending', 'Banking', 'Follow Up', 'Approved', 'Rejected', 'Disbursed'];
         const values = [
             data.new_entry || 0,
             data.waiting || 0,
@@ -641,7 +667,13 @@
 
             const badgeClass = statusBadges[loan.status] || 'bg-secondary';
             const photoUrl = loan.applicant_photo || '/static/images/default-avatar.svg';
-            const statusLabel = loan.status_display || loan.status || 'N/A';
+            const rawStatusLabel = loan.status_display || loan.status || 'N/A';
+            const statusLabel = (function(label) {
+                const text = String(label || '').trim().toLowerCase();
+                if (text === 'new entry') return 'New Application';
+                if (text === 'in processing' || text === 'waiting for processing') return 'Document Pending';
+                return label;
+            })(rawStatusLabel);
             const isFollowUpPending = loan.status === 'follow_up_pending';
             const actionClass = isFollowUpPending ? 'btn-outline-warning' : 'btn-outline-primary';
             const actionLabel = isFollowUpPending ? 'Edit' : 'View';
@@ -718,4 +750,3 @@
 </script>
 
 {% endblock %}
-

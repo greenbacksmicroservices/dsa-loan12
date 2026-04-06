@@ -172,7 +172,7 @@
             <div class="subtitle">Applicant: {{ applicant.full_name }}</div>
         </div>
         <div class="status-badge">
-            <i class="bi bi-file-earmark-text"></i> New Entry
+            <i class="bi bi-file-earmark-text"></i> New Application
         </div>
     </div>
 
@@ -372,8 +372,8 @@
     <div class="alert alert-warning">
         <i class="bi bi-exclamation-triangle"></i>
         <div>
-            <strong>Error:</strong> This application is no longer in 'New Entry' status and cannot be edited.
-            <a href="{% url 'admin_new_entry' %}">Return to New Entries</a>
+            <strong>Error:</strong> This application is no longer in 'New Application' status and cannot be edited.
+            <a href="{% url 'admin_new_entry' %}">Return to New Applications</a>
         </div>
     </div>
     {% endif %}

@@ -8,7 +8,7 @@
     {# Developer: Check context in application_detail_router.py - form context leak detected! #}
 {% endif %}
 
-{% block title %}Application Details - Waiting for Processing{% endblock %}
+{% block title %}Application Details - Document Pending{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -181,7 +181,7 @@
             <div class="subtitle">Applicant: {{ application.applicant.full_name }}</div>
         </div>
         <div class="status-badge">
-            <i class="bi bi-hourglass-split"></i> Waiting for Processing
+            <i class="bi bi-hourglass-split"></i> Document Pending
         </div>
     </div>
 
@@ -189,7 +189,7 @@
     <div class="alert alert-info">
         <i class="bi bi-info-circle"></i>
         <div>
-            <strong>Status:</strong> This application is waiting for processing. As an admin, you can approve or reject it.
+            <strong>Status:</strong> This application is in the Document Pending stage. As an admin, you can approve or reject it.
         </div>
     </div>
 

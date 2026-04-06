@@ -29,8 +29,10 @@ from .models import (
 from .loan_sync import (
     application_status_to_loan_status,
     extract_assignment_context,
+    find_related_loan_application,
     sync_loan_to_application,
 )
+from .followup_utils import auto_move_overdue_to_follow_up
 from django.utils import timezone
 from datetime import timedelta
 import json
@@ -62,7 +64,10 @@ def _is_follow_up_pending_loan(loan_obj):
         return False
     if loan_obj.status not in ['new_entry', 'waiting']:
         return False
-    return _has_revert_marker(loan_obj.remarks)
+    if _has_revert_marker(loan_obj.remarks):
+        return True
+    related_app = find_related_loan_application(loan_obj)
+    return _has_revert_marker(getattr(related_app, 'approval_notes', '')) if related_app else False
 
 
 def _follow_up_pending_q():
@@ -611,11 +616,15 @@ def subadmin_all_loans(request):
     - Sortable columns
     - Real-time counts
     """
+    auto_move_overdue_to_follow_up()
+
     # Start with scoped loans only
     scoped_loans = _subadmin_scoped_loans_qs(request.user).select_related(
         'assigned_employee', 'assigned_agent', 'created_by'
     )
     loans_qs = scoped_loans
+    scoped_loans_list = list(scoped_loans)
+    follow_up_pending_ids = {loan.id for loan in scoped_loans_list if _is_follow_up_pending_loan(loan)}
     
     # Apply filters
     search_query = request.GET.get('q', '').strip()
@@ -624,6 +633,12 @@ def subadmin_all_loans(request):
     employee_filter = request.GET.get('employee', '')
     date_from = request.GET.get('date_from', '')
     date_to = request.GET.get('date_to', '')
+    try:
+        per_page = int(request.GET.get('per_page', 10) or 10)
+    except (TypeError, ValueError):
+        per_page = 10
+    if per_page not in [10, 25, 50, 100]:
+        per_page = 10
     
     # Search filter
     if search_query:
@@ -634,14 +649,13 @@ def subadmin_all_loans(request):
             Q(user_id__icontains=search_query)
         )
     
-    follow_up_pending_q = _follow_up_pending_q()
     # Status filter
     if status_filter == 'follow_up_pending':
-        loans_qs = loans_qs.filter(follow_up_pending_q)
+        loans_qs = loans_qs.filter(id__in=follow_up_pending_ids)
     elif status_filter and status_filter != 'all':
         loans_qs = loans_qs.filter(status=status_filter)
         if status_filter in ['new_entry', 'waiting']:
-            loans_qs = loans_qs.exclude(remarks__icontains='Revert Remark ')
+            loans_qs = loans_qs.exclude(id__in=follow_up_pending_ids)
     
     managed_agents_qs = _subadmin_managed_agents_qs(request.user)
     managed_employees_qs = _subadmin_managed_employees_qs(request.user)
@@ -681,19 +695,19 @@ def subadmin_all_loans(request):
     employees = managed_employees_qs.values('id', 'first_name', 'last_name').distinct()
 
     # Real-time counts (scoped)
-    all_loans_count = scoped_loans.count()
+    all_loans_count = len(scoped_loans_list)
     status_counts = {
-        'new_entry': scoped_loans.filter(status='new_entry').exclude(remarks__icontains='Revert Remark ').count(),
-        'waiting': scoped_loans.filter(status='waiting').exclude(remarks__icontains='Revert Remark ').count(),
+        'new_entry': scoped_loans.filter(status='new_entry').exclude(id__in=follow_up_pending_ids).count(),
+        'waiting': scoped_loans.filter(status='waiting').exclude(id__in=follow_up_pending_ids).count(),
         'follow_up': scoped_loans.filter(status='follow_up').count(),
-        'follow_up_pending': scoped_loans.filter(follow_up_pending_q).count(),
+        'follow_up_pending': len(follow_up_pending_ids),
         'approved': scoped_loans.filter(status='approved').count(),
         'rejected': scoped_loans.filter(status='rejected').count(),
         'disbursed': scoped_loans.filter(status='disbursed').count(),
     }
     
     # Pagination
-    paginator = Paginator(loans_qs, 20)
+    paginator = Paginator(loans_qs, per_page)
     page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
     
@@ -747,6 +761,9 @@ def subadmin_all_loans(request):
         'employee_filter': employee_filter,
         'date_from': date_from,
         'date_to': date_to,
+        'per_page': per_page,
+        'showing_start': page_obj.start_index() if page_obj.paginator.count else 0,
+        'showing_end': page_obj.end_index() if page_obj.paginator.count else 0,
         'stats': {
             'total': all_loans_count,
             'new_entry': status_counts['new_entry'],
@@ -2063,118 +2080,9 @@ def subadmin_settings(request):
 @require_http_methods(['GET', 'POST'])
 def subadmin_add_loan(request):
     """
-    SubAdmin Add New Loan - Create new loan applications
+    SubAdmin Add New Loan - Use the same comprehensive form and logic
+    as admin/employee add-loan flow.
     """
-    if request.method == 'POST':
-        try:
-            # Extract form data
-            applicant_name = request.POST.get('applicant_name')
-            applicant_email = request.POST.get('applicant_email')
-            applicant_mobile = request.POST.get('applicant_mobile')
-            fathers_name = request.POST.get('fathers_name')
-            dob = request.POST.get('dob')
-            gender = request.POST.get('gender')
-            
-            permanent_address = request.POST.get('permanent_address')
-            permanent_city = request.POST.get('permanent_city')
-            permanent_pin = request.POST.get('permanent_pin')
-            
-            occupation = request.POST.get('occupation')
-            year_of_experience = request.POST.get('year_of_experience')
-            monthly_income = request.POST.get('monthly_income')
-            
-            # Optional employment fields
-            company_name = request.POST.get('company_name', '')
-            designation = request.POST.get('designation', '')
-            nature_of_business = request.POST.get('nature_of_business', '')
-            
-            loan_type = request.POST.get('loan_type')
-            loan_amount_required = request.POST.get('loan_amount_required')
-            loan_tenure = request.POST.get('loan_tenure')
-            
-            bank_name = request.POST.get('bank_name')
-            account_number = request.POST.get('account_number')
-            ifsc_code = request.POST.get('ifsc_code')
-            
-            aadhar_number = request.POST.get('aadhar_number')
-            pan_number = request.POST.get('pan_number')
-            cibil_score = request.POST.get('cibil_score', 0)
-            
-            ref1_name = request.POST.get('ref1_name')
-            ref1_mobile = request.POST.get('ref1_mobile')
-            ref2_name = request.POST.get('ref2_name')
-            ref2_mobile = request.POST.get('ref2_mobile')
-            
-            # Create LoanApplication entry
-            loan_application = LoanApplication.objects.create(
-                name=applicant_name,
-                email=applicant_email,
-                mobile_no=applicant_mobile,
-                fathers_name=fathers_name,
-                dob=dob,
-                gender=gender,
-                permanent_address=permanent_address,
-                permanent_city=permanent_city,
-                permanent_pin=permanent_pin,
-                occupation=occupation,
-                year_of_experience=int(year_of_experience) if year_of_experience else 0,
-                monthly_income=float(monthly_income) if monthly_income else 0,
-                company_name=company_name,
-                designation=designation,
-                nature_of_business=nature_of_business,
-                loan_type=loan_type,
-                loan_amount_required=float(loan_amount_required) if loan_amount_required else 0,
-                loan_tenure=int(loan_tenure) if loan_tenure else 0,
-                bank_name=bank_name,
-                account_number=account_number,
-                ifsc_code=ifsc_code,
-                aadhar_number=aadhar_number,
-                pan_number=pan_number,
-                cibil_score=int(cibil_score) if cibil_score else 0,
-                reference1_name=ref1_name,
-                reference1_mobile=ref1_mobile,
-                reference2_name=ref2_name,
-                reference2_mobile=ref2_mobile,
-                status='new_entry',
-                created_by=request.user,
-            )
-            
-            # Handle document uploads
-            documents_names = request.POST.getlist('document_name[]')
-            documents_files = request.FILES.getlist('document_file[]')
-            
-            for name, file in zip(documents_names, documents_files):
-                if file:
-                    LoanDocument.objects.create(
-                        loan_application=loan_application,
-                        document_name=name,
-                        document_file=file,
-                        uploaded_by=request.user,
-                    )
-            
-            # Create corresponding Loan entry
-            Loan.objects.create(
-                applicant_name=applicant_name,
-                applicant_email=applicant_email,
-                applicant_mobile=applicant_mobile,
-                loan_type=loan_type,
-                loan_amount=float(loan_amount_required) if loan_amount_required else 0,
-                status='new_entry',
-                created_by=request.user,
-            )
-            
-            from django.contrib import messages
-            messages.success(request, 'Loan application created successfully!')
-            return redirect('subadmin_all_loans')
-            
-        except Exception as e:
-            logger.error(f"Error creating loan: {str(e)}")
-            from django.contrib import messages
-            messages.error(request, f'Error creating loan: {str(e)}')
-            return render(request, 'subadmin/subadmin_entries.html')
-    
-    context = {
-        'page_title': 'Add New Loan Application',
-    }
-    return render(request, 'subadmin/subadmin_entries.html', context)
+    from .admin_views import admin_add_loan
+    return admin_add_loan(request)
 

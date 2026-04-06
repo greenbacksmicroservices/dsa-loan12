@@ -486,14 +486,14 @@
         </div>
 
         <div id="btDetailsSection">
-        <!-- ===================== SECTION 3: EXISTING LOAN DETAILS ===================== -->
+        <!-- ===================== SECTION 3: LOAN TYPE ===================== -->
         <div class="section-header">
-            <i class="bi bi-cash-coin"></i> SECTION 3: EXISTING LOAN DETAILS
+            <i class="bi bi-cash-coin"></i> SECTION 3: LOAN TYPE
         </div>
         <div class="form-section">
             <div class="info-alert">
                 <i class="bi bi-info-circle"></i> 
-                Provide details of all existing loans or EMI commitments.
+                Provide details of all existing loan commitments.
             </div>
 
             <!-- Loan 1 -->
@@ -507,23 +507,12 @@
 
             <div class="form-row">
                 <div class="form-group">
-                    <label>Amount Left</label>
+                    <label>Outstanding Amount</label>
                     <input type="number" class="form-control" name="loan1_amount_left" placeholder="Remaining amount to be paid" min="0">
                 </div>
                 <div class="form-group">
                     <label>EMI Amount</label>
                     <input type="text" class="form-control" name="loan1_emi_over" placeholder="Monthly EMI amount">
-                </div>
-            </div>
-
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Cleared - Yes/No</label>
-                    <select class="form-select" name="loan1_cleared">
-                        <option value="">-- Select --</option>
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
-                    </select>
                 </div>
             </div>
 
@@ -546,7 +535,7 @@
 
             <div class="form-row">
                 <div class="form-group">
-                    <label>Amount Left</label>
+                    <label>Outstanding Amount</label>
                     <input type="number" class="form-control" name="loan2_amount_left" placeholder="Remaining amount to be paid" min="0">
                 </div>
                 <div class="form-group">
@@ -556,25 +545,6 @@
                 <div class="form-group">
                     <label>EMI Amount</label>
                     <input type="text" class="form-control" name="loan2_emi_over" placeholder="Monthly EMI amount">
-                </div>
-            </div>
-
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Emi Cross</label>
-                    <select class="form-select" name="loan2_bounce">
-                        <option value="">-- Select --</option>
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Cleared - Yes/No</label>
-                    <select class="form-select" name="loan2_cleared">
-                        <option value="">-- Select --</option>
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
-                    </select>
                 </div>
             </div>
 
@@ -597,7 +567,7 @@
 
             <div class="form-row">
                 <div class="form-group">
-                    <label>Amount Left</label>
+                    <label>Outstanding Amount</label>
                     <input type="number" class="form-control" name="loan3_amount_left" placeholder="Remaining amount to be paid" min="0">
                 </div>
                 <div class="form-group">
@@ -607,25 +577,6 @@
                 <div class="form-group">
                     <label>EMI Amount</label>
                     <input type="text" class="form-control" name="loan3_emi_over" placeholder="Monthly EMI amount">
-                </div>
-            </div>
-
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Emi Cross</label>
-                    <select class="form-select" name="loan3_bounce">
-                        <option value="">-- Select --</option>
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Cleared - Yes/No</label>
-                    <select class="form-select" name="loan3_cleared">
-                        <option value="">-- Select --</option>
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
-                    </select>
                 </div>
             </div>
         </div>
@@ -679,7 +630,7 @@
             </div>
 
             <!-- Reference 1 -->
-            <div class="sub-section-title">Reference #1</div>
+            <div class="sub-section-title">Reference #1 (Colleague)</div>
             <div class="form-row">
                 <div class="form-group">
                     <label>Name </label>
@@ -699,7 +650,7 @@
             </div>
 
             <!-- Reference 2 -->
-            <div class="sub-section-title" style="margin-top: 30px;">Reference #2</div>
+            <div class="sub-section-title" style="margin-top: 30px;">Reference #2 (Family or Friends)</div>
             <div class="form-row">
                 <div class="form-group">
                     <label>Name </label>
@@ -719,17 +670,17 @@
             </div>
         </div>
 
-        <!-- ===================== SECTION 6: FINANCIAL & BANK DETAILS ===================== -->
+        <!-- ===================== SECTION 6: BALANCE TRANSFER (IF ANY) ===================== -->
         <div class="section-header">
-            <i class="bi bi-bank"></i> SECTION 6: FINANCIAL & BANK DETAILS
+            <i class="bi bi-bank"></i> SECTION 6: BALANCE TRANSFER (IF ANY)
         </div>
         <div class="form-section">
             <div class="info-alert">
                 <i class="bi bi-info-circle"></i> 
-                Provide your financial and bank details for verification and loan disbursement.
+                Fill balance transfer details (if applicable).
             </div>
 
-            <div class="sub-section-title">Credit & Identity Details</div>
+            <div class="sub-section-title">Balance Transfer (If Any)</div>
             <div class="form-row">
                 <div class="form-group">
                     <label>Name of Bank</label>
@@ -747,12 +698,12 @@
                     <input type="text" class="form-control" name="loan1_duration" placeholder="e.g., 2 years 6 months">
                 </div>
                 <div class="form-group">
-                    <label>Emi Cross</label>
-                    <select class="form-select" name="loan1_bounce">
-                        <option value="">-- Select --</option>
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
-                    </select>
+                    <label>EMI Paid</label>
+                    <input type="text" class="form-control" name="loan1_emi_paid" placeholder="Enter EMI paid details">
+                </div>
+                <div class="form-group">
+                    <label>Current Outstanding Amount</label>
+                    <input type="number" class="form-control" name="loan1_current_outstanding_amount" placeholder="Enter current outstanding amount" min="0">
                 </div>
             </div>
 
@@ -798,9 +749,51 @@
             </div>
         </div>
 
-        <!-- ===================== SECTION 7: DOCUMENTS ===================== -->
+        <!-- ===================== SECTION 7: LEAD RECEIVE ===================== -->
         <div class="section-header">
-            <i class="bi bi-file-earmark-pdf"></i> SECTION 7: DOCUMENTS
+            <i class="bi bi-person-plus"></i> SECTION 7: LEAD RECEIVE
+        </div>
+        <div class="form-section">
+            <div class="info-alert">
+                <i class="bi bi-info-circle"></i>
+                Add lead receive details for realtime tracking.
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Channel Partner Name</label>
+                    <input type="text" class="form-control" name="lead_receive_channel_partner_name" placeholder="Enter channel partner name">
+                </div>
+                <div class="form-group">
+                    <label>Leader Name</label>
+                    <input type="text" class="form-control" name="lead_receive_leader_name" placeholder="Enter leader name">
+                </div>
+                <div class="form-group">
+                    <label>Lead Source</label>
+                    <select class="form-select" name="lead_receive_source">
+                        <option value="">-- Select Lead Source --</option>
+                        <option value="Open Market">Open Market</option>
+                        <option value="Phone Call">Phone Call</option>
+                        <option value="Email">Email</option>
+                        <option value="WhatsApp">WhatsApp</option>
+                        <option value="Friends">Friends</option>
+                        <option value="Family Member">Family Member</option>
+                        <option value="Social Media">Social Media</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row full-width">
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea class="form-control" name="lead_receive_description" placeholder="Lead description"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===================== SECTION 8: DOCUMENTS ===================== -->
+        <div class="section-header">
+            <i class="bi bi-file-earmark-pdf"></i> SECTION 8: DOCUMENTS
         </div>
         <div class="form-section">
             <div class="info-alert">

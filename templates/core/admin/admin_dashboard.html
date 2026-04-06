@@ -97,6 +97,17 @@
     .c-rejected { color: #f56565; }
     .c-disbursed { color: #4299e1; }
 
+    .followup-alert {
+        border: 2px solid #dc2626 !important;
+        animation: followupPulse 1.2s infinite;
+    }
+
+    @keyframes followupPulse {
+        0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.55); }
+        70% { box-shadow: 0 0 0 10px rgba(220, 38, 38, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+    }
+
     .stats-row-primary,
     .stats-row-secondary {
         --bs-gutter-x: 1rem;
@@ -250,14 +261,14 @@
     <!-- Status Cards -->
     <div class="card-container">
         <a href="/admin/all-loans/?status=new_entry" class="insight-card c-new">
-            <p class="status-title">New Entry</p>
+            <p class="status-title">New Application</p>
             <h2 class="main-value" id="stat-new-entry">{{ new_entry_count }}</h2>
             <p class="description">Total New Applications</p>
             <span class="view-details" style="color:#4c51bf;">View Details →</span>
         </a>
 
         <a href="/admin/all-loans/?status=waiting" class="insight-card c-process">
-            <p class="status-title">In Processing</p>
+            <p class="status-title">Document Pending</p>
             <h2 class="main-value" id="stat-processing">{{ in_processing_count }}</h2>
             <p class="description">Pending Review</p>
             <span class="view-details" style="color:#d69e2e;">View Details →</span>
@@ -270,7 +281,7 @@
             <span class="view-details" style="color:#319795;">View Details →</span>
         </a>
 
-        <a href="/admin/all-loans/?status=follow_up_pending" class="insight-card c-follow">
+        <a href="/admin/all-loans/?status=follow_up_pending" class="insight-card c-follow" id="follow-up-card">
             <p class="status-title">Follow Up</p>
             <h2 class="main-value" id="stat-follow-up-pending">{{ follow_up_pending_count }}</h2>
             <p class="description">Reverted for Correction</p>
@@ -428,7 +439,7 @@
             statusChart = new Chart(ctx2, {
                 type: 'doughnut',
                 data: {
-                    labels: ['New Entry', 'In Processing', 'Banking Processing', 'Follow Up', 'Approved', 'Rejected', 'Disbursed'],
+                    labels: ['New Application', 'Document Pending', 'Banking Processing', 'Follow Up', 'Approved', 'Rejected', 'Disbursed'],
                     datasets: [
                         {
                             data: [1, 0, 0, 0, 2, 1, 1],
@@ -482,6 +493,11 @@
             setText('stat-approved', stats.approved);
             setText('stat-rejected', stats.rejected);
             setText('stat-disbursed', stats.disbursed);
+
+            const followCard = document.getElementById('follow-up-card');
+            if (followCard) {
+                followCard.classList.toggle('followup-alert', Number(stats.follow_up_pending || 0) > 0);
+            }
 
             if (statusChart) {
                 statusChart.data.datasets[0].data = [

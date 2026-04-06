@@ -159,6 +159,29 @@
         z-index: 100;
         box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
+
+    .service-documents-shell {
+        margin-top: 14px;
+        padding: 16px;
+        border: 1px dashed #86efac;
+        border-radius: 10px;
+        background: #f0fdf4;
+    }
+
+    .document-item[data-required="true"] {
+        border-color: #86efac !important;
+        background: #ecfdf5 !important;
+    }
+
+    .document-item-title {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        color: #047857;
+        margin-bottom: 10px;
+        font-weight: 700;
+    }
 </style>
 
 <div class="form-container">
@@ -454,14 +477,14 @@
             </div>
         </div>
 
-        <!-- ===================== SECTION 3: EXISTING LOAN DETAILS ===================== -->
+        <!-- ===================== SECTION 3: LOAN TYPE ===================== -->
         <div class="section-header">
-            <i class="bi bi-cash-coin"></i> SECTION 3: EXISTING LOAN DETAILS
+            <i class="bi bi-cash-coin"></i> SECTION 3: LOAN TYPE
         </div>
         <div class="form-section">
             <div class="info-alert">
                 <i class="bi bi-info-circle"></i> 
-                Provide details of all existing loans or EMI commitments.
+                Provide details of all existing loan commitments.
             </div>
 
             <!-- Loan 1 -->
@@ -483,7 +506,7 @@
 
             <div class="form-row">
                 <div class="form-group">
-                    <label>Amount Left</label>
+                    <label>Outstanding Amount</label>
                     <input type="number" class="form-control" name="loan1_amount_left" placeholder="Remaining amount to be paid" min="0">
                 </div>
                 <div class="form-group">
@@ -493,25 +516,6 @@
                 <div class="form-group">
                     <label>EMI Amount</label>
                     <input type="text" class="form-control" name="loan1_emi_over" placeholder="Monthly EMI amount">
-                </div>
-            </div>
-
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Any Bounce</label>
-                    <select class="form-select" name="loan1_bounce">
-                        <option value="">-- Select --</option>
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Cleared - Yes/No</label>
-                    <select class="form-select" name="loan1_cleared">
-                        <option value="">-- Select --</option>
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
-                    </select>
                 </div>
             </div>
 
@@ -534,7 +538,7 @@
 
             <div class="form-row">
                 <div class="form-group">
-                    <label>Amount Left</label>
+                    <label>Outstanding Amount</label>
                     <input type="number" class="form-control" name="loan2_amount_left" placeholder="Remaining amount to be paid" min="0">
                 </div>
                 <div class="form-group">
@@ -544,25 +548,6 @@
                 <div class="form-group">
                     <label>EMI Amount</label>
                     <input type="text" class="form-control" name="loan2_emi_over" placeholder="Monthly EMI amount">
-                </div>
-            </div>
-
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Any Bounce</label>
-                    <select class="form-select" name="loan2_bounce">
-                        <option value="">-- Select --</option>
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Cleared - Yes/No</label>
-                    <select class="form-select" name="loan2_cleared">
-                        <option value="">-- Select --</option>
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
-                    </select>
                 </div>
             </div>
 
@@ -585,7 +570,7 @@
 
             <div class="form-row">
                 <div class="form-group">
-                    <label>Amount Left</label>
+                    <label>Outstanding Amount</label>
                     <input type="number" class="form-control" name="loan3_amount_left" placeholder="Remaining amount to be paid" min="0">
                 </div>
                 <div class="form-group">
@@ -595,25 +580,6 @@
                 <div class="form-group">
                     <label>EMI Amount</label>
                     <input type="text" class="form-control" name="loan3_emi_over" placeholder="Monthly EMI amount">
-                </div>
-            </div>
-
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Any Bounce</label>
-                    <select class="form-select" name="loan3_bounce">
-                        <option value="">-- Select --</option>
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Cleared - Yes/No</label>
-                    <select class="form-select" name="loan3_cleared">
-                        <option value="">-- Select --</option>
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
-                    </select>
                 </div>
             </div>
         </div>
@@ -632,8 +598,8 @@
                         <option value="Home Loan">Home Loan</option>
                         <option value="LAP">LAP (Loan Against Property)</option>
                         <option value="Business Loan">Business Loan</option>
-                        <option value="Education Loan">Education Loan</option>
-                        <option value="Credit Card">Credit Card</option>
+                        <option value="Auto Loan">Auto Loan</option>
+                        <option value="Security Loan">Security Loan</option>
                         <option value="Other">Other</option>
                     </select>
                 </div>
@@ -654,6 +620,28 @@
                     <div class="helper-text">As per RBI guidelines, no processing fee or other charges to be taken from client</div>
                 </div>
             </div>
+
+            <div class="form-row" id="other-service-row" style="display: none;">
+                <div class="form-group">
+                    <label>Other Service Name <span class="required">*</span></label>
+                    <input type="text" class="form-control" name="service_required_other" placeholder="Type custom service name">
+                    <div class="helper-text">Agar service list me nahi hai to yahan custom naam likhein.</div>
+                </div>
+            </div>
+
+            <div class="sub-section-title">Service Required Based Documents</div>
+            <div class="info-alert">
+                <i class="bi bi-info-circle"></i>
+                Service aur Occupation ke hisaab se required documents auto-open honge. Har required document ke liye file upload karna zaroori hai.
+            </div>
+            <div class="service-documents-shell">
+                <div id="documents-container"></div>
+                <div style="margin-top: 20px;">
+                    <button type="button" class="btn-secondary-custom" id="add-document-btn" onclick="addDocumentField(false)">
+                        <i class="bi bi-plus-circle"></i> Add Another Document
+                    </button>
+                </div>
+            </div>
         </div>
 
         <!-- ===================== SECTION 5: REFERENCES ===================== -->
@@ -667,7 +655,7 @@
             </div>
 
             <!-- Reference 1 -->
-            <div class="sub-section-title">Reference #1</div>
+            <div class="sub-section-title">Reference #1 (Colleague)</div>
             <div class="form-row">
                 <div class="form-group">
                     <label>Name <span class="required">*</span></label>
@@ -687,7 +675,7 @@
             </div>
 
             <!-- Reference 2 -->
-            <div class="sub-section-title" style="margin-top: 30px;">Reference #2</div>
+            <div class="sub-section-title" style="margin-top: 30px;">Reference #2 (Family or Friends)</div>
             <div class="form-row">
                 <div class="form-group">
                     <label>Name</label>
@@ -707,17 +695,17 @@
             </div>
         </div>
 
-        <!-- ===================== SECTION 6: FINANCIAL & BANK DETAILS ===================== -->
+        <!-- ===================== SECTION 6: BALANCE TRANSFER (IF ANY) ===================== -->
         <div class="section-header">
-            <i class="bi bi-bank"></i> SECTION 6: FINANCIAL & BANK DETAILS
+            <i class="bi bi-bank"></i> SECTION 6: BALANCE TRANSFER (IF ANY)
         </div>
         <div class="form-section">
             <div class="info-alert">
                 <i class="bi bi-info-circle"></i> 
-                Provide your financial and bank details for verification and loan disbursement.
+                Fill balance transfer details (if applicable).
             </div>
 
-            <div class="sub-section-title">Credit & Identity Details</div>
+            <div class="sub-section-title">Balance Transfer (If Any)</div>
             <div class="form-row">
                 <div class="form-group">
                     <label>CIBIL Score <span class="required">*</span></label>
@@ -750,6 +738,17 @@
                 </div>
             </div>
 
+            <div class="form-row">
+                <div class="form-group">
+                    <label>EMI Paid</label>
+                    <input type="text" class="form-control" name="loan1_emi_paid" placeholder="Enter EMI paid details">
+                </div>
+                <div class="form-group">
+                    <label>Current Outstanding Amount</label>
+                    <input type="number" class="form-control" name="loan1_current_outstanding_amount" placeholder="Enter current outstanding amount" min="0">
+                </div>
+            </div>
+
             <div class="form-row full-width">
                 <div class="form-group">
                     <label>Remarks / Suggestions (if any)</label>
@@ -770,37 +769,44 @@
             </div>
         </div>
 
-        <!-- ===================== SECTION 7: DOCUMENTS ===================== -->
+        <!-- ===================== SECTION 7: LEAD RECEIVE ===================== -->
         <div class="section-header">
-            <i class="bi bi-file-earmark-pdf"></i> SECTION 7: DOCUMENTS
+            <i class="bi bi-person-plus"></i> SECTION 7: LEAD RECEIVE
         </div>
         <div class="form-section">
             <div class="info-alert">
-                <i class="bi bi-info-circle"></i> 
-                Upload all required documents. You can add unlimited documents. Supported formats: PDF, JPG, PNG (Max 5MB each)
+                <i class="bi bi-info-circle"></i>
+                Add lead receive details for realtime tracking.
             </div>
-
-            <div id="documents-container">
-                <div class="document-item" style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 20px; margin-bottom: 15px;">
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Document Name <span class="required">*</span></label>
-                            <input type="text" class="form-control document-name" placeholder="e.g., Aadhar Card, PAN Card, Bank Statement, etc." required>
-                            <span class="helper-text">Provide a meaningful name for the document</span>
-                        </div>
-                        <div class="form-group">
-                            <label>Upload Document <span class="required">*</span></label>
-                            <input type="file" class="form-control document-file" accept=".pdf,.jpg,.jpeg,.png" required>
-                            <span class="helper-text">PDF, JPG, PNG files up to 5MB</span>
-                        </div>
-                    </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Channel Partner Name</label>
+                    <input type="text" class="form-control" name="lead_receive_channel_partner_name" placeholder="Enter channel partner name">
+                </div>
+                <div class="form-group">
+                    <label>Leader Name</label>
+                    <input type="text" class="form-control" name="lead_receive_leader_name" placeholder="Enter leader name">
+                </div>
+                <div class="form-group">
+                    <label>Lead Source</label>
+                    <select class="form-select" name="lead_receive_source">
+                        <option value="">-- Select Lead Source --</option>
+                        <option value="Open Market">Open Market</option>
+                        <option value="Phone Call">Phone Call</option>
+                        <option value="Email">Email</option>
+                        <option value="WhatsApp">WhatsApp</option>
+                        <option value="Friends">Friends</option>
+                        <option value="Family Member">Family Member</option>
+                        <option value="Social Media">Social Media</option>
+                        <option value="Other">Other</option>
+                    </select>
                 </div>
             </div>
-
-            <div style="margin-top: 20px;">
-                <button type="button" class="btn-secondary-custom" id="add-document-btn" onclick="addDocumentField()">
-                    <i class="bi bi-plus-circle"></i> Add Another Document
-                </button>
+            <div class="form-row full-width">
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea class="form-control" name="lead_receive_description" placeholder="Lead description"></textarea>
+                </div>
             </div>
         </div>
 
@@ -822,38 +828,266 @@
 </div>
 
 <script>
-    let documentCount = 1;
+    let documentCount = 0;
 
-    function addDocumentField() {
+    const SERVICE_DOCUMENT_REQUIREMENTS = {
+        lap_salary: [
+            'PAN Card',
+            'Aadhar Card',
+            'Photo (4 Copies)',
+            'Permanent Address Proof',
+            'Recent Address Proof',
+            '3 Month Salary Slip',
+            '6 Month Bank Statement',
+            'Form 16',
+            'Service Book',
+            'Home Property Documents (Patta, Pauti, ROR, BDA Approval)',
+            'SOA of Loan Account',
+            'Co-applicant PAN/Aadhar/Photo (If Required)'
+        ],
+        lap_business: [
+            'PAN Card',
+            'Aadhar Card',
+            'Photo (4 Copies)',
+            'Permanent Address Proof',
+            'Recent Address Proof',
+            '3 Year Business Vintage Proof',
+            '2 Year ITR with Computation',
+            '1 Year Bank Statement',
+            'GST Documents',
+            'Home Property Documents (Patta, Pauti, ROR, BDA Approval)',
+            'SOA of Loan Account',
+            'Co-applicant PAN/Aadhar/Photo (If Required)'
+        ],
+        business_loan_business: [
+            'PAN Card',
+            'Aadhar Card',
+            'Photo (4 Copies)',
+            'Permanent Address Proof',
+            'Recent Address Proof',
+            '3 Year Business Vintage Proof',
+            '2 Year ITR with Computation',
+            '1 Year Bank Statement',
+            'GST Documents'
+        ],
+        personal_loan_salary: [
+            'PAN Card',
+            'Aadhar Card',
+            'Photo (4 Copies)',
+            'Permanent Address Proof',
+            'Recent Address Proof',
+            '3 Month Salary Slip',
+            '6 Month Bank Statement',
+            'Form 16',
+            'Service Book'
+        ],
+        auto_loan_salary: [
+            'PAN Card',
+            'Aadhar Card',
+            'Photo (4 Copies)',
+            'Permanent Address Proof',
+            'Recent Address Proof',
+            '3 Month Salary Slip',
+            '6 Month Bank Statement',
+            'Form 16',
+            'Service Book',
+            'RC',
+            'Insurance'
+        ],
+        security_loan_salary: [
+            'PAN Card',
+            'Aadhar Card',
+            'Photo (4 Copies)',
+            'Permanent Address Proof',
+            'Recent Address Proof',
+            '3 Month Salary Slip',
+            '6 Month Bank Statement',
+            'Form 16',
+            'Service Book',
+            'Insurance Certificate'
+        ],
+        auto_loan_business: [
+            'PAN Card',
+            'Aadhar Card',
+            'Photo (4 Copies)',
+            'Permanent Address Proof',
+            'Recent Address Proof',
+            '3 Year Business Vintage Proof',
+            '2 Year ITR with Computation',
+            '1 Year Bank Statement',
+            'GST Documents',
+            'RC',
+            'Insurance'
+        ],
+        security_loan_business: [
+            'PAN Card',
+            'Aadhar Card',
+            'Photo (4 Copies)',
+            'Permanent Address Proof',
+            'Recent Address Proof',
+            '3 Year Business Vintage Proof',
+            '2 Year ITR with Computation',
+            '1 Year Bank Statement',
+            'GST Documents',
+            'Insurance Certificate'
+        ],
+        home_loan_salary: [
+            'PAN Card',
+            'Aadhar Card',
+            'Photo (4 Copies)',
+            'Permanent Address Proof',
+            'Recent Address Proof',
+            'Salary Slip',
+            'Bank Statement',
+            'Form 16',
+            'Property Documents'
+        ],
+        home_loan_business: [
+            'PAN Card',
+            'Aadhar Card',
+            'Photo (4 Copies)',
+            'Permanent Address Proof',
+            'Recent Address Proof',
+            'ITR with Computation',
+            'Bank Statement',
+            'GST Documents',
+            'Property Documents'
+        ]
+    };
+
+    function getEmploymentTrack() {
+        const occupation = (document.querySelector('select[name="occupation"]')?.value || '').toLowerCase();
+        if (occupation === 'business' || occupation === 'self employed') {
+            return 'business';
+        }
+        if (occupation === 'salaried' || occupation === 'professional') {
+            return 'salary';
+        }
+        return '';
+    }
+
+    function getServiceKey() {
+        const selectedService = (document.querySelector('select[name="service_required"]')?.value || '').toLowerCase();
+        const map = {
+            'personal loan': 'personal_loan',
+            'home loan': 'home_loan',
+            'lap': 'lap',
+            'business loan': 'business_loan',
+            'auto loan': 'auto_loan',
+            'security loan': 'security_loan',
+            'other': 'other'
+        };
+        return map[selectedService] || '';
+    }
+
+    function toggleOtherServiceInput() {
+        const serviceKey = getServiceKey();
+        const otherRow = document.getElementById('other-service-row');
+        const otherInput = document.querySelector('input[name="service_required_other"]');
+        if (!otherRow || !otherInput) return;
+
+        const isOther = serviceKey === 'other';
+        otherRow.style.display = isOther ? '' : 'none';
+        otherInput.required = isOther;
+        if (!isOther) {
+            otherInput.value = '';
+        }
+    }
+
+    function getRequiredDocumentList() {
+        const serviceKey = getServiceKey();
+        const employmentTrack = getEmploymentTrack();
+        const comboKey = `${serviceKey}_${employmentTrack}`;
+
+        if (!serviceKey || serviceKey === 'other') {
+            return [];
+        }
+
+        if (SERVICE_DOCUMENT_REQUIREMENTS[comboKey]) {
+            return SERVICE_DOCUMENT_REQUIREMENTS[comboKey];
+        }
+
+        if (serviceKey === 'business_loan') {
+            return SERVICE_DOCUMENT_REQUIREMENTS.business_loan_business;
+        }
+
+        if (employmentTrack === 'business' && SERVICE_DOCUMENT_REQUIREMENTS[`${serviceKey}_business`]) {
+            return SERVICE_DOCUMENT_REQUIREMENTS[`${serviceKey}_business`];
+        }
+
+        if (employmentTrack === 'salary' && SERVICE_DOCUMENT_REQUIREMENTS[`${serviceKey}_salary`]) {
+            return SERVICE_DOCUMENT_REQUIREMENTS[`${serviceKey}_salary`];
+        }
+
+        return [
+            'PAN Card',
+            'Aadhar Card',
+            'Photo',
+            'Address Proof',
+            'Income Proof',
+            'Bank Statement'
+        ];
+    }
+
+    function addDocumentField(isPreset = false, presetName = '') {
         documentCount++;
         const documentsContainer = document.getElementById('documents-container');
-        const newDocument = document.createElement('div');
-        newDocument.className = 'document-item';
-        newDocument.style.cssText = 'background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 20px; margin-bottom: 15px;';
-        newDocument.innerHTML = `
+        if (!documentsContainer) return;
+
+        const isRequired = Boolean(isPreset);
+        const item = document.createElement('div');
+        item.className = 'document-item';
+        item.dataset.required = isRequired ? 'true' : 'false';
+        item.style.cssText = 'background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 20px; margin-bottom: 15px;';
+
+        item.innerHTML = `
+            ${isRequired ? '<div class="document-item-title"><i class="bi bi-shield-check"></i> Required Document</div>' : ''}
             <div class="form-row">
                 <div class="form-group">
-                    <label>Document Name</label>
-                    <input type="text" class="form-control document-name" placeholder="e.g., Aadhar Card, PAN Card, Bank Statement, etc.">
+                    <label>Document Name ${isRequired ? '<span class="required">*</span>' : ''}</label>
+                    <input type="text" class="form-control document-name" name="document_name[]" placeholder="e.g., Aadhar Card, PAN Card, Bank Statement, etc." value="${presetName.replace(/"/g, '&quot;')}" ${isRequired ? 'readonly required' : ''}>
                     <span class="helper-text">Provide a meaningful name for the document</span>
                 </div>
                 <div class="form-group">
-                    <label>Upload Document</label>
-                    <input type="file" class="form-control document-file" accept=".pdf,.jpg,.jpeg,.png">
+                    <label>Upload Document ${isRequired ? '<span class="required">*</span>' : ''}</label>
+                    <input type="file" class="form-control document-file" name="document_file[]" accept=".pdf,.jpg,.jpeg,.png" ${isRequired ? 'required' : ''}>
                     <span class="helper-text">PDF, JPG, PNG files up to 5MB</span>
                 </div>
             </div>
-            <div style="margin-top: 10px;">
-                <button type="button" class="btn-secondary-custom" style="background: #fee2e2; color: #dc2626; border-color: #fecaca;" onclick="removeDocumentField(this)">
-                    <i class="bi bi-trash"></i> Remove Document
-                </button>
-            </div>
+            ${isRequired ? '' : `
+                <div style="margin-top: 10px;">
+                    <button type="button" class="btn-secondary-custom" style="background: #fee2e2; color: #dc2626; border-color: #fecaca;" onclick="removeDocumentField(this)">
+                        <i class="bi bi-trash"></i> Remove Document
+                    </button>
+                </div>
+            `}
         `;
-        documentsContainer.appendChild(newDocument);
+        documentsContainer.appendChild(item);
     }
 
     function removeDocumentField(btn) {
-        btn.closest('.document-item').remove();
+        const row = btn.closest('.document-item');
+        if (!row) return;
+        if (row.dataset.required === 'true') {
+            return;
+        }
+        row.remove();
+    }
+
+    function renderServiceDocuments() {
+        const documentsContainer = document.getElementById('documents-container');
+        if (!documentsContainer) return;
+
+        documentsContainer.innerHTML = '';
+        documentCount = 0;
+
+        const requiredDocuments = getRequiredDocumentList();
+        if (requiredDocuments.length) {
+            requiredDocuments.forEach((docName) => addDocumentField(true, docName));
+            return;
+        }
+
+        addDocumentField(false);
     }
 
     // Auto-fill Present Address from Permanent Address
@@ -927,19 +1161,45 @@
             return;
         }
 
-        // Validate at least one document is uploaded
-        const documents = document.querySelectorAll('.document-item');
-        let hasValidDocument = false;
-        documents.forEach(doc => {
-            const name = doc.querySelector('.document-name').value;
-            const file = doc.querySelector('.document-file').value;
-            if (name && file) {
-                hasValidDocument = true;
-            }
-        });
+        const documents = document.querySelectorAll('#documents-container .document-item');
+        let hasAnyUploadedDocument = false;
 
-        if (!hasValidDocument) {
+        for (const doc of documents) {
+            const nameEl = doc.querySelector('.document-name');
+            const fileEl = doc.querySelector('.document-file');
+            const name = nameEl ? nameEl.value.trim() : '';
+            const hasFile = fileEl ? fileEl.files.length > 0 : false;
+            const isRequiredRow = doc.dataset.required === 'true';
+
+            if (isRequiredRow && (!name || !hasFile)) {
+                alert(`Please upload required document: ${name || 'Document'}`);
+                return;
+            }
+
+            if (name || hasFile) {
+                if (!name || !hasFile) {
+                    alert('Please provide both Document Name and Upload Document for each entered document row.');
+                    return;
+                }
+                hasAnyUploadedDocument = true;
+            }
+        }
+
+        if (!hasAnyUploadedDocument) {
             alert('Please upload at least one document');
+            return;
+        }
+
+        if (getServiceKey() === 'other') {
+            const otherServiceInput = document.querySelector('input[name="service_required_other"]');
+            if (!otherServiceInput || !otherServiceInput.value.trim()) {
+                alert('Please enter Other Service Name.');
+                return;
+            }
+        }
+
+        if (!this.checkValidity()) {
+            this.reportValidity();
             return;
         }
 
@@ -950,6 +1210,23 @@
     // Initialize on page load
     document.addEventListener('DOMContentLoaded', function() {
         updateEmploymentSection();
+        toggleOtherServiceInput();
+        renderServiceDocuments();
+
+        const serviceSelect = document.querySelector('select[name="service_required"]');
+        const occupationSelect = document.querySelector('select[name="occupation"]');
+        if (serviceSelect) {
+            serviceSelect.addEventListener('change', function() {
+                toggleOtherServiceInput();
+                renderServiceDocuments();
+            });
+        }
+        if (occupationSelect) {
+            occupationSelect.addEventListener('change', function() {
+                updateEmploymentSection();
+                renderServiceDocuments();
+            });
+        }
     });
 </script>
 

@@ -1,12 +1,12 @@
 {% extends "core/admin/admin_base.html" %}
 
-{% block title %}New Entry Assign - DSA Admin{% endblock %}
+{% block title %}New Application Assign - DSA Admin{% endblock %}
 
 {% block page_title %}
     <div class="bg-white rounded-lg shadow-sm p-6 mb-6 border-b-4 border-blue-600">
         <div class="flex items-center justify-between">
             <div>
-                <h2 class="text-2xl font-bold text-gray-900">New Entry Assign</h2>
+                <h2 class="text-2xl font-bold text-gray-900">New Application Assign</h2>
                 <p class="text-sm text-gray-600 mt-1">Assign new loan applications to employees for processing</p>
             </div>
             <div class="flex gap-3">
@@ -46,14 +46,14 @@
             </div>
         </div>
 
-        <!-- In Processing Card -->
+        <!-- Document Pending Card -->
         <div class="assignment-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
             <div class="card-icon">
                 <i class="fas fa-spinner"></i>
             </div>
             <div class="card-content">
                 <div class="card-number" x-text="applications.filter(a => a.status === 'processing').length">0</div>
-                <div class="card-label">In Processing</div>
+                <div class="card-label">Document Pending</div>
             </div>
         </div>
 
@@ -82,7 +82,7 @@
             <option value="">All Status</option>
             <option value="pending">Pending</option>
             <option value="assigned">Assigned</option>
-            <option value="processing">Processing</option>
+            <option value="processing">Document Pending</option>
             <option value="completed">Completed</option>
         </select>
     </div>
