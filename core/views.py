@@ -4555,6 +4555,18 @@ def _safe_float(value):
         return None
 
 
+def _normalize_entity_source(payload):
+    raw = str((payload or {}).get('entity_type') or (payload or {}).get('source') or '').strip().lower()
+    source_map = {
+        'application': 'application',
+        'loan_application': 'application',
+        'app': 'application',
+        'legacy': 'legacy',
+        'loan': 'legacy',
+    }
+    return source_map.get(raw, '')
+
+
 def _loan_status_to_workflow(status_key):
     mapping = {
         'follow_up_pending': FOLLOW_UP_PENDING_LABEL,
@@ -5745,55 +5757,63 @@ def employee_collect_for_banking(request, loan_id):
     Allowed roles: employee (assigned), subadmin, admin.
     """
     try:
-        loan = LoanApplication.objects.get(id=loan_id)
+        payload = request.data or {}
+        preferred_source = _normalize_entity_source(payload)
+        loan_app = LoanApplication.objects.filter(id=loan_id).first()
+        legacy = Loan.objects.filter(id=loan_id).first()
 
-        if not _is_authorized_processor(request.user, loan):
-            return Response({'success': False, 'error': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
+        bank_remark = str(payload.get('bank_remark', '')).strip()
 
-        if loan.status != 'Waiting for Processing':
+        def _source_order():
+            if preferred_source == 'legacy':
+                return ['legacy', 'application']
+            return ['application', 'legacy']
+
+        def _can_process_application():
+            return (
+                loan_app
+                and _is_authorized_processor(request.user, loan_app)
+                and loan_app.status == 'Waiting for Processing'
+            )
+
+        def _can_process_legacy():
+            return (
+                legacy
+                and _is_authorized_processor(request.user, legacy)
+                and legacy.status == 'waiting'
+            )
+
+        def _process_application():
+            loan_app.status = BANKING_PROCESS_STATUS
+            loan_app.follow_up_scheduled_at = timezone.now()
+            loan_app.follow_up_notified_at = timezone.now()
+            loan_app.follow_up_count = (loan_app.follow_up_count or 0) + 1
+            loan_app.is_sm_signed = False
+            loan_app.sm_signed_at = None
+            loan_app.approval_notes = _append_bank_remark(loan_app.approval_notes, bank_remark)
+            loan_app.save()
+
+            LoanStatusHistory.objects.create(
+                loan_application=loan_app,
+                from_status='waiting',
+                to_status='follow_up',
+                changed_by=request.user,
+                reason=bank_remark or 'Moved to Banking Processing',
+                is_auto_triggered=False,
+            )
+
+            # Keep legacy loan status synchronized when available.
+            sync_line = f"Bank Remark: {bank_remark}" if bank_remark else "Moved to Banking Processing"
+            _append_related_loan_remark(loan_app, sync_line, status_override='follow_up')
+
             return Response({
-                'success': False,
-                'error': f'Collect is allowed only in "Waiting for Processing". Current status: {loan.status}.'
-            }, status=status.HTTP_400_BAD_REQUEST)
+                'success': True,
+                'message': 'Application moved to Banking Processing',
+                'new_status': loan_app.status,
+                'status_display': _ui_status_label(loan_app.status),
+            }, status=status.HTTP_200_OK)
 
-        bank_remark = request.data.get('bank_remark', '').strip()
-        loan.status = BANKING_PROCESS_STATUS
-        loan.follow_up_scheduled_at = timezone.now()
-        loan.follow_up_notified_at = timezone.now()
-        loan.follow_up_count = (loan.follow_up_count or 0) + 1
-        loan.is_sm_signed = False
-        loan.sm_signed_at = None
-        loan.approval_notes = _append_bank_remark(loan.approval_notes, bank_remark)
-        loan.save()
-
-        LoanStatusHistory.objects.create(
-            loan_application=loan,
-            from_status='waiting',
-            to_status='follow_up',
-            changed_by=request.user,
-            reason=bank_remark or 'Moved to Banking Processing',
-            is_auto_triggered=False,
-        )
-
-        return Response({
-            'success': True,
-            'message': 'Application moved to Banking Processing',
-            'new_status': loan.status,
-            'status_display': _ui_status_label(loan.status),
-        }, status=status.HTTP_200_OK)
-
-    except LoanApplication.DoesNotExist:
-        try:
-            legacy = Loan.objects.get(id=loan_id)
-            if not _is_authorized_processor(request.user, legacy):
-                return Response({'success': False, 'error': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
-            if legacy.status != 'waiting':
-                return Response({
-                    'success': False,
-                    'error': f'Collect is allowed only in Waiting status. Current status: {legacy.status}.'
-                }, status=status.HTTP_400_BAD_REQUEST)
-
-            bank_remark = request.data.get('bank_remark', '').strip()
+        def _process_legacy():
             legacy.status = 'follow_up'
             legacy.action_taken_at = timezone.now()
             legacy.is_sm_signed = False
@@ -5801,14 +5821,64 @@ def employee_collect_for_banking(request, loan_id):
             legacy.remarks = _append_bank_remark(legacy.remarks, bank_remark)
             legacy.save()
 
+            synced_application = sync_loan_to_application(
+                legacy,
+                assigned_by_user=request.user,
+                create_if_missing=True,
+            )
+            if synced_application:
+                synced_application.status = BANKING_PROCESS_STATUS
+                synced_application.is_sm_signed = False
+                synced_application.sm_signed_at = None
+                synced_application.follow_up_scheduled_at = timezone.now()
+                synced_application.follow_up_notified_at = timezone.now()
+                synced_application.follow_up_count = (synced_application.follow_up_count or 0) + 1
+                synced_application.approval_notes = _append_bank_remark(
+                    synced_application.approval_notes,
+                    bank_remark,
+                )
+                synced_application.save(
+                    update_fields=[
+                        'status',
+                        'is_sm_signed',
+                        'sm_signed_at',
+                        'follow_up_scheduled_at',
+                        'follow_up_notified_at',
+                        'follow_up_count',
+                        'approval_notes',
+                        'updated_at',
+                    ]
+                )
+
             return Response({
                 'success': True,
                 'message': 'Application moved to Banking Processing',
                 'new_status': 'Required Follow-up',
                 'status_display': 'Banking Processing',
             }, status=status.HTTP_200_OK)
-        except Loan.DoesNotExist:
-            return Response({'success': False, 'error': 'Loan not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        for source in _source_order():
+            if source == 'application' and _can_process_application():
+                return _process_application()
+            if source == 'legacy' and _can_process_legacy():
+                return _process_legacy()
+
+        for source in _source_order():
+            if source == 'application' and loan_app and _is_authorized_processor(request.user, loan_app):
+                return Response({
+                    'success': False,
+                    'error': f'Collect is allowed only in "Waiting for Processing". Current status: {loan_app.status}.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            if source == 'legacy' and legacy and _is_authorized_processor(request.user, legacy):
+                return Response({
+                    'success': False,
+                    'error': f'Collect is allowed only in Waiting status. Current status: {legacy.status}.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+        if loan_app or legacy:
+            return Response({'success': False, 'error': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
+
+        return Response({'success': False, 'error': 'Loan not found'}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         return Response({'success': False, 'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -5821,69 +5891,69 @@ def employee_revert_loan_to_agent(request, loan_id):
     Creates numbered remark history entries (Revert Remark 1, 2, ...).
     """
     try:
-        loan = LoanApplication.objects.get(id=loan_id)
+        payload = request.data or {}
+        preferred_source = _normalize_entity_source(payload)
+        loan_app = LoanApplication.objects.filter(id=loan_id).first()
+        legacy = Loan.objects.filter(id=loan_id).first()
 
-        if not _is_authorized_processor(request.user, loan):
-            return Response({'success': False, 'error': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
-
-        if loan.status != BANKING_PROCESS_STATUS:
-            return Response({
-                'success': False,
-                'error': f'Revert is allowed only in Banking Processing. Current status: {loan.status}.'
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-        revert_remark = str(request.data.get('revert_remark', '')).strip()
+        revert_remark = str(payload.get('revert_remark', '')).strip()
         if not revert_remark:
             return Response({
                 'success': False,
                 'error': 'Revert remark is required.'
             }, status=status.HTTP_400_BAD_REQUEST)
 
-        revert_index = _next_revert_index_from_history(loan)
-        revert_reason = f"Revert Remark {revert_index}: {revert_remark}"
+        def _source_order():
+            if preferred_source == 'legacy':
+                return ['legacy', 'application']
+            return ['application', 'legacy']
 
-        previous_status = loan.status
-        loan.status = 'Waiting for Processing'
-        loan.is_sm_signed = False
-        loan.sm_signed_at = None
-        loan.approval_notes = _append_note_line(loan.approval_notes, revert_reason)
-        loan.save(update_fields=['status', 'is_sm_signed', 'sm_signed_at', 'approval_notes', 'updated_at'])
+        def _can_process_application():
+            return (
+                loan_app
+                and _is_authorized_processor(request.user, loan_app)
+                and loan_app.status == BANKING_PROCESS_STATUS
+            )
 
-        LoanStatusHistory.objects.create(
-            loan_application=loan,
-            from_status='follow_up' if previous_status == BANKING_PROCESS_STATUS else 'waiting',
-            to_status='waiting',
-            changed_by=request.user,
-            reason=revert_reason,
-            is_auto_triggered=False,
-        )
+        def _can_process_legacy():
+            return (
+                legacy
+                and _is_authorized_processor(request.user, legacy)
+                and legacy.status == 'follow_up'
+            )
 
-        _append_related_loan_remark(loan, revert_reason, status_override='waiting')
+        def _process_application():
+            revert_index = _next_revert_index_from_history(loan_app)
+            revert_reason = f"Revert Remark {revert_index}: {revert_remark}"
 
-        return Response({
-            'success': True,
-            'message': 'Application moved to Follow Up for correction.',
-            'new_status': loan.status,
-            'status_display': _ui_status_label(loan.status, follow_up_pending=True),
-            'follow_up_pending': True,
-            'revert_reason': revert_reason,
-        }, status=status.HTTP_200_OK)
+            previous_status = loan_app.status
+            loan_app.status = 'Waiting for Processing'
+            loan_app.is_sm_signed = False
+            loan_app.sm_signed_at = None
+            loan_app.approval_notes = _append_note_line(loan_app.approval_notes, revert_reason)
+            loan_app.save(update_fields=['status', 'is_sm_signed', 'sm_signed_at', 'approval_notes', 'updated_at'])
 
-    except LoanApplication.DoesNotExist:
-        try:
-            legacy = Loan.objects.get(id=loan_id)
-            if not _is_authorized_processor(request.user, legacy):
-                return Response({'success': False, 'error': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
-            if legacy.status != 'follow_up':
-                return Response({
-                    'success': False,
-                    'error': f'Revert is allowed only in Banking Processing. Current status: {legacy.status}.'
-                }, status=status.HTTP_400_BAD_REQUEST)
+            LoanStatusHistory.objects.create(
+                loan_application=loan_app,
+                from_status='follow_up' if previous_status == BANKING_PROCESS_STATUS else 'waiting',
+                to_status='waiting',
+                changed_by=request.user,
+                reason=revert_reason,
+                is_auto_triggered=False,
+            )
 
-            revert_remark = str(request.data.get('revert_remark', '')).strip()
-            if not revert_remark:
-                return Response({'success': False, 'error': 'Revert remark is required.'}, status=status.HTTP_400_BAD_REQUEST)
+            _append_related_loan_remark(loan_app, revert_reason, status_override='waiting')
 
+            return Response({
+                'success': True,
+                'message': 'Application moved to Follow Up for correction.',
+                'new_status': loan_app.status,
+                'status_display': _ui_status_label(loan_app.status, follow_up_pending=True),
+                'follow_up_pending': True,
+                'revert_reason': revert_reason,
+            }, status=status.HTTP_200_OK)
+
+        def _process_legacy():
             revert_count = 0
             for line in str(legacy.remarks or '').splitlines():
                 if str(line).strip().lower().startswith('revert remark '):
@@ -5903,6 +5973,27 @@ def employee_revert_loan_to_agent(request, loan_id):
                 create_if_missing=True,
             )
             if synced_application:
+                # Ensure workflow side also carries revert marker so auto follow-up
+                # automation does not move this record back to Banking Processing.
+                synced_application.status = 'Waiting for Processing'
+                synced_application.is_sm_signed = False
+                synced_application.sm_signed_at = None
+                synced_application.approval_notes = _append_note_line(
+                    synced_application.approval_notes,
+                    revert_reason,
+                )
+                synced_application.follow_up_notified_at = timezone.now()
+                synced_application.save(
+                    update_fields=[
+                        'status',
+                        'is_sm_signed',
+                        'sm_signed_at',
+                        'approval_notes',
+                        'follow_up_notified_at',
+                        'updated_at',
+                    ]
+                )
+
                 LoanStatusHistory.objects.create(
                     loan_application=synced_application,
                     from_status=_normalize_history_status(previous_status),
@@ -5920,8 +6011,29 @@ def employee_revert_loan_to_agent(request, loan_id):
                 'follow_up_pending': True,
                 'revert_reason': revert_reason,
             }, status=status.HTTP_200_OK)
-        except Loan.DoesNotExist:
-            return Response({'success': False, 'error': 'Loan not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        for source in _source_order():
+            if source == 'application' and _can_process_application():
+                return _process_application()
+            if source == 'legacy' and _can_process_legacy():
+                return _process_legacy()
+
+        for source in _source_order():
+            if source == 'application' and loan_app and _is_authorized_processor(request.user, loan_app):
+                return Response({
+                    'success': False,
+                    'error': f'Revert is allowed only in Banking Processing. Current status: {loan_app.status}.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            if source == 'legacy' and legacy and _is_authorized_processor(request.user, legacy):
+                return Response({
+                    'success': False,
+                    'error': f'Revert is allowed only in Banking Processing. Current status: {legacy.status}.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+        if loan_app or legacy:
+            return Response({'success': False, 'error': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
+
+        return Response({'success': False, 'error': 'Loan not found'}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         return Response({'success': False, 'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -5934,90 +6046,100 @@ def employee_sign_off_loan(request, loan_id):
     Accepts marking signature as done (`is_sm_signed=true`) or not done (`is_sm_signed=false`).
     """
     try:
-        loan = LoanApplication.objects.get(id=loan_id)
-        if not _is_authorized_processor(request.user, loan):
-            return Response({'success': False, 'error': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
-
-        if loan.status != 'Approved':
-            return Response({
-                'success': False,
-                'error': f'Sign is allowed only in Approved status. Current status: {loan.status}.'
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-        sm_errors = _validate_sm_details(
-            (loan.sm_name or '').strip(),
-            (loan.sm_phone_number or '').strip(),
-            (loan.sm_email or '').strip(),
-        )
-        if sm_errors:
-            return Response({'success': False, 'error': ' '.join(sm_errors)}, status=status.HTTP_400_BAD_REQUEST)
-
         requested = request.data or {}
-        # Backward compatible default: if client doesn't send is_sm_signed, treat as "Yes".
-        signature_done_raw = requested.get('is_sm_signed', requested.get('signature_done', None))
-        signature_done = True if signature_done_raw is None else bool(signature_done_raw)
-        bank_remark = str(requested.get('bank_remark', '')).strip()
+        preferred_source = _normalize_entity_source(requested)
+        loan_app = LoanApplication.objects.filter(id=loan_id).first()
+        legacy = Loan.objects.filter(id=loan_id).first()
 
-        signer = request.user.get_full_name() or request.user.username or 'System'
-        sign_reason = f"SM Signature Done: {'Yes' if signature_done else 'No'} (by {signer})"
-        bank_remark_reason = f"Bank Remark: {bank_remark}" if bank_remark else ''
-        sign_reason_with_remark = (
-            _append_note_line(sign_reason, bank_remark_reason)
-            if bank_remark_reason
-            else sign_reason
-        )
+        def _source_order():
+            if preferred_source == 'legacy':
+                return ['legacy', 'application']
+            return ['application', 'legacy']
 
-        prev = bool(loan.is_sm_signed)
-        if signature_done:
-            if not prev:
-                loan.is_sm_signed = True
-                loan.sm_signed_at = timezone.now()
-                loan.approval_notes = _append_note_line(loan.approval_notes, sign_reason_with_remark)
-                loan.save(update_fields=['is_sm_signed', 'sm_signed_at', 'approval_notes', 'updated_at'])
+        def _parse_bool(value, default=True):
+            if value is None:
+                return default
+            if isinstance(value, bool):
+                return value
+            return str(value).strip().lower() in {'1', 'true', 'yes', 'on'}
 
-                LoanStatusHistory.objects.create(
-                    loan_application=loan,
-                    from_status='approved',
-                    to_status='approved',
-                    changed_by=request.user,
-                    reason=sign_reason_with_remark,
-                    is_auto_triggered=False,
-                )
+        def _can_process_application():
+            return (
+                loan_app
+                and _is_authorized_processor(request.user, loan_app)
+                and loan_app.status == 'Approved'
+            )
 
-                _append_related_loan_remark(loan, sign_reason_with_remark, status_override='approved')
-            elif bank_remark_reason:
-                loan.approval_notes = _append_note_line(loan.approval_notes, bank_remark_reason)
-                loan.save(update_fields=['approval_notes', 'updated_at'])
-                _append_related_loan_remark(loan, bank_remark_reason, status_override='approved')
-        else:
-            if prev:
-                loan.is_sm_signed = False
-                loan.sm_signed_at = None
-                loan.approval_notes = _append_note_line(loan.approval_notes, sign_reason_with_remark)
-                loan.save(update_fields=['is_sm_signed', 'sm_signed_at', 'approval_notes', 'updated_at'])
-            elif bank_remark_reason:
-                loan.approval_notes = _append_note_line(loan.approval_notes, bank_remark_reason)
-                loan.save(update_fields=['approval_notes', 'updated_at'])
-                _append_related_loan_remark(loan, bank_remark_reason, status_override='approved')
+        def _can_process_legacy():
+            return (
+                legacy
+                and _is_authorized_processor(request.user, legacy)
+                and legacy.status == 'approved'
+            )
 
-        return Response({
-            'success': True,
-            'message': 'Approved signature updated successfully.',
-            'is_sm_signed': bool(loan.is_sm_signed),
-            'sm_signed_at': loan.sm_signed_at.strftime('%Y-%m-%d %H:%M') if loan.sm_signed_at else '',
-        }, status=status.HTTP_200_OK)
+        def _process_application():
+            sm_errors = _validate_sm_details(
+                (loan_app.sm_name or '').strip(),
+                (loan_app.sm_phone_number or '').strip(),
+                (loan_app.sm_email or '').strip(),
+            )
+            if sm_errors:
+                return Response({'success': False, 'error': ' '.join(sm_errors)}, status=status.HTTP_400_BAD_REQUEST)
 
-    except LoanApplication.DoesNotExist:
-        try:
-            legacy = Loan.objects.get(id=loan_id)
-            if not _is_authorized_processor(request.user, legacy):
-                return Response({'success': False, 'error': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
-            if legacy.status != 'approved':
-                return Response({
-                    'success': False,
-                    'error': f'Sign is allowed only in Approved status. Current status: {legacy.status}.'
-                }, status=status.HTTP_400_BAD_REQUEST)
+            signature_done_raw = requested.get('is_sm_signed', requested.get('signature_done', None))
+            signature_done = _parse_bool(signature_done_raw, default=True)
+            bank_remark = str(requested.get('bank_remark', '')).strip()
 
+            signer = request.user.get_full_name() or request.user.username or 'System'
+            sign_reason = f"SM Signature Done: {'Yes' if signature_done else 'No'} (by {signer})"
+            bank_remark_reason = f"Bank Remark: {bank_remark}" if bank_remark else ''
+            sign_reason_with_remark = (
+                _append_note_line(sign_reason, bank_remark_reason)
+                if bank_remark_reason
+                else sign_reason
+            )
+
+            prev = bool(loan_app.is_sm_signed)
+            if signature_done:
+                if not prev:
+                    loan_app.is_sm_signed = True
+                    loan_app.sm_signed_at = timezone.now()
+                    loan_app.approval_notes = _append_note_line(loan_app.approval_notes, sign_reason_with_remark)
+                    loan_app.save(update_fields=['is_sm_signed', 'sm_signed_at', 'approval_notes', 'updated_at'])
+
+                    LoanStatusHistory.objects.create(
+                        loan_application=loan_app,
+                        from_status='approved',
+                        to_status='approved',
+                        changed_by=request.user,
+                        reason=sign_reason_with_remark,
+                        is_auto_triggered=False,
+                    )
+
+                    _append_related_loan_remark(loan_app, sign_reason_with_remark, status_override='approved')
+                elif bank_remark_reason:
+                    loan_app.approval_notes = _append_note_line(loan_app.approval_notes, bank_remark_reason)
+                    loan_app.save(update_fields=['approval_notes', 'updated_at'])
+                    _append_related_loan_remark(loan_app, bank_remark_reason, status_override='approved')
+            else:
+                if prev:
+                    loan_app.is_sm_signed = False
+                    loan_app.sm_signed_at = None
+                    loan_app.approval_notes = _append_note_line(loan_app.approval_notes, sign_reason_with_remark)
+                    loan_app.save(update_fields=['is_sm_signed', 'sm_signed_at', 'approval_notes', 'updated_at'])
+                elif bank_remark_reason:
+                    loan_app.approval_notes = _append_note_line(loan_app.approval_notes, bank_remark_reason)
+                    loan_app.save(update_fields=['approval_notes', 'updated_at'])
+                    _append_related_loan_remark(loan_app, bank_remark_reason, status_override='approved')
+
+            return Response({
+                'success': True,
+                'message': 'Approved signature updated successfully.',
+                'is_sm_signed': bool(loan_app.is_sm_signed),
+                'sm_signed_at': loan_app.sm_signed_at.strftime('%Y-%m-%d %H:%M') if loan_app.sm_signed_at else '',
+            }, status=status.HTTP_200_OK)
+
+        def _process_legacy():
             sm_errors = _validate_sm_details(
                 (legacy.sm_name or '').strip(),
                 (legacy.sm_phone_number or '').strip(),
@@ -6026,9 +6148,8 @@ def employee_sign_off_loan(request, loan_id):
             if sm_errors:
                 return Response({'success': False, 'error': ' '.join(sm_errors)}, status=status.HTTP_400_BAD_REQUEST)
 
-            requested = request.data or {}
             signature_done_raw = requested.get('is_sm_signed', requested.get('signature_done', None))
-            signature_done = True if signature_done_raw is None else bool(signature_done_raw)
+            signature_done = _parse_bool(signature_done_raw, default=True)
             bank_remark = str(requested.get('bank_remark', '')).strip()
 
             signer = request.user.get_full_name() or request.user.username or 'System'
@@ -6081,8 +6202,29 @@ def employee_sign_off_loan(request, loan_id):
                 'is_sm_signed': bool(getattr(legacy, 'is_sm_signed', False)),
                 'sm_signed_at': legacy.sm_signed_at.strftime('%Y-%m-%d %H:%M') if legacy.sm_signed_at else '',
             }, status=status.HTTP_200_OK)
-        except Loan.DoesNotExist:
-            return Response({'success': False, 'error': 'Loan not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        for source in _source_order():
+            if source == 'application' and _can_process_application():
+                return _process_application()
+            if source == 'legacy' and _can_process_legacy():
+                return _process_legacy()
+
+        for source in _source_order():
+            if source == 'application' and loan_app and _is_authorized_processor(request.user, loan_app):
+                return Response({
+                    'success': False,
+                    'error': f'Sign is allowed only in Approved status. Current status: {loan_app.status}.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            if source == 'legacy' and legacy and _is_authorized_processor(request.user, legacy):
+                return Response({
+                    'success': False,
+                    'error': f'Sign is allowed only in Approved status. Current status: {legacy.status}.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+        if loan_app or legacy:
+            return Response({'success': False, 'error': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
+
+        return Response({'success': False, 'error': 'Loan not found'}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         return Response({'success': False, 'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -6260,81 +6402,75 @@ def employee_reject_loan(request, loan_id):
     Updates status to 'Rejected' and notifies agent & admin
     """
     try:
-        loan = LoanApplication.objects.get(id=loan_id)
-        if not _is_authorized_processor(request.user, loan):
-            return Response({'success': False, 'error': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
+        payload = request.data or {}
+        preferred_source = _normalize_entity_source(payload)
+        loan_app = LoanApplication.objects.filter(id=loan_id).first()
+        legacy = Loan.objects.filter(id=loan_id).first()
 
-        if loan.status not in ['Waiting for Processing', BANKING_PROCESS_STATUS, 'Approved']:
-            return Response({
-                'success': False,
-                'error': f'Loan status is {loan.status}. Can only reject from Waiting/Banking Processing/Approved.'
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-        rejection_reason = request.data.get('rejection_reason', '').strip()
+        rejection_reason = str(payload.get('rejection_reason', '')).strip()
         if not rejection_reason:
             return Response({
                 'success': False,
                 'error': 'Rejection reason is required'
             }, status=status.HTTP_400_BAD_REQUEST)
 
-        bank_remark = request.data.get('bank_remark', '').strip()
-        full_reason = rejection_reason
-        if bank_remark:
-            full_reason = f"{rejection_reason}\nBank Remark: {bank_remark}"
+        bank_remark = str(payload.get('bank_remark', '')).strip()
+        full_reason = rejection_reason if not bank_remark else f"{rejection_reason}\nBank Remark: {bank_remark}"
 
-        previous_status = loan.status
-        loan.status = 'Rejected'
-        loan.rejected_by = request.user
-        loan.rejected_at = timezone.now()
-        loan.rejection_reason = full_reason
-        loan.is_sm_signed = False
-        loan.sm_signed_at = None
-        loan.save(update_fields=[
-            'status',
-            'rejected_by',
-            'rejected_at',
-            'rejection_reason',
-            'is_sm_signed',
-            'sm_signed_at',
-            'updated_at',
-        ])
+        def _source_order():
+            if preferred_source == 'legacy':
+                return ['legacy', 'application']
+            return ['application', 'legacy']
 
-        LoanStatusHistory.objects.create(
-            loan_application=loan,
-            from_status='follow_up' if previous_status == BANKING_PROCESS_STATUS else ('approved' if previous_status == 'Approved' else 'waiting'),
-            to_status='rejected',
-            changed_by=request.user,
-            reason=full_reason,
-            is_auto_triggered=False,
-        )
-        
-        # TODO: Send notification to agent and admin
-        
-        return Response({
-            'success': True,
-            'message': 'Loan rejected successfully',
-            'new_status': 'Rejected',
-            'status_display': _ui_status_label('Rejected'),
-        }, status=status.HTTP_200_OK)
-    
-    except LoanApplication.DoesNotExist:
-        try:
-            legacy = Loan.objects.get(id=loan_id)
-            if not _is_authorized_processor(request.user, legacy):
-                return Response({'success': False, 'error': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
-            if legacy.status not in ['waiting', 'follow_up', 'approved']:
-                return Response({
-                    'success': False,
-                    'error': f'Loan status is {legacy.status}. Can only reject from Waiting/Banking Processing/Approved.'
-                }, status=status.HTTP_400_BAD_REQUEST)
+        def _can_process_application():
+            return (
+                loan_app
+                and _is_authorized_processor(request.user, loan_app)
+                and loan_app.status in ['Waiting for Processing', BANKING_PROCESS_STATUS, 'Approved']
+            )
 
-            rejection_reason = request.data.get('rejection_reason', '').strip()
-            if not rejection_reason:
-                return Response({'success': False, 'error': 'Rejection reason is required'}, status=status.HTTP_400_BAD_REQUEST)
+        def _can_process_legacy():
+            return (
+                legacy
+                and _is_authorized_processor(request.user, legacy)
+                and legacy.status in ['waiting', 'follow_up', 'approved']
+            )
 
-            bank_remark = request.data.get('bank_remark', '').strip()
-            full_reason = rejection_reason if not bank_remark else f"{rejection_reason}\nBank Remark: {bank_remark}"
+        def _process_application():
+            previous_status = loan_app.status
+            loan_app.status = 'Rejected'
+            loan_app.rejected_by = request.user
+            loan_app.rejected_at = timezone.now()
+            loan_app.rejection_reason = full_reason
+            loan_app.is_sm_signed = False
+            loan_app.sm_signed_at = None
+            loan_app.save(update_fields=[
+                'status',
+                'rejected_by',
+                'rejected_at',
+                'rejection_reason',
+                'is_sm_signed',
+                'sm_signed_at',
+                'updated_at',
+            ])
 
+            LoanStatusHistory.objects.create(
+                loan_application=loan_app,
+                from_status='follow_up' if previous_status == BANKING_PROCESS_STATUS else ('approved' if previous_status == 'Approved' else 'waiting'),
+                to_status='rejected',
+                changed_by=request.user,
+                reason=full_reason,
+                is_auto_triggered=False,
+            )
+
+            return Response({
+                'success': True,
+                'message': 'Loan rejected successfully',
+                'new_status': 'Rejected',
+                'status_display': _ui_status_label('Rejected'),
+            }, status=status.HTTP_200_OK)
+
+        def _process_legacy():
             previous_status = legacy.status
             legacy.status = 'rejected'
             legacy.action_taken_at = timezone.now()
@@ -6364,8 +6500,29 @@ def employee_reject_loan(request, loan_id):
                 'new_status': 'Rejected',
                 'status_display': 'Rejected',
             }, status=status.HTTP_200_OK)
-        except Loan.DoesNotExist:
-            return Response({'success': False, 'error': 'Loan not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        for source in _source_order():
+            if source == 'application' and _can_process_application():
+                return _process_application()
+            if source == 'legacy' and _can_process_legacy():
+                return _process_legacy()
+
+        for source in _source_order():
+            if source == 'application' and loan_app and _is_authorized_processor(request.user, loan_app):
+                return Response({
+                    'success': False,
+                    'error': f'Loan status is {loan_app.status}. Can only reject from Waiting/Banking Processing/Approved.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            if source == 'legacy' and legacy and _is_authorized_processor(request.user, legacy):
+                return Response({
+                    'success': False,
+                    'error': f'Loan status is {legacy.status}. Can only reject from Waiting/Banking Processing/Approved.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+        if loan_app or legacy:
+            return Response({'success': False, 'error': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
+
+        return Response({'success': False, 'error': 'Loan not found'}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         return Response({'success': False, 'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -6379,111 +6536,112 @@ def employee_disburse_loan(request, loan_id):
     Notifies agent & admin
     """
     try:
-        loan = LoanApplication.objects.get(id=loan_id)
-        if not _is_authorized_processor(request.user, loan):
-            return Response({'success': False, 'error': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
+        payload = request.data or {}
+        preferred_source = _normalize_entity_source(payload)
+        loan_app = LoanApplication.objects.filter(id=loan_id).first()
+        legacy = Loan.objects.filter(id=loan_id).first()
 
-        if loan.status != 'Approved':
-            return Response({
-                'success': False,
-                'error': f'Loan status is {loan.status}. Can only disburse from Approved status.'
-            }, status=status.HTTP_400_BAD_REQUEST)
+        disbursement_amount_raw = payload.get('disbursement_amount')
+        disbursement_date_raw = payload.get('disbursement_date')
+        bank_remark = str(payload.get('bank_remark', '')).strip()
 
-        if not loan.is_sm_signed:
-            return Response({
-                'success': False,
-                'error': 'Please complete SM sign before submitting to Disbursed.'
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Get disbursement details
-        disbursement_amount = request.data.get('disbursement_amount')
-        disbursement_date = request.data.get('disbursement_date')
-        bank_remark = request.data.get('bank_remark', '').strip()
+        def _source_order():
+            if preferred_source == 'legacy':
+                return ['legacy', 'application']
+            return ['application', 'legacy']
 
-        applicant = loan.applicant
-        if not disbursement_amount:
-            disbursement_amount = float(applicant.loan_amount or 0)
-        if not disbursement_date:
-            disbursement_date = timezone.now().date().strftime('%Y-%m-%d')
-        
-        try:
-            disbursement_amount = float(disbursement_amount)
-            disbursement_date = datetime.strptime(disbursement_date, '%Y-%m-%d').date()
-        except (ValueError, TypeError):
-            return Response({
-                'success': False,
-                'error': 'Invalid disbursement amount or date'
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Verify amount doesn't exceed loan amount
-        if disbursement_amount > float(applicant.loan_amount or 0):
-            return Response({
-                'success': False,
-                'error': f'Disbursement amount cannot exceed loan amount ({applicant.loan_amount})'
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Update loan
-        previous_status = loan.status
-        loan.status = 'Disbursed'
-        loan.disbursed_by = request.user
-        loan.disbursed_at = timezone.now()
-        loan.disbursement_amount = disbursement_amount
-        disburse_reason = bank_remark or f'Disbursed amount: {disbursement_amount}'
-        disburse_reason = _append_note_line(
-            disburse_reason,
-            f"SM Details: {loan.sm_name or '-'} | {loan.sm_phone_number or '-'} | {loan.sm_email or '-'}"
-        )
-        loan.approval_notes = _append_note_line(loan.approval_notes, disburse_reason)
-        loan.save(update_fields=[
-            'status',
-            'disbursed_by',
-            'disbursed_at',
-            'disbursement_amount',
-            'approval_notes',
-            'updated_at',
-        ])
+        def _can_process_application():
+            return (
+                loan_app
+                and _is_authorized_processor(request.user, loan_app)
+                and loan_app.status == 'Approved'
+            )
 
-        LoanStatusHistory.objects.create(
-            loan_application=loan,
-            from_status='follow_up' if previous_status == BANKING_PROCESS_STATUS else 'approved',
-            to_status='disbursed',
-            changed_by=request.user,
-            reason=disburse_reason,
-            is_auto_triggered=False,
-        )
+        def _can_process_legacy():
+            return (
+                legacy
+                and _is_authorized_processor(request.user, legacy)
+                and legacy.status == 'approved'
+            )
 
-        _append_related_loan_remark(loan, disburse_reason, status_override='disbursed')
-        
-        # TODO: Send notification to agent and admin
-        
-        return Response({
-            'success': True,
-            'message': 'Loan marked as disbursed successfully',
-            'new_status': 'Disbursed',
-            'disbursement_amount': float(disbursement_amount),
-            'disbursement_date': disbursement_date.strftime('%Y-%m-%d'),
-            'status_display': _ui_status_label('Disbursed'),
-        }, status=status.HTTP_200_OK)
-    
-    except LoanApplication.DoesNotExist:
-        try:
-            legacy = Loan.objects.get(id=loan_id)
-            if not _is_authorized_processor(request.user, legacy):
-                return Response({'success': False, 'error': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
-            if legacy.status != 'approved':
+        def _process_application():
+            if not loan_app.is_sm_signed:
                 return Response({
                     'success': False,
-                    'error': f'Loan status is {legacy.status}. Can only disburse from Approved status.'
+                    'error': 'Please complete SM sign before submitting to Disbursed.'
                 }, status=status.HTTP_400_BAD_REQUEST)
 
+            applicant = loan_app.applicant
+            disbursement_amount = disbursement_amount_raw
+            disbursement_date = disbursement_date_raw
+            if not disbursement_amount:
+                disbursement_amount = float(applicant.loan_amount or 0)
+            if not disbursement_date:
+                disbursement_date = timezone.now().date().strftime('%Y-%m-%d')
+
+            try:
+                disbursement_amount = float(disbursement_amount)
+                disbursement_date = datetime.strptime(disbursement_date, '%Y-%m-%d').date()
+            except (ValueError, TypeError):
+                return Response({
+                    'success': False,
+                    'error': 'Invalid disbursement amount or date'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            if disbursement_amount > float(applicant.loan_amount or 0):
+                return Response({
+                    'success': False,
+                    'error': f'Disbursement amount cannot exceed loan amount ({applicant.loan_amount})'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            previous_status = loan_app.status
+            loan_app.status = 'Disbursed'
+            loan_app.disbursed_by = request.user
+            loan_app.disbursed_at = timezone.now()
+            loan_app.disbursement_amount = disbursement_amount
+            disburse_reason = bank_remark or f'Disbursed amount: {disbursement_amount}'
+            disburse_reason = _append_note_line(
+                disburse_reason,
+                f"SM Details: {loan_app.sm_name or '-'} | {loan_app.sm_phone_number or '-'} | {loan_app.sm_email or '-'}"
+            )
+            loan_app.approval_notes = _append_note_line(loan_app.approval_notes, disburse_reason)
+            loan_app.save(update_fields=[
+                'status',
+                'disbursed_by',
+                'disbursed_at',
+                'disbursement_amount',
+                'approval_notes',
+                'updated_at',
+            ])
+
+            LoanStatusHistory.objects.create(
+                loan_application=loan_app,
+                from_status='follow_up' if previous_status == BANKING_PROCESS_STATUS else 'approved',
+                to_status='disbursed',
+                changed_by=request.user,
+                reason=disburse_reason,
+                is_auto_triggered=False,
+            )
+
+            _append_related_loan_remark(loan_app, disburse_reason, status_override='disbursed')
+
+            return Response({
+                'success': True,
+                'message': 'Loan marked as disbursed successfully',
+                'new_status': 'Disbursed',
+                'disbursement_amount': float(disbursement_amount),
+                'disbursement_date': disbursement_date.strftime('%Y-%m-%d'),
+                'status_display': _ui_status_label('Disbursed'),
+            }, status=status.HTTP_200_OK)
+
+        def _process_legacy():
             if not legacy.is_sm_signed:
                 return Response({
                     'success': False,
                     'error': 'Please complete SM sign before submitting to Disbursed.'
                 }, status=status.HTTP_400_BAD_REQUEST)
 
-            disbursement_amount = request.data.get('disbursement_amount')
-            bank_remark = request.data.get('bank_remark', '').strip()
+            disbursement_amount = disbursement_amount_raw
             if not disbursement_amount:
                 disbursement_amount = float(legacy.loan_amount or 0)
             try:
@@ -6531,7 +6689,28 @@ def employee_disburse_loan(request, loan_id):
                 'disbursement_date': timezone.now().date().strftime('%Y-%m-%d'),
                 'status_display': 'Disbursed',
             }, status=status.HTTP_200_OK)
-        except Loan.DoesNotExist:
-            return Response({'success': False, 'error': 'Loan not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        for source in _source_order():
+            if source == 'application' and _can_process_application():
+                return _process_application()
+            if source == 'legacy' and _can_process_legacy():
+                return _process_legacy()
+
+        for source in _source_order():
+            if source == 'application' and loan_app and _is_authorized_processor(request.user, loan_app):
+                return Response({
+                    'success': False,
+                    'error': f'Loan status is {loan_app.status}. Can only disburse from Approved status.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            if source == 'legacy' and legacy and _is_authorized_processor(request.user, legacy):
+                return Response({
+                    'success': False,
+                    'error': f'Loan status is {legacy.status}. Can only disburse from Approved status.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+        if loan_app or legacy:
+            return Response({'success': False, 'error': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
+
+        return Response({'success': False, 'error': 'Loan not found'}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         return Response({'success': False, 'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

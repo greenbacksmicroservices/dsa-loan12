@@ -514,7 +514,7 @@
         }
 
         function refreshDashboardStats() {
-            fetch('/api/dashboard-realtime-stats/')
+            fetch(`/api/dashboard-realtime-stats/?_t=${Date.now()}`, { cache: 'no-store' })
                 .then(response => response.json())
                 .then(data => {
                     if (data && data.success && data.data) {

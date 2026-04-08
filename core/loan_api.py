@@ -747,20 +747,58 @@ def api_loan_reject(request, loan_id):
     try:
         loan = get_object_or_404(Loan, id=loan_id)
         data = json.loads(request.body)
-        
-        rejection_reason = data.get('rejection_reason', 'No reason provided')
-        
+
+        rejection_reason = str(data.get('rejection_reason', '')).strip() or 'No reason provided'
+        now = timezone.now()
+        previous_status = loan.status
+
         # Update loan status
         loan.status = 'rejected'
         if hasattr(loan, 'rejection_reason'):
             loan.rejection_reason = rejection_reason
+        if hasattr(loan, 'is_sm_signed'):
+            loan.is_sm_signed = False
+        if hasattr(loan, 'sm_signed_at'):
+            loan.sm_signed_at = None
         loan.save()
+
+        # Keep related LoanApplication in sync when available.
+        loan_app = find_related_loan_application(loan)
+        if loan_app:
+            app_update_fields = []
+            if loan_app.status != 'Rejected':
+                loan_app.status = 'Rejected'
+                app_update_fields.append('status')
+            if loan_app.rejected_by_id != request.user.id:
+                loan_app.rejected_by = request.user
+                app_update_fields.append('rejected_by')
+            if loan_app.rejected_at != now:
+                loan_app.rejected_at = now
+                app_update_fields.append('rejected_at')
+            if loan_app.rejection_reason != rejection_reason:
+                loan_app.rejection_reason = rejection_reason
+                app_update_fields.append('rejection_reason')
+            if loan_app.is_sm_signed:
+                loan_app.is_sm_signed = False
+                app_update_fields.append('is_sm_signed')
+            if loan_app.sm_signed_at is not None:
+                loan_app.sm_signed_at = None
+                app_update_fields.append('sm_signed_at')
+
+            note_line = f"Rejection Reason: {rejection_reason}".strip()
+            existing_notes = str(loan_app.approval_notes or '').strip()
+            if note_line and note_line not in existing_notes:
+                loan_app.approval_notes = f"{existing_notes}\n{note_line}".strip() if existing_notes else note_line
+                app_update_fields.append('approval_notes')
+
+            if app_update_fields:
+                loan_app.save(update_fields=app_update_fields + ['updated_at'])
         
         # Record status history
         try:
             LoanStatusHistory.objects.create(
                 loan=loan,
-                old_status='waiting' if loan.status == 'waiting' else 'follow_up',
+                old_status='waiting' if previous_status == 'waiting' else 'follow_up',
                 new_status='rejected',
                 changed_by=request.user,
                 reason=rejection_reason

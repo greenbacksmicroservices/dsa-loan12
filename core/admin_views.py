@@ -14,13 +14,21 @@ import logging
 
 from .models import LoanApplication, Applicant, ApplicantDocument, LoanAssignment, LoanStatusHistory, User, Agent, Loan, LoanDocument, ActivityLog, SubAdminEntry, UserOnboardingProfile, UserOnboardingDocument
 from .decorators import admin_required
-from .loan_sync import extract_assignment_context, role_label, find_related_loan
+from .loan_sync import extract_assignment_context, role_label, find_related_loan, find_related_loan_application
 from .onboarding_utils import collect_onboarding_payload, collect_onboarding_documents, collect_onboarding_payload_from_source
 from .followup_utils import auto_move_overdue_to_follow_up
 
 logger = logging.getLogger(__name__)
 
 FOLLOW_UP_PENDING_LABEL = 'Follow Up'
+APP_STATUS_TO_LOAN_KEY = {
+    'New Entry': 'new_entry',
+    'Waiting for Processing': 'waiting',
+    'Required Follow-up': 'follow_up',
+    'Approved': 'approved',
+    'Rejected': 'rejected',
+    'Disbursed': 'disbursed',
+}
 
 
 def _has_revert_marker(value):
@@ -29,6 +37,73 @@ def _has_revert_marker(value):
 
 def _follow_up_pending_q():
     return Q(status__in=['new_entry', 'waiting']) & Q(remarks__icontains='Revert Remark')
+
+
+def _is_follow_up_pending_loan(loan_obj, related_app=None):
+    return _effective_status_key_for_loan(loan_obj, related_app=related_app) == 'follow_up_pending'
+
+
+def _status_key_to_display_text(status_key, fallback_text=''):
+    key = str(status_key or '').strip().lower()
+    if key == 'follow_up_pending':
+        return FOLLOW_UP_PENDING_LABEL
+    mapping = {
+        'new_entry': 'New Entry',
+        'waiting': 'Waiting for Processing',
+        'follow_up': 'Required Follow-up',
+        'approved': 'Approved',
+        'rejected': 'Rejected',
+        'disbursed': 'Disbursed',
+    }
+    return _ui_status_label(mapping.get(key, fallback_text or key))
+
+
+def _effective_status_key_for_loan(loan_obj, related_app=None):
+    if not loan_obj:
+        return ''
+
+    legacy_key = (loan_obj.status or '').strip().lower()
+
+    # Legacy follow-up pending marker (source of truth in many records)
+    if legacy_key in ['new_entry', 'waiting'] and _has_revert_marker(loan_obj.remarks):
+        return 'follow_up_pending'
+
+    if related_app is None:
+        related_app = find_related_loan_application(loan_obj)
+    if not related_app:
+        return legacy_key
+
+    app_key = APP_STATUS_TO_LOAN_KEY.get(getattr(related_app, 'status', ''), '')
+    app_follow_up_pending = app_key in ['new_entry', 'waiting'] and _has_revert_marker(getattr(related_app, 'approval_notes', ''))
+    if app_follow_up_pending:
+        return 'follow_up_pending'
+
+    # If application has progressed, prefer it over stale legacy states.
+    if app_key in ['follow_up', 'approved', 'rejected', 'disbursed']:
+        return app_key
+
+    return legacy_key
+
+
+def _compute_status_breakdown(loans_qs):
+    counts = {
+        'new_entry': 0,
+        'waiting': 0,
+        'follow_up': 0,
+        'follow_up_pending': 0,
+        'approved': 0,
+        'rejected': 0,
+        'disbursed': 0,
+        'total': 0,
+    }
+
+    for loan in loans_qs:
+        status_key = _effective_status_key_for_loan(loan)
+        if status_key in ['new_entry', 'waiting', 'follow_up', 'approved', 'rejected', 'disbursed', 'follow_up_pending']:
+            counts[status_key] += 1
+        counts['total'] += 1
+
+    return counts
 
 
 def _ui_status_label(status_text):
@@ -214,14 +289,15 @@ def admin_dashboard(request):
         auto_move_overdue_to_follow_up()
 
         # Get all Loan counts by status (real-time)
-        follow_up_pending_q = _follow_up_pending_q()
-        follow_up_pending_count = Loan.objects.filter(follow_up_pending_q).count()
-        new_entry_count = Loan.objects.filter(status='new_entry').exclude(remarks__icontains='Revert Remark').count()
-        in_processing_count = Loan.objects.filter(status='waiting').exclude(remarks__icontains='Revert Remark').count()
-        followup_count = Loan.objects.filter(status='follow_up').count()
-        approved_count = Loan.objects.filter(status='approved').count()
-        rejected_count = Loan.objects.filter(status='rejected').count()
-        disbursed_count = Loan.objects.filter(status='disbursed').count()
+        all_loans = Loan.objects.all()
+        status_counts = _compute_status_breakdown(all_loans)
+        follow_up_pending_count = status_counts['follow_up_pending']
+        new_entry_count = status_counts['new_entry']
+        in_processing_count = status_counts['waiting']
+        followup_count = status_counts['follow_up']
+        approved_count = status_counts['approved']
+        rejected_count = status_counts['rejected']
+        disbursed_count = status_counts['disbursed']
         
         # Team counts
         total_agents = Agent.objects.count()
@@ -231,8 +307,7 @@ def admin_dashboard(request):
         total_subadmins = User.objects.filter(role='subadmin').count()
         
         # Calculate statistics
-        total_applications = (new_entry_count + in_processing_count + follow_up_pending_count + followup_count +
-                            approved_count + rejected_count + disbursed_count)
+        total_applications = status_counts['total']
         
         approval_rate = 0
         if total_applications > 0:
@@ -300,19 +375,25 @@ def admin_all_loans(request):
             Q(user_id__icontains=search_query)
         )
 
-    follow_up_pending_q = _follow_up_pending_q()
-
-    # Apply status filter if provided
+    # Apply coarse DB filter (final status filtering happens after effective-status resolution)
     if status_filter == 'follow_up_pending':
-        loans = loans.filter(follow_up_pending_q)
-    elif status_filter:
-        loans = loans.filter(status=status_filter)
-        if status_filter in ['new_entry', 'waiting']:
-            loans = loans.exclude(remarks__icontains='Revert Remark')
+        loans = loans.filter(status__in=['new_entry', 'waiting', 'follow_up'])
+    elif status_filter in ['new_entry', 'waiting', 'follow_up']:
+        loans = loans.filter(status__in=['new_entry', 'waiting', 'follow_up'])
+    elif status_filter in ['approved', 'rejected', 'disbursed']:
+        loans = loans.filter(status__in=[status_filter, 'follow_up'])
 
-    enriched_loans = list(loans)
-    for loan in enriched_loans:
-        follow_up_pending = loan.status in ['new_entry', 'waiting'] and _has_revert_marker(loan.remarks)
+    enriched_loans = []
+    for loan in loans:
+        related_app = find_related_loan_application(loan)
+        effective_status_key = _effective_status_key_for_loan(loan, related_app=related_app)
+        follow_up_pending = effective_status_key == 'follow_up_pending'
+
+        if status_filter == 'follow_up_pending' and effective_status_key != 'follow_up_pending':
+            continue
+        if status_filter and status_filter != 'follow_up_pending' and effective_status_key != status_filter:
+            continue
+
         creator = loan.created_by
         creator_name = (creator.get_full_name() or creator.username) if creator else '-'
         loan.created_under_display = f"{role_label(creator)} - {creator_name}" if creator else 'System'
@@ -323,9 +404,10 @@ def admin_all_loans(request):
         else:
             loan.assigned_to_display = '-'
         loan.follow_up_pending = follow_up_pending
-        loan.status_key_display = 'follow_up_pending' if follow_up_pending else loan.status
-        loan.status_display_text = FOLLOW_UP_PENDING_LABEL if follow_up_pending else _ui_status_label(loan.get_status_display())
+        loan.status_key_display = effective_status_key or loan.status
+        loan.status_display_text = _status_key_to_display_text(effective_status_key, fallback_text=loan.get_status_display())
         loan.assigned_by_display = extract_assignment_context(loan).get('assigned_by_display', '-')
+        enriched_loans.append(loan)
     
     context = {
         'page_title': 'All Loans - Master Database',
@@ -347,24 +429,21 @@ def api_admin_dashboard_stats(request):
     Called by admin_dashboard template
     """
     try:
-        total_loans = Loan.objects.count()
-        follow_up_pending_q = _follow_up_pending_q()
-        follow_up_pending_count = Loan.objects.filter(follow_up_pending_q).count()
-        new_entry_count = Loan.objects.filter(status='new_entry').exclude(remarks__icontains='Revert Remark').count()
-        processing_count = Loan.objects.filter(status='waiting').exclude(remarks__icontains='Revert Remark').count()
+        all_loans = Loan.objects.all()
+        status_counts = _compute_status_breakdown(all_loans)
         stats = {
-            'total': total_loans,
-            'new_entry': new_entry_count,
-            'processing': processing_count,
-            'follow_up': Loan.objects.filter(status='follow_up').count(),
-            'follow_up_pending': follow_up_pending_count,
-            'approved': Loan.objects.filter(status='approved').count(),
-            'rejected': Loan.objects.filter(status='rejected').count(),
-            'disbursed': Loan.objects.filter(status='disbursed').count(),
-            'total_value': Loan.objects.aggregate(Sum('loan_amount'))['loan_amount__sum'] or 0,
-            'approved_value': Loan.objects.filter(status='approved').aggregate(Sum('loan_amount'))['loan_amount__sum'] or 0,
-            'disbursed_value': Loan.objects.filter(status='disbursed').aggregate(Sum('loan_amount'))['loan_amount__sum'] or 0,
-            'pending_value': Loan.objects.exclude(status='disbursed').aggregate(Sum('loan_amount'))['loan_amount__sum'] or 0,
+            'total': status_counts['total'],
+            'new_entry': status_counts['new_entry'],
+            'processing': status_counts['waiting'],
+            'follow_up': status_counts['follow_up'],
+            'follow_up_pending': status_counts['follow_up_pending'],
+            'approved': status_counts['approved'],
+            'rejected': status_counts['rejected'],
+            'disbursed': status_counts['disbursed'],
+            'total_value': all_loans.aggregate(Sum('loan_amount'))['loan_amount__sum'] or 0,
+            'approved_value': all_loans.filter(status='approved').aggregate(Sum('loan_amount'))['loan_amount__sum'] or 0,
+            'disbursed_value': all_loans.filter(status='disbursed').aggregate(Sum('loan_amount'))['loan_amount__sum'] or 0,
+            'pending_value': all_loans.exclude(status='disbursed').aggregate(Sum('loan_amount'))['loan_amount__sum'] or 0,
         }
         return JsonResponse(stats)
     except Exception as e:
@@ -677,15 +756,13 @@ def api_admin_all_loans(request):
             'assigned_agent',
         )
         
-        follow_up_pending_q = _follow_up_pending_q()
-
-        # Filter by status if specified
+        # Coarse filter by status (final status decision is computed using related workflow record)
         if status_filter == 'follow_up_pending':
-            query = query.filter(follow_up_pending_q)
-        elif status_filter:
-            query = query.filter(status=status_filter)
-            if status_filter in ['new_entry', 'waiting']:
-                query = query.exclude(remarks__icontains='Revert Remark')
+            query = query.filter(status__in=['new_entry', 'waiting', 'follow_up'])
+        elif status_filter in ['new_entry', 'waiting', 'follow_up']:
+            query = query.filter(status__in=['new_entry', 'waiting', 'follow_up'])
+        elif status_filter in ['approved', 'rejected', 'disbursed']:
+            query = query.filter(status__in=[status_filter, 'follow_up'])
         
         # Filter by search term
         if search:
@@ -699,9 +776,16 @@ def api_admin_all_loans(request):
         # Get loans data
         loans_data = []
         for loan in query.order_by('-created_at')[:100]:
-            is_follow_up_pending = loan.status in ['new_entry', 'waiting'] and _has_revert_marker(loan.remarks)
-            status_key = 'follow_up_pending' if is_follow_up_pending else loan.status
-            status_display = FOLLOW_UP_PENDING_LABEL if is_follow_up_pending else _ui_status_label(loan.get_status_display())
+            related_app = find_related_loan_application(loan)
+            effective_status_key = _effective_status_key_for_loan(loan, related_app=related_app)
+            is_follow_up_pending = effective_status_key == 'follow_up_pending'
+
+            if status_filter == 'follow_up_pending' and effective_status_key != 'follow_up_pending':
+                continue
+            if status_filter and status_filter != 'follow_up_pending' and effective_status_key != status_filter:
+                continue
+            status_key = effective_status_key or loan.status
+            status_display = _status_key_to_display_text(effective_status_key, fallback_text=loan.get_status_display())
             loans_data.append({
                 'id': loan.id,
                 'applicant_name': loan.full_name or 'N/A',

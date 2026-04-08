@@ -18,10 +18,71 @@ from .models import (
 )
 from .decorators import admin_required, employee_required
 from .followup_utils import auto_move_overdue_to_follow_up
+from .loan_sync import find_related_loan_application
+
+APP_STATUS_TO_LOAN_KEY = {
+    'New Entry': 'new_entry',
+    'Waiting for Processing': 'waiting',
+    'Required Follow-up': 'follow_up',
+    'Approved': 'approved',
+    'Rejected': 'rejected',
+    'Disbursed': 'disbursed',
+}
 
 
-def _follow_up_pending_q():
-    return Q(status__in=['new_entry', 'waiting']) & Q(remarks__icontains='Revert Remark ')
+def _has_revert_marker(value):
+    return 'revert remark' in str(value or '').lower()
+
+
+def _is_follow_up_pending_loan(loan_obj, related_app=None):
+    return _effective_status_key_for_loan(loan_obj, related_app=related_app) == 'follow_up_pending'
+
+
+def _effective_status_key_for_loan(loan_obj, related_app=None):
+    if not loan_obj:
+        return ''
+
+    legacy_key = str(getattr(loan_obj, 'status', '') or '').strip().lower()
+    if legacy_key in ['new_entry', 'waiting'] and _has_revert_marker(getattr(loan_obj, 'remarks', '')):
+        return 'follow_up_pending'
+
+    if related_app is None:
+        related_app = find_related_loan_application(loan_obj)
+    if not related_app:
+        return legacy_key
+
+    app_key = APP_STATUS_TO_LOAN_KEY.get(getattr(related_app, 'status', ''), '')
+    app_follow_up_pending = app_key in ['new_entry', 'waiting'] and _has_revert_marker(getattr(related_app, 'approval_notes', ''))
+    if app_follow_up_pending:
+        return 'follow_up_pending'
+
+    if app_key in ['follow_up', 'approved', 'rejected', 'disbursed']:
+        return app_key
+
+    return legacy_key
+
+
+def _compute_status_breakdown(loans_qs):
+    counts = {
+        'new_entries': 0,
+        'waiting': 0,
+        'follow_up': 0,
+        'follow_up_pending': 0,
+        'approved': 0,
+        'rejected': 0,
+        'disbursed': 0,
+        'total': 0,
+    }
+
+    for loan in loans_qs:
+        status_key = _effective_status_key_for_loan(loan)
+        if status_key == 'new_entry':
+            counts['new_entries'] += 1
+        elif status_key in ['waiting', 'follow_up', 'follow_up_pending', 'approved', 'rejected', 'disbursed']:
+            counts[status_key] += 1
+        counts['total'] += 1
+
+    return counts
 
 
 # ============================================================================
@@ -368,14 +429,15 @@ def api_dashboard_stats(request):
     if request.user.role == 'admin':
         # Admin gets all statistics
         base_qs = Loan.objects.all()
-        follow_up_pending = base_qs.filter(_follow_up_pending_q()).count()
-        new_entries = base_qs.filter(status='new_entry').exclude(remarks__icontains='Revert Remark ').count()
-        waiting = base_qs.filter(status='waiting').exclude(remarks__icontains='Revert Remark ').count()
-        follow_up = base_qs.filter(status='follow_up').count()
-        approved = base_qs.filter(status='approved').count()
-        rejected = base_qs.filter(status='rejected').count()
-        disbursed = base_qs.filter(status='disbursed').count()
-        total = base_qs.count()
+        status_counts = _compute_status_breakdown(base_qs)
+        follow_up_pending = status_counts['follow_up_pending']
+        new_entries = status_counts['new_entries']
+        waiting = status_counts['waiting']
+        follow_up = status_counts['follow_up']
+        approved = status_counts['approved']
+        rejected = status_counts['rejected']
+        disbursed = status_counts['disbursed']
+        total = status_counts['total']
 
         total_amount_disbursed = base_qs.filter(
             status='disbursed'
@@ -388,14 +450,15 @@ def api_dashboard_stats(request):
     elif request.user.role == 'employee':
         # Employee sees only assigned loans
         base_qs = Loan.objects.filter(assigned_employee=request.user)
-        follow_up_pending = base_qs.filter(_follow_up_pending_q()).count()
-        new_entries = base_qs.filter(status='new_entry').exclude(remarks__icontains='Revert Remark ').count()
-        waiting = base_qs.filter(status='waiting').exclude(remarks__icontains='Revert Remark ').count()
-        follow_up = base_qs.filter(status='follow_up').count()
-        approved = base_qs.filter(status='approved').count()
-        rejected = base_qs.filter(status='rejected').count()
-        disbursed = base_qs.filter(status='disbursed').count()
-        total = base_qs.count()
+        status_counts = _compute_status_breakdown(base_qs)
+        follow_up_pending = status_counts['follow_up_pending']
+        new_entries = status_counts['new_entries']
+        waiting = status_counts['waiting']
+        follow_up = status_counts['follow_up']
+        approved = status_counts['approved']
+        rejected = status_counts['rejected']
+        disbursed = status_counts['disbursed']
+        total = status_counts['total']
 
         total_amount_disbursed = base_qs.filter(
             status='disbursed'

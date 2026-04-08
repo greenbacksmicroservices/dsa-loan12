@@ -754,7 +754,10 @@ async function load() {
 
 document.getElementById('collectBtn').onclick = async () => {
     try {
-        const d = await call(`/api/employee/loan/${loanId}/collect/`, { bank_remark: '' });
+        const d = await call(`/api/employee/loan/${loanId}/collect/`, {
+            bank_remark: '',
+            entity_type: loan?.entity_type || '',
+        });
         msg('success', d.message || 'Updated');
         setTimeout(load, 300);
     } catch(e) {
@@ -859,7 +862,11 @@ document.getElementById('confirmRevert').onclick = async () => {
     const bankNote = document.getElementById('revertBankNote').value.trim();
     if (!revertRemark) { msg('danger', 'Revert remark is required.'); return; }
     try {
-        const d = await call(`/api/employee/loan/${loanId}/revert/`, { revert_remark: revertRemark, bank_remark: bankNote || '' });
+        const d = await call(`/api/employee/loan/${loanId}/revert/`, {
+            revert_remark: revertRemark,
+            bank_remark: bankNote || '',
+            entity_type: loan?.entity_type || '',
+        });
         revertModal.hide();
         msg('success', d.message || 'Reverted to agent');
         setTimeout(load, 300);

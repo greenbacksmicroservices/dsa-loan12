@@ -1214,6 +1214,7 @@ let tableState = {
     pageSize: 10,
     currentPage: 1,
 };
+const ACTIVE_STATUS_FILTER = (new URLSearchParams(window.location.search).get('status') || '').trim();
 
 function normalizeStatusKey(value) {
     const raw = String(value || '').trim().toLowerCase();
@@ -1434,6 +1435,11 @@ function initTablePagination() {
 function filterTable(resetPage = true) {
     const input = (document.getElementById('searchInput')?.value || '').toLowerCase().trim();
     tableState.filteredRows = tableState.rows.filter((row) => {
+        const rowStatus = normalizeStatusKey(row.getAttribute('data-status-key') || '');
+        const activeStatus = normalizeStatusKey(ACTIVE_STATUS_FILTER);
+        if (activeStatus && rowStatus !== activeStatus) {
+            return false;
+        }
         const searchText = (row.getAttribute('data-search') || '').toLowerCase();
         return searchText.includes(input);
     });
@@ -1445,8 +1451,9 @@ function filterTable(resetPage = true) {
 
 function renderTablePage() {
     const rows = tableState.rows;
-    const hasSearch = Boolean((document.getElementById('searchInput')?.value || '').trim());
-    const sourceRows = hasSearch ? tableState.filteredRows : rows;
+    // Always render from filtered rows so status-filtered pages stay correct
+    // even when search input is empty.
+    const sourceRows = tableState.filteredRows;
     const totalRows = sourceRows.length;
     const totalPages = Math.max(1, Math.ceil(totalRows / tableState.pageSize));
     if (tableState.currentPage > totalPages) {
@@ -2189,7 +2196,10 @@ function submitAction() {
         data = { rejection_reason: reason };
     } else if (currentAction === 'collect') {
         endpoint = `/api/employee/loan/${currentLoanId}/collect/`;
-        data = { bank_remark: document.getElementById('collectRemark').value.trim() };
+        data = {
+            bank_remark: document.getElementById('collectRemark').value.trim(),
+            entity_type: 'legacy'
+        };
     } else if (currentAction === 'revert') {
         const revertRemark = document.getElementById('revertRemark').value.trim();
         if (!revertRemark) {
@@ -2197,7 +2207,10 @@ function submitAction() {
             return;
         }
         endpoint = `/api/employee/loan/${currentLoanId}/revert/`;
-        data = { revert_remark: revertRemark };
+        data = {
+            revert_remark: revertRemark,
+            entity_type: 'legacy'
+        };
     } else if (currentAction === 'disburse') {
         endpoint = `/api/loan/${currentLoanId}/disburse/`;
         const notes = document.getElementById('disbursementNotes').value.trim();

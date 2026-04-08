@@ -794,7 +794,10 @@ async function confirmAdminAction() {
     try {
         if (currentAdminAction === 'collect') {
             endpoint = `/api/employee/loan/${currentAdminAppId}/collect/`;
-            payload = { bank_remark: (document.getElementById('adminCollectRemark')?.value || '').trim() };
+            payload = {
+                bank_remark: (document.getElementById('adminCollectRemark')?.value || '').trim(),
+                entity_type: 'application',
+            };
         } else if (currentAdminAction === 'approve') {
             const smName = (document.getElementById('adminSmName')?.value || '').trim();
             const leaderName = (document.getElementById('adminLeaderName')?.value || '').trim();
@@ -834,7 +837,10 @@ async function confirmAdminAction() {
                 throw new Error('Missing revert remark');
             }
             endpoint = `/api/employee/loan/${currentAdminAppId}/revert/`;
-            payload = { revert_remark: remark };
+            payload = {
+                revert_remark: remark,
+                entity_type: 'application',
+            };
         } else if (currentAdminAction === 'sign') {
             endpoint = `/api/employee/loan/${currentAdminAppId}/sign/`;
             payload = {};

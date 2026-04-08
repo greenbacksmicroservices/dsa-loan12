@@ -1,6 +1,5 @@
 from django.urls import path, include
 from django.views.generic import RedirectView
-from django.contrib.auth import views as auth_views
 from rest_framework.routers import DefaultRouter
 from . import views
 from . import admin_views
@@ -19,6 +18,7 @@ from . import admin_unified_views
 from . import admin_assign_views
 from . import subadmin_views
 from . import loan_api
+from . import password_reset_otp_views
 
 router = DefaultRouter()
 router.register(r'users', views.UserViewSet, basename='user')
@@ -39,34 +39,9 @@ urlpatterns = [
     path('login/', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
     path('dashboard/', views.dashboard, name='dashboard'),
-    path(
-        'password-reset/',
-        auth_views.PasswordResetView.as_view(
-            template_name='core/auth/password_reset_form.html',
-            email_template_name='core/auth/password_reset_email.html',
-            subject_template_name='core/auth/password_reset_subject.txt',
-            success_url='/password-reset/done/'
-        ),
-        name='password_reset'
-    ),
-    path(
-        'password-reset/done/',
-        auth_views.PasswordResetDoneView.as_view(template_name='core/auth/password_reset_done.html'),
-        name='password_reset_done'
-    ),
-    path(
-        'reset/<uidb64>/<token>/',
-        auth_views.PasswordResetConfirmView.as_view(
-            template_name='core/auth/password_reset_confirm.html',
-            success_url='/reset/done/'
-        ),
-        name='password_reset_confirm'
-    ),
-    path(
-        'reset/done/',
-        auth_views.PasswordResetCompleteView.as_view(template_name='core/auth/password_reset_complete.html'),
-        name='password_reset_complete'
-    ),
+    path('password-reset/', password_reset_otp_views.password_reset_otp_request, name='password_reset'),
+    path('password-reset/verify/', password_reset_otp_views.password_reset_otp_verify, name='password_reset_verify'),
+    path('password-reset/done/', password_reset_otp_views.password_reset_otp_done, name='password_reset_done'),
     
     # Registration Wizard
     path('register/<str:role>/step/<int:step>/', views.registration_wizard, name='registration_wizard'),
@@ -524,7 +499,6 @@ urlpatterns = [
     path('api/admin/loan/<int:loan_id>/reassign/', admin_assign_views.admin_reassign_loan, name='api_admin_reassign_loan'),
     path('api/admin/loan/<int:loan_id>/assignment-status/', admin_assign_views.admin_get_assignment_status, name='api_admin_assignment_status'),
 ]
-
 
 
 

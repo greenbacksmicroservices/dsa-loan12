@@ -259,6 +259,7 @@ def employee_all_loans_api(request):
                     'status': compact_status,
                     'status_display': status_display,
                     'follow_up_pending': is_follow_up_pending,
+                    'entity_type': 'application',
                 })
         else:
             if search:
@@ -337,6 +338,7 @@ def employee_all_loans_api(request):
                         'status': follow_up_pending_label,
                         'status_display': 'Follow Up',
                         'follow_up_pending': True,
+                        'entity_type': 'application',
                         '_sort_ts': app.updated_at or app.created_at,
                     })
 
@@ -379,6 +381,7 @@ def employee_all_loans_api(request):
                     'status': status_key,
                     'status_display': status_display,
                     'follow_up_pending': is_follow_up_pending,
+                    'entity_type': 'legacy',
                     '_sort_ts': loan.updated_at or loan.created_at,
                 })
 

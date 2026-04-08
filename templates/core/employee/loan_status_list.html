@@ -82,6 +82,7 @@ let ALL_LOANS = [];
 const PAGE_FILTER = '{{ status_key }}';
 let refreshTimer = null;
 let CURRENT_APPROVED_LOAN_ID = null;
+let CURRENT_APPROVED_ENTITY_TYPE = '';
 let PAGE_SIZE = 10;
 let CURRENT_PAGE = 1;
 
@@ -455,7 +456,7 @@ function renderLoansTable(loans) {
                             <td>
                                 <div style="display: flex; gap: 6px; flex-wrap: wrap;">
                                     ${l.status === 'approved'
-                                        ? `<button class="btn btn-sm btn-primary" type="button" onclick="openApprovedProcessModal(${l.id})">Process</button>`
+                                        ? `<button class="btn btn-sm btn-primary" type="button" onclick="openApprovedProcessModal(${l.id}, '${(l.entity_type || '').replace(/'/g, "\\'")}')">Process</button>`
                                         : (l.status === 'follow_up_pending'
                                             ? `<a href="/employee/loan/${l.id}/detail/" class="btn btn-sm btn-warning">Edit</a>`
                                             : `
@@ -680,15 +681,21 @@ async function uploadFollowUpDocs() {
     }
 }
 
-async function openApprovedProcessModal(loanId) {
+async function openApprovedProcessModal(loanId, entityType = '') {
     CURRENT_APPROVED_LOAN_ID = loanId;
+    CURRENT_APPROVED_ENTITY_TYPE = entityType || '';
     const modalEl = document.getElementById('approvedProcessModal');
     if (!modalEl) return;
 
     document.getElementById('approvedRejectReason').value = '';
 
     try {
-        const res = await fetch(`/api/employee/loan/${loanId}/detail/`, {
+        const params = new URLSearchParams();
+        if (CURRENT_APPROVED_ENTITY_TYPE) {
+            params.set('source', CURRENT_APPROVED_ENTITY_TYPE);
+        }
+        const detailUrl = `/api/employee/loan/${loanId}/detail/${params.toString() ? `?${params.toString()}` : ''}`;
+        const res = await fetch(detailUrl, {
             method: 'GET',
             headers: {
                 'X-CSRFToken': getCookie('csrftoken'),
@@ -746,10 +753,11 @@ async function submitApprovedSign() {
 
         await postJson(`/api/employee/loan/${CURRENT_APPROVED_LOAN_ID}/sign/`, {
             is_sm_signed: signatureDone,
-            bank_remark: bankRemark || ''
+            bank_remark: bankRemark || '',
+            entity_type: CURRENT_APPROVED_ENTITY_TYPE || ''
         });
         await loadLoans();
-        openApprovedProcessModal(CURRENT_APPROVED_LOAN_ID);
+        openApprovedProcessModal(CURRENT_APPROVED_LOAN_ID, CURRENT_APPROVED_ENTITY_TYPE);
     } catch (error) {
         alert(error.message);
     }
@@ -766,7 +774,8 @@ async function submitApprovedReject() {
     try {
         await postJson(`/api/employee/loan/${CURRENT_APPROVED_LOAN_ID}/reject/`, {
             rejection_reason: reason,
-            bank_remark: bankRemark || ''
+            bank_remark: bankRemark || '',
+            entity_type: CURRENT_APPROVED_ENTITY_TYPE || ''
         });
         bootstrap.Modal.getInstance(document.getElementById('approvedProcessModal')).hide();
         await loadLoans();
@@ -784,7 +793,8 @@ async function submitApprovedDisburse() {
         await postJson(`/api/employee/loan/${CURRENT_APPROVED_LOAN_ID}/disburse/`, {
             disbursement_amount: amount || null,
             disbursement_date: date || null,
-            bank_remark: bankRemark || ''
+            bank_remark: bankRemark || '',
+            entity_type: CURRENT_APPROVED_ENTITY_TYPE || ''
         });
         bootstrap.Modal.getInstance(document.getElementById('approvedProcessModal')).hide();
         await loadLoans();
