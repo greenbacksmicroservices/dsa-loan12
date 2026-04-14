@@ -7,8 +7,8 @@
 <div class="container-fluid">
     <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 employee-dashboard-heading">
         <div>
-            <h1 class="h4 mb-1 text-dark fw-bold">Employee Dashboard</h1>
-            <p class="text-muted mb-0" style="font-size: 13px;">Overview of your assigned loan pipeline</p>
+            <h1 class="h4 mb-1 fw-bold dashboard-title">Employee Dashboard</h1>
+            <p class="mb-0 dashboard-subtitle" style="font-size: 13px;">Overview of your assigned loan pipeline</p>
         </div>
     </div>
 
@@ -201,6 +201,14 @@
         border-bottom: 1px solid #e2e8f0;
     }
 
+    .dashboard-title {
+        color: #0f172a;
+    }
+
+    .dashboard-subtitle {
+        color: #64748b;
+    }
+
     .employee-stat-grid {
         display: grid;
         grid-template-columns: 1fr;
@@ -330,6 +338,43 @@
 
     .employee-chart-body canvas {
         max-height: 150px !important;
+    }
+
+    body.dark-mode .employee-dashboard-heading {
+        background: #0b1220;
+        border-bottom-color: #334155;
+    }
+
+    body.dark-mode .dashboard-title {
+        color: #e5e7eb !important;
+    }
+
+    body.dark-mode .dashboard-subtitle {
+        color: #94a3b8 !important;
+    }
+
+    body.dark-mode .insight-card {
+        background: #0f172a;
+        border-color: #334155;
+        box-shadow: 0 10px 24px rgba(2, 6, 23, 0.45);
+    }
+
+    body.dark-mode .status-title {
+        color: #94a3b8;
+    }
+
+    body.dark-mode .main-value {
+        color: #e5e7eb;
+    }
+
+    body.dark-mode .description {
+        color: #cbd5e1;
+    }
+
+    body.dark-mode .employee-chart-card,
+    body.dark-mode .employee-chart-body {
+        background: #0f172a;
+        border-color: #334155;
     }
 
     .employee-table-card {

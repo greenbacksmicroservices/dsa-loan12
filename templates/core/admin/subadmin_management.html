@@ -1,7 +1,7 @@
 {% extends 'core/admin/admin_base.html' %}
 {% load static %}
 
-{% block title %}SubAdmin Management - Admin Panel{% endblock %}
+{% block title %}Partner Management - Admin Panel{% endblock %}
 
 {% block content %}
 <style>
@@ -228,12 +228,12 @@
     <div class="stats-grid">
         <div class="stat-card">
             <div style="font-size: 24px;">👑</div>
-            <div class="stat-label">Total SubAdmins</div>
+            <div class="stat-label">Total Partners</div>
             <div class="stat-number">{{ subadmins|length }}</div>
         </div>
         <div class="stat-card" style="border-top-color: #10b981;">
             <div style="font-size: 24px;">✓</div>
-            <div class="stat-label">Active SubAdmins</div>
+            <div class="stat-label">Active Partners</div>
             <div class="stat-number" style="color: #10b981;">{{ active_subadmins|default:"0" }}</div>
         </div>
         <div class="stat-card" style="border-top-color: #3b82f6;">
@@ -251,11 +251,11 @@
     <!-- SubAdmins Table Header -->
     <div class="page-header">
         <div>
-            <h1 class="page-title">👑 SubAdmin Management</h1>
-            <p class="page-count">Total: {{ subadmins|length }} SubAdmin{{ subadmins|length|pluralize }}</p>
+            <h1 class="page-title">👑 Partner Management</h1>
+            <p class="page-count">Total: {{ subadmins|length }} Partner{{ subadmins|length|pluralize }}</p>
         </div>
         <button onclick="openAddSubAdminModal()" class="btn-primary">
-            ➕ Add New SubAdmin
+            ➕ Add New Partner
         </button>
     </div>
 
@@ -270,7 +270,7 @@
         <table id="subadminsTable">
             <thead>
                 <tr>
-                    <th>SubAdmin Name</th>
+                    <th>Partner Name</th>
                     <th>Username</th>
                     <th>Email</th>
                     <th>Phone</th>
@@ -313,16 +313,16 @@
     {% else %}
     <div class="empty-state">
         <div class="empty-icon">👑</div>
-        <h3 style="color: #1f2937; margin-bottom: 10px;">No SubAdmins Found</h3>
+        <h3 style="color: #1f2937; margin-bottom: 10px;">No Partners Found</h3>
         <p>No sub-administrators have been added to the system yet.</p>
-        <button onclick="openAddSubAdminModal()" class="btn-primary" style="margin-top: 20px;">➕ Add First SubAdmin</button>
+        <button onclick="openAddSubAdminModal()" class="btn-primary" style="margin-top: 20px;">➕ Add First Partner</button>
     </div>
     {% endif %}
 </div>
 
 <script>
 function openAddSubAdminModal() {
-    alert('Add SubAdmin - Coming soon');
+    alert('Add Partner - Coming soon');
 }
 
 function filterTable() {
@@ -336,16 +336,16 @@ function filterTable() {
 }
 
 function viewSubAdmin(id) {
-    alert('View SubAdmin #' + id + ' - Coming soon');
+    alert('View Partner #' + id + ' - Coming soon');
 }
 
 function editSubAdmin(id) {
-    alert('Edit SubAdmin #' + id + ' - Coming soon');
+    alert('Edit Partner #' + id + ' - Coming soon');
 }
 
 function deleteSubAdmin(id) {
-    if (confirm('Are you sure you want to delete this SubAdmin?')) {
-        alert('SubAdmin deleted - Coming soon');
+    if (confirm('Are you sure you want to delete this Partner?')) {
+        alert('Partner deleted - Coming soon');
     }
 }
 </script>

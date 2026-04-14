@@ -5,12 +5,12 @@
     <link rel="stylesheet" href="{% static 'css/subadmin.css' %}">
 {% endblock %}
 
-{% block navbar_title %}SubAdmin Dashboard{% endblock %}
+{% block navbar_title %}Partner Dashboard{% endblock %}
 
 {% block sidebar %}
     <div class="sidebar">
         <div class="p-3">
-            <h5 class="text-white mb-3">SubAdmin Menu</h5>
+            <h5 class="text-white mb-3">Partner Menu</h5>
             <nav class="nav flex-column">
                 <a href="{% url 'subadmin_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'subadmin_dashboard' %}active{% endif %}">
                     <i class="fas fa-chart-line"></i> Dashboard
@@ -19,7 +19,7 @@
                     <i class="fas fa-file-alt"></i> All Loans
                 </a>
                 <a href="{% url 'subadmin_all_agents' %}" class="nav-link">
-                    <i class="fas fa-user-tie"></i> My Agents
+                    <i class="fas fa-user-tie"></i> My Channel Partners
                 </a>
                 <a href="{% url 'subadmin_profile' %}" class="nav-link">
                     <i class="fas fa-user-circle"></i> Profile
@@ -36,4 +36,4 @@
     </div>
 {% endblock %}
 
-{% block page_title %}SubAdmin Panel - {% block subadmin_page_title %}Dashboard{% endblock %}{% endblock %}
+{% block page_title %}Partner Panel - {% block subadmin_page_title %}Dashboard{% endblock %}{% endblock %}

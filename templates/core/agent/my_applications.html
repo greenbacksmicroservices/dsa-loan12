@@ -1,7 +1,7 @@
 {% extends 'core/base.html' %}
 {% load static %}
 
-{% block title %}My Applications - Agent{% endblock %}
+{% block title %}My Applications - Channel Partner{% endblock %}
 
 {% block content %}
 <style>
@@ -58,6 +58,30 @@
         70% { box-shadow: 0 0 0 10px rgba(220, 38, 38, 0); }
         100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
     }
+
+    body.dark-mode .card,
+    body.dark-mode .modal-content,
+    body.dark-mode .recent-strip,
+    body.dark-mode .table,
+    body.dark-mode .table thead {
+        background: #0b1220 !important;
+        border-color: #334155 !important;
+        color: #e5e7eb !important;
+    }
+
+    body.dark-mode .table td,
+    body.dark-mode .table th,
+    body.dark-mode .modal-title,
+    body.dark-mode .form-label {
+        color: #e5e7eb !important;
+    }
+
+    body.dark-mode .form-control,
+    body.dark-mode .form-select {
+        background: #111827 !important;
+        color: #e5e7eb !important;
+        border-color: #334155 !important;
+    }
 </style>
 
 <div class="container-fluid mt-4">
@@ -67,76 +91,7 @@
             <h1 class="h3 text-gray-800 mb-0">
                 <i class="bi bi-file-earmark"></i> My Applications
             </h1>
-            <p class="text-muted mt-2 mb-0">View all your loans - approved, rejected, active, and disbursed</p>
-        </div>
-    </div>
-
-    <!-- Status Cards -->
-    <div class="row mb-4">
-        <div class="col-lg-2 col-md-4 mb-3">
-            <div class="card shadow-sm border-0">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <p class="text-muted mb-1 small">Total Loans</p>
-                            <h3 class="mb-0 fw-bold text-primary">{{ total_count }}</h3>
-                        </div>
-                        <i class="bi bi-list text-primary" style="font-size: 2rem; opacity: 0.3;"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-lg-2 col-md-4 mb-3">
-            <div class="card shadow-sm border-0 {% if follow_up_pending_count %}followup-alert{% endif %}">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <p class="text-muted mb-1 small">Document Pending</p>
-                            <h3 class="mb-0 fw-bold text-warning">{{ processing_count }}</h3>
-                        </div>
-                        <i class="bi bi-hourglass-split text-warning" style="font-size: 2rem; opacity: 0.3;"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-lg-2 col-md-4 mb-3">
-            <div class="card shadow-sm border-0">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <p class="text-muted mb-1 small">Follow Up</p>
-                            <h3 class="mb-0 fw-bold text-warning">{{ follow_up_pending_count|default:0 }}</h3>
-                        </div>
-                        <i class="bi bi-arrow-repeat text-warning" style="font-size: 2rem; opacity: 0.3;"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-lg-2 col-md-4 mb-3">
-            <div class="card shadow-sm border-0">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <p class="text-muted mb-1 small">Approved</p>
-                            <h3 class="mb-0 fw-bold text-success">{{ approved_count }}</h3>
-                        </div>
-                        <i class="bi bi-check-circle text-success" style="font-size: 2rem; opacity: 0.3;"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-lg-2 col-md-4 mb-3">
-            <div class="card shadow-sm border-0">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <p class="text-muted mb-1 small">Rejected</p>
-                            <h3 class="mb-0 fw-bold text-danger">{{ rejected_count }}</h3>
-                        </div>
-                        <i class="bi bi-x-circle text-danger" style="font-size: 2rem; opacity: 0.3;"></i>
-                    </div>
-                </div>
-            </div>
+            
         </div>
     </div>
 
@@ -176,81 +131,7 @@
         </div>
     </div>
 
-    <!-- Recent Submitted Applications -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="recent-strip p-3">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <h6 class="mb-0 fw-bold">
-                        <i class="bi bi-clock-history"></i> Recently Submitted Applications
-                    </h6>
-                    <small class="text-muted">Latest 10 entries with current stage</small>
-                </div>
-                <div class="table-responsive">
-                    <table class="table table-sm table-grid mb-0">
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Applicant</th>
-                                <th>Amount</th>
-                                <th>Stage</th>
-                                <th>Status</th>
-                                <th>Date</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for loan in recent_submitted %}
-                            <tr>
-                                <td>#{{ loan.id }}</td>
-                                <td>{{ loan.full_name }}</td>
-                                <td>&#8377;{{ loan.loan_amount|floatformat:0|default:"0" }}</td>
-                                <td>
-                                    {% if loan.has_revert_pending %}
-                                        <span class="stage-badge bg-warning text-dark">Follow Up</span>
-                                    {% elif loan.status == 'draft' %}
-                                        <span class="stage-badge bg-secondary text-white">Draft</span>
-                                    {% elif loan.status == 'new_entry' %}
-                                        <span class="stage-badge bg-primary text-white">New Application</span>
-                                    {% elif loan.status == 'waiting' %}
-                                        <span class="stage-badge bg-warning text-dark">Document Pending</span>
-                                    {% elif loan.status == 'follow_up' %}
-                                        <span class="stage-badge bg-info text-dark">Bank Stage</span>
-                                    {% elif loan.status == 'approved' %}
-                                        <span class="stage-badge bg-success text-white">Completed</span>
-                                    {% elif loan.status == 'rejected' %}
-                                        <span class="stage-badge bg-danger text-white">Closed</span>
-                                    {% elif loan.status == 'disbursed' %}
-                                        <span class="stage-badge bg-dark text-white">Disbursed</span>
-                                    {% else %}
-                                        <span class="stage-badge bg-secondary text-white">{{ loan.status|title }}</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {% if loan.has_revert_pending %}
-                                        <span class="badge badge-follow_up small">Follow Up</span>
-                                    {% else %}
-                                        <span class="badge badge-{{ loan.status }} small">
-                                            {% if loan.status == 'new_entry' %} New Application
-                                            {% elif loan.status == 'waiting' %} Document Pending
-                                            {% else %} {{ loan.get_status_display|default:loan.status }}
-                                            {% endif %}
-                                        </span>
-                                    {% endif %}
-                                </td>
-                                <td>{{ loan.created_at|date:"d M, Y" }}</td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="6" class="text-center text-muted py-3">No recent submissions yet</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-
+    
     <!-- Loans Table -->
     <div class="row">
         <div class="col-12">
@@ -332,9 +213,22 @@
                                             <i class="bi bi-pencil-square"></i> Re-submit
                                         </a>
                                         {% else %}
-                                        <button class="btn btn-sm btn-outline-primary" onclick="viewLoanDetails({{ loan.id }}, '{{ loan.full_name }}')" title="View Details">
+                                        <button class="btn btn-sm btn-outline-primary" onclick="viewLoanDetails({{ loan.id }}, '{{ loan.full_name|escapejs }}')" title="View Full Loan Application Form">
                                             <i class="bi bi-eye"></i> View
                                         </button>
+                                        {% if loan.status == 'draft' or loan.status == 'new_entry' or loan.status == 'waiting' %}
+                                        <button class="btn btn-sm btn-outline-warning" onclick="openLoanEditPopup({{ loan.id }}, '{{ loan.status }}')" title="Edit / Forward">
+                                            <i class="bi bi-pencil-square"></i> Edit
+                                        </button>
+                                        {% endif %}
+                                        <button class="btn btn-sm btn-outline-success" onclick="downloadLoanDetails({{ loan.id }}, '{{ loan.full_name|escapejs }}')" title="Download Full Loan Application Form">
+                                            <i class="bi bi-download"></i> Download
+                                        </button>
+                                        {% if loan.status == 'new_entry' %}
+                                        <button class="btn btn-sm btn-outline-warning" onclick="openLoanEditPopup({{ loan.id }}, '{{ loan.status }}')" title="Forward with Manual Loan ID">
+                                            <i class="bi bi-send"></i> Forward
+                                        </button>
+                                        {% endif %}
                                         {% endif %}
                                     </td>
                                 </tr>
@@ -463,8 +357,29 @@ function viewLoanDetails(loanId, loanName) {
             'disbursed': 'Disbursed'
         }[loan.status] || loan.status;
         
+        const parsedDetailRows = String(loan.remarks || '')
+            .split(/\r?\n/)
+            .map(line => line.trim())
+            .filter(line => line.includes(':'))
+            .map(line => {
+                const splitIndex = line.indexOf(':');
+                return {
+                    key: line.slice(0, splitIndex).trim(),
+                    value: line.slice(splitIndex + 1).trim()
+                };
+            })
+            .filter(item => item.key && item.value);
+
+        const detailsHtml = parsedDetailRows.length
+            ? parsedDetailRows.map(item => `<tr><td class="fw-semibold">${item.key}</td><td>${item.value}</td></tr>`).join('')
+            : '<tr><td colspan="2" class="text-muted">No additional form details found.</td></tr>';
+
         body.innerHTML = `
             <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label small text-muted">Loan ID</label>
+                    <p class="form-control-plaintext fw-bold">#${loan.id}</p>
+                </div>
                 <div class="col-md-6 mb-3">
                     <label class="form-label small text-muted">Applicant Name</label>
                     <p class="form-control-plaintext fw-600">${loan.full_name}</p>
@@ -502,8 +417,28 @@ function viewLoanDetails(loanId, loanName) {
                     <p class="form-control-plaintext">${loan.permanent_address || 'N/A'}</p>
                 </div>
                 <div class="col-12 mb-3">
-                    <label class="form-label small text-muted">Remarks</label>
-                    <p class="form-control-plaintext">${sanitizeAgentVisibleRemarks(loan.remarks)}</p>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <label class="form-label small text-muted mb-0">Full Loan Application Form</label>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="openLoanEditPopup(${loan.id}, '${loan.status || ''}')">
+                                <i class="bi bi-pencil-square"></i> Edit
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-success" onclick="downloadLoanDetails(${loan.id}, '${(loan.full_name || '').replace(/'/g, "\\'")}')">
+                                <i class="bi bi-download"></i> Download
+                            </button>
+                        </div>
+                    </div>
+                    <div class="table-responsive mt-2">
+                        <table class="table table-sm table-bordered">
+                            <thead>
+                                <tr>
+                                    <th style="width: 35%;">Field</th>
+                                    <th>Value</th>
+                                </tr>
+                            </thead>
+                            <tbody>${detailsHtml}</tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         `;
@@ -513,6 +448,72 @@ function viewLoanDetails(loanId, loanName) {
     });
     
     modal.show();
+}
+
+function downloadLoanDetails(loanId, loanName) {
+    fetch(`/api/loans/${loanId}/`, {
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+        credentials: 'same-origin'
+    })
+    .then(response => response.json())
+    .then(loan => {
+        const payload = {
+            loan_id: loan.id,
+            applicant_name: loan.full_name,
+            mobile_number: loan.mobile_number,
+            email: loan.email || '',
+            city: loan.city || '',
+            loan_amount: loan.loan_amount,
+            loan_type: loan.loan_type,
+            status: loan.status,
+            created_at: loan.created_at,
+            permanent_address: loan.permanent_address || '',
+            remarks: loan.remarks || ''
+        };
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `loan-${loanId}-${(loanName || 'application').replace(/[^a-z0-9]/gi, '_').toLowerCase()}.json`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+    });
+}
+
+function openLoanEditPopup(loanId, loanStatus = '') {
+    const editableStatuses = ['draft', 'new_entry', 'waiting'];
+    if (loanStatus && !editableStatuses.includes(String(loanStatus).toLowerCase())) {
+        alert('Edit/forward option sirf Draft, New Application, ya Document Pending stage me available hai.');
+        return;
+    }
+    const enteredLoanId = window.prompt('Enter Loan ID to move application to Document/Banking Process:');
+    if (!enteredLoanId || !enteredLoanId.trim()) {
+        return;
+    }
+    const nextStage = window.confirm('OK = Document Process, Cancel = Banking Process') ? 'waiting' : 'follow_up';
+    const formData = new FormData();
+    formData.append('loan_id', String(loanId));
+    formData.append('manual_loan_id', enteredLoanId.trim());
+    formData.append('next_stage', nextStage);
+
+    fetch('{% url "agent_forward_application" %}', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+        credentials: 'same-origin',
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (!data.success) {
+            alert(data.error || 'Failed to forward application.');
+            return;
+        }
+        alert(`Application forwarded successfully with Manual Loan ID: ${data.manual_loan_id}`);
+        window.location.reload();
+    })
+    .catch(() => alert('Something went wrong while forwarding application.'));
 }
 
 function getCookie(name) {

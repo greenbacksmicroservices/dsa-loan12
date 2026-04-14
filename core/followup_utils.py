@@ -218,47 +218,19 @@ def _move_legacy_banking_to_follow_up_pending(loan_obj, reason_line, now):
 def auto_move_overdue_to_follow_up():
     """
     Real-time automation:
-    1) Waiting -> Banking Processing after 4h (legacy behavior)
-    2) Banking Processing -> Follow Up (revert-pending) after 4h
+    1) Banking Processing -> Follow Up (revert-pending) after 4h
 
     Note:
-    Waiting records that already have a "Revert Remark" marker represent
-    Follow Up pending corrections and must not be auto-moved back to
-    Banking Processing.
+    Waiting / Document Pending records stay in place until a processor
+    explicitly moves them to Banking Processing.
     """
     now = timezone.now()
-    waiting_cutoff = now - timedelta(hours=FOLLOW_UP_TIMEOUT_HOURS)
     banking_cutoff = now - timedelta(hours=BANKING_PROCESS_TIMEOUT_HOURS)
 
     moved = {
-        "applications": 0,
-        "loans": 0,
         "applications_to_follow_up_pending": 0,
         "loans_to_follow_up_pending": 0,
     }
-
-    overdue_applications = LoanApplication.objects.filter(
-        status="Waiting for Processing",
-        assigned_at__isnull=False,
-        assigned_at__lte=waiting_cutoff,
-    )
-    for app in overdue_applications:
-        if _has_revert_marker(app.approval_notes):
-            continue
-        _move_application_waiting_to_banking(app)
-        moved["applications"] += 1
-
-    overdue_loans = Loan.objects.filter(
-        status="waiting",
-        assigned_at__isnull=False,
-        assigned_at__lte=waiting_cutoff,
-        action_taken_at__isnull=True,
-    )
-    for loan in overdue_loans:
-        if _has_revert_marker(loan.remarks):
-            continue
-        _move_legacy_waiting_to_banking(loan, now)
-        moved["loans"] += 1
 
     banking_apps = LoanApplication.objects.filter(status="Required Follow-up")
     for app in banking_apps:

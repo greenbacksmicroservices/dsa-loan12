@@ -216,10 +216,15 @@
 
     .service-documents-shell {
         margin-top: 14px;
-        padding: 16px;
+        padding: 10px;
         border: 1px dashed #86efac;
         border-radius: 10px;
         background: #f0fdf4;
+    }
+
+    .document-item .form-row {
+        gap: 12px;
+        margin-bottom: 8px;
     }
 
     .document-item[data-required="true"] {
@@ -392,6 +397,41 @@
         padding: 40px 20px;
         color: #6b7280;
     }
+
+    body.dark-mode .form-section,
+    body.dark-mode .recent-applications-section,
+    body.dark-mode .repeatable-item,
+    body.dark-mode .service-documents-shell,
+    body.dark-mode .info-alert,
+    body.dark-mode .document-item {
+        background: #0b1220 !important;
+        border-color: #334155 !important;
+        color: #e5e7eb !important;
+    }
+
+    body.dark-mode .form-group label,
+    body.dark-mode .sub-section-title,
+    body.dark-mode .recent-applications-title,
+    body.dark-mode .applications-table th,
+    body.dark-mode .applications-table td,
+    body.dark-mode .applicant-name {
+        color: #e5e7eb !important;
+    }
+
+    body.dark-mode .helper-text,
+    body.dark-mode .info-alert,
+    body.dark-mode .empty-message,
+    body.dark-mode .applications-table td {
+        color: #94a3b8 !important;
+    }
+
+    body.dark-mode .form-control,
+    body.dark-mode .form-select,
+    body.dark-mode textarea.form-control {
+        background: #111827 !important;
+        color: #e5e7eb !important;
+        border-color: #334155 !important;
+    }
 </style>
 
 <div class="form-container">
@@ -489,7 +529,7 @@
             <div class="sub-section-title">Name & Contact Details</div>
             <div class="form-row">
                 <div class="form-group">
-                    <label>Name</label>
+                    <label>Name <span class="required">*</span></label>
                     <input type="text" class="form-control" name="name" placeholder="Full name as per ID proof" required>
                     <div class="helper-text">Enter full name exactly as it appears in official documents</div>
                 </div>
@@ -499,8 +539,8 @@
                     <div class="helper-text">Primary contact number</div>
                 </div>
                 <div class="form-group">
-                    <label>Alternate Mobile</label>
-                    <input type="tel" class="form-control" name="alternate_mobile" placeholder="Alternate contact number" pattern="[0-9]{10}" maxlength="10">
+                    <label>Alternate Mobile <span class="required">*</span></label>
+                    <input type="tel" class="form-control" name="alternate_mobile" placeholder="Alternate contact number" pattern="[0-9]{10}" maxlength="10" required>
                 </div>
             </div>
 
@@ -542,8 +582,8 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>Marital Status</label>
-                    <select class="form-select" name="marital_status">
+                    <label>Marital Status <span class="required">*</span></label>
+                    <select class="form-select" name="marital_status" required>
                         <option value="">-- Select Status --</option>
                         <option value="Single">Single</option>
                         <option value="Married">Married</option>
@@ -557,23 +597,23 @@
             <div class="sub-section-title" style="margin-top: 30px;">Permanent Address</div>
             <div class="form-row full-width">
                 <div class="form-group">
-                    <label>Address</label>
-                    <textarea class="form-control" id="permanent_address" name="permanent_address" placeholder="House no., street name, locality" onchange="checkAddressCopy()"></textarea>
+                    <label>Address <span class="required">*</span></label>
+                    <textarea class="form-control" id="permanent_address" name="permanent_address" placeholder="House no., street name, locality" onchange="checkAddressCopy()" required></textarea>
                 </div>
             </div>
 
             <div class="form-row">
                 <div class="form-group">
-                    <label>Landmark</label>
-                    <input type="text" class="form-control" id="permanent_landmark" name="permanent_landmark" placeholder="Nearby landmark" onchange="checkAddressCopy()">
+                    <label>Landmark <span class="required">*</span></label>
+                    <input type="text" class="form-control" id="permanent_landmark" name="permanent_landmark" placeholder="Nearby landmark" onchange="checkAddressCopy()" required>
                 </div>
                 <div class="form-group">
-                    <label>City</label>
-                    <input type="text" class="form-control" id="permanent_city" name="permanent_city" placeholder="City name" onchange="checkAddressCopy()">
+                    <label>City <span class="required">*</span></label>
+                    <input type="text" class="form-control" id="permanent_city" name="permanent_city" placeholder="City name" onchange="checkAddressCopy()" required>
                 </div>
                 <div class="form-group">
-                    <label>PIN Code</label>
-                    <input type="text" class="form-control" id="permanent_pin" name="permanent_pin" placeholder="6-digit PIN code" pattern="[0-9]{6}" maxlength="6" onchange="checkAddressCopy()">
+                    <label>PIN Code <span class="required">*</span></label>
+                    <input type="text" class="form-control" id="permanent_pin" name="permanent_pin" placeholder="6-digit PIN code" pattern="[0-9]{6}" maxlength="6" onchange="checkAddressCopy()" required>
                 </div>
             </div>
 
@@ -590,23 +630,23 @@
             </div>
             <div class="form-row full-width">
                 <div class="form-group">
-                    <label>Address</label>
-                    <textarea class="form-control" id="present_address" name="present_address" placeholder="Leave blank if same as permanent address"></textarea>
+                    <label>Address <span class="required">*</span></label>
+                    <textarea class="form-control" id="present_address" name="present_address" placeholder="Leave blank if same as permanent address" required></textarea>
                 </div>
             </div>
 
             <div class="form-row">
                 <div class="form-group">
-                    <label>Landmark</label>
-                    <input type="text" class="form-control" id="present_landmark" name="present_landmark" placeholder="Nearby landmark">
+                    <label>Landmark <span class="required">*</span></label>
+                    <input type="text" class="form-control" id="present_landmark" name="present_landmark" placeholder="Nearby landmark" required>
                 </div>
                 <div class="form-group">
-                    <label>City</label>
-                    <input type="text" class="form-control" id="present_city" name="present_city" placeholder="City name">
+                    <label>City <span class="required">*</span></label>
+                    <input type="text" class="form-control" id="present_city" name="present_city" placeholder="City name" required>
                 </div>
                 <div class="form-group">
-                    <label>PIN Code</label>
-                    <input type="text" class="form-control" id="present_pin" name="present_pin" placeholder="6-digit PIN code" pattern="[0-9]{6}" maxlength="6">
+                    <label>PIN Code <span class="required">*</span></label>
+                    <input type="text" class="form-control" id="present_pin" name="present_pin" placeholder="6-digit PIN code" pattern="[0-9]{6}" maxlength="6" required>
                 </div>
             </div>
         </div>
@@ -625,13 +665,13 @@
                         <option value="Business">Business</option>
                         <option value="Salaried">Salaried</option>
                         <option value="Self Employed">Self Employed</option>
-                        <option value="Professional">Professional</option>
-                        <option value="Agriculture">Agriculture</option>
+                        <option value="Professional Salaried">Professional Salaried</option>
+                        <option value="Professional Self Employed">Professional Self Employed</option>
                         <option value="Other">Other</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>Date of Joining <span class="required">*</span></label>
+                    <label>Total Year of Business <span class="required">*</span></label>
                     <input type="date" class="form-control" name="date_of_joining" required>
                 </div>
                 <div class="form-group">
@@ -655,6 +695,15 @@
                     <div class="form-group">
                         <label>ITR Details</label>
                         <input type="text" class="form-control" name="itr_details" placeholder="Last filed ITR year and amount">
+                    </div>
+                    <div class="form-group">
+                        <label>Business Type</label>
+                        <select class="form-select" name="business_type">
+                            <option value="">-- Select Business Type --</option>
+                            <option value="Proprietorship">Proprietorship</option>
+                            <option value="Partnership">Partnership</option>
+                            <option value="Pvt Ltd">Pvt Ltd</option>
+                        </select>
                     </div>
                 </div>
 
@@ -708,10 +757,6 @@
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Salary (Monthly)</label>
-                        <input type="number" class="form-control" name="salary" placeholder="Monthly salary" min="0">
-                    </div>
-                    <div class="form-group">
                         <label>Gross Salary</label>
                         <input type="number" class="form-control" name="gross_salary" placeholder="Total gross salary" min="0">
                     </div>
@@ -751,9 +796,9 @@
         </div>
 
         <div id="btDetailsSection">
-        <!-- ===================== SECTION 3: LOAN TYPE ===================== -->
+        <!-- ===================== SECTION 3: OBLIGATION ===================== -->
         <div class="section-header">
-            <i class="bi bi-cash-coin"></i> SECTION 3: LOAN TYPE
+            <i class="bi bi-cash-coin"></i> SECTION 3: OBLIGATION
         </div>
         <div class="form-section">
             <div class="info-alert">
@@ -772,9 +817,9 @@
 
         </div>
 
-        <!-- ===================== SECTION 4: LOAN REQUEST ===================== -->
+        <!-- ===================== SECTION 4: OTHER PRODUCT ===================== -->
         <div class="section-header">
-            <i class="bi bi-cash-stack"></i> SECTION 4: LOAN REQUEST
+            <i class="bi bi-cash-stack"></i> SECTION 4: OTHER PRODUCT
         </div>
         <div class="form-section">
             <div class="form-row">
@@ -787,7 +832,6 @@
                         <option value="LAP">LAP (Loan Against Property)</option>
                         <option value="Business Loan">Business Loan</option>
                         <option value="Auto Loan">Auto Loan</option>
-                        <option value="Security Loan">Security Loan</option>
                         <option value="Other">Other</option>
                     </select>
                 </div>
@@ -798,14 +842,6 @@
                 <div class="form-group">
                     <label>Loan Tenure (Months) <span class="required">*</span></label>
                     <input type="number" class="form-control" name="loan_tenure" placeholder="Repayment period in months" min="1" required>
-                </div>
-            </div>
-
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Any Charges or Fee <span class="required">*</span></label>
-                    <input type="text" class="form-control" name="charges_or_fee" placeholder="Note: No processing fee can be charged per norms" required>
-                    <div class="helper-text">As per RBI guidelines, no processing fee or other charges to be taken from client</div>
                 </div>
             </div>
 
@@ -839,9 +875,9 @@
             </div>
         </div>
 
-        <!-- ===================== SECTION 5: REFERENCES ===================== -->
+        <!-- ===================== SECTION 5: REFERENCE ===================== -->
         <div class="section-header">
-            <i class="bi bi-person-vcard"></i> SECTION 5: REFERENCES
+            <i class="bi bi-person-vcard"></i> SECTION 5: REFERENCE
         </div>
         <div class="form-section">
             <div class="info-alert">
@@ -993,136 +1029,23 @@
     let financialDetailCount = 0;
 
     const SERVICE_DOCUMENT_REQUIREMENTS = {
-        lap_salary: [
-            'PAN Card',
-            'Aadhar Card',
-            'Photo (4 Copies)',
-            'Permanent Address Proof',
-            'Recent Address Proof',
-            '3 Month Salary Slip',
-            '6 Month Bank Statement',
-            'Form 16',
-            'Service Book',
-            'Home Property Documents (Patta, Pauti, ROR, BDA Approval)',
-            'SOA of Loan Account',
-            'Co-applicant PAN/Aadhar/Photo (If Required)'
-        ],
-        lap_business: [
-            'PAN Card',
-            'Aadhar Card',
-            'Photo (4 Copies)',
-            'Permanent Address Proof',
-            'Recent Address Proof',
-            '3 Year Business Vintage Proof',
-            '2 Year ITR with Computation',
-            '1 Year Bank Statement',
-            'GST Documents',
-            'Home Property Documents (Patta, Pauti, ROR, BDA Approval)',
-            'SOA of Loan Account',
-            'Co-applicant PAN/Aadhar/Photo (If Required)'
-        ],
-        business_loan_business: [
-            'PAN Card',
-            'Aadhar Card',
-            'Photo (4 Copies)',
-            'Permanent Address Proof',
-            'Recent Address Proof',
-            '3 Year Business Vintage Proof',
-            '2 Year ITR with Computation',
-            '1 Year Bank Statement',
-            'GST Documents'
-        ],
-        personal_loan_salary: [
-            'PAN Card',
-            'Aadhar Card',
-            'Photo (4 Copies)',
-            'Permanent Address Proof',
-            'Recent Address Proof',
-            '3 Month Salary Slip',
-            '6 Month Bank Statement',
-            'Form 16',
-            'Service Book'
-        ],
-        auto_loan_salary: [
-            'PAN Card',
-            'Aadhar Card',
-            'Photo (4 Copies)',
-            'Permanent Address Proof',
-            'Recent Address Proof',
-            '3 Month Salary Slip',
-            '6 Month Bank Statement',
-            'Form 16',
-            'Service Book',
-            'RC',
-            'Insurance'
-        ],
-        security_loan_salary: [
-            'PAN Card',
-            'Aadhar Card',
-            'Photo (4 Copies)',
-            'Permanent Address Proof',
-            'Recent Address Proof',
-            '3 Month Salary Slip',
-            '6 Month Bank Statement',
-            'Form 16',
-            'Service Book',
-            'Insurance Certificate'
-        ],
-        auto_loan_business: [
-            'PAN Card',
-            'Aadhar Card',
-            'Photo (4 Copies)',
-            'Permanent Address Proof',
-            'Recent Address Proof',
-            '3 Year Business Vintage Proof',
-            '2 Year ITR with Computation',
-            '1 Year Bank Statement',
-            'GST Documents',
-            'RC',
-            'Insurance'
-        ],
-        security_loan_business: [
-            'PAN Card',
-            'Aadhar Card',
-            'Photo (4 Copies)',
-            'Permanent Address Proof',
-            'Recent Address Proof',
-            '3 Year Business Vintage Proof',
-            '2 Year ITR with Computation',
-            '1 Year Bank Statement',
-            'GST Documents',
-            'Insurance Certificate'
-        ],
-        home_loan_salary: [
-            'PAN Card',
-            'Aadhar Card',
-            'Photo (4 Copies)',
-            'Permanent Address Proof',
-            'Recent Address Proof',
-            'Salary Slip',
-            'Bank Statement',
-            'Form 16',
-            'Property Documents'
-        ],
-        home_loan_business: [
-            'PAN Card',
-            'Aadhar Card',
-            'Photo (4 Copies)',
-            'Permanent Address Proof',
-            'Recent Address Proof',
-            'ITR with Computation',
-            'Bank Statement',
-            'GST Documents',
-            'Property Documents'
-        ]
+        lap_salary: ['PAN Card', 'Aadhar Front Side', 'Aadhar Back Side (Optional)', 'Photo', 'Permanent Address Proof Own House Proof (Electric Bill or Other Doc)', 'Recent Address Proof', 'Latest 3 Month Salary Slip', 'Latest 3 Month Salary A/C Statement', 'Service Book', 'Property Documents', 'SOA of Loan Account'],
+        lap_business: ['PAN Card', 'Aadhar Front Side', 'Aadhar Back Side (Optional)', 'Photo', 'Permanent Address Proof Own House Proof (Electric Bill or Other Doc)', 'Current Address Proof', '3 Year Business Vintage Proof', 'ITR', '1 Year Bank Statement', 'GST (Mandatory)', 'Udyam (Mandatory)', 'Property Documents', 'SOA of Loan Account'],
+        business_loan_business: ['PAN Card', 'Aadhar Front Side', 'Aadhar Back Side (Optional)', 'Photo', 'Permanent Address Proof Own House Proof (Electric Bill or Other Doc)', 'Current Address Proof', '3 Year Business Vintage Proof', 'ITR', '1 Year Bank Statement', 'GST (Mandatory)', 'Udyam (Mandatory)'],
+        personal_loan_salary: ['PAN Card', 'Aadhar Front Side', 'Aadhar Back Side (Optional)', 'Photo', 'Permanent Address Proof Own House Proof (Electric Bill or Other Doc)', 'Recent Address Proof', 'Latest 3 Month Salary Slip', 'Latest 3 Month Salary A/C Statement', 'Service Book'],
+        personal_loan_business: ['PAN Card', 'Aadhar Front Side', 'Aadhar Back Side (Optional)', 'Photo', 'Permanent Address Proof Own House Proof (Electric Bill or Other Doc)', 'Current Address Proof', 'ITR', 'GST (Mandatory)', 'Udyam (Mandatory)', 'Degree Certificate (Document)', 'Registration Certificate (Document)'],
+        auto_loan_salary: ['PAN Card', 'Aadhar Front Side', 'Aadhar Back Side (Optional)', 'Photo', 'Permanent Address Proof Own House Proof (Electric Bill or Other Doc)', 'Recent Address Proof', 'Latest 3 Month Salary Slip', 'Latest 3 Month Salary A/C Statement', 'Service Book', 'Vehicle Document'],
+        auto_loan_business: ['PAN Card', 'Aadhar Front Side', 'Aadhar Back Side (Optional)', 'Photo', 'Permanent Address Proof Own House Proof (Electric Bill or Other Doc)', 'Current Address Proof', '3 Year Business Vintage Proof', 'ITR', '1 Year Bank Statement', 'GST (Mandatory)', 'Udyam (Mandatory)', 'Vehicle Document'],
+        home_loan_salary: ['PAN Card', 'Aadhar Front Side', 'Aadhar Back Side (Optional)', 'Photo', 'Permanent Address Proof Own House Proof (Electric Bill or Other Doc)', 'Recent Address Proof', 'Latest 3 Month Salary Slip', 'Latest 3 Month Salary A/C Statement', 'Property Documents'],
+        home_loan_business: ['PAN Card', 'Aadhar Front Side', 'Aadhar Back Side (Optional)', 'Photo', 'Permanent Address Proof Own House Proof (Electric Bill or Other Doc)', 'Current Address Proof', 'ITR', 'Bank Statement', 'GST (Mandatory)', 'Udyam (Mandatory)', 'Property Documents']
     };
 
     function getEmploymentTrack() {
         const occupation = (document.querySelector('select[name="occupation"]')?.value || '').toLowerCase();
-        if (occupation === 'business' || occupation === 'self employed') {
+        if (occupation === 'business' || occupation === 'self employed' || occupation === 'professional self employed') {
             return 'business';
         }
-        if (occupation === 'salaried' || occupation === 'professional') {
+        if (occupation === 'salaried' || occupation === 'professional' || occupation === 'professional salaried') {
             return 'salary';
         }
         return '';
@@ -1136,7 +1059,6 @@
             'lap': 'lap',
             'business loan': 'business_loan',
             'auto loan': 'auto_loan',
-            'security loan': 'security_loan',
             'other': 'other'
         };
         return map[selectedService] || '';
@@ -1183,7 +1105,8 @@
 
         return [
             'PAN Card',
-            'Aadhar Card',
+            'Aadhar Front Side',
+            'Aadhar Back Side (Optional)',
             'Photo',
             'Address Proof',
             'Income Proof',
@@ -1200,7 +1123,7 @@
         const item = document.createElement('div');
         item.className = 'document-item';
         item.dataset.required = isRequired ? 'true' : 'false';
-        item.style.cssText = 'background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 20px; margin-bottom: 15px;';
+        item.style.cssText = 'background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 8px; margin-bottom: 8px;';
 
         item.innerHTML = `
             ${isRequired ? '<div class="document-item-title"><i class="bi bi-shield-check"></i> Required Document</div>' : ''}
@@ -1212,8 +1135,8 @@
                 </div>
                 <div class="form-group">
                     <label>Upload Document ${isRequired ? '<span class="required">*</span>' : ''}</label>
-                    <input type="file" class="form-control document-file" name="document_file[]" accept=".pdf,.jpg,.jpeg,.png" ${isRequired ? 'required' : ''}>
-                    <span class="helper-text">PDF, JPG, PNG files up to 5MB</span>
+                    <input type="file" class="form-control document-file" name="document_file[]" accept=".pdf,.jpg,.jpeg,.png,image/jpeg,image/png,application/pdf" multiple ${isRequired && !presetName.toLowerCase().includes('optional') ? 'required' : ''}>
+                    <span class="helper-text">PDF/JPG/PNG. Ek hi baar me multiple files select kar sakte hain.</span>
                 </div>
             </div>
             ${isRequired ? '' : `
@@ -1481,10 +1404,10 @@
         const businessSection = document.getElementById('businessSection');
         const salarySection = document.getElementById('salarySection');
 
-        if (occupation === 'Business' || occupation === 'Self Employed') {
+        if (occupation === 'Business' || occupation === 'Self Employed' || occupation === 'Professional Self Employed') {
             businessSection.style.display = 'block';
             salarySection.style.display = 'none';
-        } else if (occupation === 'Salaried' || occupation === 'Professional') {
+        } else if (occupation === 'Salaried' || occupation === 'Professional' || occupation === 'Professional Salaried') {
             businessSection.style.display = 'none';
             salarySection.style.display = 'block';
         } else {
@@ -1538,6 +1461,22 @@
             return;
         }
 
+        this.querySelectorAll('input[name="document_name_expanded[]"]').forEach((node) => node.remove());
+        documents.forEach((doc) => {
+            const nameEl = doc.querySelector('.document-name');
+            const fileEl = doc.querySelector('.document-file');
+            const docName = nameEl ? nameEl.value.trim() : '';
+            const selectedFiles = fileEl && fileEl.files ? Array.from(fileEl.files) : [];
+            if (!docName || !selectedFiles.length) return;
+            selectedFiles.forEach(() => {
+                const hidden = document.createElement('input');
+                hidden.type = 'hidden';
+                hidden.name = 'document_name_expanded[]';
+                hidden.value = docName;
+                this.appendChild(hidden);
+            });
+        });
+
         this.submit();
     });
 
@@ -1567,6 +1506,7 @@
         if (loanForm) {
             loanForm.addEventListener('reset', function() {
                 setTimeout(() => {
+                    loanForm.querySelectorAll('input[name="document_name_expanded[]"]').forEach((node) => node.remove());
                     resetRepeatableSections();
                     updateEmploymentSection();
                     toggleOtherServiceInput();

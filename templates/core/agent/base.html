@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Agent Dashboard - DSA Loans{% endblock %}</title>
+    <title>{% block title %}Channel Partner Dashboard - DSA Loans{% endblock %}</title>
     
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -133,6 +133,63 @@
             display: flex;
             align-items: center;
             gap: 20px;
+        }
+
+        .theme-toggle-btn {
+            border: 1px solid #d1d5db;
+            border-radius: 999px;
+            background: #ffffff;
+            color: #0f172a;
+            font-size: 13px;
+            font-weight: 700;
+            padding: 8px 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .theme-toggle-btn:hover {
+            background: #f8fafc;
+            border-color: #94a3b8;
+            transform: translateY(-1px);
+        }
+
+        body.dark-mode {
+            background-color: #0f172a;
+            color: #e5e7eb;
+        }
+
+        body.dark-mode .header,
+        body.dark-mode .stat-card,
+        body.dark-mode .table-container,
+        body.dark-mode .content,
+        body.dark-mode .card,
+        body.dark-mode .modal-content {
+            background-color: #111827 !important;
+            color: #e5e7eb !important;
+            border-color: #374151 !important;
+        }
+
+        body.dark-mode .header h1,
+        body.dark-mode .header .dropdown-toggle,
+        body.dark-mode .header .user-info p,
+        body.dark-mode .header .user-info span {
+            color: #e5e7eb !important;
+        }
+
+        body.dark-mode .dropdown-menu {
+            background-color: #0b1220 !important;
+            border-color: #334155 !important;
+        }
+
+        body.dark-mode .dropdown-item {
+            color: #e5e7eb !important;
+        }
+
+        body.dark-mode .dropdown-item:hover {
+            background-color: #111827 !important;
         }
 
         .user-info {
@@ -372,7 +429,7 @@
     <!-- SIDEBAR -->
     <aside class="sidebar">
         <div class="sidebar-logo">
-            <h2><i class="fas fa-user-tie"></i> Agent</h2>
+            <h2><i class="fas fa-user-tie"></i> Channel Partner</h2>
             <p>DSA Loan Management</p>
         </div>
 
@@ -404,7 +461,7 @@
             <li>
                 <a href="{% url 'agent_sub_agents' %}" class="{% if request.resolver_match.url_name == 'agent_sub_agents' %}active{% endif %}">
                     <i class="fas fa-project-diagram"></i>
-                    <span>Sub-Agents</span>
+                    <span>Sub Channel Partners</span>
                 </a>
             </li>
             <li>
@@ -437,11 +494,15 @@
         <div class="header">
             <h1>{% block page_title %}Dashboard{% endblock %}</h1>
             <div class="header-right">
+                <button class="theme-toggle-btn" type="button" id="theme-toggle-btn" onclick="toggleThemeMode()">
+                    <i class="fas fa-moon"></i>
+                    <span id="theme-toggle-label">Dark</span>
+                </button>
                 <div class="user-info">
                     <div class="user-avatar">{{ request.user.first_name|first|upper }}</div>
                     <div>
                         <p style="margin: 0; color: #2d3748; font-weight: 500;">{{ request.user.email }}</p>
-                        <p style="margin: 0; font-size: 12px; color: #718096;">Agent User</p>
+                        <p style="margin: 0; font-size: 12px; color: #718096;">Channel Partner User</p>
                     </div>
                 </div>
                 <div class="dropdown header-user-dropdown">
@@ -450,7 +511,7 @@
                         <span>{{ request.user.get_full_name|default:request.user.username }}</span>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end">
-                        <li><h6 class="dropdown-header" style="font-size: 12px; font-weight: 700; color: #64748b;">Agent</h6></li>
+                        <li><h6 class="dropdown-header" style="font-size: 12px; font-weight: 700; color: #64748b;">Channel Partner</h6></li>
                         <li><hr class="dropdown-divider" style="margin: 6px 0;"></li>
                         <li><a class="dropdown-item" href="{% url 'agent_profile' %}"><i class="fas fa-user"></i> My Profile</a></li>
                         <li><a class="dropdown-item" href="{% url 'agent_settings' %}"><i class="fas fa-cog"></i> Settings</a></li>
@@ -481,5 +542,34 @@
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        (function () {
+            function applyThemeMode(mode) {
+                const dark = mode === 'dark';
+                document.body.classList.toggle('dark-mode', dark);
+                document.documentElement.setAttribute('data-bs-theme', dark ? 'dark' : 'light');
+
+                const label = document.getElementById('theme-toggle-label');
+                const icon = document.querySelector('#theme-toggle-btn i');
+                if (label) {
+                    label.textContent = dark ? 'Light' : 'Dark';
+                }
+                if (icon) {
+                    icon.className = dark ? 'fas fa-sun' : 'fas fa-moon';
+                }
+            }
+
+            window.toggleThemeMode = function () {
+                const next = document.body.classList.contains('dark-mode') ? 'light' : 'dark';
+                localStorage.setItem('panelThemeMode', next);
+                applyThemeMode(next);
+            };
+
+            document.addEventListener('DOMContentLoaded', function () {
+                const savedTheme = localStorage.getItem('panelThemeMode') || 'light';
+                applyThemeMode(savedTheme);
+            });
+        })();
+    </script>
 </body>
 </html>

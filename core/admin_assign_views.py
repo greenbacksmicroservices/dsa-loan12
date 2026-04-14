@@ -41,7 +41,7 @@ def admin_assign_loan_to_employee(request):
     2. System sets:
        - assigned_employee = employee
        - assigned_at = NOW
-       - status = WAITING (from NEW_ENTRY)
+       - status remains NEW_ENTRY (first processor action decides next stage)
     3. Loan IMMEDIATELY appears in:
        - Employee -> New Entry Requests
        - Employee -> All Loans
@@ -101,7 +101,7 @@ def admin_assign_loan_to_employee(request):
 
         loan.assigned_employee = employee
         loan.assigned_at = timezone.now()
-        loan.status = 'waiting'  # Change status to WAITING
+        loan.status = 'new_entry'
         assignment_line = f"Assigned By Admin: {request.user.get_full_name() or request.user.username} -> Employee: {employee.get_full_name() or employee.username}"
         loan.remarks = f"{loan.remarks}\n{assignment_line}".strip() if loan.remarks else assignment_line
         loan.save()
@@ -192,15 +192,25 @@ def admin_reassign_loan(request, loan_id):
         # Reassign
         loan.assigned_employee = new_employee
         loan.assigned_at = timezone.now()
+        reopen_note = None
 
         # If loan was in follow-up, move it back to waiting and reset follow-up flags
         if loan.status == 'follow_up':
             loan.status = 'waiting'
             loan.requires_follow_up = False
             loan.follow_up_triggered_at = None
+        elif loan.status == 'rejected':
+            loan.status = 'new_entry'
+            loan.requires_follow_up = False
+            loan.follow_up_triggered_at = None
+            reopen_note = 'Reopened from Rejected to New Entry for fresh processing'
 
         assignment_line = f"Assigned By Admin: {request.user.get_full_name() or request.user.username} -> Employee: {new_employee.get_full_name() or new_employee.username}"
-        loan.remarks = f"{loan.remarks}\n{assignment_line}".strip() if loan.remarks else assignment_line
+        notes_to_add = [assignment_line]
+        if reopen_note:
+            notes_to_add.append(reopen_note)
+        joined_notes = '\n'.join(notes_to_add).strip()
+        loan.remarks = f"{loan.remarks}\n{joined_notes}".strip() if loan.remarks else joined_notes
         loan.save()
 
         synced_application = sync_loan_to_application(

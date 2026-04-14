@@ -119,6 +119,7 @@ urlpatterns = [
     path('agent/sub-agents/add/', agent_views.agent_add_employee, name='agent_add_employee'),
     path('agent/sub-agents/create/', agent_views.create_sub_agent, name='create_sub_agent'),
     path('agent/my-applications/', agent_views.agent_my_applications, name='agent_my_applications'),
+    path('agent/forward-application/', agent_views.agent_forward_application, name='agent_forward_application'),
     path('agent/loan/<int:loan_id>/edit-reverted/', agent_views.agent_resubmit_reverted_loan, name='agent_resubmit_reverted_loan'),
     path('agent/reports/', agent_views.agent_reports, name='agent_reports'),
     path('agent/complaints/', agent_views.agent_complaints, name='agent_complaints'),
@@ -170,6 +171,7 @@ urlpatterns = [
     path('api/employee/my-agents/', employee_views_new.employee_my_agents_api, name='api_employee_my_agents'),
     path('api/employee/add-agent/', employee_views_new.employee_add_agent_api, name='api_employee_add_agent'),
     path('api/employee/loan/<int:loan_id>/collect/', views.employee_collect_for_banking, name='api_employee_collect_loan'),
+    path('api/employee/loan/<int:loan_id>/document-pending/', views.employee_move_to_document_pending, name='api_employee_document_pending'),
     path('api/employee/loan/<int:loan_id>/revert/', views.employee_revert_loan_to_agent, name='api_employee_revert_loan'),
     path('api/employee/loan/<int:loan_id>/sign/', views.employee_sign_off_loan, name='api_employee_sign_off_loan'),
     path('api/employee/loan/<int:loan_id>/approve/', views.employee_approve_loan, name='api_employee_approve_loan'),
@@ -285,6 +287,8 @@ urlpatterns = [
     
     # NEW REAL-TIME API ENDPOINTS FOR DOCUMENT & ASSIGNMENT MANAGEMENT
     path('api/loan/<int:loan_id>/documents/', views.api_get_loan_documents, name='api_get_loan_documents'),
+    path('api/loan/<int:loan_id>/documents/upload/', views.api_upload_case_document, name='api_upload_case_document'),
+    path('api/loan/<int:loan_id>/documents/<int:document_id>/delete/', views.api_delete_case_document, name='api_delete_case_document'),
     path('api/applicant/<int:applicant_id>/documents/', views.api_get_applicant_documents, name='api_get_applicant_documents'),
     path('api/my-assignments/', views.api_get_my_assignments, name='api_get_my_assignments'),
     path('api/update-application-status/', views.api_update_application_status, name='api_update_application_status'),
@@ -499,6 +503,4 @@ urlpatterns = [
     path('api/admin/loan/<int:loan_id>/reassign/', admin_assign_views.admin_reassign_loan, name='api_admin_reassign_loan'),
     path('api/admin/loan/<int:loan_id>/assignment-status/', admin_assign_views.admin_get_assignment_status, name='api_admin_assignment_status'),
 ]
-
-
 

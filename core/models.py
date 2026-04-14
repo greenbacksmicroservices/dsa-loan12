@@ -8,10 +8,10 @@ class User(AbstractUser):
     """Custom User Model with Role-based Access"""
     ROLE_CHOICES = [
         ('admin', 'Admin'),
-        ('subadmin', 'SubAdmin'),
+        ('subadmin', 'Partner'),
         ('dsa', 'DSA'),
         ('employee', 'Employee'),
-        ('agent', 'Agent'),
+        ('agent', 'Channel Partner'),
     ]
     
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='employee')
@@ -858,5 +858,4 @@ class SubAdminEntry(models.Model):
     
     def __str__(self):
         return f"{self.applicant_name} - {self.loan_type} (â‚¹{self.loan_amount})"
-
 

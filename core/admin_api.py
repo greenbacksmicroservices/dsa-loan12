@@ -1198,9 +1198,9 @@ def api_get_agent(request, agent_id):
                 return 'System', '-'
             role_label = {
                 'admin': 'Admin',
-                'subadmin': 'SubAdmin',
+                'subadmin': 'Partner',
                 'employee': 'Employee',
-                'agent': 'Agent',
+                'agent': 'Channel Partner',
                 'dsa': 'DSA',
             }.get(owner.role, owner.role.title() if owner.role else 'User')
             owner_name = owner.get_full_name() or owner.username or '-'

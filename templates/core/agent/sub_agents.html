@@ -1,7 +1,7 @@
 {% extends 'core/base.html' %}
 {% load static %}
 
-{% block title %}My Sub Agents - Agent{% endblock %}
+{% block title %}My Sub Channel Partners - Channel Partner{% endblock %}
 
 {% block content %}
 <div class="container-fluid mt-4">
@@ -9,9 +9,9 @@
     <div class="row mb-4">
         <div class="col-12">
             <h1 class="h3 text-gray-800 mb-0">
-                <i class="bi bi-people"></i> My Sub Agents
+                <i class="bi bi-people"></i> My Sub Channel Partners
             </h1>
-            <p class="text-muted mt-2 mb-0">Manage agents under your hierarchy</p>
+            <p class="text-muted mt-2 mb-0">Manage sub channel partners under your hierarchy</p>
         </div>
     </div>
 
@@ -19,19 +19,19 @@
     <div class="row mb-4">
         <div class="col-12">
             <a href="{% url 'agent_add_employee' %}" class="btn btn-success btn-lg">
-                <i class="bi bi-plus-circle"></i> Add New Sub Agent
+                <i class="bi bi-plus-circle"></i> Add New Sub Channel Partner
             </a>
         </div>
     </div>
 
-    <!-- Sub Agents Table -->
+    <!-- Sub Channel Partners Table -->
     <div class="row">
         <div class="col-12">
             <div class="card shadow">
                 <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">
-                        <i class="bi bi-list-ul"></i> Sub Agents List
-                        <span class="badge bg-light text-dark ms-2">{{ sub_agents|length }} agents</span>
+                        <i class="bi bi-list-ul"></i> Sub Channel Partners List
+                        <span class="badge bg-light text-dark ms-2">{{ sub_agents|length }} sub channel partners</span>
                     </h5>
                 </div>
                 <div class="card-body p-0">
@@ -90,10 +90,10 @@
                                             <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#viewModal{{ agent.id }}" title="View Details">
                                                 <i class="bi bi-eye"></i> View
                                             </button>
-                                            <button type="button" class="btn btn-outline-warning" data-bs-toggle="modal" data-bs-target="#editModal{{ agent.id }}" title="Edit Agent">
+                                            <button type="button" class="btn btn-outline-warning" data-bs-toggle="modal" data-bs-target="#editModal{{ agent.id }}" title="Edit Sub Channel Partner">
                                                 <i class="bi bi-pencil"></i> Edit
                                             </button>
-                                            <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ agent.id }}" title="Delete Agent">
+                                            <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ agent.id }}" title="Delete Sub Channel Partner">
                                                 <i class="bi bi-trash"></i> Delete
                                             </button>
                                         </div>
@@ -105,7 +105,7 @@
                                     <div class="modal-dialog modal-lg">
                                         <div class="modal-content">
                                             <div class="modal-header bg-primary text-white">
-                                                <h5 class="modal-title">Agent Details - {{ agent.user.get_full_name }}</h5>
+                                                <h5 class="modal-title">Sub Channel Partner Details - {{ agent.user.get_full_name }}</h5>
                                                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                                             </div>
                                             <div class="modal-body">
@@ -168,7 +168,7 @@
                                     <div class="modal-dialog modal-lg">
                                         <div class="modal-content">
                                             <div class="modal-header bg-warning text-dark">
-                                                <h5 class="modal-title">Edit Agent - {{ agent.user.get_full_name }}</h5>
+                                                <h5 class="modal-title">Edit Sub Channel Partner - {{ agent.user.get_full_name }}</h5>
                                                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                             </div>
                                             <form method="POST" action="{% url 'create_sub_agent' %}">
@@ -227,7 +227,7 @@
                                     <div class="modal-dialog">
                                         <div class="modal-content border-danger">
                                             <div class="modal-header bg-danger text-white">
-                                                <h5 class="modal-title">Delete Agent</h5>
+                                                <h5 class="modal-title">Delete Sub Channel Partner</h5>
                                                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                                             </div>
                                             <div class="modal-body">
@@ -243,7 +243,7 @@
                                                     {% csrf_token %}
                                                     <input type="hidden" name="delete_id" value="{{ agent.id }}">
                                                     <input type="hidden" name="action" value="delete">
-                                                    <button type="submit" class="btn btn-danger">Delete Agent</button>
+                                                    <button type="submit" class="btn btn-danger">Delete Sub Channel Partner</button>
                                                 </form>
                                             </div>
                                         </div>
@@ -256,10 +256,10 @@
                     {% else %}
                     <div class="text-center py-5">
                         <i class="bi bi-people display-1 text-muted"></i>
-                        <h5 class="mt-3 text-muted">No Sub Agents Yet</h5>
-                        <p class="text-muted mb-3">You haven't created any sub agents yet.</p>
+                        <h5 class="mt-3 text-muted">No Sub Channel Partners Yet</h5>
+                        <p class="text-muted mb-3">You haven't created any sub channel partners yet.</p>
                         <a href="{% url 'create_sub_agent' %}" class="btn btn-success">
-                            <i class="bi bi-plus-circle"></i> Create First Sub Agent
+                            <i class="bi bi-plus-circle"></i> Create First Sub Channel Partner
                         </a>
                     </div>
                     {% endif %}

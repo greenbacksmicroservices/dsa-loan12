@@ -28,14 +28,14 @@ APPLICATION_TO_LOAN_STATUS = {
 
 ROLE_LABELS = {
     "admin": "Admin",
-    "subadmin": "SubAdmin",
+    "subadmin": "Partner",
     "employee": "Employee",
-    "agent": "Agent",
+    "agent": "Channel Partner",
     "dsa": "DSA",
 }
 
 ASSIGNMENT_PATTERNS = (
-    ("subadmin", re.compile(r"^Assigned By SubAdmin:\s*(.+?)\s*->\s*Employee:\s*(.+?)(?:\s*\|\s*Remark:.*)?$", re.IGNORECASE)),
+    ("subadmin", re.compile(r"^Assigned By (?:SubAdmin|Partner):\s*(.+?)\s*->\s*Employee:\s*(.+?)(?:\s*\|\s*Remark:.*)?$", re.IGNORECASE)),
     ("admin", re.compile(r"^Assigned By Admin:\s*(.+?)\s*->\s*Employee:\s*(.+?)(?:\s*\|\s*Remark:.*)?$", re.IGNORECASE)),
 )
 

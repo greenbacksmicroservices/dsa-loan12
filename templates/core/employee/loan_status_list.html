@@ -455,17 +455,20 @@ function renderLoansTable(loans) {
                             <td style="font-size: 13px;">${l.assigned_date || 'N/A'}</td>
                             <td>
                                 <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                                    ${l.status === 'approved'
-                                        ? `<button class="btn btn-sm btn-primary" type="button" onclick="openApprovedProcessModal(${l.id}, '${(l.entity_type || '').replace(/'/g, "\\'")}')">Process</button>`
-                                        : (l.status === 'follow_up_pending'
-                                            ? `<a href="/employee/loan/${l.id}/detail/" class="btn btn-sm btn-warning">Edit</a>`
-                                            : `
-                                                <a href="/employee/loan/${l.id}/detail/" class="btn btn-sm btn-success">View</a>
-                                                <button class="btn btn-sm btn-warning" type="button" onclick="openEditLoanModal(${l.id})">Edit</button>
-                                                <button class="btn btn-sm btn-danger" type="button" onclick="openDeleteLoanModal(${l.id})">Delete</button>
-                                            `
-                                        )
-                                    }
+                                     ${l.status === 'approved'
+                                         ? `<button class="btn btn-sm btn-primary" type="button" onclick="openApprovedProcessModal(${l.id}, '${(l.entity_type || '').replace(/'/g, "\\'")}')">Process</button>`
+                                         : (l.status === 'follow_up_pending'
+                                             ? `<a href="/employee/loan/${l.id}/detail/" class="btn btn-sm btn-warning">Edit</a>`
+                                             : (l.status === 'rejected'
+                                                 ? `<a href="/employee/loan/${l.id}/detail/" class="btn btn-sm btn-success">View</a>`
+                                                 : `
+                                                     <a href="/employee/loan/${l.id}/detail/" class="btn btn-sm btn-success">View</a>
+                                                     <button class="btn btn-sm btn-warning" type="button" onclick="openEditLoanModal(${l.id})">Edit</button>
+                                                     <button class="btn btn-sm btn-danger" type="button" onclick="openDeleteLoanModal(${l.id})">Delete</button>
+                                                 `
+                                             )
+                                         )
+                                     }
                                 </div>
                             </td>
                         </tr>
@@ -717,9 +720,9 @@ async function openApprovedProcessModal(loanId, entityType = '') {
         if (topLeaderInput) {
             topLeaderInput.value = leaderValue;
         }
-        document.getElementById('approvedSmPhone').value = loan.sm_phone_number || '-';
-        document.getElementById('approvedSmEmail').value = loan.sm_email || '-';
-        document.getElementById('approvedBankNotes').value = splitNotes.bankNotes || '-';
+        document.getElementById('approvedSmPhone').value = loan.sm_phone_number || '';
+        document.getElementById('approvedSmEmail').value = loan.sm_email || '';
+        document.getElementById('approvedBankNotes').value = splitNotes.bankNotes || '';
         setLeadReceiveValues(splitNotes.leadReceive || {});
         resetLeadReceiveCollapse();
 
@@ -788,9 +791,20 @@ async function submitApprovedDisburse() {
     if (!CURRENT_APPROVED_LOAN_ID) return;
     const amount = document.getElementById('approvedDisburseAmount').value;
     const date = document.getElementById('approvedDisburseDate').value;
+    const smPhone = (document.getElementById('approvedSmPhone')?.value || '').trim();
+    const smEmail = (document.getElementById('approvedSmEmail')?.value || '').trim();
+    const bankNotes = (document.getElementById('approvedBankNotes')?.value || '').trim();
     const bankRemark = buildApprovedBankRemarkPayload();
     try {
+        if (!smPhone) throw new Error('SM Phone Number is required.');
+        const smDigits = smPhone.replace(/\D/g, '');
+        if (smDigits.length < 10 || smDigits.length > 15) throw new Error('Enter a valid SM phone number (10-15 digits).');
+        if (!smEmail || !smEmail.includes('@')) throw new Error('Enter a valid SM email.');
+
         await postJson(`/api/employee/loan/${CURRENT_APPROVED_LOAN_ID}/disburse/`, {
+            sm_phone_number: smPhone,
+            sm_email: smEmail,
+            disbursement_notes: bankNotes,
             disbursement_amount: amount || null,
             disbursement_date: date || null,
             bank_remark: bankRemark || '',
@@ -931,15 +945,15 @@ window.addEventListener('beforeunload', () => refreshTimer && clearInterval(refr
                     </div>
                     <div class="col-md-3">
                         <label class="form-label">SM Phone Number *</label>
-                        <input type="text" class="form-control" id="approvedSmPhone" readonly>
+                        <input type="text" class="form-control" id="approvedSmPhone" placeholder="Enter SM phone number">
                     </div>
                     <div class="col-md-3">
                         <label class="form-label">SM Email *</label>
-                        <input type="email" class="form-control" id="approvedSmEmail" readonly>
+                        <input type="email" class="form-control" id="approvedSmEmail" placeholder="Enter SM email">
                     </div>
                     <div class="col-12">
-                        <label class="form-label">Bank Details Notes *</label>
-                        <textarea class="form-control" rows="2" id="approvedBankNotes" readonly></textarea>
+                        <label class="form-label">Bank Details Notes</label>
+                        <textarea class="form-control" rows="2" id="approvedBankNotes" placeholder="Bank details notes (optional)"></textarea>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">Signature Done</label>

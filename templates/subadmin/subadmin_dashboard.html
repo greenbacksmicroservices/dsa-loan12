@@ -1,7 +1,7 @@
 {% extends "subadmin/base_subadmin.html" %}
 {% load static %}
 
-{% block title %}SubAdmin Dashboard{% endblock %}
+{% block title %}Partner Dashboard{% endblock %}
 {% block page_title %}Dashboard{% endblock %}
 
 {% block extra_css %}
@@ -570,7 +570,7 @@ function openLoanDetailsModal(loanId) {
                         { label: 'Status', value: data.status_display },
                         { label: 'Created Under', value: data.created_under },
                         { label: 'Assigned Employee', value: data.assigned_employee },
-                        { label: 'Assigned Agent', value: data.assigned_agent },
+                        { label: 'Assigned Channel Partner', value: data.assigned_agent },
                         { label: 'Assigned By', value: data.assigned_by },
                         { label: 'Created At', value: data.created_at },
                         { label: 'Updated At', value: data.updated_at },

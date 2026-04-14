@@ -525,6 +525,33 @@
         margin: 0 auto;
     }
 
+    body.dark-mode .table-container,
+    body.dark-mode .modal-content,
+    body.dark-mode .loans-table thead,
+    body.dark-mode .loans-table tbody tr,
+    body.dark-mode .assigned-info {
+        background: #0b1220 !important;
+        border-color: #334155 !important;
+        color: #e5e7eb !important;
+    }
+
+    body.dark-mode .loans-table th,
+    body.dark-mode .loans-table td,
+    body.dark-mode .form-group label,
+    body.dark-mode .modal-header h2,
+    body.dark-mode .applicant-name {
+        color: #e5e7eb !important;
+    }
+
+    body.dark-mode .table-filters select,
+    body.dark-mode .table-filters input,
+    body.dark-mode .form-group input,
+    body.dark-mode .form-group textarea {
+        background: #111827 !important;
+        color: #e5e7eb !important;
+        border-color: #334155 !important;
+    }
+
     /* Responsive */
     @media (max-width: 768px) {
         .request-loan-stats {
@@ -725,6 +752,14 @@
         <div id="disburse-modal-body">
             <div class="assigned-info" id="disburse-info"></div>
             <div class="form-group">
+                <label for="disburse-sm-phone">SM Phone Number *</label>
+                <input type="text" id="disburse-sm-phone" placeholder="Enter SM phone number" required>
+            </div>
+            <div class="form-group">
+                <label for="disburse-sm-email">SM Email *</label>
+                <input type="email" id="disburse-sm-email" placeholder="Enter SM email" required>
+            </div>
+            <div class="form-group">
                 <label for="disburse-amount">Disbursement Amount *</label>
                 <input type="number" id="disburse-amount" placeholder="Enter amount" min="0" step="0.01" required>
             </div>
@@ -733,8 +768,8 @@
                 <input type="date" id="disburse-date" required>
             </div>
             <div class="form-group">
-                <label for="disburse-bank-remark">Bank Remark (Optional)</label>
-                <textarea id="disburse-bank-remark" rows="3" placeholder="Banking verification remark..."></textarea>
+                <label for="disburse-bank-remark">Bank Details Notes</label>
+                <textarea id="disburse-bank-remark" rows="3" placeholder="Bank details / disbursement notes (optional)"></textarea>
             </div>
         </div>
         <div class="modal-actions">
@@ -935,6 +970,8 @@
             document.getElementById('rejection-reason').value = '';
             document.getElementById('reject-bank-remark').value = '';
         } else if (modalId === 'disburse-modal') {
+            document.getElementById('disburse-sm-phone').value = '';
+            document.getElementById('disburse-sm-email').value = '';
             document.getElementById('disburse-amount').value = '';
             document.getElementById('disburse-date').valueAsDate = new Date();
             document.getElementById('disburse-bank-remark').value = '';
@@ -1141,9 +1178,25 @@
     function confirmDisburse() {
         if (!currentLoanId) return;
 
+        const smPhone = document.getElementById('disburse-sm-phone').value.trim();
+        const smEmail = document.getElementById('disburse-sm-email').value.trim();
         const amount = document.getElementById('disburse-amount').value;
         const date = document.getElementById('disburse-date').value;
         const bankRemark = document.getElementById('disburse-bank-remark').value;
+
+        if (!smPhone) {
+            showError('SM Phone Number is required');
+            return;
+        }
+        const smDigits = smPhone.replace(/\D/g, '');
+        if (smDigits.length < 10 || smDigits.length > 15) {
+            showError('Enter a valid SM phone number (10-15 digits)');
+            return;
+        }
+        if (!smEmail || !smEmail.includes('@')) {
+            showError('Enter a valid SM email');
+            return;
+        }
 
         if (amount && parseFloat(amount) <= 0) {
             showError('Disbursement amount must be greater than 0');
@@ -1161,6 +1214,9 @@
                 'X-CSRFToken': getCookie('csrftoken')
             },
             body: JSON.stringify({
+                sm_phone_number: smPhone,
+                sm_email: smEmail,
+                disbursement_notes: bankRemark,
                 disbursement_amount: amount ? parseFloat(amount) : null,
                 disbursement_date: date || null,
                 bank_remark: bankRemark

@@ -1,9 +1,9 @@
 {% extends 'core/admin/admin_base.html' %}
 {% load static %}
 
-{% block title %}SubAdmin Management - Admin{% endblock %}
+{% block title %}Partner Management - Admin{% endblock %}
 
-{% block page_title %}SubAdmin Management - Add / Edit SubAdmins{% endblock %}
+{% block page_title %}Partner Management - Add / Edit Partners{% endblock %}
 
 {% block content %}
 <style>
@@ -505,14 +505,14 @@
 </style>
 
 <div class="subadmin-container">
-    <!-- SubAdmins List -->
+    <!-- Partners List -->
     <div class="table-section">
         <div class="table-title">
             <div class="table-title-left">
-                <i class="fas fa-list"></i> SubAdmins List ({{ subadmin_count }})
+                <i class="fas fa-list"></i> Partners List ({{ subadmin_count }})
             </div>
             <button type="button" class="btn-toggle-form" id="toggleSubadminBtn" onclick="toggleSubadminForm()">
-                <i class="fas fa-user-plus"></i> Add / Edit SubAdmins
+                <i class="fas fa-user-plus"></i> Add / Edit Partners
             </button>
         </div>
         
@@ -574,16 +574,16 @@
         {% else %}
         <div class="empty-state">
             <i class="fas fa-user-slash"></i>
-            <h3>No SubAdmins Yet</h3>
-            <p>Add your first SubAdmin using the button above this table.</p>
+            <h3>No Partners Yet</h3>
+            <p>Add your first Partner using the button above this table.</p>
         </div>
         {% endif %}
     </div>
 
-    <!-- Add SubAdmin Form -->
+    <!-- Add Partner Form -->
     <div class="form-section" id="subadminFormSection" style="display: none;">
         <div class="form-title">
-            <span><i class="fas fa-user-shield"></i> Add / Edit SubAdmin Form</span>
+            <span><i class="fas fa-user-shield"></i> Add / Edit Partner Form</span>
         </div>
         <p class="form-help">Fill details below to create a new subadmin.</p>
         <form id="subadminForm" action="{% url 'add_agent' %}" method="POST" enctype="multipart/form-data">
@@ -623,14 +623,6 @@
                             <option value="Female">Female</option>
                             <option value="Other">Other</option>
                         </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Father's Name</label>
-                        <input type="text" name="onb_father_name" placeholder="Optional">
-                    </div>
-                    <div class="form-group">
-                        <label>Mother's Name</label>
-                        <input type="text" name="onb_mother_name" placeholder="Optional">
                     </div>
                     <div class="form-group">
                         <label>Date of Birth</label>
@@ -724,177 +716,9 @@
             </div>
 
             <div class="section-card">
-                <div class="section-title">SECTION 2: OCCUPATION & INCOME DETAILS</div>
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label>Occupation</label>
-                        <input type="text" name="onb_occupation" placeholder="Occupation">
-                    </div>
-                    <div class="form-group">
-                        <label>Date of Joining</label>
-                        <input type="date" name="onb_joining_date">
-                    </div>
-                    <div class="form-group">
-                        <label>Year of Experience</label>
-                        <input type="text" name="onb_experience_years" placeholder="Years">
-                    </div>
-                    <div class="form-group">
-                        <label>Additional Income (if any)</label>
-                        <input type="text" name="onb_additional_income" placeholder="Optional">
-                    </div>
-                </div>
-                <div class="form-grid full">
-                    <div class="form-group">
-                        <label>Extra Income Details</label>
-                        <textarea name="onb_extra_income_details" placeholder="Extra income details"></textarea>
-                    </div>
-                </div>
-            </div>
 
             <div class="section-card">
-                <div class="section-title">SECTION 3: LOAN TYPE</div>
-                <div class="form-grid full">
-                    <div class="form-group">
-                        <label>Loan Type Details</label>
-                        <textarea name="onb_existing_loans" placeholder="No data available"></textarea>
-                    </div>
-                </div>
-            </div>
-
-            <div class="section-card">
-                <div class="section-title">SECTION 4: LOAN REQUEST</div>
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label>Service Required</label>
-                        <select name="onb_service_required">
-                            <option value="">Select</option>
-                            <option value="Personal Loan">Personal Loan</option>
-                            <option value="Business Loan">Business Loan</option>
-                            <option value="Home Loan">Home Loan</option>
-                            <option value="Education Loan">Education Loan</option>
-                            <option value="Car Loan">Car Loan</option>
-                            <option value="Other">Other</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Loan Amount Required</label>
-                        <input type="text" name="onb_loan_amount_required" placeholder="Amount">
-                    </div>
-                    <div class="form-group">
-                        <label>Loan Tenure (Months)</label>
-                        <input type="text" name="onb_loan_tenure" placeholder="Tenure">
-                    </div>
-                    <div class="form-group">
-                        <label>Any Charges or Fee</label>
-                        <input type="text" name="onb_charges_fee" placeholder="No charges">
-                    </div>
-                </div>
-                <div class="form-grid full">
-                    <div class="form-group">
-                        <label>Loan Purpose</label>
-                        <textarea name="onb_loan_purpose" placeholder="Purpose"></textarea>
-                    </div>
-                </div>
-            </div>
-
-            <div class="section-card">
-                <div class="section-title">SECTION 5: REFERENCES</div>
-                <div class="document-row">
-                    <div class="form-group">
-                        <label>Reference Name</label>
-                        <input type="text" name="ref_name" placeholder="Reference name">
-                    </div>
-                    <div class="form-group">
-                        <label>Reference Phone</label>
-                        <input type="text" name="ref_phone" placeholder="Phone">
-                    </div>
-                </div>
-                <div class="document-row">
-                    <div class="form-group">
-                        <label>Reference Email</label>
-                        <input type="email" name="ref_email" placeholder="Email">
-                    </div>
-                    <div class="form-group">
-                        <label>Relation</label>
-                        <input type="text" name="ref_relation" placeholder="Relation">
-                    </div>
-                </div>
-                <div class="document-row">
-                    <div class="form-group">
-                        <label>Reference Name</label>
-                        <input type="text" name="ref_name" placeholder="Reference name">
-                    </div>
-                    <div class="form-group">
-                        <label>Reference Phone</label>
-                        <input type="text" name="ref_phone" placeholder="Phone">
-                    </div>
-                </div>
-                <div class="document-row">
-                    <div class="form-group">
-                        <label>Reference Email</label>
-                        <input type="email" name="ref_email" placeholder="Email">
-                    </div>
-                    <div class="form-group">
-                        <label>Relation</label>
-                        <input type="text" name="ref_relation" placeholder="Relation">
-                    </div>
-                </div>
-            </div>
-
-            <div class="section-card">
-                <div class="section-title">SECTION 6: BALANCE TRANSFER (IF ANY)</div>
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label>CIBIL Score</label>
-                        <input type="text" name="onb_cibil" placeholder="CIBIL Score">
-                    </div>
-                    <div class="form-group">
-                        <label>Aadhar Number</label>
-                        <input type="text" name="onb_aadhar" placeholder="Aadhar Number">
-                    </div>
-                    <div class="form-group">
-                        <label>PAN Number</label>
-                        <input type="text" name="onb_pan" placeholder="PAN Number">
-                    </div>
-                    <div class="form-group">
-                        <label>Bank Name</label>
-                        <input type="text" name="onb_bank_name" placeholder="Bank Name">
-                    </div>
-                    <div class="form-group">
-                        <label>Account Number</label>
-                        <input type="text" name="onb_account_number" placeholder="Account Number">
-                    </div>
-                    <div class="form-group">
-                        <label>IFSC Code</label>
-                        <input type="text" name="onb_ifsc" placeholder="IFSC Code">
-                    </div>
-                    <div class="form-group">
-                        <label>Bank Type</label>
-                        <select name="onb_bank_type">
-                            <option value="">Select</option>
-                            <option value="Private">Private</option>
-                            <option value="Government">Government</option>
-                            <option value="Cooperative">Cooperative</option>
-                            <option value="NBFC">NBFC</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-grid full">
-                    <div class="form-group">
-                        <label>Remarks / Suggestions (if any)</label>
-                        <textarea name="onb_bank_remarks" placeholder="Remarks"></textarea>
-                    </div>
-                </div>
-                <div class="form-grid full">
-                    <label class="inline-checkbox">
-                        <input type="checkbox" name="onb_declaration">
-                        I hereby declare that the above information given by me is true and correct.
-                    </label>
-                </div>
-            </div>
-
-            <div class="section-card">
-                <div class="section-title">SECTION 7: DOCUMENTS</div>
+                <div class="section-title">SECTION 2: DOCUMENTS</div>
                 <div id="subadminDocumentRows">
                     <div class="document-row">
                         <div class="form-group">
@@ -919,18 +743,18 @@
             </div>
 
             <button type="submit" class="btn-submit">
-                <i class="fas fa-user-plus"></i> Create SubAdmin
+                <i class="fas fa-user-plus"></i> Create Partner
             </button>
             <div id="subadminFormMessage" style="display:none; margin-top: 12px; padding: 10px 12px; border-radius: 6px; font-size: 13px; font-weight: 600;"></div>
         </form>
     </div>
 </div>
 
-<!-- View SubAdmin Modal -->
+<!-- View Partner Modal -->
 <div class="modal-overlay" id="viewModal">
     <div class="modal-content">
         <div class="modal-header">
-            <span>SubAdmin Details</span>
+            <span>Partner Details</span>
             <button class="modal-close" onclick="closeModal('viewModal')">&times;</button>
         </div>
         <div class="modal-body" id="viewModalBody">
@@ -942,11 +766,11 @@
     </div>
 </div>
 
-<!-- Edit SubAdmin Modal -->
+<!-- Edit Partner Modal -->
 <div class="modal-overlay" id="editModal">
     <div class="modal-content">
         <div class="modal-header">
-            <span>Edit SubAdmin</span>
+            <span>Edit Partner</span>
             <button class="modal-close" onclick="closeModal('editModal')">&times;</button>
         </div>
         <div class="modal-body">
@@ -1004,15 +828,15 @@
     </div>
 </div>
 
-<!-- Delete SubAdmin Modal -->
+<!-- Delete Partner Modal -->
 <div class="modal-overlay" id="deleteModal">
     <div class="modal-content">
         <div class="modal-header">
-            <span style="color: #ef4444;">Delete SubAdmin</span>
+            <span style="color: #ef4444;">Delete Partner</span>
             <button class="modal-close" onclick="closeModal('deleteModal')">&times;</button>
         </div>
         <div class="modal-body">
-            <p><strong>Are you sure you want to delete this SubAdmin?</strong></p>
+            <p><strong>Are you sure you want to delete this Partner?</strong></p>
             <p>Name: <strong id="deleteName"></strong></p>
             <p style="color: #ef4444; background: #fee2e2; padding: 10px; border-radius: 6px;">
                 <i class="fas fa-exclamation-triangle"></i> This action cannot be undone.
@@ -1036,7 +860,7 @@
         section.style.display = willOpen ? 'block' : 'none';
         button.innerHTML = willOpen
             ? '<i class="fas fa-chevron-up"></i> Hide Form'
-            : '<i class="fas fa-user-plus"></i> Add / Edit SubAdmins';
+            : '<i class="fas fa-user-plus"></i> Add / Edit Partners';
         if (willOpen) {
             section.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
@@ -1145,7 +969,7 @@
                 throw new Error(data.error || data.message || 'Could not create subadmin.');
             }
 
-            showSubadminFormMessage(data.message || 'SubAdmin created successfully.');
+            showSubadminFormMessage(data.message || 'Partner created successfully.');
             form.reset();
             resetSubadminDocumentRows();
             setTimeout(() => window.location.reload(), 700);
@@ -1154,7 +978,7 @@
         } finally {
             if (submitBtn) {
                 submitBtn.disabled = false;
-                submitBtn.innerHTML = '<i class="fas fa-user-plus"></i> Create SubAdmin';
+                submitBtn.innerHTML = '<i class="fas fa-user-plus"></i> Create Partner';
             }
         }
     }
@@ -1494,12 +1318,12 @@
                     throw new Error('Server returned invalid response.');
                 }
                 if (!response.ok || !data.success) {
-                    throw new Error(data.error || 'Could not delete SubAdmin');
+                    throw new Error(data.error || 'Could not delete Partner');
                 }
                 return data;
             })
             .then(data => {
-                alert(data.message || 'SubAdmin deleted successfully!');
+                alert(data.message || 'Partner deleted successfully!');
                 location.reload();
                 closeModal('deleteModal');
             })

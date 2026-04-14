@@ -1,11 +1,11 @@
 {% extends "base/base.html" %}
 
-{% block navbar_title %}Agent Dashboard{% endblock %}
+{% block navbar_title %}Channel Partner Dashboard{% endblock %}
 
 {% block sidebar %}
     <div class="sidebar" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding-top: 70px;">
         <div class="p-3">
-            <h5 class="text-white mb-3">Agent Menu</h5>
+            <h5 class="text-white mb-3">Channel Partner Menu</h5>
             <nav class="nav flex-column">
                 <a href="{% url 'agent_dashboard' %}" class="nav-link text-light {% if request.resolver_match.url_name == 'agent_dashboard' %}active bg-white text-dark{% endif %}">
                     <i class="fas fa-chart-line"></i> Dashboard
@@ -28,4 +28,4 @@
     </div>
 {% endblock %}
 
-{% block page_title %}Agent Panel - {% block agent_page_title %}Dashboard{% endblock %}{% endblock %}
+{% block page_title %}Channel Partner Panel - {% block agent_page_title %}Dashboard{% endblock %}{% endblock %}

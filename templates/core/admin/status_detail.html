@@ -331,7 +331,7 @@
                         <td style="padding: 15px 20px; font-weight: 600; color: #374151;">
                             {% if app.assigned_by %}
                                 {% if app.assigned_by.role == 'subadmin' %}
-                                    SubAdmin - {{ app.assigned_by.get_full_name|default:app.assigned_by.username }}
+                                    Partner - {{ app.assigned_by.get_full_name|default:app.assigned_by.username }}
                                 {% elif app.assigned_by.role == 'admin' %}
                                     Admin - {{ app.assigned_by.get_full_name|default:app.assigned_by.username }}
                                 {% else %}
@@ -372,15 +372,7 @@
                                     onclick="openAdminAction('reject', {{ app.id }}, '{{ app.applicant.full_name|escapejs }}')">
                                     <i class="fas fa-times-circle"></i> Reject
                                 </button>
-                                <button type="button" class="action-btn revert"
-                                    onclick="openAdminAction('revert', {{ app.id }}, '{{ app.applicant.full_name|escapejs }}')">
-                                    <i class="fas fa-undo"></i> Revert
-                                </button>
-                                {% elif status_name == 'Approved' %}
-                                <button type="button" class="action-btn sign"
-                                    onclick="openAdminAction('sign', {{ app.id }}, '{{ app.applicant.full_name|escapejs }}')">
-                                    <i class="fas fa-signature"></i> SM Sign
-                                </button>
+                            {% elif status_name == 'Approved' %}
                                 <button type="button" class="action-btn disburse"
                                     onclick="openAdminAction('disburse', {{ app.id }}, '{{ app.applicant.full_name|escapejs }}')">
                                     <i class="fas fa-money-bill-wave"></i> Disburse
@@ -659,10 +651,26 @@ function openAdminAction(action, appId, applicantName) {
         body.innerHTML = `
             <div style="font-size: 13px; color: #374151;">Move <strong>${safeName}</strong> to Banking Processing.</div>
             <div>
-                <label for="adminCollectRemark">Bank Remark (Optional)</label>
-                <textarea id="adminCollectRemark" rows="3" placeholder="Banking verification remark..."></textarea>
+                <label for="adminBankerName">Banker Name *</label>
+                <input id="adminBankerName" type="text" placeholder="Enter banker name">
             </div>
-        `;
+            <div>
+                <label for="adminBankerPhone">Banker Phone *</label>
+                <input id="adminBankerPhone" type="text" placeholder="Enter banker phone number">
+            </div>
+            <div>
+                <label for="adminBankerEmail">Banker Email *</label>
+                <input id="adminBankerEmail" type="email" placeholder="Enter banker email">
+            </div>
+             <div>
+                 <label for="adminBankerDescription">Description</label>
+                 <textarea id="adminBankerDescription" rows="2" placeholder="Bank processing description..."></textarea>
+             </div>
+             <div>
+                 <label for="adminCollectRemark">Bank Remark</label>
+                 <textarea id="adminCollectRemark" rows="3" placeholder="Banking verification remark..."></textarea>
+             </div>
+         `;
     } else if (action === 'approve') {
         title.textContent = 'Approve Loan';
         confirmBtn.className = 'action-btn approve';
@@ -670,23 +678,7 @@ function openAdminAction(action, appId, applicantName) {
         body.innerHTML = `
             <div style="font-size: 13px; color: #374151;">Approving <strong>${safeName}</strong>.</div>
             <div>
-                <label for="adminSmName">Channel Partner Name *</label>
-                <input id="adminSmName" type="text" placeholder="Enter channel partner name">
-            </div>
-            <div>
-                <label for="adminLeaderName">Leader Name *</label>
-                <input id="adminLeaderName" type="text" placeholder="Enter leader name">
-            </div>
-            <div>
-                <label for="adminSmPhone">SM Phone *</label>
-                <input id="adminSmPhone" type="text" placeholder="Enter SM phone number">
-            </div>
-            <div>
-                <label for="adminSmEmail">SM Email *</label>
-                <input id="adminSmEmail" type="email" placeholder="Enter SM email">
-            </div>
-            <div>
-                <label for="adminApprovalNotes">Approval Notes (Optional)</label>
+                <label for="adminApprovalNotes">Approval Notes *</label>
                 <textarea id="adminApprovalNotes" rows="3" placeholder="Approval notes..."></textarea>
             </div>
             <div>
@@ -709,25 +701,6 @@ function openAdminAction(action, appId, applicantName) {
                 <textarea id="adminRejectBankRemark" rows="2" placeholder="Banking verification remark..."></textarea>
             </div>
         `;
-    } else if (action === 'revert') {
-        title.textContent = 'Revert To Agent';
-        confirmBtn.className = 'action-btn revert';
-        confirmBtn.textContent = 'Revert';
-        body.innerHTML = `
-            <div style="font-size: 13px; color: #374151;">Revert <strong>${safeName}</strong> back to agent for correction.</div>
-            <div>
-                <label for="adminRevertRemark">Revert Remark *</label>
-                <textarea id="adminRevertRemark" rows="3" placeholder="Explain what needs correction..."></textarea>
-            </div>
-        `;
-    } else if (action === 'sign') {
-        title.textContent = 'SM Sign-Off';
-        confirmBtn.className = 'action-btn sign';
-        confirmBtn.textContent = 'Sign';
-        body.innerHTML = `
-            <div style="font-size: 13px; color: #374151;">Mark SM sign-off for <strong>${safeName}</strong>.</div>
-            <div style="font-size: 12px; color: #6b7280;">Ensure SM details are already added before signing.</div>
-        `;
     } else if (action === 'disburse') {
         title.textContent = 'Mark As Disbursed';
         confirmBtn.className = 'action-btn disburse';
@@ -735,6 +708,14 @@ function openAdminAction(action, appId, applicantName) {
         const today = new Date().toISOString().slice(0, 10);
         body.innerHTML = `
             <div style="font-size: 13px; color: #374151;">Disburse loan for <strong>${safeName}</strong>.</div>
+            <div>
+                <label for="adminDisburseSmPhone">SM Phone Number *</label>
+                <input id="adminDisburseSmPhone" type="text" placeholder="Enter SM phone number">
+            </div>
+            <div>
+                <label for="adminDisburseSmEmail">SM Email *</label>
+                <input id="adminDisburseSmEmail" type="email" placeholder="Enter SM email">
+            </div>
             <div>
                 <label for="adminDisburseAmount">Disbursement Amount *</label>
                 <input id="adminDisburseAmount" type="number" min="0" step="0.01" placeholder="Amount">
@@ -744,8 +725,8 @@ function openAdminAction(action, appId, applicantName) {
                 <input id="adminDisburseDate" type="date" value="${today}">
             </div>
             <div>
-                <label for="adminDisburseRemark">Bank Remark (Optional)</label>
-                <textarea id="adminDisburseRemark" rows="2" placeholder="Banking verification remark..."></textarea>
+                <label for="adminDisburseRemark">Bank Details Notes</label>
+                <textarea id="adminDisburseRemark" rows="2" placeholder="Bank details / disbursement notes (optional)"></textarea>
             </div>
         `;
     } else {
@@ -792,32 +773,35 @@ async function confirmAdminAction() {
     let payload = {};
 
     try {
-        if (currentAdminAction === 'collect') {
-            endpoint = `/api/employee/loan/${currentAdminAppId}/collect/`;
-            payload = {
-                bank_remark: (document.getElementById('adminCollectRemark')?.value || '').trim(),
+         if (currentAdminAction === 'collect') {
+             const bankerName = (document.getElementById('adminBankerName')?.value || '').trim();
+             const bankerPhone = (document.getElementById('adminBankerPhone')?.value || '').trim();
+             const bankerEmail = (document.getElementById('adminBankerEmail')?.value || '').trim();
+             const bankerDescription = (document.getElementById('adminBankerDescription')?.value || '').trim();
+             const bankRemark = (document.getElementById('adminCollectRemark')?.value || '').trim();
+             if (!bankerName || !bankerPhone || !bankerEmail) {
+                 alert('Please fill banker name, phone and email.');
+                 throw new Error('Missing banking details');
+             }
+             endpoint = `/api/employee/loan/${currentAdminAppId}/collect/`;
+             payload = {
+                 banker_name: bankerName,
+                banker_phone: bankerPhone,
+                banker_email: bankerEmail,
+                banker_description: bankerDescription,
+                bank_remark: bankRemark,
                 entity_type: 'application',
             };
         } else if (currentAdminAction === 'approve') {
-            const smName = (document.getElementById('adminSmName')?.value || '').trim();
-            const leaderName = (document.getElementById('adminLeaderName')?.value || '').trim();
-            const smPhone = (document.getElementById('adminSmPhone')?.value || '').trim();
-            const smEmail = (document.getElementById('adminSmEmail')?.value || '').trim();
-            if (!smName || !leaderName || !smPhone || !smEmail) {
-                alert('Channel partner name, leader name, phone, and email are required.');
-                throw new Error('Missing SM details');
+            const approvalNotes = (document.getElementById('adminApprovalNotes')?.value || '').trim();
+            if (!approvalNotes) {
+                alert('Approval notes are required.');
+                throw new Error('Missing approval notes');
             }
             endpoint = `/api/employee/loan/${currentAdminAppId}/approve/`;
-            const bankRemark = [
-                `Leader Name: ${leaderName}`,
-                (document.getElementById('adminBankRemark')?.value || '').trim()
-            ].filter(Boolean).join('\n');
             payload = {
-                sm_name: smName,
-                sm_phone_number: smPhone,
-                sm_email: smEmail,
-                approval_notes: (document.getElementById('adminApprovalNotes')?.value || '').trim(),
-                bank_remark: bankRemark,
+                approval_notes: approvalNotes,
+                bank_remark: (document.getElementById('adminBankRemark')?.value || '').trim(),
             };
         } else if (currentAdminAction === 'reject') {
             const reason = (document.getElementById('adminRejectReason')?.value || '').trim();
@@ -830,32 +814,37 @@ async function confirmAdminAction() {
                 rejection_reason: reason,
                 bank_remark: (document.getElementById('adminRejectBankRemark')?.value || '').trim(),
             };
-        } else if (currentAdminAction === 'revert') {
-            const remark = (document.getElementById('adminRevertRemark')?.value || '').trim();
-            if (!remark) {
-                alert('Revert remark is required.');
-                throw new Error('Missing revert remark');
-            }
-            endpoint = `/api/employee/loan/${currentAdminAppId}/revert/`;
-            payload = {
-                revert_remark: remark,
-                entity_type: 'application',
-            };
-        } else if (currentAdminAction === 'sign') {
-            endpoint = `/api/employee/loan/${currentAdminAppId}/sign/`;
-            payload = {};
         } else if (currentAdminAction === 'disburse') {
+            const smPhone = (document.getElementById('adminDisburseSmPhone')?.value || '').trim();
+            const smEmail = (document.getElementById('adminDisburseSmEmail')?.value || '').trim();
             const amount = (document.getElementById('adminDisburseAmount')?.value || '').trim();
             const date = (document.getElementById('adminDisburseDate')?.value || '').trim();
+            const notes = (document.getElementById('adminDisburseRemark')?.value || '').trim();
+            if (!smPhone) {
+                alert('SM phone number is required.');
+                throw new Error('Missing SM phone number');
+            }
+            const digits = smPhone.replace(/\D/g, '');
+            if (digits.length < 10 || digits.length > 15) {
+                alert('Enter a valid SM phone number (10-15 digits).');
+                throw new Error('Invalid SM phone number');
+            }
+            if (!smEmail || !smEmail.includes('@')) {
+                alert('Enter a valid SM email.');
+                throw new Error('Invalid SM email');
+            }
             if (!amount || !date) {
                 alert('Disbursement amount and date are required.');
                 throw new Error('Missing disbursement details');
             }
             endpoint = `/api/employee/loan/${currentAdminAppId}/disburse/`;
             payload = {
+                sm_phone_number: smPhone,
+                sm_email: smEmail,
+                disbursement_notes: notes,
                 disbursement_amount: amount,
                 disbursement_date: date,
-                bank_remark: (document.getElementById('adminDisburseRemark')?.value || '').trim(),
+                bank_remark: notes,
             };
         } else {
             throw new Error('Unknown action');
@@ -879,7 +868,7 @@ async function confirmAdminAction() {
         closeAdminActionModal();
         window.location.reload();
     } catch (error) {
-        if (error.message && error.message !== 'Missing SM details' && error.message !== 'Missing rejection reason' && error.message !== 'Missing revert remark' && error.message !== 'Missing disbursement details') {
+        if (error.message && error.message !== 'Missing approval notes' && error.message !== 'Missing rejection reason' && error.message !== 'Missing disbursement details' && error.message !== 'Missing banking details') {
             alert(error.message || 'Action failed');
         }
     } finally {

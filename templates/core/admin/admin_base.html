@@ -211,6 +211,27 @@
             gap: 20px;
         }
 
+        .theme-toggle-btn {
+            border: 1px solid #d1d5db;
+            border-radius: 999px;
+            background: #ffffff;
+            color: #0f172a;
+            font-size: 13px;
+            font-weight: 700;
+            padding: 8px 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .theme-toggle-btn:hover {
+            background: #f8fafc;
+            border-color: #94a3b8;
+            transform: translateY(-1px);
+        }
+
         .user-info {
             display: flex;
             align-items: center;
@@ -218,6 +239,137 @@
             padding: 10px 15px;
             background: #f7fafc;
             border-radius: 8px;
+        }
+
+        body.dark-mode {
+            background-color: #0f172a;
+            color: #e5e7eb;
+        }
+
+        body.dark-mode .sidebar {
+            background: linear-gradient(180deg, #020617 0%, #0b1220 100%);
+            border-right: 1px solid #334155;
+            box-shadow: 10px 0 30px rgba(2, 6, 23, 0.65);
+        }
+
+        body.dark-mode .sidebar::after {
+            background:
+                radial-gradient(circle at 15% 10%, rgba(99, 102, 241, 0.2), transparent 45%),
+                radial-gradient(circle at 85% 90%, rgba(2, 6, 23, 0.4), transparent 55%);
+        }
+
+        body.dark-mode .sidebar-logo {
+            border-bottom-color: rgba(148, 163, 184, 0.28);
+            background: linear-gradient(180deg, rgba(51, 65, 85, 0.35) 0%, transparent 100%);
+        }
+
+        body.dark-mode .sidebar-logo p,
+        body.dark-mode .sidebar-badge {
+            color: #cbd5e1;
+            border-color: rgba(148, 163, 184, 0.35);
+        }
+
+        body.dark-mode .sidebar-nav a {
+            color: #cbd5e1;
+        }
+
+        body.dark-mode .sidebar-nav a:hover {
+            background: linear-gradient(90deg, rgba(99, 102, 241, 0.22), transparent);
+            border-left-color: #a5b4fc;
+            color: #f8fafc;
+        }
+
+        body.dark-mode .sidebar-nav a.active {
+            background: linear-gradient(90deg, rgba(99, 102, 241, 0.34), rgba(79, 70, 229, 0.15));
+            border-left-color: #c7d2fe;
+            color: #ffffff;
+        }
+
+        body.dark-mode .header,
+        body.dark-mode .stat-card,
+        body.dark-mode .table-container,
+        body.dark-mode .status-header,
+        body.dark-mode .filters,
+        body.dark-mode .empty-state,
+        body.dark-mode .recent-applications-section,
+        body.dark-mode .content,
+        body.dark-mode .card {
+            background-color: #111827 !important;
+            color: #e5e7eb !important;
+            border-color: #374151 !important;
+        }
+
+        body.dark-mode .header h1,
+        body.dark-mode .user-details h6,
+        body.dark-mode .stat-card .number,
+        body.dark-mode .table tbody td {
+            color: #e5e7eb !important;
+        }
+
+        body.dark-mode .header-subtitle,
+        body.dark-mode .user-details p,
+        body.dark-mode .stat-card h3,
+        body.dark-mode .stat-card p {
+            color: #cbd5e1 !important;
+        }
+
+        body.dark-mode .user-info {
+            background: #0b1220;
+            border: 1px solid #334155;
+        }
+
+        body.dark-mode .search-box input,
+        body.dark-mode input,
+        body.dark-mode select,
+        body.dark-mode textarea {
+            background: #0b1220 !important;
+            color: #e5e7eb !important;
+            border-color: #334155 !important;
+        }
+
+        body.dark-mode .search-box i {
+            color: #94a3b8;
+        }
+
+        body.dark-mode .table tbody tr {
+            background-color: #0b1220;
+        }
+
+        body.dark-mode .table tbody tr:nth-child(even) {
+            background-color: #0f172a;
+        }
+
+        body.dark-mode .table tbody tr:hover {
+            background-color: #111827;
+        }
+
+        body.dark-mode .followup-container,
+        body.dark-mode .followup-table-container,
+        body.dark-mode .search-bar,
+        body.dark-mode .detail-card,
+        body.dark-mode .summary-card,
+        body.dark-mode .applicant-details,
+        body.dark-mode .document-item,
+        body.dark-mode .metric-box,
+        body.dark-mode .info-item {
+            background: #0b1220 !important;
+            border-color: #334155 !important;
+            color: #e5e7eb !important;
+        }
+
+        body.dark-mode .followup-title,
+        body.dark-mode .applicant-name,
+        body.dark-mode .section-title,
+        body.dark-mode .summary-value,
+        body.dark-mode .detail-value {
+            color: #e5e7eb !important;
+        }
+
+        body.dark-mode .followup-count,
+        body.dark-mode .delay-text,
+        body.dark-mode .summary-label,
+        body.dark-mode .detail-label {
+            color: #94a3b8 !important;
         }
 
         .user-avatar {
@@ -598,13 +750,13 @@
             <li>
                 <a href="{% url 'admin_all_agents' %}" class="{% if request.resolver_match.url_name == 'admin_all_agents' %}active{% endif %}">
                     <i class="fas fa-person-hiking"></i>
-                    <span>All Agents</span>
+                    <span>All Channel Partners</span>
                 </a>
             </li>
             <li>
                 <a href="{% url 'admin_subadmin_management' %}" class="{% if request.resolver_match.url_name == 'admin_subadmin_management' %}active{% endif %}">
                     <i class="fas fa-crown"></i>
-                    <span>SubAdmins</span>
+                    <span>Partners</span>
                 </a>
             </li>
             <li>
@@ -643,6 +795,10 @@
             </div>
 
             <div class="header-right">
+                <button class="theme-toggle-btn" type="button" id="theme-toggle-btn" onclick="toggleThemeMode()">
+                    <i class="fas fa-moon"></i>
+                    <span id="theme-toggle-label">Dark</span>
+                </button>
                 <div class="user-info">
                     <div class="user-avatar">{{ request.user.first_name|first|upper }}</div>
                     <div class="user-details">
@@ -676,5 +832,34 @@
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        (function () {
+            function applyThemeMode(mode) {
+                const dark = mode === 'dark';
+                document.body.classList.toggle('dark-mode', dark);
+                document.documentElement.setAttribute('data-bs-theme', dark ? 'dark' : 'light');
+
+                const label = document.getElementById('theme-toggle-label');
+                const icon = document.querySelector('#theme-toggle-btn i');
+                if (label) {
+                    label.textContent = dark ? 'Light' : 'Dark';
+                }
+                if (icon) {
+                    icon.className = dark ? 'fas fa-sun' : 'fas fa-moon';
+                }
+            }
+
+            window.toggleThemeMode = function () {
+                const next = document.body.classList.contains('dark-mode') ? 'light' : 'dark';
+                localStorage.setItem('panelThemeMode', next);
+                applyThemeMode(next);
+            };
+
+            document.addEventListener('DOMContentLoaded', function () {
+                const savedTheme = localStorage.getItem('panelThemeMode') || 'light';
+                applyThemeMode(savedTheme);
+            });
+        })();
+    </script>
 </body>
 </html>

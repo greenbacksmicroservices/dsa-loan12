@@ -97,9 +97,9 @@ def _role_label(user_obj):
         return 'System'
     return {
         'admin': 'Admin',
-        'subadmin': 'SubAdmin',
+        'subadmin': 'Partner',
         'employee': 'Employee',
-        'agent': 'Agent',
+        'agent': 'Channel Partner',
         'dsa': 'DSA',
     }.get(user_obj.role, (user_obj.role or 'User').title())
 
@@ -465,7 +465,7 @@ def subadmin_dashboard(request):
         })
     
     context = {
-        'page_title': 'SubAdmin Dashboard',
+        'page_title': 'Partner Dashboard',
         'status_stats': status_stats,
         'team_stats': team_stats,
         'monthly_data': monthly_data,
@@ -873,14 +873,22 @@ def subadmin_assign_employee_api(request, loan_id):
         old_status = loan.status
         loan.assigned_employee = employee
         loan.assigned_at = timezone.now()
-        if loan.status in ['new_entry', 'draft']:
-            loan.status = 'waiting'
+        reopen_note = None
+        if loan.status == 'draft':
+            loan.status = 'new_entry'
+        elif loan.status == 'rejected':
+            loan.status = 'new_entry'
+            loan.requires_follow_up = False
+            loan.follow_up_triggered_at = None
+            reopen_note = 'Reopened from Rejected to New Entry for fresh processing'
 
         subadmin_name = request.user.get_full_name() or request.user.username
         employee_name = employee.get_full_name() or employee.username
-        assignment_line = f"Assigned By SubAdmin: {subadmin_name} -> Employee: {employee_name}"
+        assignment_line = f"Assigned By Partner: {subadmin_name} -> Employee: {employee_name}"
         if remarks:
             assignment_line = f"{assignment_line} | Remark: {remarks}"
+        if reopen_note:
+            assignment_line = f"{assignment_line}\n{reopen_note}"
 
         if loan.remarks:
             loan.remarks = f"{loan.remarks}\n{assignment_line}"
@@ -905,7 +913,7 @@ def subadmin_assign_employee_api(request, loan_id):
                     from_status=previous_app_status_key,
                     to_status=current_app_status_key,
                     changed_by=request.user,
-                    reason=remarks or f'Assigned to {employee_name} by subadmin',
+                    reason=remarks or f'Assigned to {employee_name} by partner',
                     is_auto_triggered=False,
                 )
 
@@ -914,7 +922,7 @@ def subadmin_assign_employee_api(request, loan_id):
             ActivityLog.objects.create(
                 action='status_updated',
                 description=(
-                    f"SubAdmin assigned loan {loan.user_id or loan.id} from {from_name} "
+                    f"Partner assigned loan {loan.user_id or loan.id} from {from_name} "
                     f"to {employee_name} (status: {_status_label(old_status)} -> {_status_label(loan.status)})"
                 ),
                 user=request.user,

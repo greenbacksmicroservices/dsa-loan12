@@ -847,7 +847,7 @@ def admin_subadmin_management(request):
             })
         
         context = {
-            'page_title': 'SubAdmin Management',
+            'page_title': 'Partner Management',
             'subadmins': subadmins,
             'subadmin_count': subadmins.count(),
             'subadmin_rows': subadmin_list,
@@ -892,7 +892,7 @@ def api_admin_subadmin_full_details(request, subadmin_id):
             if loan.created_by:
                 owner_name = f"{_role_label(loan.created_by)} - {loan.created_by.get_full_name() or loan.created_by.username}"
             else:
-                owner_name = f"SubAdmin - {subadmin.get_full_name() or subadmin.username}"
+                owner_name = f"Partner - {subadmin.get_full_name() or subadmin.username}"
 
             customers.append({
                 'loan_id': loan.id,
@@ -1097,7 +1097,7 @@ def api_create_subadmin(request):
         
         return JsonResponse({
             'success': True,
-            'message': 'SubAdmin created successfully',
+            'message': 'Partner created successfully',
             'subadmin': {
                 'id': subadmin.id,
                 'username': subadmin.username,
@@ -1200,7 +1200,7 @@ def api_update_subadmin(request, subadmin_id):
 
     return JsonResponse({
         'success': True,
-        'message': 'SubAdmin updated successfully',
+        'message': 'Partner updated successfully',
         'subadmin': {
             'id': subadmin.id,
             'name': subadmin.get_full_name() or subadmin.username,
@@ -1333,7 +1333,7 @@ def add_agent(request):
             elif role == 'subadmin':
                 user.is_subadmin = True
                 user.save()
-                success_msg = f'SubAdmin {first_name} {last_name} created successfully with username: {username}'
+                success_msg = f'Partner {first_name} {last_name} created successfully with username: {username}'
             
             else:  # employee
                 success_msg = f'Employee {first_name} {last_name} created successfully with username: {username}'
@@ -1599,6 +1599,7 @@ def admin_add_loan(request):
                 remarks_lines.append(f"{label}: {value}")
 
             document_names = [(name or '').strip() for name in request.POST.getlist('document_name[]')]
+            expanded_document_names = [(name or '').strip() for name in request.POST.getlist('document_name_expanded[]')]
             if document_names:
                 for idx, doc_name in enumerate(document_names, start=1):
                     if doc_name:
@@ -1679,10 +1680,16 @@ def admin_add_loan(request):
                 return 'other' if index == 1 else f'other_{index}'
 
             documents_files = request.FILES.getlist('document_file[]')
+            document_name_sequence = expanded_document_names if len(expanded_document_names) >= len(documents_files) else document_names
             for idx, uploaded_file in enumerate(documents_files, start=1):
                 if not uploaded_file:
                     continue
-                doc_name = document_names[idx - 1] if idx - 1 < len(document_names) else ''
+                if idx - 1 < len(document_name_sequence):
+                    doc_name = document_name_sequence[idx - 1]
+                elif document_names:
+                    doc_name = document_names[-1]
+                else:
+                    doc_name = ''
                 document_type = get_document_type(doc_name, idx)
                 if LoanDocument.objects.filter(loan=loan, document_type=document_type).exists():
                     document_type = f"{document_type}_{idx}"

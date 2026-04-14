@@ -28,7 +28,7 @@
         <div class="col-lg-7">
             <div class="card shadow-sm border-0 rounded-lg h-100">
                 <div class="card-header profile-head text-white py-4">
-                    <h5 class="mb-0">Agent Information</h5>
+                    <h5 class="mb-0">Channel Partner Information</h5>
                 </div>
                 <div class="card-body p-4">
                     {% if agent.profile_photo %}
@@ -42,7 +42,7 @@
                         <table class="table table-borderless table-grid profile-table mb-0">
                             <tbody>
                                 <tr>
-                                    <td class="label-col"><i class="fas fa-id-card text-primary"></i> Agent ID</td>
+                                    <td class="label-col"><i class="fas fa-id-card text-primary"></i> Channel Partner ID</td>
                                     <td><span class="badge bg-primary">{{ agent.agent_id|default:"N/A" }}</span></td>
                                 </tr>
                                 <tr>

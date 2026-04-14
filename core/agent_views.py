@@ -150,10 +150,8 @@ def agent_add_loan(request):
                 messages.error(request, 'Please provide a valid mobile number')
                 return redirect('agent_add_loan')
 
-            loan_uid = request.POST.get('loan_uid', '').strip()
-            if loan_uid and Loan.objects.filter(user_id=loan_uid).exists():
-                messages.error(request, 'Loan ID already exists. Please enter a unique Loan ID.')
-                return redirect('agent_add_loan')
+            # Agent panel should not accept manual Loan ID.
+            loan_uid = ''
             
             # Validate email only if provided
             email = request.POST.get('email_id', '').strip()
@@ -168,7 +166,8 @@ def agent_add_loan(request):
             agent = Agent.objects.get(user=request.user)
             assigned_employee = _resolve_employee_for_agent(agent)
             auto_assign = bool(assigned_employee) and not save_as_draft
-            loan_status = 'waiting' if auto_assign else ('draft' if save_as_draft else 'new_entry')
+            # Keep freshly submitted applications in New Application stage.
+            loan_status = 'draft' if save_as_draft else 'new_entry'
             assigned_at = timezone.now() if auto_assign else None
 
             loan_type_map = {
@@ -290,6 +289,7 @@ def agent_add_loan(request):
                 remarks_lines.append(f"{key.replace('_', ' ').title()}: {value}")
 
             document_names = [(name or '').strip() for name in request.POST.getlist('document_name[]')]
+            expanded_document_names = [(name or '').strip() for name in request.POST.getlist('document_name_expanded[]')]
             for idx, doc_name in enumerate(document_names, start=1):
                 if doc_name:
                     remarks_lines.append(f"Document {idx}: {doc_name}")
@@ -349,6 +349,7 @@ def agent_add_loan(request):
             # Admin's add-loan flow uses `document_name[]` + `document_file[]`; we do the same here
             # so that agent-created loans also show documents in view pages.
             documents_files = request.FILES.getlist('document_file[]')
+            document_name_sequence = expanded_document_names if len(expanded_document_names) >= len(documents_files) else document_names
 
             if documents_files:
                 def get_document_type(raw_name, index):
@@ -397,7 +398,12 @@ def agent_add_loan(request):
                 for idx, uploaded_file in enumerate(documents_files, start=1):
                     if not uploaded_file:
                         continue
-                    doc_name = document_names[idx - 1] if idx - 1 < len(document_names) else ''
+                    if idx - 1 < len(document_name_sequence):
+                        doc_name = document_name_sequence[idx - 1]
+                    elif document_names:
+                        doc_name = document_names[-1]
+                    else:
+                        doc_name = ''
                     document_type = get_document_type(doc_name, idx)
                     if LoanDocument.objects.filter(loan=loan, document_type=document_type).exists():
                         document_type = f"{document_type}_{idx}"
@@ -642,6 +648,58 @@ def agent_my_applications(request):
         ]
     }
     return render(request, 'core/agent/my_applications.html', context)
+
+
+@agent_required
+@require_http_methods(["POST"])
+def agent_forward_application(request):
+    """
+    Forward agent new application to next process with manual loan ID.
+    """
+    try:
+        agent = Agent.objects.get(user=request.user)
+        loan_id = str(request.POST.get('loan_id', '')).strip()
+        manual_loan_id = str(request.POST.get('manual_loan_id', '')).strip()
+        next_stage = str(request.POST.get('next_stage', 'waiting')).strip().lower()
+
+        if not loan_id or not manual_loan_id:
+            return JsonResponse({'success': False, 'error': 'Loan ID and Manual Loan ID are required.'}, status=400)
+
+        loan = get_object_or_404(get_agent_loan_queryset(request.user, agent), id=loan_id)
+
+        if loan.status not in ['new_entry', 'draft', 'waiting']:
+            return JsonResponse({'success': False, 'error': 'Forward is allowed only for New Application/Draft/Document Pending.'}, status=400)
+
+        if Loan.objects.exclude(id=loan.id).filter(user_id=manual_loan_id).exists():
+            return JsonResponse({'success': False, 'error': 'Manual Loan ID already exists.'}, status=400)
+
+        target_status = 'follow_up' if next_stage == 'follow_up' else 'waiting'
+        previous_status = loan.status
+        loan.user_id = manual_loan_id
+        loan.status = target_status
+        loan.remarks = _append_note_line(loan.remarks, f"Forwarded by agent with Manual Loan ID: {manual_loan_id}")
+        loan.save(update_fields=['user_id', 'status', 'remarks', 'updated_at'])
+
+        try:
+            LoanStatusHistory.objects.create(
+                loan=loan,
+                from_status=_normalize_history_status(previous_status),
+                to_status=_normalize_history_status(target_status),
+                changed_by=request.user,
+                reason=f"Forwarded to {target_status} with Manual Loan ID {manual_loan_id}",
+                is_auto_triggered=False,
+            )
+        except Exception:
+            pass
+
+        return JsonResponse({
+            'success': True,
+            'message': 'Application forwarded successfully.',
+            'new_status': target_status,
+            'manual_loan_id': manual_loan_id,
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
 @agent_required

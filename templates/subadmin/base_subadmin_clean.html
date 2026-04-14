@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}SubAdmin Panel{% endblock %}</title>
+    <title>{% block title %}Partner Panel{% endblock %}</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -225,6 +225,37 @@
         .dropdown-menu a:last-child:hover {
             background-color: #fef2f2;
         }
+
+        .theme-toggle-btn {
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            background: #ffffff;
+            color: #111827;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .theme-toggle-btn:hover {
+            background: #f3f4f6;
+        }
+
+        body.dark-mode .main-content,
+        body.dark-mode .header,
+        body.dark-mode .page-content,
+        body.dark-mode .dropdown-menu {
+            background-color: #111827 !important;
+            color: #e5e7eb !important;
+        }
+
+        body.dark-mode .profile-btn,
+        body.dark-mode .notification-btn,
+        body.dark-mode .theme-toggle-btn {
+            color: #e5e7eb;
+            background: #1f2937;
+            border-color: #374151;
+        }
     </style>
     
     {% block extra_css %}{% endblock %}
@@ -237,7 +268,7 @@
             <div class="sidebar-header">
                 <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
                     <i class="fas fa-crown pulse-icon" style="font-size: 28px; color: #fbbf24;"></i>
-                    <h1 style="font-size: 24px; font-weight: bold; background: linear-gradient(to right, #60a5fa, #22d3ee); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">SubAdmin</h1>
+                    <h1 style="font-size: 24px; font-weight: bold; background: linear-gradient(to right, #60a5fa, #22d3ee); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">Partner</h1>
                 </div>
                 <p style="font-size: 11px; color: #cbd5e1; font-weight: 600; letter-spacing: 2px; margin-bottom: 4px;">MANAGEMENT PANEL</p>
                 <p style="font-size: 11px; color: #94a3b8;">{{ user.email }}</p>
@@ -262,10 +293,10 @@
                     <span>Add New Loan</span>
                 </a>
                 
-                <!-- My Agent -->
+                <!-- My Channel Partners -->
                 <a href="{% url 'subadmin_my_agents' %}" class="sidebar-link {% if request.resolver_match.url_name == 'subadmin_my_agents' %}active{% endif %}">
                     <i class="fas fa-user-tie"></i>
-                    <span>My Agent</span>
+                    <span>My Channel Partners</span>
                 </a>
                 
                 <!-- My Employee -->
@@ -309,11 +340,12 @@
             <header class="header" x-data="{ notificationOpen: false, profileOpen: false }">
                 <!-- Left Section -->
                 <div style="display: flex; align-items: center; gap: 16px;">
-                    <h2 style="font-size: 20px; font-weight: bold; color: #111827;">{% block page_title %}SubAdmin Dashboard{% endblock %}</h2>
+                    <h2 style="font-size: 20px; font-weight: bold; color: #111827;">{% block page_title %}Partner Dashboard{% endblock %}</h2>
                 </div>
                 
                 <!-- Right Section -->
                 <div style="display: flex; align-items: center; gap: 16px;">
+                    <button class="theme-toggle-btn" type="button" id="theme-toggle-btn" onclick="toggleThemeMode()">Dark</button>
                     <!-- Notifications -->
                     <div style="position: relative;">
                         <button @click="notificationOpen = !notificationOpen" class="notification-btn">
@@ -374,7 +406,22 @@
             </main>
         </div>
     </div>
-    
+    <script>
+        function applyThemeMode(mode) {
+            const dark = mode === 'dark';
+            document.body.classList.toggle('dark-mode', dark);
+            const btn = document.getElementById('theme-toggle-btn');
+            if (btn) btn.textContent = dark ? 'Light' : 'Dark';
+        }
+        function toggleThemeMode() {
+            const next = document.body.classList.contains('dark-mode') ? 'light' : 'dark';
+            localStorage.setItem('partnerThemeMode', next);
+            applyThemeMode(next);
+        }
+        document.addEventListener('DOMContentLoaded', function() {
+            applyThemeMode(localStorage.getItem('partnerThemeMode') || 'light');
+        });
+    </script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>

@@ -586,6 +586,190 @@
             background: #fef2f2;
         }
 
+        .theme-toggle-btn {
+            border: 1px solid #d1d5db;
+            border-radius: 999px;
+            background: #ffffff;
+            color: #0f172a;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 6px 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .theme-toggle-btn:hover {
+            background: #f8fafc;
+            border-color: #94a3b8;
+        }
+
+        body.dark-mode .theme-toggle-btn {
+            background: #0b1220;
+            color: #e5e7eb;
+            border-color: #334155;
+        }
+
+        body.dark-mode .theme-toggle-btn:hover {
+            background: #111827;
+            border-color: #475569;
+        }
+
+        body.dark-mode .topbar-menu {
+            background: #0b1220;
+            border-color: #334155;
+        }
+
+        body.dark-mode .topbar-menu .dropdown-item {
+            color: #e5e7eb;
+        }
+
+        body.dark-mode .topbar-menu .dropdown-item:hover {
+            background: #111827;
+        }
+
+        body.dark-mode {
+            background-color: #0f172a;
+            color: #e2e8f0;
+        }
+
+        body.dark-mode .topbar,
+        body.dark-mode .main-content,
+        body.dark-mode .card,
+        body.dark-mode .modal-content {
+            background-color: #111827 !important;
+            color: #e5e7eb !important;
+            border-color: #374151 !important;
+        }
+
+        body.dark-mode .topbar-title,
+        body.dark-mode .topbar-subtitle,
+        body.dark-mode .page-header h2,
+        body.dark-mode .text-muted {
+            color: #cbd5e1 !important;
+        }
+
+        body.dark-mode table,
+        body.dark-mode .table {
+            color: #e5e7eb;
+        }
+
+        body.dark-mode .detail-container,
+        body.dark-mode .detail-card,
+        body.dark-mode .summary-card,
+        body.dark-mode .summary-item,
+        body.dark-mode .applicant-details,
+        body.dark-mode .table-container,
+        body.dark-mode .search-bar,
+        body.dark-mode .followup-table-container,
+        body.dark-mode .request-loan-container,
+        body.dark-mode .info-item,
+        body.dark-mode .metric-box,
+        body.dark-mode .document-item,
+        body.dark-mode .modal-content {
+            background: #0b1220 !important;
+            border-color: #334155 !important;
+            color: #e5e7eb !important;
+        }
+
+        body.dark-mode .detail-label,
+        body.dark-mode .summary-label,
+        body.dark-mode .info-label,
+        body.dark-mode .metric-label,
+        body.dark-mode .section-note,
+        body.dark-mode .detail-container .text-muted,
+        body.dark-mode .table-controls label,
+        body.dark-mode .table-controls small {
+            color: #94a3b8 !important;
+        }
+
+        body.dark-mode .detail-value,
+        body.dark-mode .summary-value,
+        body.dark-mode .section-title,
+        body.dark-mode .info-value,
+        body.dark-mode .modal-header h2,
+        body.dark-mode .page-header h1,
+        body.dark-mode .page-header h2,
+        body.dark-mode .page-header h3 {
+            color: #e5e7eb !important;
+        }
+
+        body.dark-mode .table-container,
+        body.dark-mode .chart-container,
+        body.dark-mode .activity-panel,
+        body.dark-mode .table-responsive,
+        body.dark-mode .table-grid,
+        body.dark-mode .summary-card,
+        body.dark-mode .stat-card {
+            background: #0b1220 !important;
+            border-color: #334155 !important;
+            color: #e5e7eb !important;
+            box-shadow: 0 10px 24px rgba(2, 6, 23, 0.5);
+        }
+
+        body.dark-mode .table thead th,
+        body.dark-mode .table-grid thead th {
+            background: #111827 !important;
+            color: #cbd5e1 !important;
+            border-color: #334155 !important;
+        }
+
+        body.dark-mode .table td,
+        body.dark-mode .table th,
+        body.dark-mode .table-grid td {
+            border-color: #334155 !important;
+        }
+
+        body.dark-mode .table tbody tr:hover,
+        body.dark-mode .table-grid tbody tr:hover,
+        body.dark-mode .activity-item:hover {
+            background: #1e293b !important;
+        }
+
+        body.dark-mode .form-control,
+        body.dark-mode .form-select,
+        body.dark-mode textarea,
+        body.dark-mode input,
+        body.dark-mode .input-group-text {
+            background-color: #0f172a !important;
+            color: #e5e7eb !important;
+            border-color: #334155 !important;
+        }
+
+        body.dark-mode .form-control::placeholder,
+        body.dark-mode textarea::placeholder,
+        body.dark-mode input::placeholder {
+            color: #94a3b8 !important;
+        }
+
+        body.dark-mode .form-control:focus,
+        body.dark-mode .form-select:focus,
+        body.dark-mode textarea:focus,
+        body.dark-mode input:focus {
+            border-color: #6366f1 !important;
+            box-shadow: 0 0 0 0.2rem rgba(99, 102, 241, 0.2) !important;
+        }
+
+        body.dark-mode .dropdown-menu,
+        body.dark-mode .popover,
+        body.dark-mode .tooltip-inner {
+            background: #0b1220 !important;
+            color: #e5e7eb !important;
+            border-color: #334155 !important;
+        }
+
+        body.dark-mode .dropdown-item {
+            color: #e5e7eb !important;
+        }
+
+        body.dark-mode .dropdown-item:hover {
+            background: #1e293b !important;
+        }
+
+        body.dark-mode .sidebar-divider {
+            background: rgba(148, 163, 184, 0.28) !important;
+        }
+
         body[data-role='agent'] .main-content table,
         body[data-role='employee'] .main-content table {
             width: 100%;
@@ -1304,7 +1488,7 @@
                 <div class="brand-text">Employee</div>
             {% elif user.role == 'agent' %}
                 <div class="brand-badge">AG</div>
-                <div class="brand-text">Agent</div>
+                <div class="brand-text">Channel Partner</div>
             {% else %}
                 <h4 style="margin: 0; font-weight: 700;">DSA</h4>
             {% endif %}
@@ -1377,7 +1561,7 @@
             <li>
                 <a href="{% url 'agent_list_legacy' %}" class="{% if request.resolver_match.url_name == 'agent_list_legacy' %}active{% endif %}">
                     <i class="bi bi-person-badge"></i>
-                    <span>Agents</span>
+                    <span>Channel Partners</span>
                 </a>
             </li>
             <li>
@@ -1389,7 +1573,7 @@
             <li>
                 <a href="{% url 'subadmin_dashboard' %}" class="{% if request.resolver_match.url_name == 'subadmin_dashboard' %}active{% endif %}">
                     <i class="bi bi-crown"></i>
-                    <span>SubAdmin</span>
+                    <span>Partner</span>
                 </a>
             </li>
             <li>
@@ -1430,7 +1614,7 @@
             <li>
                 <a href="{% url 'agent_sub_agents' %}" class="{% if request.resolver_match.url_name == 'agent_sub_agents' %}active{% endif %}">
                     <i class="bi bi-people"></i>
-                    <span>My Sub Agents</span>
+                    <span>My Sub Channel Partners</span>
                 </a>
             </li>
             <li class="sidebar-divider"></li>
@@ -1478,28 +1662,16 @@
                 </a>
             </li>
             <li>
-                <a href="/employee/all-loans/" class="{% if request.resolver_match.url_name == 'employee_all_loans' %}active{% endif %}">
+                <a href="/employee/all-loans/" class="{% if request.resolver_match.url_name == 'employee_all_loans' or request.resolver_match.url_name == 'employee_loan_detail' or request.resolver_match.url_name == 'employee_new_entry_request' or request.resolver_match.url_name == 'employee_new_entries' %}active{% endif %}">
                     <i class="bi bi-list-check"></i>
                     <span>All Loans</span>
                 </a>
             </li>
             <li class="sidebar-divider"></li>
             <li>
-                <a href="/employee/new-entry-request/" class="{% if request.resolver_match.url_name == 'employee_new_entry_request' %}active{% endif %}">
-                    <i class="bi bi-inbox"></i>
-                    <span>New Application Request</span>
-                </a>
-            </li>
-            <li>
-                <a href="{% url 'employee_bank_processing' %}" class="{% if request.resolver_match.url_name == 'employee_bank_processing' or request.resolver_match.url_name == 'employee_bank_processing_detail' or request.resolver_match.url_name == 'employee_loan_detail' %}active{% endif %}">
-                    <i class="bi bi-bank2"></i>
-                    <span>Bank Processing</span>
-                </a>
-            </li>
-            <li>
                 <a href="/employee/my-agents/" class="{% if request.resolver_match.url_name == 'employee_my_agents_page' %}active{% endif %}">
                     <i class="bi bi-people"></i>
-                    <span>My Agents</span>
+                    <span>My Partners</span>
                 </a>
             </li>
             <li class="sidebar-divider"></li>
@@ -1540,7 +1712,7 @@
             <li>
                 <a href="{% url 'subadmin_my_agents' %}" class="{% if request.resolver_match.url_name == 'subadmin_my_agents' %}active{% endif %}">
                     <i class="bi bi-people"></i>
-                    <span>My Agents</span>
+                    <span>My Channel Partners</span>
                 </a>
             </li>
             <li>
@@ -1580,38 +1752,48 @@
         <div class="topbar-inner">
             <div>
                 {% if user.role == 'agent' %}
-                    <div class="topbar-title">Agent Panel</div>
+                    <div class="topbar-title">Channel Partner Panel</div>
                     <div class="topbar-subtitle">{{ user.get_full_name|default:user.username }}</div>
                 {% elif user.role == 'employee' %}
                     <div class="topbar-title">Employee Panel</div>
                     <div class="topbar-subtitle">{{ user.get_full_name|default:user.username }}</div>
                 {% elif user.role == 'subadmin' %}
-                    <div class="topbar-title">SubAdmin Panel</div>
+                    <div class="topbar-title">Partner Panel</div>
                     <div class="topbar-subtitle">{{ user.get_full_name|default:user.username }}</div>
                 {% else %}
                     <div class="topbar-title">Dashboard</div>
                 {% endif %}
             </div>
-            <div class="dropdown">
-                <button class="btn dropdown-toggle topbar-user-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="bi bi-person-circle"></i>
-                    <span>{{ user.get_full_name|default:user.username }}</span>
+            <div class="d-flex align-items-center gap-2">
+                <button class="btn theme-toggle-btn" type="button" id="theme-toggle-btn" onclick="toggleThemeMode()">
+                    <i class="bi bi-moon-stars"></i>
+                    <span id="theme-toggle-label">Dark</span>
                 </button>
-                <ul class="dropdown-menu dropdown-menu-end topbar-menu">
-                    <li><h6 class="dropdown-header" style="font-size: 12px; font-weight: 700; color: #64748b;">{{ user.get_role_display|default:user.role }}</h6></li>
-                    <li><hr class="dropdown-divider" style="margin: 6px 0;"></li>
-                    {% if user.role == 'employee' %}
-                        <li><a class="dropdown-item" href="/employee/profile/"><i class="bi bi-person"></i> My Profile</a></li>
-                        <li><a class="dropdown-item" href="/employee/settings/"><i class="bi bi-gear"></i> Settings</a></li>
-                    {% elif user.role == 'agent' %}
-                        <li><a class="dropdown-item" href="/agent/profile/"><i class="bi bi-person"></i> My Profile</a></li>
-                        <li><a class="dropdown-item" href="/agent/settings/"><i class="bi bi-gear"></i> Settings</a></li>
-                    {% else %}
-                        <li><a class="dropdown-item" href="/admin/profile/"><i class="bi bi-person"></i> My Profile</a></li>
-                    {% endif %}
-                    <li><hr class="dropdown-divider" style="margin: 6px 0;"></li>
-                    <li><a class="dropdown-item text-danger" href="{% url 'logout' %}"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
-                </ul>
+                <div class="dropdown">
+                    <button class="btn dropdown-toggle topbar-user-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-person-circle"></i>
+                        <span>{{ user.get_full_name|default:user.username }}</span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end topbar-menu">
+                        <li>
+                            <h6 class="dropdown-header" style="font-size: 12px; font-weight: 700; color: #64748b;">
+                                {% if user.role == 'agent' %}Channel Partner{% elif user.role == 'subadmin' %}Partner{% else %}{{ user.get_role_display|default:user.role }}{% endif %}
+                            </h6>
+                        </li>
+                        <li><hr class="dropdown-divider" style="margin: 6px 0;"></li>
+                        {% if user.role == 'employee' %}
+                            <li><a class="dropdown-item" href="/employee/profile/"><i class="bi bi-person"></i> My Profile</a></li>
+                            <li><a class="dropdown-item" href="/employee/settings/"><i class="bi bi-gear"></i> Settings</a></li>
+                        {% elif user.role == 'agent' %}
+                            <li><a class="dropdown-item" href="/agent/profile/"><i class="bi bi-person"></i> My Profile</a></li>
+                            <li><a class="dropdown-item" href="/agent/settings/"><i class="bi bi-gear"></i> Settings</a></li>
+                        {% else %}
+                            <li><a class="dropdown-item" href="/admin/profile/"><i class="bi bi-person"></i> My Profile</a></li>
+                        {% endif %}
+                        <li><hr class="dropdown-divider" style="margin: 6px 0;"></li>
+                        <li><a class="dropdown-item text-danger" href="{% url 'logout' %}"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
+                    </ul>
+                </div>
             </div>
         </div>
     </nav>
@@ -1640,6 +1822,26 @@
             document.getElementById('sidebar').classList.toggle('show');
         }
 
+        function applyThemeMode(mode) {
+            const dark = mode === 'dark';
+            document.body.classList.toggle('dark-mode', dark);
+            document.documentElement.setAttribute('data-bs-theme', dark ? 'dark' : 'light');
+            const label = document.getElementById('theme-toggle-label');
+            const icon = document.querySelector('#theme-toggle-btn i');
+            if (label) {
+                label.textContent = dark ? 'Light' : 'Dark';
+            }
+            if (icon) {
+                icon.className = dark ? 'bi bi-sun' : 'bi bi-moon-stars';
+            }
+        }
+
+        function toggleThemeMode() {
+            const next = document.body.classList.contains('dark-mode') ? 'light' : 'dark';
+            localStorage.setItem('panelThemeMode', next);
+            applyThemeMode(next);
+        }
+
         // Close sidebar when clicking outside on mobile
         document.addEventListener('click', function(event) {
             const sidebar = document.getElementById('sidebar');
@@ -1650,6 +1852,11 @@
                     sidebar.classList.remove('show');
                 }
             }
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedTheme = localStorage.getItem('panelThemeMode') || 'light';
+            applyThemeMode(savedTheme);
         });
     </script>
     

@@ -1,7 +1,7 @@
 {% extends 'core/admin/admin_base.html' %}
 {% load static %}
 
-{% block title %}All Agents - Admin Panel{% endblock %}
+{% block title %}All Channel Partners - Admin Panel{% endblock %}
 
 {% block content %}
 <style>
@@ -412,7 +412,7 @@
                 <span class="agents-count">Total: {{ agents|length }} Agents</span>
             </div>
             <button type="button" class="btn btn-primary" onclick="openAddAgentModal()" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 600; border: none;">
-                <i class="fas fa-plus"></i> Add Agent
+                <i class="fas fa-plus"></i> Add Channel Partner
             </button>
         </div>
         
@@ -433,7 +433,7 @@
                 <thead>
                     <tr>
                         <th style="width: 8%;">Photo</th>
-                        <th style="width: 16%;">Agent Name</th>
+                        <th style="width: 16%;">Channel Partner Name</th>
                         <th style="width: 18%;">Email</th>
                         <th style="width: 12%;">Phone</th>
                         <th style="width: 10%;">City</th>
@@ -480,13 +480,13 @@
                         </td>
                         <td>
                             <div class="action-buttons">
-                                <button onclick="viewAgent('{{ agent.id }}', '{{ agent.name|escapejs }}', '{{ agent.email|default:''|escapejs }}', '{{ agent.phone|default:''|escapejs }}')" class="btn-action btn-view" title="View Agent">
+                                <button onclick="viewAgent('{{ agent.id }}', '{{ agent.name|escapejs }}', '{{ agent.email|default:''|escapejs }}', '{{ agent.phone|default:''|escapejs }}')" class="btn-action btn-view" title="View Channel Partner">
                                     <i class="fas fa-eye"></i> View
                                 </button>
-                                <button onclick="editAgent('{{ agent.id }}')" class="btn-action btn-edit" title="Edit Agent">
+                                <button onclick="editAgent('{{ agent.id }}')" class="btn-action btn-edit" title="Edit Channel Partner">
                                     <i class="fas fa-edit"></i> Edit
                                 </button>
-                                <button onclick="deleteAgent('{{ agent.id }}', '{{ agent.name|escapejs }}')" class="btn-action btn-delete" title="Delete Agent">
+                                <button onclick="deleteAgent('{{ agent.id }}', '{{ agent.name|escapejs }}')" class="btn-action btn-delete" title="Delete Channel Partner">
                                     <i class="fas fa-trash"></i> Delete
                                 </button>
                             </div>
@@ -844,7 +844,7 @@
 <div id="editAgentModal" class="modal-overlay">
     <div class="modal-card">
         <div class="modal-header">
-            <h2 class="modal-title">Edit Agent</h2>
+            <h2 class="modal-title">Edit Channel Partner</h2>
             <button type="button" onclick="closeEditAgentModal()" style="background: none; border: none; font-size: 26px; cursor: pointer; color: #6b7280;">&times;</button>
         </div>
         <form id="editAgentForm">
@@ -964,7 +964,7 @@ function ensureAgentsTable() {
             <thead>
                 <tr>
                     <th style="width: 8%;">Photo</th>
-                    <th style="width: 16%;">Agent Name</th>
+                    <th style="width: 16%;">Channel Partner Name</th>
                     <th style="width: 18%;">Email</th>
                     <th style="width: 12%;">Phone</th>
                     <th style="width: 10%;">City</th>
@@ -1023,13 +1023,13 @@ function insertAgentRow(agent) {
             <td><span class="date-text">${createdBy}</span></td>
             <td>
                 <div class="action-buttons">
-                    <button onclick="viewAgent('${escapeJsString(agent.id)}', '${escapeJsString(agent.name)}', '${escapeJsString(agent.email)}', '${escapeJsString(agent.phone)}')" class="btn-action btn-view" title="View Agent">
+                    <button onclick="viewAgent('${escapeJsString(agent.id)}', '${escapeJsString(agent.name)}', '${escapeJsString(agent.email)}', '${escapeJsString(agent.phone)}')" class="btn-action btn-view" title="View Channel Partner">
                         <i class="fas fa-eye"></i> View
                     </button>
-                    <button onclick="editAgent('${escapeJsString(agent.id)}')" class="btn-action btn-edit" title="Edit Agent">
+                    <button onclick="editAgent('${escapeJsString(agent.id)}')" class="btn-action btn-edit" title="Edit Channel Partner">
                         <i class="fas fa-edit"></i> Edit
                     </button>
-                    <button onclick="deleteAgent('${escapeJsString(agent.id)}', '${escapeJsString(agent.name)}')" class="btn-action btn-delete" title="Delete Agent">
+                    <button onclick="deleteAgent('${escapeJsString(agent.id)}', '${escapeJsString(agent.name)}')" class="btn-action btn-delete" title="Delete Channel Partner">
                         <i class="fas fa-trash"></i> Delete
                     </button>
                 </div>
@@ -1268,7 +1268,7 @@ function renderAgentViewModal(agent, summary, customers, onboarding, documents) 
             <div style="background: white; border-radius: 14px; width: min(1200px, 96vw); max-height: 92vh; overflow: auto; box-shadow: 0 25px 40px rgba(0,0,0,0.25);">
                 <div style="display:flex; justify-content:space-between; align-items:center; padding:18px 22px; border-bottom:1px solid #e5e7eb; position: sticky; top: 0; background: white;">
                     <div>
-                        <h2 style="margin:0; font-size:20px; color:#111827;">Agent Full Details</h2>
+                        <h2 style="margin:0; font-size:20px; color:#111827;">Channel Partner Full Details</h2>
                         <p style="margin:4px 0 0 0; color:#6b7280; font-size:13px;">${escapeHtml(agent.name || '-')} | ${escapeHtml(agent.email || '-')}</p>
                     </div>
                     <button onclick="closeViewModal()" style="background:none; border:none; font-size:28px; color:#6b7280; cursor:pointer;">&times;</button>

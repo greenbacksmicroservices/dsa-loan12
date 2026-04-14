@@ -1,6 +1,6 @@
 {% extends 'core/base.html' %}
 
-{% block title %}Agent Dashboard - DSA Loan Management System{% endblock %}
+{% block title %}Channel Partner Dashboard - DSA Loan Management System{% endblock %}
 
 {% block content %}
 
@@ -107,12 +107,12 @@
             </div>
         </div>
         
-        <!-- My Sub Agents - Performance Overview -->
+        <!-- My Sub Channel Partners - Performance Overview -->
         <div class="col-lg-6">
             <div class="card border-0 shadow-sm" style="border-radius: 16px; overflow: hidden;">
                 <div class="card-header border-0" style="background: linear-gradient(135deg, #1dd1a1 0%, #00b894 100%); color: white; padding: 24px; display: flex; justify-content: space-between; align-items: center;">
                     <h6 class="mb-0" style="font-weight: 600; font-size: 16px;">
-                        <i class="bi bi-graph-up" style="margin-right: 8px;"></i>My Sub Agents
+                        <i class="bi bi-graph-up" style="margin-right: 8px;"></i>My Sub Channel Partners
                     </h6>
                     <small style="opacity: 0.9;">Performance Last 30 Days</small>
                 </div>
@@ -545,7 +545,7 @@ function loadStatusChart() {
 
 // ============ 6. TREND CHART - SUB AGENT PERFORMANCE ============
 /**
- * Load "My Sub Agents" performance chart (30-day trend)
+ * Load "My Sub Channel Partners" performance chart (30-day trend)
  * Shows cumulative agent performance over time
  */
 function loadTrendChart() {
@@ -702,7 +702,7 @@ function showError(message) {
 
 // ============ 8. PAGE INITIALIZATION ============
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 Agent Dashboard initializing...');
+    console.log('🚀 Channel Partner Dashboard initializing...');
 
     // Load all data
     loadDashboardStats();

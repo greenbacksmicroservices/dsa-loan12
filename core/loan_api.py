@@ -156,6 +156,7 @@ def api_loan_details(request, loan_id):
                 'Declaration',
                 'Assigned By Admin',
                 'Assigned By SubAdmin',
+                'Assigned By Partner',
                 'Assigned By',
             ]
             for idx in [1, 2, 3]:

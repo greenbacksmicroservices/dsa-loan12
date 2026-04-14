@@ -1110,6 +1110,12 @@ def employee_update_loan_api(request, loan_id):
         loan = get_object_or_404(Loan, id=loan_id, assigned_employee=request.user)
         data = request.data
 
+        if loan.status == 'rejected':
+            return Response(
+                {'success': False, 'error': 'Rejected loans are view-only.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         if 'loan_amount' in data:
             try:
                 loan.loan_amount = float(data.get('loan_amount') or 0)
@@ -1155,6 +1161,11 @@ def employee_delete_loan_api(request, loan_id):
 
     try:
         loan = get_object_or_404(Loan, id=loan_id, assigned_employee=request.user)
+        if loan.status == 'rejected':
+            return Response(
+                {'success': False, 'error': 'Rejected loans can only be removed by admin/partner.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         reason = request.data.get('reason', '').strip() if isinstance(request.data, dict) else ''
         if not reason:
             reason = 'Deleted by employee'

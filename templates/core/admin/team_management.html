@@ -172,21 +172,21 @@
         </a>
     </div>
 
-    <!-- Agents Card -->
+    <!-- Channel Partners Card -->
     <div class="management-card">
         <div class="card-icon">🤝</div>
-        <div class="card-title">Agents</div>
+        <div class="card-title">Channel Partners</div>
         <div class="card-count">{{ agents|length }}</div>
-        <div class="card-description">Field agents submitting applications</div>
+        <div class="card-description">Channel partners submitting applications</div>
         <a href="{% url 'admin_all_agents' %}" class="card-link">
             <i class="fas fa-arrow-right"></i> View All
         </a>
     </div>
 
-    <!-- SubAdmins Card -->
+    <!-- Partners Card -->
     <div class="management-card">
         <div class="card-icon">🛡️</div>
-        <div class="card-title">SubAdmins</div>
+        <div class="card-title">Partners</div>
         <div class="card-count">{{ subadmins|length }}</div>
         <div class="card-description">Administrative supervisors</div>
         <a href="{% url 'admin_subadmin_management' %}" class="card-link">

@@ -2,24 +2,21 @@
 {% load static %}
 
 {% block title %}Approved Loans - Admin Dashboard{% endblock %}
-
 {% block page_title %}Approved Loans{% endblock %}
 
 {% block content %}
 <div class="space-y-6">
-    <!-- Header -->
     <div class="flex justify-between items-center">
         <h1 class="text-3xl font-bold text-gray-800">Approved Loans</h1>
     </div>
 
-    <!-- Loans Table -->
     <div class="card">
         <div class="card-header flex justify-between items-center">
             <h2 class="text-lg font-semibold text-gray-800">Approved Loan Applications</h2>
-            <span class="text-sm text-gray-600">{{ loans|length }} approved</span>
+            <span class="text-sm text-gray-600">{{ app_count }} approved</span>
         </div>
         <div class="card-body table-responsive">
-            {% if loans %}
+            {% if applications %}
             <table>
                 <thead>
                     <tr>
@@ -33,22 +30,18 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for loan in loans %}
+                    {% for application in applications %}
                     <tr>
-                        <td class="font-mono text-sm"><strong>{{ loan.loan_id }}</strong></td>
-                        <td class="font-medium">{{ loan.applicant_name }}</td>
-                        <td class="text-sm">{{ loan.phone_number }}</td>
-                        <td class="font-semibold text-green-600">₹{{ loan.loan_amount }}</td>
-                        <td class="text-sm">{{ loan.approved_date|date:"M d, Y"|default:"-" }}</td>
-                        <td>
-                            <span class="badge badge-success">Approved</span>
-                        </td>
+                        <td class="font-mono text-sm"><strong>APP-{{ application.id|stringformat:"06d" }}</strong></td>
+                        <td class="font-medium">{{ application.applicant.full_name|default:"-" }}</td>
+                        <td class="text-sm">{{ application.applicant.mobile|default:"-" }}</td>
+                        <td class="font-semibold text-green-600">&#8377;{{ application.applicant.loan_amount|default:"0" }}</td>
+                        <td class="text-sm">{{ application.approved_at|date:"M d, Y"|default:"-" }}</td>
+                        <td><span class="badge badge-success">Approved</span></td>
                         <td class="text-center">
-                            <div class="flex items-center justify-center gap-2">
-                                <a href="{% url 'admin:core_loanapplication_change' loan.id %}" class="text-blue-600 hover:text-blue-800 font-medium text-sm" title="View Details">
-                                    <i class="fas fa-eye"></i>
-                                </a>
-                            </div>
+                            <a href="{% url 'approved_detail' application.applicant.id %}" class="btn btn-sm btn-outline-primary" title="View Full Loan Application Form">
+                                <i class="fas fa-eye"></i> View Form
+                            </a>
                         </td>
                     </tr>
                     {% endfor %}

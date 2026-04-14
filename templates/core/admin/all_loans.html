@@ -539,7 +539,7 @@
                 <p style="margin: 0; font-weight: 700; color: #0f172a;" id="detailAssignedEmployee">-</p>
             </div>
             <div>
-                <p style="color: #64748b; font-size: 10px; text-transform: uppercase; margin: 0 0 4px 0;">Assigned Agent</p>
+                <p style="color: #64748b; font-size: 10px; text-transform: uppercase; margin: 0 0 4px 0;">Assigned Channel Partner</p>
                 <p style="margin: 0; font-weight: 700; color: #0f172a;" id="detailAssignedAgent">-</p>
             </div>
             <div>
@@ -1001,7 +1001,25 @@
         </div>
 
         <div id="collectRemarkDiv" style="display: none; margin-bottom: 30px;">
-            <label style="display: block; color: #1a202c; font-weight: 700; margin-bottom: 10px; font-size: 14px;">Banking Processing Remark (Optional)</label>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                <div>
+                    <label style="display: block; color: #1a202c; font-weight: 700; margin-bottom: 8px; font-size: 13px;">Banker Name *</label>
+                    <input id="collectBankerName" type="text" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px;" placeholder="Enter banker name">
+                </div>
+                <div>
+                    <label style="display: block; color: #1a202c; font-weight: 700; margin-bottom: 8px; font-size: 13px;">Banker Phone *</label>
+                    <input id="collectBankerPhone" type="text" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px;" placeholder="Enter banker phone">
+                </div>
+                <div>
+                    <label style="display: block; color: #1a202c; font-weight: 700; margin-bottom: 8px; font-size: 13px;">Banker Email *</label>
+                    <input id="collectBankerEmail" type="email" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px;" placeholder="Enter banker email">
+                </div>
+                <div>
+                    <label style="display: block; color: #1a202c; font-weight: 700; margin-bottom: 8px; font-size: 13px;">Description</label>
+                    <input id="collectBankerDescription" type="text" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px;" placeholder="Enter description">
+                </div>
+            </div>
+            <label style="display: block; color: #1a202c; font-weight: 700; margin-bottom: 10px; font-size: 14px;">Banking Processing Remark</label>
             <textarea id="collectRemark" style="width: 100%; padding: 12px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 14px; font-family: inherit; resize: vertical; min-height: 100px; box-sizing: border-box;" placeholder="Add remark before moving to Banking Processing..."></textarea>
         </div>
 
@@ -1305,7 +1323,7 @@ function updateWorkflowActionAvailability(statusKey) {
         collectOption.style.display = ['waiting', 'follow_up_pending'].includes(statusKey) ? 'block' : 'none';
     }
     if (revertOption) {
-        revertOption.style.display = statusKey === 'follow_up' ? 'block' : 'none';
+        revertOption.style.display = 'none';
     }
 }
 
@@ -2096,6 +2114,14 @@ function resetActionSelection() {
     document.getElementById('submitActionBtn').style.display = 'none';
     document.getElementById('rejectionReason').value = '';
     document.getElementById('collectRemark').value = '';
+    const collectBankerName = document.getElementById('collectBankerName');
+    const collectBankerPhone = document.getElementById('collectBankerPhone');
+    const collectBankerEmail = document.getElementById('collectBankerEmail');
+    const collectBankerDescription = document.getElementById('collectBankerDescription');
+    if (collectBankerName) collectBankerName.value = '';
+    if (collectBankerPhone) collectBankerPhone.value = '';
+    if (collectBankerEmail) collectBankerEmail.value = '';
+    if (collectBankerDescription) collectBankerDescription.value = '';
     document.getElementById('revertRemark').value = '';
     document.getElementById('disbursementNotes').value = '';
     
@@ -2195,9 +2221,22 @@ function submitAction() {
         endpoint = `/api/loan/${currentLoanId}/reject/`;
         data = { rejection_reason: reason };
     } else if (currentAction === 'collect') {
+        const bankerName = document.getElementById('collectBankerName')?.value.trim() || '';
+        const bankerPhone = document.getElementById('collectBankerPhone')?.value.trim() || '';
+        const bankerEmail = document.getElementById('collectBankerEmail')?.value.trim() || '';
+        const bankerDescription = document.getElementById('collectBankerDescription')?.value.trim() || '';
+        const bankRemark = document.getElementById('collectRemark').value.trim();
+        if (!bankerName || !bankerPhone || !bankerEmail) {
+            alert('Please fill banker name, phone and email.');
+            return;
+        }
         endpoint = `/api/employee/loan/${currentLoanId}/collect/`;
         data = {
-            bank_remark: document.getElementById('collectRemark').value.trim(),
+            banker_name: bankerName,
+            banker_phone: bankerPhone,
+            banker_email: bankerEmail,
+            banker_description: bankerDescription,
+            bank_remark: bankRemark,
             entity_type: 'legacy'
         };
     } else if (currentAction === 'revert') {

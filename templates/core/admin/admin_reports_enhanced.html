@@ -461,7 +461,7 @@
                 <span class="report-list-value" style="color: #10b981;">{{ active_agents }}</span>
             </li>
             <li class="report-list-item">
-                <span class="report-list-label">SubAdmins</span>
+                <span class="report-list-label">Partners</span>
                 <span class="report-list-value">{{ total_subadmins }}</span>
             </li>
         </ul>
@@ -507,7 +507,7 @@
         </div>
         <div class="download-modal-body">
             <div class="download-field">
-                <label for="downloadNameSearch">Search Employee/Agent/SubAdmin</label>
+                <label for="downloadNameSearch">Search Employee/Channel Partner/Partner</label>
                 <div class="download-search-row">
                     <input type="text" id="downloadNameSearch" placeholder="Type team member name...">
                     <button type="button" class="download-search-btn" onclick="findDownloadName()">Search</button>
@@ -623,7 +623,7 @@ function confirmDownloadReport() {
         ['Active Employees', '{{ active_employees|default:0 }}'],
         ['Total Agents', '{{ total_agents|default:0 }}'],
         ['Active Agents', '{{ active_agents|default:0 }}'],
-        ['Total SubAdmins', '{{ total_subadmins|default:0 }}']
+        ['Total Partners', '{{ total_subadmins|default:0 }}']
     ];
 
     const metadataRows = [

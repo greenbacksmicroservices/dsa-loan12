@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}SubAdmin Panel{% endblock %}</title>
+    <title>{% block title %}Partner Panel{% endblock %}</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -354,6 +354,37 @@
             background-color: #fef2f2;
         }
 
+        .theme-toggle-btn {
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            background: #ffffff;
+            color: #111827;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .theme-toggle-btn:hover {
+            background: #f3f4f6;
+        }
+
+        body.dark-mode .main-content,
+        body.dark-mode .header,
+        body.dark-mode .page-content,
+        body.dark-mode .dropdown-menu {
+            background-color: #111827 !important;
+            color: #e5e7eb !important;
+        }
+
+        body.dark-mode .profile-btn,
+        body.dark-mode .notification-btn,
+        body.dark-mode .theme-toggle-btn {
+            color: #e5e7eb;
+            background: #1f2937;
+            border-color: #374151;
+        }
+
         /* SubAdmin Table Grid Polish */
         .page-content .table-wrap,
         .page-content .table-responsive {
@@ -405,14 +436,14 @@
             <!-- Logo Section -->
             <div class="sidebar-header">
                 <div class="brand-badge">SA</div>
-                <div class="brand-text">SubAdmin</div>
+                <div class="brand-text">Partner</div>
             </div>
             <div class="sidebar-profile-section">
                 <div class="profile-photo">
                     <img src="{% if user.profile_photo %}{{ user.profile_photo.url }}{% else %}https://via.placeholder.com/64{% endif %}" alt="Profile">
                 </div>
                 <div class="profile-name">{{ user.get_full_name|default:user.username }}</div>
-                <div class="profile-role">SubAdmin</div>
+                <div class="profile-role">Partner</div>
                 <div class="profile-email">{{ user.email|default:"subadmin@gmail.com" }}</div>
             </div>
             
@@ -482,11 +513,12 @@
             <header class="header" x-data="{ notificationOpen: false, profileOpen: false }">
                 <!-- Left Section -->
                 <div style="display: flex; align-items: center; gap: 16px;">
-                    <h2 style="font-size: 20px; font-weight: bold; color: #111827;">{% block page_title %}SubAdmin Dashboard{% endblock %}</h2>
+                    <h2 style="font-size: 20px; font-weight: bold; color: #111827;">{% block page_title %}Partner Dashboard{% endblock %}</h2>
                 </div>
                 
                 <!-- Right Section -->
                 <div style="display: flex; align-items: center; gap: 16px;">
+                    <button class="theme-toggle-btn" type="button" id="theme-toggle-btn" onclick="toggleThemeMode()">Dark</button>
                     <!-- Notifications -->
                     <div style="position: relative;">
                         <button @click="notificationOpen = !notificationOpen" class="notification-btn">
@@ -547,7 +579,22 @@
             </main>
         </div>
     </div>
-    
+    <script>
+        function applyThemeMode(mode) {
+            const dark = mode === 'dark';
+            document.body.classList.toggle('dark-mode', dark);
+            const btn = document.getElementById('theme-toggle-btn');
+            if (btn) btn.textContent = dark ? 'Light' : 'Dark';
+        }
+        function toggleThemeMode() {
+            const next = document.body.classList.contains('dark-mode') ? 'light' : 'dark';
+            localStorage.setItem('partnerThemeMode', next);
+            applyThemeMode(next);
+        }
+        document.addEventListener('DOMContentLoaded', function() {
+            applyThemeMode(localStorage.getItem('partnerThemeMode') || 'light');
+        });
+    </script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>
