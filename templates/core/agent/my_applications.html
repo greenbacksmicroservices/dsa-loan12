@@ -121,7 +121,7 @@
                         </div>
                         <div class="col-md-4">
                             <label class="form-label small fw-600">Actions</label>
-                            <button class="btn btn-sm btn-outline-primary w-100" onclick="window.location.href='{% url "agent_add_loan" %}' ">
+                            <button class="btn btn-sm btn-outline-primary w-100" onclick="window.location.href='{% url 'agent_add_loan' %}'">
                                 <i class="bi bi-plus-circle"></i> Add New Loan
                             </button>
                         </div>
@@ -148,6 +148,7 @@
                             <thead class="bg-light sticky-top">
                                 <tr>
                                     <th style="width: 15%"><small class="fw-600">Applicant Name</small></th>
+                                    <th style="width: 10%"><small class="fw-600">Loan ID</small></th>
                                     <th style="width: 12%"><small class="fw-600">Phone</small></th>
                                     <th style="width: 12%"><small class="fw-600">Loan Amount</small></th>
                                     <th style="width: 12%"><small class="fw-600">Loan Type</small></th>
@@ -161,6 +162,7 @@
                                 {% for loan in loans %}
                                 <tr id="loan-row-{{ loan.id }}" class="status-{{ loan.status }} {% if focus_loan_id and focus_loan_id == loan.id|stringformat:'s' %}focus-row{% endif %}" data-status="{% if loan.has_revert_pending %}follow_up_pending{% else %}{{ loan.status }}{% endif %}">
                                     <td class="fw-600 align-middle">{{ loan.full_name }}</td>
+                                    <td class="align-middle"><span class="badge bg-light text-dark">#{{ loan.loan_id|default:loan.id }}</span></td>
                                     <td class="align-middle"><a href="tel:{{ loan.mobile_number }}">{{ loan.mobile_number }}</a></td>
                                     <td class="fw-bold align-middle text-primary">&#8377;{{ loan.loan_amount|floatformat:0|default:"0" }}</td>
                                     <td class="align-middle">
@@ -457,28 +459,45 @@ function downloadLoanDetails(loanId, loanName) {
     })
     .then(response => response.json())
     .then(loan => {
-        const payload = {
-            loan_id: loan.id,
-            applicant_name: loan.full_name,
-            mobile_number: loan.mobile_number,
-            email: loan.email || '',
-            city: loan.city || '',
-            loan_amount: loan.loan_amount,
-            loan_type: loan.loan_type,
-            status: loan.status,
-            created_at: loan.created_at,
-            permanent_address: loan.permanent_address || '',
-            remarks: loan.remarks || ''
-        };
-        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `loan-${loanId}-${(loanName || 'application').replace(/[^a-z0-9]/gi, '_').toLowerCase()}.json`;
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        URL.revokeObjectURL(url);
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) {
+            alert('Please allow popups to download A4 print.');
+            return;
+        }
+        printWindow.document.write(`
+            <html>
+                <head>
+                    <title>Loan Full Details - ${loan.full_name || ''}</title>
+                    <style>
+                        @page { size: A4; margin: 14mm; }
+                        body { font-family: Arial, sans-serif; font-size: 12px; color: #111; }
+                        h2 { margin: 0 0 10px 0; }
+                        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; }
+                        .row { padding: 6px 0; border-bottom: 1px solid #e5e7eb; }
+                        .label { font-weight: 700; }
+                        .full { grid-column: 1 / -1; }
+                    </style>
+                </head>
+                <body>
+                    <h2>Loan Full Details</h2>
+                    <div class="grid">
+                        <div class="row"><span class="label">Loan ID:</span> ${loan.loan_id || loan.id || '-'}</div>
+                        <div class="row"><span class="label">Applicant:</span> ${loan.full_name || '-'}</div>
+                        <div class="row"><span class="label">Phone:</span> ${loan.mobile_number || '-'}</div>
+                        <div class="row"><span class="label">Email:</span> ${loan.email || '-'}</div>
+                        <div class="row"><span class="label">Loan Type:</span> ${loan.loan_type || '-'}</div>
+                        <div class="row"><span class="label">Amount:</span> Rs. ${Number(loan.loan_amount || 0).toLocaleString('en-IN')}</div>
+                        <div class="row"><span class="label">Status:</span> ${loan.status || '-'}</div>
+                        <div class="row"><span class="label">Created:</span> ${loan.created_at ? new Date(loan.created_at).toLocaleString() : '-'}</div>
+                        <div class="row full"><span class="label">Address:</span> ${loan.permanent_address || '-'}</div>
+                        <div class="row full"><span class="label">Remarks:</span> ${(loan.remarks || '-').replace(/\n/g, '<br>')}</div>
+                    </div>
+                </body>
+            </html>
+        `);
+        printWindow.document.close();
+        printWindow.focus();
+        setTimeout(() => printWindow.print(), 250);
     });
 }
 

@@ -247,7 +247,10 @@
     <div class="bg-white rounded-lg w-full max-w-6xl max-h-[90vh] overflow-hidden shadow-xl">
         <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
             <h3 class="text-lg font-semibold text-gray-900">Loan Full Details</h3>
-            <button type="button" onclick="closeLoanDetailsModal()" class="text-gray-500 hover:text-gray-700"><i class="fas fa-times"></i></button>
+            <div class="flex items-center gap-3">
+                <button type="button" id="loan-details-download-btn" class="px-3 py-1.5 bg-blue-600 text-white rounded text-xs hover:bg-blue-700">Download</button>
+                <button type="button" onclick="closeLoanDetailsModal()" class="text-gray-500 hover:text-gray-700"><i class="fas fa-times"></i></button>
+            </div>
         </div>
         <div id="loan-details-content" class="p-6 overflow-y-auto max-h-[75vh]"></div>
     </div>
@@ -270,6 +273,7 @@ function getCookie(name) {
 }
 
 const csrftoken = getCookie('csrftoken');
+let CURRENT_LOAN_DETAILS = null;
 
 function openAssignModal(loanId, applicantName) {
     document.getElementById('assign-loan-id').value = loanId;
@@ -369,6 +373,7 @@ function openLoanDetailsModal(loanId) {
                 return;
             }
             const data = payload.data || {};
+            CURRENT_LOAN_DETAILS = data;
             const docs = data.documents || [];
             const history = data.status_timeline || [];
             const remarkMeta = splitLeaderFromRemark(data.bank_remark);
@@ -447,8 +452,56 @@ function openLoanDetailsModal(loanId) {
             `;
         })
         .catch(() => {
+            CURRENT_LOAN_DETAILS = null;
             container.innerHTML = '<div class="py-10 text-center text-red-600">Failed to load details.</div>';
         });
+}
+
+function downloadLoanDetailsA4() {
+    if (!CURRENT_LOAN_DETAILS) {
+        alert('No loan details available.');
+        return;
+    }
+    const d = CURRENT_LOAN_DETAILS;
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+        alert('Please allow popups to download A4 print.');
+        return;
+    }
+    printWindow.document.write(`
+        <html>
+            <head>
+                <title>Loan Full Details - ${d.full_name || ''}</title>
+                <style>
+                    @page { size: A4; margin: 14mm; }
+                    body { font-family: Arial, sans-serif; font-size: 12px; color: #111; }
+                    h2 { margin: 0 0 10px 0; }
+                    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; }
+                    .row { padding: 6px 0; border-bottom: 1px solid #e5e7eb; }
+                    .label { font-weight: 700; }
+                    .full { grid-column: 1 / -1; }
+                </style>
+            </head>
+            <body>
+                <h2>Loan Full Details</h2>
+                <div class="grid">
+                    <div class="row"><span class="label">Loan ID:</span> ${d.loan_id || '-'}</div>
+                    <div class="row"><span class="label">Applicant:</span> ${d.full_name || '-'}</div>
+                    <div class="row"><span class="label">Phone:</span> ${d.mobile_number || '-'}</div>
+                    <div class="row"><span class="label">Email:</span> ${d.email || '-'}</div>
+                    <div class="row"><span class="label">Loan Type:</span> ${d.loan_type || '-'}</div>
+                    <div class="row"><span class="label">Amount:</span> ${d.loan_amount || '-'}</div>
+                    <div class="row"><span class="label">Status:</span> ${d.status_display || '-'}</div>
+                    <div class="row"><span class="label">Created:</span> ${d.created_at || '-'}</div>
+                    <div class="row full"><span class="label">Address:</span> ${d.permanent_address || '-'}</div>
+                    <div class="row full"><span class="label">Internal Remark:</span> ${(d.remarks || '-').replace(/\n/g, '<br>')}</div>
+                </div>
+            </body>
+        </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => printWindow.print(), 250);
 }
 
 function closeLoanDetailsModal() {
@@ -456,5 +509,7 @@ function closeLoanDetailsModal() {
     modal.classList.add('hidden');
     modal.classList.remove('flex');
 }
+
+document.getElementById('loan-details-download-btn')?.addEventListener('click', downloadLoanDetailsA4);
 </script>
 {% endblock %}
