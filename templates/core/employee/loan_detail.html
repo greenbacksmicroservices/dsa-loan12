@@ -22,7 +22,7 @@
             <div class="card bp-card" id="fullFormCard">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <h6 class="sec mb-0"><i class="bi bi-file-earmark-text"></i> Full Loan Application Form</h6>
+                        <h6 class="sec mb-0"><i class="bi bi-file-earmark-text"></i> Loan Full Details</h6>
                         <div class="d-flex gap-2">
                             <button id="openEditFormBtn" class="btn btn-sm btn-outline-warning" type="button">
                                 <i class="bi bi-pencil-square"></i> Edit
@@ -89,11 +89,11 @@
                     <div class="section-box">
                         <h6 class="section-title">SECTION 4: LOAN REQUEST</h6>
                         <div class="grid">
-                            <div><small>Service Required *</small><strong id="loanType">-</strong></div>
+                            <div><small>Loan Application Form *</small><strong id="loanType">-</strong></div>
                             <div><small>Loan Amount Required *</small><strong id="loanAmount">-</strong></div>
                             <div><small>Loan Tenure (Months) *</small><strong id="tenure">-</strong></div>
                             <div><small>Any Charges or Fee *</small><strong id="charges">-</strong></div>
-                            <div><small>Loan Purpose</small><strong id="purpose">-</strong></div>
+                            <div><small>Loan Purpose *</small><strong id="purpose">-</strong></div>
                             <div><small>Interest / EMI</small><strong id="interestEmi">-</strong></div>
                         </div>
                         <p class="section-note mt-2">As per RBI guidelines, no processing fee or other charges to be taken from client.</p>
@@ -115,9 +115,7 @@
                         </div>
                         <p class="sub-title mt-2">Bank Disbursement Details</p>
                         <div class="grid">
-                            <div><small>Bank Name</small><strong id="bankName">-</strong></div>
-                            <div><small>Account Number</small><strong id="account">-</strong></div>
-                            <div><small>IFSC Code *</small><strong id="ifsc">-</strong></div>
+                            <div><small>Processing Bank Name</small><strong id="bankName">-</strong></div>
                             <div><small>Bank Type</small><strong id="bankType">-</strong></div>
                         </div>
                         <div class="mt-2">
@@ -218,7 +216,7 @@
                             <textarea id="editLoanPurpose" class="form-control" rows="2" placeholder="Loan purpose"></textarea>
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label fw-semibold">Bank Name</label>
+                            <label class="form-label fw-semibold">Processing Bank Name</label>
                             <input id="editBankName" class="form-control" type="text" placeholder="Bank name">
                         </div>
                         <div class="col-md-3">
@@ -230,14 +228,6 @@
                                 <option value="cooperative">Cooperative</option>
                                 <option value="nbfc">NBFC</option>
                             </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label fw-semibold">Account Number</label>
-                            <input id="editAccountNumber" class="form-control" type="text" placeholder="Account number">
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label fw-semibold">IFSC Code</label>
-                            <input id="editIfscCode" class="form-control" type="text" placeholder="IFSC code">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Permanent Address</label>
@@ -345,8 +335,12 @@
                 <input id="bankerPhoneInput" class="form-control mb-2" type="text" placeholder="Enter banker phone">
                 <label class="form-label">Banker Email *</label>
                 <input id="bankerEmailInput" class="form-control mb-2" type="email" placeholder="Enter banker email">
+                <label class="form-label">Bank Name *</label>
+                <input id="processingBankNameInput" class="form-control mb-2" type="text" placeholder="Enter bank name">
+                <label class="form-label">DSA Name *</label>
+                <input id="processingDsaNameInput" class="form-control mb-2" type="text" placeholder="Enter DSA name">
                 <label class="form-label">Description</label>
-                <textarea id="bankerDescriptionInput" class="form-control mb-2" rows="2" placeholder="Banking processing description"></textarea>
+                <textarea id="bankerDescriptionInput" class="form-control mb-2" rows="2" placeholder="Banking processing notes"></textarea>
                 <label class="form-label">Remark</label>
                 <textarea id="bankRemarkInput" class="form-control" rows="2" placeholder="Remark"></textarea>
             </div>
@@ -383,12 +377,12 @@
             <div class="modal-body">
                 <div class="row g-2">
                     <div class="col-12">
-                        <label class="form-label">SM Phone Number *</label>
-                        <input id="disburseSmPhone" class="form-control" type="text" placeholder="Enter SM phone number">
+                        <label class="form-label">Disbursed Bank Name *</label>
+                        <input id="disburseBankName" class="form-control" type="text" placeholder="Enter disbursed bank name">
                     </div>
                     <div class="col-12">
-                        <label class="form-label">SM Email *</label>
-                        <input id="disburseSmEmail" class="form-control" type="email" placeholder="Enter SM email">
+                        <label class="form-label">Current Loan Account Number *</label>
+                        <input id="disburseLoanAccountNumber" class="form-control" type="text" placeholder="Enter current loan account number">
                     </div>
                     <div class="col-12">
                         <label class="form-label">Bank Details Notes</label>
@@ -505,7 +499,7 @@
 
 {% block extra_js %}
 <script>
-const loanId = {{ loan_id }};
+const loanId = Number('{{ loan_id|default:"0" }}');
 let loan = null;
 let timer = null;
 let authRedirectInProgress = false;
@@ -685,8 +679,6 @@ function fillFollowUpEditFields(v) {
     setInputValue('editLoanPurpose', v.loan_purpose || '');
     setInputValue('editBankName', v.bank_name || '');
     setInputValue('editBankType', (v.bank_type || '').toLowerCase());
-    setInputValue('editAccountNumber', v.account_number || '');
-    setInputValue('editIfscCode', v.ifsc_code || '');
     setInputValue('editPermanentAddress', v.permanent_address || '');
     setInputValue('editCurrentAddress', v.current_address || '');
     resetFollowUpDocRows();
@@ -773,8 +765,6 @@ function fill() {
     set('aadhar', v.aadhar_number || fromMap('aadhar number'));
     set('pan', v.pan_number || fromMap('pan number'));
     set('bankName', v.bank_name || fromMap('bank name'));
-    set('account', v.account_number || fromMap('account number'));
-    set('ifsc', v.ifsc_code || fromMap('ifsc code'));
     set('bankType', v.bank_type || fromMap('bank type'));
     set('manualRemark', v.remarks || fromMap('remarks suggestions', 'remark'));
     set('declarationText', v.declaration || 'I hereby declare that the above information given by me is true and correct.');
@@ -904,6 +894,8 @@ document.getElementById('bankProcessingBtn').onclick = () => {
     setInputValue('bankerNameInput', '');
     setInputValue('bankerPhoneInput', '');
     setInputValue('bankerEmailInput', '');
+    setInputValue('processingBankNameInput', '');
+    setInputValue('processingDsaNameInput', '');
     setInputValue('bankerDescriptionInput', '');
     setInputValue('bankRemarkInput', '');
     bankProcessingModal.show();
@@ -914,11 +906,12 @@ document.getElementById('approveBtn').onclick = () => {
 };
 document.getElementById('openEditFormBtn').onclick = () => {
     const editCard = document.getElementById('followUpEditCard');
-    if (editCard && editCard.style.display !== 'none') {
-        editCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (editCard) {
+        editCard.style.display = 'block';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
         return;
     }
-    msg('info', 'Edit is available for Banking Processing, Follow Up, and Approved cases.');
+    msg('info', 'Edit section is available at the top of this page.');
 };
 document.getElementById('downloadFormPdfBtn').onclick = () => window.print();
 document.getElementById('uploadCaseDocBtn').onclick = async () => {
@@ -975,8 +968,6 @@ document.getElementById('saveFollowUpEditBtn').onclick = async () => {
         loan_purpose: document.getElementById('editLoanPurpose').value.trim(),
         bank_name: document.getElementById('editBankName').value.trim(),
         bank_type: document.getElementById('editBankType').value.trim(),
-        account_number: document.getElementById('editAccountNumber').value.trim(),
-        ifsc_code: document.getElementById('editIfscCode').value.trim(),
         permanent_address: document.getElementById('editPermanentAddress').value.trim(),
         current_address: document.getElementById('editCurrentAddress').value.trim(),
         edit_remark: document.getElementById('editFollowUpRemark').value.trim(),
@@ -1033,8 +1024,8 @@ document.getElementById('uploadFollowUpDocBtn').onclick = async () => {
 };
 document.getElementById('rejectBtn').onclick = () => rejectModal.show();
 document.getElementById('disburseBtn').onclick = () => {
-    setInputValue('disburseSmPhone', loan?.sm_phone_number || '');
-    setInputValue('disburseSmEmail', loan?.sm_email || '');
+    setInputValue('disburseBankName', '');
+    setInputValue('disburseLoanAccountNumber', '');
     setInputValue('disburseBankNotes', '');
     setInputValue('disburseAmount', loan?.loan_amount || '');
     setInputValue('disburseDate', new Date().toISOString().slice(0,10));
@@ -1057,11 +1048,13 @@ document.getElementById('confirmBankProcessing').onclick = async () => {
     const bankerName = document.getElementById('bankerNameInput').value.trim();
     const bankerPhone = document.getElementById('bankerPhoneInput').value.trim();
     const bankerEmail = document.getElementById('bankerEmailInput').value.trim();
+    const processingBankName = document.getElementById('processingBankNameInput').value.trim();
+    const processingDsaName = document.getElementById('processingDsaNameInput').value.trim();
     const bankerDescription = document.getElementById('bankerDescriptionInput').value.trim();
     const bankRemark = document.getElementById('bankRemarkInput').value.trim();
 
-    if (!bankerName || !bankerPhone || !bankerEmail) {
-        msg('danger', 'Please fill banker name, phone and email.');
+    if (!bankerName || !bankerPhone || !bankerEmail || !processingBankName || !processingDsaName) {
+        msg('danger', 'Please fill banker details, bank name, and DSA name.');
         return;
     }
     const phoneDigits = bankerPhone.replace(/\D/g, '');
@@ -1079,6 +1072,8 @@ document.getElementById('confirmBankProcessing').onclick = async () => {
             banker_name: bankerName,
             banker_phone: bankerPhone,
             banker_email: bankerEmail,
+            bank_name: processingBankName,
+            dsa_name: processingDsaName,
             banker_description: bankerDescription,
             bank_remark: bankRemark,
             entity_type: loan?.entity_type || '',
@@ -1120,18 +1115,18 @@ document.getElementById('confirmApprove').onclick = async () => {
 };
 document.getElementById('confirmDisburse').onclick = async () => {
     try {
-        const smPhone = document.getElementById('disburseSmPhone').value.trim();
-        const smEmail = document.getElementById('disburseSmEmail').value.trim();
+        const disbursedBankName = document.getElementById('disburseBankName').value.trim();
+        const currentLoanAccountNumber = document.getElementById('disburseLoanAccountNumber').value.trim();
         const bankNotes = document.getElementById('disburseBankNotes').value.trim();
 
-        if (!smPhone) { msg('danger', 'SM Phone Number is required.'); return; }
-        const smDigits = smPhone.replace(/\D/g, '');
-        if (smDigits.length < 10 || smDigits.length > 15) { msg('danger', 'Enter a valid SM phone number (10-15 digits).'); return; }
-        if (!smEmail || !smEmail.includes('@')) { msg('danger', 'Enter a valid SM email.'); return; }
+        if (!disbursedBankName || !currentLoanAccountNumber) {
+            msg('danger', 'Disbursed bank name and current loan account number are required.');
+            return;
+        }
 
         const d = await call(`/api/employee/loan/${loanId}/disburse/`, {
-            sm_phone_number: smPhone,
-            sm_email: smEmail,
+            disbursed_bank_name: disbursedBankName,
+            current_loan_account_number: currentLoanAccountNumber,
             disbursement_notes: bankNotes,
             disbursement_amount: document.getElementById('disburseAmount').value || null,
             disbursement_date: document.getElementById('disburseDate').value || null,

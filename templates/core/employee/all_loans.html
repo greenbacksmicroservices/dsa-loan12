@@ -193,9 +193,6 @@ function renderLoansTable(loans) {
                                              <button class="btn btn-sm btn-warning" type="button" onclick="openEditLoanModal(${l.id})">
                                                  <i class="bi bi-pencil-square"></i> Edit
                                              </button>
-                                             <button class="btn btn-sm btn-danger" type="button" onclick="openDeleteLoanModal(${l.id})">
-                                                 <i class="bi bi-trash"></i> Delete
-                                             </button>
                                          `
                                      )
                                  }
@@ -210,7 +207,6 @@ function renderLoansTable(loans) {
 }
 
 let CURRENT_EDIT_LOAN_ID = null;
-let CURRENT_DELETE_LOAN_ID = null;
 
 function openEditLoanModal(loanId) {
     CURRENT_EDIT_LOAN_ID = loanId;
@@ -223,12 +219,6 @@ function openEditLoanModal(loanId) {
     document.getElementById('editLoanRemarks').value = loan.remarks || '';
 
     const modal = new bootstrap.Modal(document.getElementById('editLoanModal'));
-    modal.show();
-}
-
-function openDeleteLoanModal(loanId) {
-    CURRENT_DELETE_LOAN_ID = loanId;
-    const modal = new bootstrap.Modal(document.getElementById('deleteLoanModal'));
     modal.show();
 }
 
@@ -257,28 +247,6 @@ async function submitEditLoan() {
         bootstrap.Modal.getInstance(document.getElementById('editLoanModal')).hide();
     } else {
         alert(data.error || 'Failed to update loan');
-    }
-}
-
-async function submitDeleteLoan() {
-    if (!CURRENT_DELETE_LOAN_ID) return;
-
-    const reason = document.getElementById('deleteLoanReason').value.trim() || 'Deleted by employee';
-    const res = await fetch(`/api/employee/loan/${CURRENT_DELETE_LOAN_ID}/delete/`, {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': getCookie('csrftoken'),
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ reason })
-    });
-
-    const data = await res.json().catch(() => ({}));
-    if (res.ok && data.success) {
-        await loadLoans();
-        bootstrap.Modal.getInstance(document.getElementById('deleteLoanModal')).hide();
-    } else {
-        alert(data.error || 'Failed to delete loan');
     }
 }
 
@@ -353,24 +321,4 @@ document.addEventListener('DOMContentLoaded', () => {
     </div>
 </div>
 
-<!-- Delete Loan Modal -->
-<div class="modal fade" id="deleteLoanModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Delete Loan</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <p class="mb-2">Are you sure you want to remove this loan?</p>
-                <label class="form-label">Reason (optional)</label>
-                <textarea class="form-control" rows="3" id="deleteLoanReason"></textarea>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button class="btn btn-danger" type="button" onclick="submitDeleteLoan()">Delete</button>
-            </div>
-        </div>
-    </div>
-</div>
 {% endblock %}
