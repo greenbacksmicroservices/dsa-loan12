@@ -185,9 +185,14 @@
     <div class="bg-white rounded-lg shadow-lg max-w-4xl w-full mx-4 max-h-screen overflow-y-auto">
         <div class="flex items-center justify-between p-6 border-b sticky top-0 bg-white">
             <h3 class="text-xl font-bold text-gray-900">Loan Details</h3>
-            <button onclick="closeDetailsModal()" class="text-gray-400 hover:text-gray-600">
-                <i class="fas fa-times text-xl"></i>
-            </button>
+            <div class="flex items-center gap-3">
+                <button type="button" onclick="downloadLoanDetailsA4()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-semibold">
+                    <i class="fas fa-download mr-1"></i> Download PDF
+                </button>
+                <button onclick="closeDetailsModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
         </div>
         
         <div class="p-6 space-y-6" id="detailsContent">
@@ -414,9 +419,140 @@ function assignedLoansManager() {
 
 let currentLoanData = null;
 
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function printableValue(value, fallback = '-') {
+    const resolved = value === null || value === undefined || value === '' ? fallback : value;
+    return escapeHtml(resolved);
+}
+
+function downloadLoanDetailsA4() {
+    if (!currentLoanData) {
+        alert('No loan details available.');
+        return;
+    }
+
+    const loan = currentLoanData;
+    const rows = [
+        ['Applicant Name', loan.applicant_name],
+        ['Phone', loan.applicant_phone],
+        ['Email', loan.applicant_email],
+        ['Address', loan.applicant_address],
+        ['Loan ID', loan.loan_id],
+        ['Loan Amount', loan.loan_amount ? `₹${Number(loan.loan_amount).toLocaleString('en-IN')}` : '-'],
+        ['Loan Type', loan.loan_type],
+        ['Duration (Months)', loan.duration_months],
+        ['Interest Rate', loan.interest_rate ? `${loan.interest_rate}%` : '-'],
+        ['Processing Fee', loan.processing_fee ? `₹${Number(loan.processing_fee).toLocaleString('en-IN')}` : '-'],
+        ['Current Status', loan.status],
+        ['Assigned Date', loan.assigned_at],
+    ];
+
+    const printWindow = window.open('', '_blank', 'width=1200,height=900');
+    if (!printWindow) {
+        alert('Please allow popups to download the loan details.');
+        return;
+    }
+
+    const rowsHtml = rows.map(([label, value]) => `
+        <tr>
+            <th>${printableValue(label)}</th>
+            <td>${printableValue(value)}</td>
+        </tr>
+    `).join('');
+
+    printWindow.document.write(`
+        <html>
+            <head>
+                <title>Loan Details - ${escapeHtml(loan.loan_id || loan.id || '')}</title>
+                <style>
+                    @page { size: A4; margin: 14mm; }
+                    body {
+                        font-family: Arial, Helvetica, sans-serif;
+                        margin: 0;
+                        color: #1f2937;
+                        background: #fff;
+                    }
+                    .sheet {
+                        width: 100%;
+                    }
+                    .header {
+                        margin-bottom: 18px;
+                        padding-bottom: 12px;
+                        border-bottom: 2px solid #2563eb;
+                    }
+                    .header h1 {
+                        margin: 0;
+                        font-size: 22px;
+                        color: #111827;
+                    }
+                    .header p {
+                        margin: 6px 0 0;
+                        color: #6b7280;
+                        font-size: 13px;
+                    }
+                    table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        margin-top: 14px;
+                    }
+                    th, td {
+                        border: 1px solid #d1d5db;
+                        padding: 10px 12px;
+                        text-align: left;
+                        vertical-align: top;
+                        font-size: 13px;
+                    }
+                    th {
+                        width: 34%;
+                        background: #f9fafb;
+                    }
+                    .section {
+                        margin-top: 22px;
+                    }
+                    .section h2 {
+                        margin: 0 0 10px;
+                        font-size: 15px;
+                        color: #111827;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="sheet">
+                    <div class="header">
+                        <h1>Loan Application Details</h1>
+                        <p>Loan ID: ${escapeHtml(loan.loan_id || loan.id || '-')} | Status: ${escapeHtml(loan.status || '-')}</p>
+                    </div>
+
+                    <div class="section">
+                        <h2>Application Summary</h2>
+                        <table>
+                            <tbody>
+                                ${rowsHtml}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </body>
+        </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.onafterprint = () => printWindow.close();
+    setTimeout(() => printWindow.print(), 250);
+}
+
 function showDetailsModal(loan) {
     const modal = document.getElementById('detailsModal');
     const content = document.getElementById('detailsContent');
+    currentLoanData = loan;
     
     const html = `
         <div class="grid grid-cols-2 gap-6">
@@ -488,6 +624,7 @@ function showDetailsModal(loan) {
 
 function closeDetailsModal() {
     document.getElementById('detailsModal').classList.add('hidden');
+    currentLoanData = null;
 }
 
 function showActionModal(loan, action) {

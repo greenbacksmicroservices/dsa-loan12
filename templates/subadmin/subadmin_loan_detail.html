@@ -4,6 +4,39 @@
 {% block title %}Loan Detail - Partner{% endblock %}
 {% block page_title %}Loan Detail{% endblock %}
 
+{% block extra_css %}
+<style>
+    @media print {
+        .sidebar,
+        .page-header button,
+        .page-header a,
+        .no-print,
+        .action-buttons,
+        .document-actions,
+        .document-actions a,
+        .document-actions button {
+            display: none !important;
+        }
+
+        .main-content {
+            margin-left: 0 !important;
+            padding: 0 !important;
+        }
+
+        .page-header,
+        .bg-white,
+        .shadow-sm {
+            box-shadow: none !important;
+        }
+
+        .space-y-6,
+        .space-y-4 {
+            gap: 0 !important;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="space-y-6">
     <div class="flex items-center justify-between bg-white rounded-lg border border-gray-200 shadow-sm p-6">
@@ -11,7 +44,12 @@
             <h1 class="text-2xl font-bold text-gray-900">Loan: {{ loan_payload.loan_id }}</h1>
             <p class="text-sm text-gray-600 mt-1">{{ loan_payload.full_name }} | {{ loan_payload.status_display }}</p>
         </div>
-        <a href="{% url 'subadmin_all_loans' %}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Back to All Loans</a>
+        <div class="flex items-center gap-2 no-print">
+            <button type="button" class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700" onclick="window.print()">
+                <i class="fas fa-download"></i> Download PDF
+            </button>
+            <a href="{% url 'subadmin_all_loans' %}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Back to All Loans</a>
+        </div>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">

@@ -518,7 +518,10 @@
     <div style="background: white; border-radius: 12px; padding: 40px; max-width: 1000px; width: 95%; margin: 20px auto; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 3px solid #1abc9c; padding-bottom: 20px;">
             <h2 style="margin: 0; color: #1a202c; font-size: 24px; font-weight: 700;">Loan Applicant Details</h2>
-            <button onclick="closeLoanModal()" style="background: none; border: none; font-size: 28px; cursor: pointer; color: #718096;">&times;</button>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <button type="button" id="loan-details-download-btn" style="background: #16a34a; border: none; color: white; font-size: 12px; font-weight: 700; border-radius: 6px; padding: 8px 12px; cursor: pointer;">Download PDF</button>
+                <button onclick="closeLoanModal()" style="background: none; border: none; font-size: 28px; cursor: pointer; color: #718096;">&times;</button>
+            </div>
         </div>
 
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 25px; padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px; background: #f8fafc;">
@@ -1715,6 +1718,7 @@ function formatWithUnit(value, unit) {
 
 function viewLoanDetail(id, name, email, phone, loanType, amount, status) {
     currentLoanId = id;
+    currentLoanDetails = null;
     
     // Fetch complete loan details from server
     fetch(`/api/loan/${id}/details/`, {
@@ -1758,6 +1762,7 @@ function viewLoanDetail(id, name, email, phone, loanType, amount, status) {
 
 // Populate Detail Modal with data
 function populateDetailModal(data) {
+    currentLoanDetails = data || {};
     setText('detailLoanUid', data.user_id || data.id || '-');
     setText('detailStatusText', data.status_display || data.status || '-');
     setText('detailCreatedBy', data.created_by_display || '-');
@@ -1876,6 +1881,7 @@ function populateDetailModal(data) {
 
 // Fallback for basic info
 function populateDetailModalFallback(name, email, phone, loanType, amount, status) {
+    currentLoanDetails = null;
     setText('detailLoanUid', currentLoanId || '-');
     setText('detailStatusText', status || '-');
     setText('detailName', name || '-');
@@ -2007,6 +2013,320 @@ function generateDocumentsHtml(documents) {
             `).join('')}
         </div>
     `;
+}
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function printableValue(value, fallback = '-') {
+    const resolved = value === null || value === undefined || value === '' ? fallback : value;
+    return escapeHtml(resolved);
+}
+
+function printableMoney(value) {
+    const amount = Number(value);
+    if (!Number.isFinite(amount) || amount <= 0) {
+        return '-';
+    }
+    return `Rs ${amount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+}
+
+function printableSection(title, rows) {
+    const content = (rows || []).map((row) => {
+        const full = row.full ? ' print-full' : '';
+        return `
+            <div class="print-cell${full}">
+                <div class="print-label">${printableValue(row.label)}</div>
+                <div class="print-value">${printableValue(row.value)}</div>
+            </div>
+        `;
+    }).join('');
+
+    return `
+        <section class="print-section">
+            <h3>${printableValue(title)}</h3>
+            <div class="print-grid">
+                ${content}
+            </div>
+        </section>
+    `;
+}
+
+function printableTableSection(title, headers, rowsHtml) {
+    return `
+        <section class="print-section">
+            <h3>${printableValue(title)}</h3>
+            <div class="print-table-wrap">
+                <table class="print-table">
+                    <thead>
+                        <tr>${(headers || []).map((header) => `<th>${printableValue(header)}</th>`).join('')}</tr>
+                    </thead>
+                    <tbody>
+                        ${rowsHtml || '<tr><td colspan="100%">No records found</td></tr>'}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    `;
+}
+
+function downloadLoanDetailsA4() {
+    if (!currentLoanDetails) {
+        alert('No loan details available.');
+        return;
+    }
+
+    const d = currentLoanDetails;
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+        alert('Please allow popups to download PDF.');
+        return;
+    }
+
+    const documents = Array.isArray(d.documents) ? d.documents : [];
+    const history = Array.isArray(d.status_history) ? d.status_history : [];
+    const extraDetails = Array.isArray(d.full_application_details) ? d.full_application_details : [];
+
+    const documentRows = documents.length ? documents.map((doc) => `
+        <tr>
+            <td>${printableValue(doc.document_type || doc.type || doc.name || 'Document')}</td>
+            <td>${printableValue(doc.uploaded_at || '-')}</td>
+            <td>${doc.file || doc.file_url ? `<a href="${escapeHtml(doc.file || doc.file_url)}" target="_blank">Open</a>` : '-'}</td>
+        </tr>
+    `).join('') : '<tr><td colspan="3">No documents attached</td></tr>';
+
+    const historyRows = history.length ? history.map((row) => `
+        <tr>
+            <td>${printableValue(row.from_status || 'Initial')}</td>
+            <td>${printableValue(row.to_status || row.status || '-')}</td>
+            <td>${printableValue(row.changed_by || '-')}</td>
+            <td>${printableValue(row.changed_at || row.created_at || '-')}</td>
+            <td>${printableValue(row.reason || row.notes || '-')}</td>
+        </tr>
+    `).join('') : '<tr><td colspan="5">No status history found</td></tr>';
+
+    printWindow.document.write(`
+        <html>
+            <head>
+                <title>Loan Full Details - ${escapeHtml(d.full_name || '')}</title>
+                <style>
+                    @page { size: A4; margin: 14mm; }
+                    body {
+                        font-family: Arial, sans-serif;
+                        color: #111827;
+                        margin: 0;
+                        padding: 0;
+                        background: #fff;
+                        font-size: 12px;
+                    }
+                    .print-shell {
+                        padding: 0;
+                    }
+                    .print-header {
+                        display: flex;
+                        justify-content: space-between;
+                        gap: 18px;
+                        align-items: flex-start;
+                        padding-bottom: 12px;
+                        border-bottom: 2px solid #1abc9c;
+                        margin-bottom: 16px;
+                    }
+                    .print-header h1 {
+                        margin: 0 0 6px 0;
+                        font-size: 20px;
+                    }
+                    .print-subtitle {
+                        margin: 0;
+                        color: #6b7280;
+                        font-size: 12px;
+                    }
+                    .print-badges {
+                        text-align: right;
+                        font-size: 11px;
+                        color: #374151;
+                    }
+                    .print-section {
+                        margin-bottom: 16px;
+                        break-inside: avoid;
+                    }
+                    .print-section h3 {
+                        margin: 0 0 8px 0;
+                        font-size: 14px;
+                        color: #0f766e;
+                    }
+                    .print-grid {
+                        display: grid;
+                        grid-template-columns: repeat(2, minmax(0, 1fr));
+                        gap: 8px;
+                    }
+                    .print-cell {
+                        border: 1px solid #e5e7eb;
+                        border-radius: 8px;
+                        padding: 8px 10px;
+                        background: #f8fafc;
+                    }
+                    .print-full {
+                        grid-column: 1 / -1;
+                    }
+                    .print-label {
+                        font-size: 10px;
+                        text-transform: uppercase;
+                        letter-spacing: 0.4px;
+                        color: #6b7280;
+                        font-weight: 700;
+                        margin-bottom: 4px;
+                    }
+                    .print-value {
+                        font-size: 12px;
+                        font-weight: 600;
+                        color: #111827;
+                        white-space: pre-wrap;
+                        word-break: break-word;
+                    }
+                    .print-table-wrap {
+                        overflow: hidden;
+                        border: 1px solid #e5e7eb;
+                        border-radius: 8px;
+                    }
+                    .print-table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        font-size: 11px;
+                    }
+                    .print-table th,
+                    .print-table td {
+                        border: 1px solid #e5e7eb;
+                        padding: 6px 8px;
+                        text-align: left;
+                        vertical-align: top;
+                    }
+                    .print-table th {
+                        background: #f3f4f6;
+                        font-weight: 700;
+                    }
+                    a {
+                        color: #2563eb;
+                        text-decoration: none;
+                    }
+                    .print-extra-grid {
+                        display: grid;
+                        grid-template-columns: repeat(2, minmax(0, 1fr));
+                        gap: 8px;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="print-shell">
+                    <div class="print-header">
+                        <div>
+                            <h1>Loan Application Details</h1>
+                            <p class="print-subtitle">${escapeHtml(d.full_name || '-')} | Loan ID: ${escapeHtml(d.user_id || d.id || '-')}</p>
+                        </div>
+                        <div class="print-badges">
+                            <div><strong>Status:</strong> ${escapeHtml(d.status_display || d.status || '-')}</div>
+                            <div><strong>Created:</strong> ${escapeHtml(d.created_at || '-')}</div>
+                            <div><strong>Assigned:</strong> ${escapeHtml(d.assigned_employee_name || '-')}${d.assigned_agent_name ? ` / ${escapeHtml(d.assigned_agent_name)}` : ''}</div>
+                        </div>
+                    </div>
+
+                    ${printableSection('Application Info', [
+                        { label: 'Created Under', value: d.created_by_display },
+                        { label: 'Assigned By', value: d.assigned_by_display },
+                        { label: 'Created At', value: d.created_at },
+                        { label: 'Updated At', value: d.updated_at },
+                    ])}
+
+                    ${printableSection('Customer Details', [
+                        { label: 'Name', value: d.full_name },
+                        { label: 'Mobile', value: d.mobile_number },
+                        { label: 'Alternate Mobile', value: d.alternate_mobile },
+                        { label: 'Email', value: d.email },
+                        { label: 'Father Name', value: d.father_name || d.fathers_name },
+                        { label: 'Mother Name', value: d.mother_name || d.mothers_name },
+                        { label: 'Date of Birth', value: d.date_of_birth || d.dob },
+                        { label: 'Gender', value: d.gender },
+                        { label: 'Marital Status', value: d.marital_status },
+                        { label: 'Permanent Address', value: d.permanent_address_line1 || d.permanent_address },
+                        { label: 'Present Address', value: d.present_address_line1 || d.current_address },
+                        { label: 'City', value: d.city },
+                        { label: 'State', value: d.state },
+                        { label: 'PIN Code', value: d.pin_code },
+                    ])}
+
+                    ${printableSection('Occupation & Income', [
+                        { label: 'Occupation', value: d.occupation },
+                        { label: 'Date of Joining', value: d.employment_date || d.date_of_joining },
+                        { label: 'Experience (Years)', value: d.years_of_experience || d.year_of_experience },
+                        { label: 'Additional Income', value: d.additional_income || d.extra_income },
+                        { label: 'Extra Income Details', value: d.extra_income_details, full: true },
+                    ])}
+
+                    ${printableSection('Loan Request', [
+                        { label: 'Loan Type', value: d.loan_type },
+                        { label: 'Loan Amount', value: printableMoney(d.loan_amount) },
+                        { label: 'Tenure Months', value: d.tenure_months },
+                        { label: 'Interest Rate', value: d.interest_rate !== '-' && d.interest_rate !== null && d.interest_rate !== undefined ? `${d.interest_rate}%` : '-' },
+                        { label: 'EMI', value: printableMoney(d.emi) },
+                        { label: 'Loan Purpose', value: d.loan_purpose, full: true },
+                        { label: 'Charges Applicable', value: d.charges_applicable, full: true },
+                    ])}
+
+                    ${printableSection('Bank & Identity', [
+                        { label: 'CIBIL Score', value: d.cibil_score },
+                        { label: 'Aadhar Number', value: d.aadhar_number },
+                        { label: 'PAN Number', value: d.pan_number },
+                        { label: 'Bank Name', value: d.bank_name },
+                        { label: 'Account Number', value: d.account_number || d.bank_account_number },
+                        { label: 'IFSC Code', value: d.ifsc_code || d.bank_ifsc_code },
+                        { label: 'Bank Type', value: d.bank_type },
+                        { label: 'SM Name', value: d.sm_name },
+                        { label: 'SM Phone', value: d.sm_phone_number },
+                        { label: 'SM Email', value: d.sm_email, full: true },
+                        { label: 'SM Sign', value: d.is_sm_signed ? `Signed (${d.sm_signed_at || '-'})` : 'Pending' },
+                        { label: 'Disbursed Amount', value: printableMoney(d.disbursement_amount) },
+                        { label: 'Disbursed At', value: d.disbursed_at },
+                        { label: 'Disbursed By', value: d.disbursed_by_name },
+                        { label: 'Disbursement Notes', value: d.disbursement_notes, full: true },
+                    ])}
+
+                    ${printableSection('Co-applicant & Guarantor', [
+                        { label: 'Co-applicant Name', value: d.co_applicant_name },
+                        { label: 'Co-applicant Phone', value: d.co_applicant_phone },
+                        { label: 'Co-applicant Email', value: d.co_applicant_email },
+                        { label: 'Guarantor Name', value: d.guarantor_name },
+                        { label: 'Guarantor Phone', value: d.guarantor_phone },
+                        { label: 'Guarantor Email', value: d.guarantor_email },
+                    ])}
+
+                    ${printableSection('Remarks', [
+                        { label: 'Internal Remark', value: d.remarks, full: true },
+                        { label: 'Processing Remark', value: d.processing_remarks, full: true },
+                    ])}
+
+                    ${extraRowsHtml ? `
+                        <section class="print-section">
+                            <h3>Captured Form Details</h3>
+                            <div class="print-extra-grid">
+                                ${extraRowsHtml}
+                            </div>
+                        </section>
+                    ` : ''}
+
+                    ${printableTableSection('Documents', ['Document', 'Uploaded', 'File'], documentRows)}
+                    ${printableTableSection('Status History', ['From', 'To', 'By', 'Date', 'Remark'], historyRows)}
+                </div>
+            </body>
+        </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => printWindow.print(), 250);
 }
 
 // Close loan detail modal
@@ -2540,6 +2860,8 @@ style.innerHTML = `
     }
 `;
 document.head.appendChild(style);
+
+document.getElementById('loan-details-download-btn')?.addEventListener('click', downloadLoanDetailsA4);
 </script>
 
 {% endblock %}

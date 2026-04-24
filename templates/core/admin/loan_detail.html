@@ -445,6 +445,48 @@
         margin-top: 15px;
         font-weight: 600;
     }
+
+    @media print {
+        .sidebar,
+        .main-content > .topbar,
+        .detail-header .btn,
+        .tab-content .btn,
+        .action-buttons,
+        .nav-tabs,
+        .document-actions a,
+        .document-actions button {
+            display: none !important;
+        }
+
+        .main-content {
+            margin-left: 0 !important;
+            padding: 0 !important;
+        }
+
+        .loan-detail-container {
+            padding: 0 !important;
+        }
+
+        .detail-header,
+        .tabs-container {
+            box-shadow: none !important;
+        }
+
+        .tab-content {
+            padding: 0 !important;
+        }
+
+        .tab-pane {
+            display: block !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+            break-inside: avoid;
+        }
+
+        .tab-pane.fade:not(.show) {
+            display: block !important;
+        }
+    }
 </style>
 {% endblock %}
 
@@ -460,10 +502,13 @@
                 </p>
             </div>
         </div>
-        <div style="text-align: right;">
+        <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 10px;">
             <div class="status-badge status-{{ status_css_class }}">
                 {{ loan_app.status }}
             </div>
+            <button type="button" class="btn btn-sm btn-primary" onclick="window.print()">
+                <i class="bi bi-download"></i> Download PDF
+            </button>
             {% if hours_since_assignment is not None %}
             <div style="margin-top: 15px; font-size: 13px; color: #7f8c8d;">
                 <strong>Assigned since:</strong> {{ hours_since_assignment }}h ago
