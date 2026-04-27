@@ -186,14 +186,21 @@ function renderLoansTable(loans) {
                                                  <i class="bi bi-eye"></i> View
                                              </a>
                                          `
-                                         : `
-                                             <a href="/employee/loan/${l.id}/detail/" class="btn btn-sm btn-success" title="View details">
-                                                 <i class="bi bi-eye"></i> View
-                                             </a>
-                                             <button class="btn btn-sm btn-warning" type="button" onclick="openEditLoanModal(${l.id})">
-                                                 <i class="bi bi-pencil-square"></i> Edit
-                                             </button>
-                                         `
+                                         : (l.status === 'disbursed'
+                                             ? `
+                                                 <a href="/employee/loan/${l.id}/detail/" class="btn btn-sm btn-success" title="View details">
+                                                     <i class="bi bi-eye"></i> View
+                                                 </a>
+                                             `
+                                             : `
+                                                 <a href="/employee/loan/${l.id}/detail/" class="btn btn-sm btn-success" title="View details">
+                                                     <i class="bi bi-eye"></i> View
+                                                 </a>
+                                                 <button class="btn btn-sm btn-warning" type="button" onclick="openEditLoanModal(${l.id})">
+                                                     <i class="bi bi-pencil-square"></i> Edit
+                                                 </button>
+                                             `
+                                         )
                                      )
                                  }
                              </div>

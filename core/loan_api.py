@@ -602,6 +602,7 @@ def api_loan_details(request, loan_id):
             'disbursed_by_name': disbursed_by_name,
             'disbursement_notes': disbursement_notes,
             'remarks': remarks_suggestions,
+            'remarks_raw': raw_remarks,
             'processing_remarks': "\n".join(dedup_processing)[:3000] if dedup_processing else '-',
 
             'has_co_applicant': bool(loan.has_co_applicant),
@@ -948,6 +949,55 @@ def api_update_disbursed_details(request, loan_id):
                     continue
             raise ValueError('Invalid signed datetime')
 
+        def normalize_remarks_label(raw_label):
+            cleaned = re.sub(r'[^a-z0-9]+', ' ', str(raw_label or '').lower())
+            return ' '.join(cleaned.split()).strip()
+
+        def upsert_remarks_line(existing_text, preferred_label, raw_value, aliases=None):
+            """
+            Update/insert a single "Label: Value" line in loan.remarks, preserving the rest.
+            When raw_value is empty, remove the line (if it exists).
+            """
+            base = (existing_text or '').replace('\r\n', '\n').replace('\r', '\n')
+            lines = base.split('\n') if base else []
+
+            idx_by_key = {}
+            for idx, line in enumerate(lines):
+                if ':' not in line:
+                    continue
+                left, _ = line.split(':', 1)
+                key = normalize_remarks_label(left)
+                if key and key not in idx_by_key:
+                    idx_by_key[key] = idx
+
+            candidates = [preferred_label] + (aliases or [])
+            candidate_keys = [normalize_remarks_label(label) for label in candidates if normalize_remarks_label(label)]
+
+            existing_idx = None
+            existing_label = None
+            for key in candidate_keys:
+                if key in idx_by_key:
+                    existing_idx = idx_by_key[key]
+                    existing_label = (lines[existing_idx].split(':', 1)[0] or '').strip() or preferred_label
+                    break
+
+            value_text = str(raw_value or '').strip()
+            if value_text == '':
+                if existing_idx is not None:
+                    lines.pop(existing_idx)
+                cleaned_lines = [ln for ln in lines if str(ln).strip() != '']
+                return "\n".join(cleaned_lines).strip() or None
+
+            label_to_use = existing_label or preferred_label
+            new_line = f"{label_to_use}: {value_text}"
+            if existing_idx is not None:
+                lines[existing_idx] = new_line
+            else:
+                lines.append(new_line)
+
+            cleaned_lines = [ln for ln in lines if str(ln).strip() != '']
+            return "\n".join(cleaned_lines).strip() or None
+
         def normalize_loan_type(raw_value):
             if raw_value in [None, '', '-']:
                 return None
@@ -1140,10 +1190,21 @@ def api_update_disbursed_details(request, loan_id):
             loan.sm_signed_at = sm_signed_at
             loan_update_fields.append('sm_signed_at')
 
-        if 'remarks' in payload:
-            remarks_value = str(payload.get('remarks') or '').strip() or None
-            if loan.remarks != remarks_value:
-                loan.remarks = remarks_value
+        if 'remarks_full' in payload:
+            remarks_full_value = str(payload.get('remarks_full') or '').replace('\r\n', '\n').replace('\r', '\n').strip() or None
+            if loan.remarks != remarks_full_value:
+                loan.remarks = remarks_full_value
+                loan_update_fields.append('remarks')
+        elif 'remarks' in payload:
+            remarks_suggestions_value = str(payload.get('remarks') or '')
+            updated_remarks = upsert_remarks_line(
+                loan.remarks,
+                'Remarks/Suggestions',
+                remarks_suggestions_value,
+                aliases=['Remarks / Suggestions', 'Remarks Suggestions', 'Remark', 'Remarks']
+            )
+            if loan.remarks != updated_remarks:
+                loan.remarks = updated_remarks
                 loan_update_fields.append('remarks')
 
         if recalc_emi and 'emi' not in loan_update_fields:

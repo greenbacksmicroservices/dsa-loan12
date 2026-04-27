@@ -369,6 +369,57 @@
         opacity: 0.45;
         cursor: not-allowed;
     }
+
+    .loan-detail-modal-card {
+        width: min(1280px, 96vw) !important;
+        max-width: 1280px !important;
+        max-height: calc(100vh - 34px);
+        overflow-y: auto;
+    }
+
+    .loan-detail-modal-header {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background: #ffffff;
+    }
+
+    .loan-detail-download-btn {
+        background: #16a34a;
+        border: none;
+        color: #ffffff;
+        font-size: 12px;
+        font-weight: 700;
+        border-radius: 6px;
+        padding: 8px 12px;
+        cursor: pointer;
+    }
+
+    .loan-detail-download-btn:disabled {
+        background: #94a3b8;
+        opacity: 0.7;
+        cursor: not-allowed;
+    }
+
+    #loanDetailModal p,
+    #loanDetailModal span,
+    #loanDetailModal strong {
+        overflow-wrap: anywhere;
+    }
+
+    @media (max-width: 1200px) {
+        #loanDetailModal div[style*="grid-template-columns: 1fr 1fr 1fr 1fr"] {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        }
+    }
+
+    @media (max-width: 768px) {
+        #loanDetailModal div[style*="grid-template-columns: 1fr 1fr 1fr 1fr"],
+        #loanDetailModal div[style*="grid-template-columns: 1fr 1fr 1fr"],
+        #loanDetailModal div[style*="grid-template-columns: 1fr 1fr;"] {
+            grid-template-columns: 1fr !important;
+        }
+    }
     
     @media (max-width: 1024px) {
         .loans-table { font-size: 12px; }
@@ -378,6 +429,65 @@
             flex-direction: column;
             align-items: flex-start;
         }
+    }
+
+    /* Dark mode fixes for this page (custom classes) */
+    body.dark-mode .loans-container {
+        background: #0f172a;
+    }
+
+    body.dark-mode .loans-title {
+        color: #f8fafc;
+    }
+
+    body.dark-mode .loans-count {
+        color: #94a3b8;
+    }
+
+    body.dark-mode .search-bar,
+    body.dark-mode .loans-table-container {
+        background: #111827;
+        border: 1px solid #334155;
+        box-shadow: none;
+    }
+
+    body.dark-mode .search-bar input {
+        background: #0b1220;
+        color: #e5e7eb;
+        border-color: #334155;
+    }
+
+    body.dark-mode .loans-table {
+        border-color: #334155;
+    }
+
+    body.dark-mode .loans-table td {
+        border-color: #334155;
+        color: #e5e7eb;
+    }
+
+    body.dark-mode .loans-table tbody tr {
+        background: #0b1220;
+    }
+
+    body.dark-mode .loans-table tbody tr:hover {
+        background: #1e293b;
+    }
+
+    body.dark-mode .borrower-name {
+        color: #f8fafc;
+    }
+
+    body.dark-mode .date-text,
+    body.dark-mode .amount-text,
+    body.dark-mode .interest-text,
+    body.dark-mode .emi-text {
+        color: #cbd5e1;
+    }
+
+    body.dark-mode .loan-detail-modal-header {
+        background: #111827;
+        border-bottom-color: rgba(26, 188, 156, 0.55);
     }
 </style>
 
@@ -515,11 +625,11 @@
 
 <!-- Comprehensive Loan Detail Modal -->
 <div style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.7); z-index: 1000; align-items: center; justify-content: center; overflow-y: auto;" id="loanDetailModal" class="modal-overlay">
-    <div style="background: white; border-radius: 12px; padding: 40px; max-width: 1000px; width: 95%; margin: 20px auto; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 3px solid #1abc9c; padding-bottom: 20px;">
+    <div style="background: white; border-radius: 12px; padding: 40px; max-width: 1000px; width: 95%; margin: 20px auto; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);" class="loan-detail-modal-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 3px solid #1abc9c; padding-bottom: 20px;" class="loan-detail-modal-header">
             <h2 style="margin: 0; color: #1a202c; font-size: 24px; font-weight: 700;">Loan Applicant Details</h2>
             <div style="display: flex; align-items: center; gap: 10px;">
-                <button type="button" id="loan-details-download-btn" style="background: #16a34a; border: none; color: white; font-size: 12px; font-weight: 700; border-radius: 6px; padding: 8px 12px; cursor: pointer;">Download PDF</button>
+                <button type="button" id="loan-details-download-btn" class="loan-detail-download-btn" disabled>Download Full Application</button>
                 <button onclick="closeLoanModal()" style="background: none; border: none; font-size: 28px; cursor: pointer; color: #718096;">&times;</button>
             </div>
         </div>
@@ -1210,6 +1320,17 @@
                 <label style="display: block; color: #334155; font-weight: 700; margin-bottom: 6px; font-size: 12px;">Processing / Action Notes</label>
                 <textarea id="editProcessingRemarks" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px; min-height: 90px; resize: vertical;"></textarea>
             </div>
+
+            <div style="margin-top: 14px; padding-top: 14px; border-top: 1px dashed #e2e8f0;">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                    <input id="editFullRemarksEnabled" type="checkbox" style="width: 16px; height: 16px;" onchange="toggleFullRemarksEditor()">
+                    <label for="editFullRemarksEnabled" style="margin: 0; color: #1a202c; font-size: 13px; font-weight: 700;">Edit Full Application Details (Advanced)</label>
+                </div>
+                <div id="fullRemarksEditorWrap" style="display: none;">
+                    <p style="margin: 0 0 8px 0; color: #64748b; font-size: 12px;">Keep each line in <strong>Label: Value</strong> format. (Example: <strong>Father Name: Ram</strong>)</p>
+                    <textarea id="editRemarksFull" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 12px; min-height: 220px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, &quot;Liberation Mono&quot;, &quot;Courier New&quot;, monospace;"></textarea>
+                </div>
+            </div>
         </div>
         
         <!-- Action Buttons -->
@@ -1351,6 +1472,16 @@ function splitLeaderNameFromProcessingRemarks(text) {
     };
 }
 
+function toggleFullRemarksEditor() {
+    const checkbox = document.getElementById('editFullRemarksEnabled');
+    const wrap = document.getElementById('fullRemarksEditorWrap');
+    if (!checkbox || !wrap) return;
+    wrap.style.display = checkbox.checked ? 'block' : 'none';
+    if (checkbox.checked) {
+        setTimeout(() => document.getElementById('editRemarksFull')?.focus(), 0);
+    }
+}
+
 function prefillDisbursedEditFields(data) {
     const payload = data || {};
     const amountValue = payload.disbursement_amount;
@@ -1404,6 +1535,17 @@ function prefillDisbursedEditFields(data) {
     document.getElementById('editGuarantorName').value = payload.guarantor_name && payload.guarantor_name !== '-' ? payload.guarantor_name : '';
     document.getElementById('editGuarantorPhone').value = payload.guarantor_phone && payload.guarantor_phone !== '-' ? payload.guarantor_phone : '';
     document.getElementById('editGuarantorEmail').value = payload.guarantor_email && payload.guarantor_email !== '-' ? payload.guarantor_email : '';
+
+    const fullCheckbox = document.getElementById('editFullRemarksEnabled');
+    const fullWrap = document.getElementById('fullRemarksEditorWrap');
+    if (fullCheckbox) fullCheckbox.checked = false;
+    if (fullWrap) fullWrap.style.display = 'none';
+
+    const fullTextarea = document.getElementById('editRemarksFull');
+    if (fullTextarea) {
+        const raw = payload.remarks_raw;
+        fullTextarea.value = (raw && raw !== '-') ? String(raw) : '';
+    }
 }
 
 // Close modal on ESC key
@@ -1719,6 +1861,12 @@ function formatWithUnit(value, unit) {
 function viewLoanDetail(id, name, email, phone, loanType, amount, status) {
     currentLoanId = id;
     currentLoanDetails = null;
+
+    const downloadBtn = document.getElementById('loan-details-download-btn');
+    if (downloadBtn) {
+        downloadBtn.disabled = true;
+        downloadBtn.textContent = 'Preparing...';
+    }
     
     // Fetch complete loan details from server
     fetch(`/api/loan/${id}/details/`, {
@@ -1763,6 +1911,12 @@ function viewLoanDetail(id, name, email, phone, loanType, amount, status) {
 // Populate Detail Modal with data
 function populateDetailModal(data) {
     currentLoanDetails = data || {};
+
+    const downloadBtn = document.getElementById('loan-details-download-btn');
+    if (downloadBtn) {
+        downloadBtn.disabled = false;
+        downloadBtn.textContent = 'Download Full Application';
+    }
     setText('detailLoanUid', data.user_id || data.id || '-');
     setText('detailStatusText', data.status_display || data.status || '-');
     setText('detailCreatedBy', data.created_by_display || '-');
@@ -1882,6 +2036,12 @@ function populateDetailModal(data) {
 // Fallback for basic info
 function populateDetailModalFallback(name, email, phone, loanType, amount, status) {
     currentLoanDetails = null;
+
+    const downloadBtn = document.getElementById('loan-details-download-btn');
+    if (downloadBtn) {
+        downloadBtn.disabled = true;
+        downloadBtn.textContent = 'Download Full Application';
+    }
     setText('detailLoanUid', currentLoanId || '-');
     setText('detailStatusText', status || '-');
     setText('detailName', name || '-');
@@ -2085,7 +2245,7 @@ function downloadLoanDetailsA4() {
     const d = currentLoanDetails;
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
-        alert('Please allow popups to download PDF.');
+        alert('Please allow popups to download the full application.');
         return;
     }
 
@@ -2431,6 +2591,12 @@ function resetActionSelection() {
     document.getElementById('revertRemarkDiv').style.display = 'none';
     document.getElementById('disbursementDetailsDiv').style.display = 'none';
     document.getElementById('disbursedEditDiv').style.display = 'none';
+
+    const fullCheckbox = document.getElementById('editFullRemarksEnabled');
+    const fullWrap = document.getElementById('fullRemarksEditorWrap');
+    if (fullCheckbox) fullCheckbox.checked = false;
+    if (fullWrap) fullWrap.style.display = 'none';
+
     document.getElementById('submitActionBtn').style.display = 'none';
     document.getElementById('rejectionReason').value = '';
     document.getElementById('collectRemark').value = '';
@@ -2617,6 +2783,11 @@ function submitAction() {
             remarks: document.getElementById('editDisbursedRemarks').value.trim(),
             processing_remarks: processingRemarks,
         };
+
+        const fullEnabled = document.getElementById('editFullRemarksEnabled')?.checked;
+        if (fullEnabled) {
+            data.remarks_full = document.getElementById('editRemarksFull')?.value || '';
+        }
     }
 
     if (!endpoint) {
