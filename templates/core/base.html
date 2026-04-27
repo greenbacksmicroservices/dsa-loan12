@@ -770,6 +770,43 @@
             background: rgba(148, 163, 184, 0.28) !important;
         }
 
+        body.dark-mode .table-responsive,
+        body.dark-mode .table-wrap,
+        body.dark-mode .table-grid {
+            background: #0b1220 !important;
+            border-color: #334155 !important;
+        }
+
+        body.dark-mode .table thead th,
+        body.dark-mode .table-grid thead th {
+            background: #111827 !important;
+            color: #cbd5e1 !important;
+        }
+
+        body.dark-mode .table tbody tr:hover,
+        body.dark-mode .table-grid tbody tr:hover {
+            background: #1e293b !important;
+        }
+
+        body.dark-mode [style*="background: #fff"],
+        body.dark-mode [style*="background:#fff"],
+        body.dark-mode [style*="background: #ffffff"],
+        body.dark-mode [style*="background:#ffffff"],
+        body.dark-mode [style*="background: white"],
+        body.dark-mode [style*="background-color: #fff"],
+        body.dark-mode [style*="background-color:#fff"],
+        body.dark-mode [style*="background-color: #ffffff"],
+        body.dark-mode [style*="background-color:#ffffff"],
+        body.dark-mode [style*="background-color: white"],
+        body.dark-mode [style*="background: #f9fafb"],
+        body.dark-mode [style*="background:#f9fafb"],
+        body.dark-mode [style*="background-color: #f9fafb"],
+        body.dark-mode [style*="background-color:#f9fafb"] {
+            background: #111827 !important;
+            color: #e5e7eb !important;
+            border-color: #334155 !important;
+        }
+
         body[data-role='agent'] .main-content table,
         body[data-role='employee'] .main-content table {
             width: 100%;
@@ -1467,6 +1504,34 @@
             display: flex;
             align-items: center;
             gap: 4px;
+        }
+
+        /* Print / Download PDF (hide navigation) */
+        @media print {
+            @page {
+                size: A4;
+                margin: 14mm;
+            }
+
+            body {
+                background: #ffffff !important;
+                color: #111827 !important;
+            }
+
+            .sidebar,
+            .topbar,
+            .mobile-toggle,
+            .theme-toggle-btn,
+            .topbar-menu,
+            .dropdown-menu,
+            .no-print {
+                display: none !important;
+            }
+
+            .main-content {
+                margin-left: 0 !important;
+                padding: 0 !important;
+            }
         }
     </style>
     

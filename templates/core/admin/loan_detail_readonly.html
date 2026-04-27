@@ -3,6 +3,36 @@
 
 {% block title %}Loan Application Details - {{ applicant.full_name }}{% endblock %}
 
+{% block extra_css %}
+<style>
+    @media print {
+        .sidebar,
+        .btn,
+        .action-buttons,
+        form,
+        .document-actions,
+        .document-actions a,
+        .document-actions button {
+            display: none !important;
+        }
+
+        .main-content {
+            margin-left: 0 !important;
+            padding: 0 !important;
+        }
+
+        .container-fluid {
+            padding-top: 0 !important;
+        }
+
+        .card,
+        .shadow-sm {
+            box-shadow: none !important;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid mt-4">
     <!-- Page Header -->
@@ -15,9 +45,14 @@
                     </h2>
                     <p class="text-muted small mb-0">Applicant: <strong>{{ applicant.full_name }}</strong></p>
                 </div>
-                <a href="{% url 'admin_new_entries' %}" class="btn btn-outline-secondary">
-                    <i class="fas fa-arrow-left"></i> Back to List
-                </a>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-outline-primary" onclick="window.print()">
+                        <i class="fas fa-download"></i> Download PDF
+                    </button>
+                    <a href="{% url 'admin_new_entries' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to List
+                    </a>
+                </div>
             </div>
         </div>
     </div>

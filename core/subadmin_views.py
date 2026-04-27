@@ -268,6 +268,86 @@ def _serialize_subadmin_loan_details(loan_obj):
     follow_up_pending = _is_follow_up_pending_loan(loan_obj)
     status_key = 'follow_up_pending' if follow_up_pending else loan_obj.status
 
+    full_application_details = []
+    seen_full_detail_labels = set()
+
+    def append_full_detail(label, value):
+        if isinstance(value, (list, dict)):
+            return
+        text = str(value or '').strip()
+        if not text or text == '-':
+            return
+        key = label.strip().lower()
+        if key in seen_full_detail_labels:
+            return
+        seen_full_detail_labels.add(key)
+        full_application_details.append({
+            'label': label,
+            'value': text,
+        })
+
+    ordered_full_rows = [
+        ('Loan ID', loan_obj.user_id or f"LOAN-{loan_obj.id:06d}"),
+        ('Status', _status_label(loan_obj.status, follow_up_pending=follow_up_pending)),
+        ('Created At', loan_obj.created_at.strftime('%Y-%m-%d %H:%M') if loan_obj.created_at else '-'),
+        ('Updated At', loan_obj.updated_at.strftime('%Y-%m-%d %H:%M') if loan_obj.updated_at else '-'),
+        ('Created Under', created_by_display),
+        ('Assigned Employee', assigned_employee_name),
+        ('Assigned Agent', assigned_agent_name),
+        ('Assigned By', _extract_assignment_marker(loan_obj)),
+        ('Applicant Name', loan_obj.full_name or '-'),
+        ('Mobile Number', loan_obj.mobile_number or '-'),
+        ('Alternate Mobile', getattr(loan_app, 'alternate_mobile', None) if loan_app else '-'),
+        ('Email', loan_obj.email or '-'),
+        ('Father Name', getattr(loan_app, 'father_name', None) if loan_app else '-'),
+        ('Mother Name', getattr(loan_app, 'mother_name', None) if loan_app else '-'),
+        ('Date of Birth', getattr(loan_app, 'date_of_birth', None) if loan_app else '-'),
+        ('Gender', getattr(loan_app, 'gender', None) if loan_app else '-'),
+        ('Marital Status', getattr(loan_app, 'marital_status', None) if loan_app else '-'),
+        ('Permanent Address', loan_obj.permanent_address or '-'),
+        ('Current Address', loan_obj.current_address or '-'),
+        ('City', loan_obj.city or '-'),
+        ('State', loan_obj.state or '-'),
+        ('PIN Code', loan_obj.pin_code or '-'),
+        ('Occupation', getattr(loan_app, 'occupation', None) if loan_app else '-'),
+        ('Date of Joining', getattr(loan_app, 'employment_date', None) if loan_app else '-'),
+        ('Experience (Years)', getattr(loan_app, 'years_of_experience', None) if loan_app else '-'),
+        ('Additional Income', getattr(loan_app, 'additional_income', None) if loan_app else '-'),
+        ('Extra Income Details', getattr(loan_app, 'extra_income_details', None) if loan_app else '-'),
+        ('Loan Type', loan_obj.get_loan_type_display() if hasattr(loan_obj, 'get_loan_type_display') else (loan_obj.loan_type or '-')),
+        ('Loan Amount', loan_obj.loan_amount or '-'),
+        ('Tenure Months', loan_obj.tenure_months or '-'),
+        ('Interest Rate', loan_obj.interest_rate or '-'),
+        ('EMI', loan_obj.emi or '-'),
+        ('Loan Purpose', loan_obj.loan_purpose or '-'),
+        ('Charges Applicable', getattr(loan_app, 'charges_applicable', None) if loan_app else '-'),
+        ('CIBIL Score', getattr(loan_app, 'cibil_score', None) if loan_app else '-'),
+        ('Aadhar Number', getattr(loan_app, 'aadhar_number', None) if loan_app else '-'),
+        ('PAN Number', getattr(loan_app, 'pan_number', None) if loan_app else '-'),
+        ('Bank Name', loan_obj.bank_name or '-'),
+        ('Account Number', loan_obj.bank_account_number or '-'),
+        ('IFSC Code', loan_obj.bank_ifsc_code or '-'),
+        ('Bank Type', loan_obj.bank_type or '-'),
+        ('SM Name', sm_name),
+        ('SM Phone Number', sm_phone_number),
+        ('SM Email', sm_email),
+        ('SM Sign', 'Signed' if is_sm_signed else 'Pending'),
+        ('Disbursed Amount', getattr(loan_app, 'disbursement_amount', None) if loan_app else '-'),
+        ('Disbursed At', getattr(loan_app, 'disbursed_at', None) if loan_app else '-'),
+        ('Disbursed By', getattr(loan_app, 'disbursed_by_name', None) if loan_app else '-'),
+        ('Disbursement Notes', getattr(loan_app, 'disbursement_notes', None) if loan_app else '-'),
+        ('Remarks', loan_obj.remarks or '-'),
+        ('Processing Remarks', getattr(loan_app, 'approval_notes', None) if loan_app else '-'),
+        ('Co-applicant Name', loan_obj.co_applicant_name or '-'),
+        ('Co-applicant Phone', loan_obj.co_applicant_phone or '-'),
+        ('Co-applicant Email', loan_obj.co_applicant_email or '-'),
+        ('Guarantor Name', loan_obj.guarantor_name or '-'),
+        ('Guarantor Phone', loan_obj.guarantor_phone or '-'),
+        ('Guarantor Email', loan_obj.guarantor_email or '-'),
+    ]
+    for label, value in ordered_full_rows:
+        append_full_detail(label, value)
+
     return {
         'id': loan_obj.id,
         'loan_id': loan_obj.user_id or f"LOAN-{loan_obj.id:06d}",
@@ -320,6 +400,7 @@ def _serialize_subadmin_loan_details(loan_obj):
         'remarks_lines': [line.strip() for line in str(loan_obj.remarks or '').splitlines() if line.strip()],
         'documents': documents,
         'status_timeline': timeline,
+        'full_application_details': full_application_details,
 
         # Extra enrichment from LoanApplication/Applicant where available
         'applicant_name_from_application': getattr(applicant, 'full_name', '-') if applicant else '-',

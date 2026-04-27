@@ -159,8 +159,8 @@
 
             <div class="card bp-card mt-3" id="followUpEditCard" style="display:none;">
                 <div class="card-body">
-                    <h6 class="sec"><i class="bi bi-pencil-square"></i> Case Edit Section</h6>
-                    <p class="section-note">Case details update karein. Banking Processing, Follow Up aur Approved cases me bhi edit available hai.</p>
+                    <h6 class="sec"><i class="bi bi-pencil-square"></i> SECTION 1: APPLICANT INFORMATION (Edit)</h6>
+                    <p class="section-note">Application form ke editable fields yahin par update karein.</p>
                     <div class="row g-2">
                         <div class="col-md-4">
                             <label class="form-label fw-semibold">Applicant Name</label>
@@ -658,11 +658,27 @@ function canEditCaseDetails(v) {
     return !!(v?.follow_up_editable || v?.follow_up_pending || editableStatuses.includes(status));
 }
 
+function mountEditSectionIntoFullForm() {
+    const editCard = document.getElementById('followUpEditCard');
+    const fullFormBody = document.querySelector('#fullFormCard .card-body');
+    if (!editCard || !fullFormBody) return;
+    if (!fullFormBody.contains(editCard)) {
+        editCard.classList.remove('card', 'bp-card');
+        editCard.classList.remove('mt-3');
+        editCard.style.marginTop = '14px';
+        fullFormBody.appendChild(editCard);
+    }
+}
+
 function fillFollowUpEditFields(v) {
     const isEditable = canEditCaseDetails(v);
     const card = document.getElementById('followUpEditCard');
+    mountEditSectionIntoFullForm();
     if (card) {
-        card.style.display = isEditable ? 'block' : 'none';
+        card.dataset.editable = isEditable ? '1' : '0';
+        if (!isEditable) {
+            card.style.display = 'none';
+        }
     }
     if (!isEditable) return;
 
@@ -771,6 +787,15 @@ function fill() {
 
     prefillApproveModal(v);
     fillFollowUpEditFields(v);
+    const editBtn = document.getElementById('openEditFormBtn');
+    const editAllowed = canEditCaseDetails(v);
+    if (editBtn) {
+        editBtn.style.display = editAllowed ? 'inline-flex' : 'none';
+    }
+    if (!editAllowed) {
+        const editCard = document.getElementById('followUpEditCard');
+        if (editCard) editCard.style.display = 'none';
+    }
 
     const existingLoans = Array.isArray(v.existing_loans) ? v.existing_loans : [];
     document.getElementById('existingLoans').innerHTML = existingLoans.length ? existingLoans.map((item, idx) => `
@@ -905,10 +930,15 @@ document.getElementById('approveBtn').onclick = () => {
     approveModal.show();
 };
 document.getElementById('openEditFormBtn').onclick = () => {
+    if (!canEditCaseDetails(loan || {})) {
+        msg('info', 'Disbursed ya read-only case me edit allowed nahi hai.');
+        return;
+    }
+    mountEditSectionIntoFullForm();
     const editCard = document.getElementById('followUpEditCard');
     if (editCard) {
         editCard.style.display = 'block';
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        editCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
         return;
     }
     msg('info', 'Edit section is available at the top of this page.');
@@ -1143,7 +1173,11 @@ if (timelineCollapseEl && timelineToggle) {
     timelineCollapseEl.addEventListener('hidden.bs.collapse', () => { timelineToggle.textContent = 'Show'; });
 }
 
-document.addEventListener('DOMContentLoaded', () => { load(); timer = setInterval(load, 15000); });
+document.addEventListener('DOMContentLoaded', () => {
+    mountEditSectionIntoFullForm();
+    load();
+    timer = setInterval(load, 15000);
+});
 window.addEventListener('beforeunload', () => timer && clearInterval(timer));
 </script>
 {% endblock %}

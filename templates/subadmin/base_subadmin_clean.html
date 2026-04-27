@@ -256,6 +256,80 @@
             background: #1f2937;
             border-color: #374151;
         }
+
+        body.dark-mode .table-wrap,
+        body.dark-mode .table-responsive,
+        body.dark-mode table {
+            background: #0b1220 !important;
+            border-color: #334155 !important;
+            color: #e5e7eb !important;
+        }
+
+        body.dark-mode table th,
+        body.dark-mode table td {
+            border-color: #334155 !important;
+            color: #e5e7eb !important;
+        }
+
+        body.dark-mode table thead tr {
+            background: #111827 !important;
+        }
+
+        body.dark-mode table tbody tr:hover {
+            background: #1e293b !important;
+        }
+
+        body.dark-mode [style*="background: #fff"],
+        body.dark-mode [style*="background:#fff"],
+        body.dark-mode [style*="background: #ffffff"],
+        body.dark-mode [style*="background:#ffffff"],
+        body.dark-mode [style*="background: white"],
+        body.dark-mode [style*="background-color: #fff"],
+        body.dark-mode [style*="background-color:#fff"],
+        body.dark-mode [style*="background-color: #ffffff"],
+        body.dark-mode [style*="background-color:#ffffff"],
+        body.dark-mode [style*="background-color: white"],
+        body.dark-mode [style*="background: #f9fafb"],
+        body.dark-mode [style*="background:#f9fafb"],
+        body.dark-mode [style*="background-color: #f9fafb"],
+        body.dark-mode [style*="background-color:#f9fafb"] {
+            background: #111827 !important;
+            color: #e5e7eb !important;
+            border-color: #334155 !important;
+        }
+
+        /* Print / Download PDF (hide navigation) */
+        @media print {
+            @page {
+                size: A4;
+                margin: 14mm;
+            }
+
+            body {
+                background: #ffffff !important;
+                color: #111827 !important;
+            }
+
+            .sidebar,
+            .header,
+            .sidebar-footer,
+            .dropdown-menu,
+            .no-print,
+            button {
+                display: none !important;
+            }
+
+            .main-container,
+            .main-content,
+            .page-content {
+                height: auto !important;
+                overflow: visible !important;
+            }
+
+            .page-content {
+                padding: 0 !important;
+            }
+        }
     </style>
     
     {% block extra_css %}{% endblock %}

@@ -358,6 +358,67 @@ function splitLeaderFromRemark(text) {
     return { leaderName, remark: remark || '-' };
 }
 
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function printableValue(value, fallback = '-') {
+    const resolved = value === null || value === undefined || value === '' ? fallback : value;
+    return escapeHtml(resolved);
+}
+
+function printableMoney(value) {
+    const amount = Number(value);
+    if (!Number.isFinite(amount) || amount <= 0) {
+        return '-';
+    }
+    return `Rs ${amount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+}
+
+function printableSection(title, rows) {
+    const content = (rows || []).map((row) => {
+        const full = row.full ? ' print-full' : '';
+        return `
+            <div class="print-cell${full}">
+                <div class="print-label">${printableValue(row.label)}</div>
+                <div class="print-value">${printableValue(row.value)}</div>
+            </div>
+        `;
+    }).join('');
+
+    return `
+        <section class="print-section">
+            <h3>${printableValue(title)}</h3>
+            <div class="print-grid">
+                ${content}
+            </div>
+        </section>
+    `;
+}
+
+function printableTableSection(title, headers, rowsHtml) {
+    return `
+        <section class="print-section">
+            <h3>${printableValue(title)}</h3>
+            <div class="print-table-wrap">
+                <table class="print-table">
+                    <thead>
+                        <tr>${(headers || []).map((header) => `<th>${printableValue(header)}</th>`).join('')}</tr>
+                    </thead>
+                    <tbody>
+                        ${rowsHtml || '<tr><td colspan="100%">No records found</td></tr>'}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    `;
+}
+
 function openLoanDetailsModal(loanId) {
     const modal = document.getElementById('loan-details-modal');
     const container = document.getElementById('loan-details-content');
@@ -468,33 +529,236 @@ function downloadLoanDetailsA4() {
         alert('Please allow popups to download A4 print.');
         return;
     }
+    const docs = Array.isArray(d.documents) ? d.documents : [];
+    const history = Array.isArray(d.status_timeline) ? d.status_timeline : [];
+    const extraDetails = Array.isArray(d.full_application_details) ? d.full_application_details : [];
+    const remarkMeta = splitLeaderFromRemark(d.bank_remark);
+
+    const documentRows = docs.length ? docs.map((doc) => `
+        <tr>
+            <td>${printableValue(doc.name || doc.document_type || doc.type || 'Document')}</td>
+            <td>${printableValue(doc.source || '-')}</td>
+            <td>${printableValue(doc.uploaded_at || '-')}</td>
+            <td>${doc.url ? `<a href="${escapeHtml(doc.url)}" target="_blank">Open</a>` : '-'}</td>
+        </tr>
+    `).join('') : '<tr><td colspan="4">No documents attached</td></tr>';
+
+    const historyRows = history.length ? history.map((row) => `
+        <tr>
+            <td>${printableValue(row.from_status || 'Initial')}</td>
+            <td>${printableValue(row.to_status || '-')}</td>
+            <td>${printableValue(row.changed_by || '-')}</td>
+            <td>${printableValue(row.changed_at || '-')}</td>
+            <td>${printableValue(row.reason || '-')}</td>
+        </tr>
+    `).join('') : '<tr><td colspan="5">No status history found</td></tr>';
+
     printWindow.document.write(`
         <html>
             <head>
-                <title>Loan Full Details - ${d.full_name || ''}</title>
+                <title>Loan Full Details - ${escapeHtml(d.full_name || '')}</title>
                 <style>
                     @page { size: A4; margin: 14mm; }
-                    body { font-family: Arial, sans-serif; font-size: 12px; color: #111; }
-                    h2 { margin: 0 0 10px 0; }
-                    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; }
-                    .row { padding: 6px 0; border-bottom: 1px solid #e5e7eb; }
-                    .label { font-weight: 700; }
-                    .full { grid-column: 1 / -1; }
+                    body {
+                        font-family: Arial, sans-serif;
+                        color: #111827;
+                        margin: 0;
+                        padding: 0;
+                        background: #fff;
+                        font-size: 12px;
+                    }
+                    .print-shell { padding: 0; }
+                    .print-header {
+                        display: flex;
+                        justify-content: space-between;
+                        gap: 18px;
+                        align-items: flex-start;
+                        padding-bottom: 12px;
+                        border-bottom: 2px solid #0f766e;
+                        margin-bottom: 16px;
+                    }
+                    .print-header h1 {
+                        margin: 0 0 6px 0;
+                        font-size: 20px;
+                    }
+                    .print-subtitle {
+                        margin: 0;
+                        color: #6b7280;
+                        font-size: 12px;
+                    }
+                    .print-badges {
+                        text-align: right;
+                        font-size: 11px;
+                        color: #374151;
+                    }
+                    .print-section {
+                        margin-bottom: 16px;
+                        break-inside: avoid;
+                    }
+                    .print-section h3 {
+                        margin: 0 0 8px 0;
+                        font-size: 14px;
+                        color: #0f766e;
+                    }
+                    .print-grid {
+                        display: grid;
+                        grid-template-columns: repeat(2, minmax(0, 1fr));
+                        gap: 8px;
+                    }
+                    .print-cell {
+                        border: 1px solid #e5e7eb;
+                        border-radius: 8px;
+                        padding: 8px 10px;
+                        background: #f8fafc;
+                    }
+                    .print-full { grid-column: 1 / -1; }
+                    .print-label {
+                        font-size: 10px;
+                        text-transform: uppercase;
+                        letter-spacing: 0.4px;
+                        color: #6b7280;
+                        font-weight: 700;
+                        margin-bottom: 4px;
+                    }
+                    .print-value {
+                        font-size: 12px;
+                        font-weight: 600;
+                        color: #111827;
+                        white-space: pre-wrap;
+                        word-break: break-word;
+                    }
+                    .print-table-wrap {
+                        overflow: hidden;
+                        border: 1px solid #e5e7eb;
+                        border-radius: 8px;
+                    }
+                    .print-table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        font-size: 11px;
+                    }
+                    .print-table th,
+                    .print-table td {
+                        border: 1px solid #e5e7eb;
+                        padding: 6px 8px;
+                        text-align: left;
+                        vertical-align: top;
+                    }
+                    .print-table th {
+                        background: #f3f4f6;
+                        font-weight: 700;
+                    }
+                    a {
+                        color: #2563eb;
+                        text-decoration: none;
+                    }
+                    .print-extra-grid {
+                        display: grid;
+                        grid-template-columns: repeat(2, minmax(0, 1fr));
+                        gap: 8px;
+                    }
                 </style>
             </head>
             <body>
-                <h2>Loan Full Details</h2>
-                <div class="grid">
-                    <div class="row"><span class="label">Loan ID:</span> ${d.loan_id || '-'}</div>
-                    <div class="row"><span class="label">Applicant:</span> ${d.full_name || '-'}</div>
-                    <div class="row"><span class="label">Phone:</span> ${d.mobile_number || '-'}</div>
-                    <div class="row"><span class="label">Email:</span> ${d.email || '-'}</div>
-                    <div class="row"><span class="label">Loan Type:</span> ${d.loan_type || '-'}</div>
-                    <div class="row"><span class="label">Amount:</span> ${d.loan_amount || '-'}</div>
-                    <div class="row"><span class="label">Status:</span> ${d.status_display || '-'}</div>
-                    <div class="row"><span class="label">Created:</span> ${d.created_at || '-'}</div>
-                    <div class="row full"><span class="label">Address:</span> ${d.permanent_address || '-'}</div>
-                    <div class="row full"><span class="label">Internal Remark:</span> ${(d.remarks || '-').replace(/\n/g, '<br>')}</div>
+                <div class="print-shell">
+                    <div class="print-header">
+                        <div>
+                            <h1>Loan Application Details</h1>
+                            <p class="print-subtitle">${escapeHtml(d.full_name || '-')} | Loan ID: ${escapeHtml(d.loan_id || d.id || '-')}</p>
+                        </div>
+                        <div class="print-badges">
+                            <div><strong>Status:</strong> ${escapeHtml(d.status_display || d.status || '-')}</div>
+                            <div><strong>Created:</strong> ${escapeHtml(d.created_at || '-')}</div>
+                            <div><strong>Assigned:</strong> ${escapeHtml(d.assigned_employee || '-')}${d.assigned_agent ? ` / ${escapeHtml(d.assigned_agent)}` : ''}</div>
+                        </div>
+                    </div>
+
+                    ${printableSection('Application Info', [
+                        { label: 'Created Under', value: d.created_under },
+                        { label: 'Assigned By', value: d.assigned_by },
+                        { label: 'Created At', value: d.created_at },
+                        { label: 'Updated At', value: d.updated_at },
+                    ])}
+
+                    ${printableSection('Customer Details', [
+                        { label: 'Name', value: d.full_name },
+                        { label: 'Mobile', value: d.mobile_number },
+                        { label: 'Alternate Mobile', value: d.alternate_mobile },
+                        { label: 'Email', value: d.email },
+                        { label: 'Father Name', value: d.father_name },
+                        { label: 'Mother Name', value: d.mother_name },
+                        { label: 'Date of Birth', value: d.date_of_birth },
+                        { label: 'Gender', value: d.gender },
+                        { label: 'Marital Status', value: d.marital_status },
+                        { label: 'Permanent Address', value: d.permanent_address },
+                        { label: 'Current Address', value: d.current_address },
+                        { label: 'City', value: d.city },
+                        { label: 'State', value: d.state },
+                        { label: 'PIN Code', value: d.pin_code },
+                    ])}
+
+                    ${printableSection('Occupation & Income', [
+                        { label: 'Occupation', value: d.occupation },
+                        { label: 'Date of Joining', value: d.employment_date },
+                        { label: 'Experience (Years)', value: d.years_of_experience },
+                        { label: 'Additional Income', value: d.additional_income },
+                        { label: 'Extra Income Details', value: d.extra_income_details, full: true },
+                    ])}
+
+                    ${printableSection('Loan Request', [
+                        { label: 'Loan Type', value: d.loan_type },
+                        { label: 'Loan Amount', value: printableMoney(d.loan_amount) },
+                        { label: 'Tenure Months', value: d.tenure_months },
+                        { label: 'Interest Rate', value: d.interest_rate !== '-' && d.interest_rate !== null && d.interest_rate !== undefined ? `${d.interest_rate}%` : '-' },
+                        { label: 'EMI', value: printableMoney(d.emi) },
+                        { label: 'Loan Purpose', value: d.loan_purpose, full: true },
+                    ])}
+
+                    ${printableSection('Bank & Identity', [
+                        { label: 'CIBIL Score', value: d.cibil_score },
+                        { label: 'Aadhar Number', value: d.aadhar_number },
+                        { label: 'PAN Number', value: d.pan_number },
+                        { label: 'Bank Name', value: d.bank_name },
+                        { label: 'Account Number', value: d.account_number },
+                        { label: 'IFSC Code', value: d.ifsc_code },
+                        { label: 'Bank Type', value: d.bank_type },
+                        { label: 'SM Name', value: d.sm_name },
+                        { label: 'Leader Name', value: remarkMeta.leaderName },
+                        { label: 'SM Phone', value: d.sm_phone_number },
+                        { label: 'SM Email', value: d.sm_email, full: true },
+                        { label: 'SM Sign', value: d.is_sm_signed ? `Signed (${d.sm_signed_at || '-'})` : 'Pending' },
+                        { label: 'Bank Remark', value: remarkMeta.remark, full: true },
+                    ])}
+
+                    ${printableSection('Co-applicant & Guarantor', [
+                        { label: 'Co-applicant Name', value: d.co_applicant_name },
+                        { label: 'Co-applicant Phone', value: d.co_applicant_phone },
+                        { label: 'Co-applicant Email', value: d.co_applicant_email },
+                        { label: 'Guarantor Name', value: d.guarantor_name },
+                        { label: 'Guarantor Phone', value: d.guarantor_phone },
+                        { label: 'Guarantor Email', value: d.guarantor_email },
+                    ])}
+
+                    ${printableSection('Remarks', [
+                        { label: 'Internal Remark', value: d.remarks, full: true },
+                    ])}
+
+                    ${extraDetails.length ? `
+                        <section class="print-section">
+                            <h3>Captured Form Details</h3>
+                            <div class="print-extra-grid">
+                                ${extraDetails.map((row) => `
+                                    <div class="print-cell">
+                                        <div class="print-label">${printableValue(row.label)}</div>
+                                        <div class="print-value">${printableValue(row.value)}</div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </section>
+                    ` : ''}
+
+                    ${printableTableSection('Documents', ['Document', 'Source', 'Uploaded', 'File'], documentRows)}
+                    ${printableTableSection('Status History', ['From', 'To', 'By', 'Date', 'Remark'], historyRows)}
                 </div>
             </body>
         </html>

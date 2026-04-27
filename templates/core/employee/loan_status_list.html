@@ -461,11 +461,17 @@ function renderLoansTable(loans) {
                                              ? `<a href="/employee/loan/${l.id}/detail/" class="btn btn-sm btn-warning">Edit</a>`
                                              : (l.status === 'rejected'
                                                  ? `<a href="/employee/loan/${l.id}/detail/" class="btn btn-sm btn-success">View</a>`
-                                                 : `
-                                                     <a href="/employee/loan/${l.id}/detail/" class="btn btn-sm btn-success">View</a>
-                                                     <button class="btn btn-sm btn-warning" type="button" onclick="openEditLoanModal(${l.id})">Edit</button>
-                                                     <a href="/employee/loan/${l.id}/detail/" class="btn btn-sm btn-outline-primary">Download</a>
-                                                 `
+                                                 : (l.status === 'disbursed'
+                                                     ? `
+                                                         <a href="/employee/loan/${l.id}/detail/" class="btn btn-sm btn-success">View</a>
+                                                         <a href="/employee/loan/${l.id}/detail/" class="btn btn-sm btn-outline-primary">Download</a>
+                                                     `
+                                                     : `
+                                                         <a href="/employee/loan/${l.id}/detail/" class="btn btn-sm btn-success">View</a>
+                                                         <button class="btn btn-sm btn-warning" type="button" onclick="openEditLoanModal(${l.id})">Edit</button>
+                                                         <a href="/employee/loan/${l.id}/detail/" class="btn btn-sm btn-outline-primary">Download</a>
+                                                     `
+                                                 )
                                              )
                                          )
                                      }

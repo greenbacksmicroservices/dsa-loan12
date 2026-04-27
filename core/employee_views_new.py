@@ -297,50 +297,81 @@ def employee_all_loans_api(request):
                 if related_app:
                     linked_application_ids.add(related_app.id)
 
-            workflow_pending_rows = []
-            if status_filter in ['', follow_up_pending_label]:
-                workflow_pending_qs = LoanApplication.objects.filter(
-                    assigned_employee=request.user,
-                    status__in=['New Entry', 'Waiting for Processing'],
-                    approval_notes__icontains=follow_up_pending_text,
-                ).select_related('applicant', 'assigned_agent').exclude(id__in=linked_application_ids).order_by('-updated_at', '-created_at')
+            workflow_status_reverse_map = {
+                'New Entry': 'new_entry',
+                'Waiting for Processing': 'waiting',
+                'Required Follow-up': 'follow_up',
+                'Approved': 'approved',
+                'Rejected': 'rejected',
+                'Disbursed': 'disbursed',
+            }
+            workflow_rows = []
+            workflow_only_qs = LoanApplication.objects.filter(
+                assigned_employee=request.user
+            ).select_related('applicant', 'assigned_agent').exclude(id__in=linked_application_ids).order_by('-updated_at', '-created_at')
 
-                search_lower = search.lower() if search else ''
-                for app in workflow_pending_qs:
-                    applicant = app.applicant
-                    loan_identifier = f'APP-{app.id:06d}'
-                    name_value = applicant.full_name or ''
-                    mobile_value = applicant.mobile or ''
-                    email_value = applicant.email or ''
-                    if search_lower:
-                        if (
-                            search_lower not in name_value.lower()
-                            and search_lower not in mobile_value.lower()
-                            and search_lower not in email_value.lower()
-                            and search_lower not in loan_identifier.lower()
-                        ):
-                            continue
+            search_lower = search.lower() if search else ''
+            follow_up_pending_marker = follow_up_pending_text.lower()
+            for app in workflow_only_qs:
+                applicant = app.applicant
+                loan_identifier = f'APP-{app.id:06d}'
+                name_value = applicant.full_name or ''
+                mobile_value = applicant.mobile or ''
+                email_value = applicant.email or ''
 
-                    submitted_by = app.assigned_agent.name if app.assigned_agent else 'Unknown'
-                    workflow_pending_rows.append({
-                        'id': app.id,
-                        'loan_id': loan_identifier,
-                        'applicant_name': name_value or 'N/A',
-                        'mobile': mobile_value,
-                        'loan_type': applicant.loan_type or 'N/A',
-                        'loan_amount': float(applicant.loan_amount) if applicant.loan_amount else 0,
-                        'tenure_months': applicant.tenure_months or 0,
-                        'remarks': app.approval_notes or app.rejection_reason or '',
-                        'submitted_by': submitted_by,
-                        'assigned_date': app.assigned_at.strftime('%Y-%m-%d') if app.assigned_at else '-',
-                        'created_date': app.created_at.strftime('%Y-%m-%d') if app.created_at else '-',
-                        'created_time': app.created_at.strftime('%H:%M') if app.created_at else '',
-                        'status': follow_up_pending_label,
-                        'status_display': 'Follow Up',
-                        'follow_up_pending': True,
-                        'entity_type': 'application',
-                        '_sort_ts': app.updated_at or app.created_at,
-                    })
+                if search_lower:
+                    if (
+                        search_lower not in name_value.lower()
+                        and search_lower not in mobile_value.lower()
+                        and search_lower not in email_value.lower()
+                        and search_lower not in loan_identifier.lower()
+                    ):
+                        continue
+
+                is_follow_up_pending = (
+                    app.status in ['New Entry', 'Waiting for Processing']
+                    and follow_up_pending_marker in str(app.approval_notes or '').lower()
+                )
+                compact_status = (
+                    follow_up_pending_label
+                    if is_follow_up_pending
+                    else workflow_status_reverse_map.get(app.status, '')
+                )
+                if not compact_status:
+                    continue
+
+                if status_filter == follow_up_pending_label and not is_follow_up_pending:
+                    continue
+                if status_filter and status_filter != follow_up_pending_label:
+                    if compact_status != status_filter:
+                        continue
+                    if compact_status in ['new_entry', 'waiting'] and is_follow_up_pending:
+                        continue
+
+                submitted_by = app.assigned_agent.name if app.assigned_agent else 'Unknown'
+                workflow_rows.append({
+                    'id': app.id,
+                    'loan_id': loan_identifier,
+                    'applicant_name': name_value or 'N/A',
+                    'mobile': mobile_value,
+                    'loan_type': applicant.loan_type or 'N/A',
+                    'loan_amount': float(applicant.loan_amount) if applicant.loan_amount else 0,
+                    'tenure_months': applicant.tenure_months or 0,
+                    'remarks': app.approval_notes or app.rejection_reason or '',
+                    'submitted_by': submitted_by,
+                    'assigned_date': app.assigned_at.strftime('%Y-%m-%d') if app.assigned_at else '-',
+                    'created_date': app.created_at.strftime('%Y-%m-%d') if app.created_at else '-',
+                    'created_time': app.created_at.strftime('%H:%M') if app.created_at else '',
+                    'status': compact_status,
+                    'status_display': (
+                        'Follow Up'
+                        if is_follow_up_pending
+                        else ('Banking Processing' if app.status == 'Required Follow-up' else app.status)
+                    ),
+                    'follow_up_pending': is_follow_up_pending,
+                    'entity_type': 'application',
+                    '_sort_ts': app.updated_at or app.created_at,
+                })
 
             if status_filter == follow_up_pending_label:
                 legacy_loans = [loan for loan in legacy_loans if is_follow_up_pending_loan(loan)]
@@ -351,7 +382,6 @@ def employee_all_loans_api(request):
                         status_filter in ['new_entry', 'waiting'] and is_follow_up_pending_loan(loan)
                     )
                 ]
-                workflow_pending_rows = []
 
             legacy_rows = []
             for loan in legacy_loans:
@@ -385,7 +415,7 @@ def employee_all_loans_api(request):
                     '_sort_ts': loan.updated_at or loan.created_at,
                 })
 
-            combined_rows = legacy_rows + workflow_pending_rows
+            combined_rows = legacy_rows + workflow_rows
             combined_rows.sort(key=lambda row: row.get('_sort_ts') or timezone.now(), reverse=True)
 
             total_loans = len(combined_rows)
