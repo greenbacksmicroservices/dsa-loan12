@@ -23,7 +23,13 @@ from .serializers import (
     ApplicantDocumentSerializer, ApplicantSerializer, LoanApplicationSerializer
 )
 from .decorators import admin_required, employee_required
-from .forms import ApplicantStep1Form, ApplicantStep2Form, DocumentUploadForm
+from .forms import (
+    ApplicantStep1Form,
+    ApplicantStep2Form,
+    DocumentUploadForm,
+    EmployeeRegistrationStep1Form,
+    EmployeeResumeUploadForm,
+)
 from .permissions import IsAdminUser, IsEmployeeUser, IsAgentUser, IsLoanOwnerOrAdmin
 from .loan_sync import (
     extract_assignment_context,
@@ -233,11 +239,18 @@ def admin_all_employees(request):
     if request.user.role != 'admin':
         return redirect('dashboard')
     
-    employees = User.objects.filter(role='employee', is_active=True)
+    employees = User.objects.filter(role='employee', is_active=True).select_related(
+        'employee_profile',
+        'onboarding_profile',
+    ).order_by('-date_joined')
     
     # Count data for each employee
     employee_loans_count = {}
     employee_approved_count = {}
+    employee_creator_display = {}
+    employee_location_display = {}
+    pending_subadmin_lookup = {}
+    subadmin_ids = set()
     
     for employee in employees:
         employee_loans_count[employee.id] = Loan.objects.filter(assigned_employee=employee).count()
@@ -245,11 +258,67 @@ def admin_all_employees(request):
             assigned_employee=employee,
             status='approved'
         ).count()
+
+        onboarding = {}
+        if hasattr(employee, 'onboarding_profile') and employee.onboarding_profile:
+            onboarding = employee.onboarding_profile.data or {}
+
+        section1 = onboarding.get('section1') if isinstance(onboarding, dict) else {}
+        perm = (section1 or {}).get('permanent_address') or {}
+        city = (perm.get('city') or '').strip()
+        pin = (perm.get('pin_code') or '').strip()
+        district = (perm.get('district') or '').strip()
+
+        location_parts = []
+        if city:
+            location_parts.append(city)
+        if pin:
+            location_parts.append(f"PIN {pin}")
+        if district:
+            location_parts.append(f"District {district}")
+        employee_location_display[employee.id] = " | ".join(location_parts) if location_parts else '-'
+
+        creator_role = ''
+        creator_name = ''
+        meta = onboarding.get('_meta') if isinstance(onboarding, dict) else None
+        if isinstance(meta, dict):
+            creator_role = str(meta.get('created_by_role') or '').strip()
+            creator_name = str(meta.get('created_by_name') or '').strip()
+
+        if not creator_role or not creator_name:
+            notes = ''
+            profile = getattr(employee, 'employee_profile', None)
+            if profile and getattr(profile, 'notes', None):
+                notes = profile.notes
+            match = re.search(r'\[subadmin:(\d+)\]', str(notes or ''), flags=re.IGNORECASE)
+            if match:
+                subadmin_id = int(match.group(1))
+                pending_subadmin_lookup[employee.id] = subadmin_id
+                subadmin_ids.add(subadmin_id)
+            else:
+                employee_creator_display[employee.id] = 'Admin - System'
+                continue
+
+        if creator_role and creator_name:
+            employee_creator_display[employee.id] = f"{creator_role} - {creator_name}"
+
+    subadmin_map = {
+        user.id: user for user in User.objects.filter(id__in=list(subadmin_ids), role='subadmin').only('id', 'first_name', 'last_name', 'username')
+    }
+    for employee_id, subadmin_id in pending_subadmin_lookup.items():
+        subadmin = subadmin_map.get(subadmin_id)
+        if subadmin:
+            name = subadmin.get_full_name() or subadmin.username or 'Partner'
+            employee_creator_display[employee_id] = f"Partner - {name}"
+        else:
+            employee_creator_display[employee_id] = 'Admin - System'
     
     context = {
         'employees': employees,
         'employee_loans_count': employee_loans_count,
         'employee_approved_count': employee_approved_count,
+        'employee_creator_display': employee_creator_display,
+        'employee_location_display': employee_location_display,
     }
     
     return render(request, 'core/admin/employees_list.html', context)
@@ -1444,154 +1513,421 @@ def dashboard_stats(request):
 # ==================== REGISTRATION WIZARD VIEWS ====================
 
 def registration_wizard(request, step=1, role=None):
-    """Multi-step registration wizard for Employee/Agent"""
-    from .forms import ApplicantStep1Form, ApplicantStep2Form, DocumentUploadForm
-    
-    session_key = f'applicant_{role}'
-    
-    # Get or create applicant data in session
+    """Multi-step registration wizard for Employee/Channel Partner."""
+    valid_roles = {"employee", "agent"}
+    role_labels = {"employee": "Employee", "agent": "Channel Partner"}
+    bank_type_labels = {"current": "Current", "saving": "Saving", "cc": "CC", "od": "OD"}
+    success_message_text = "Application submitted successfully! Your application has been added to the New Entries list."
+
+    normalized_role = (role or "").strip().lower()
+    if normalized_role not in valid_roles:
+        normalized_role = "employee"
+
+    is_employee = normalized_role == "employee"
+    total_steps = 3 if is_employee else 4
+    step = max(1, min(int(step or 1), total_steps))
+    progress = int((step / total_steps) * 100)
+
+    if request.method == "GET" and request.GET.get("submitted") == "1":
+        return render(
+            request,
+            "core/registration_wizard.html",
+            {
+                "show_success_message": True,
+                "success_message_text": success_message_text,
+                "success_redirect_url": "/admin-login/",
+                "step": step,
+                "role": normalized_role,
+                "role_display": role_labels.get(normalized_role, normalized_role.title()),
+                "progress": progress,
+                "is_employee_registration": is_employee,
+                "step_labels": ["Details", "Resume", "Review"] if is_employee else ["Details", "Bank", "Documents", "Review"],
+            },
+        )
+
+    session_key = f"applicant_{normalized_role}"
     applicant_data = request.session.get(session_key, {})
-    
-    if request.method == 'POST':
-        if step == 1:
-            form = ApplicantStep1Form(request.POST)
-            if form.is_valid():
-                # Save Step 1 data to session
-                applicant_data = {
-                    'role': form.cleaned_data['role'],
-                    'full_name': form.cleaned_data['full_name'],
-                    'username': form.cleaned_data['username'],
-                    'mobile': form.cleaned_data['mobile'],
-                    'email': form.cleaned_data['email'],
-                    'city': form.cleaned_data['city'],
-                    'state': form.cleaned_data['state'],
-                    'pin_code': form.cleaned_data['pin_code'],
-                    'gender': form.cleaned_data['gender'],
-                }
-                request.session[session_key] = applicant_data
-                return redirect(f'/register/{role}/step/2/')
-        
-        elif step == 2:
-            form = ApplicantStep2Form(request.POST)
-            if form.is_valid():
-                # Save Step 2 data to session
-                applicant_data.update({
-                    'bank_name': form.cleaned_data['bank_name'],
-                    'bank_type': form.cleaned_data['bank_type'],
-                    'account_number': form.cleaned_data['account_number'],
-                    'ifsc_code': form.cleaned_data['ifsc_code'],
-                })
-                request.session[session_key] = applicant_data
-                return redirect(f'/register/{role}/step/3/')
-        
-        elif step == 3:
-            form = DocumentUploadForm(request.POST, request.FILES)
-            if form.is_valid():
-                try:
-                    # Create Applicant
-                    applicant = Applicant.objects.create(**applicant_data)
-                    
-                    # Create LoanApplication
-                    loan_app = LoanApplication.objects.create(applicant=applicant)
-                    
-                    # Save documents
-                    document_mapping = {
-                        'photo': 'photo',
-                        'pan_front': 'pan_front',
-                        'pan_back': 'pan_back',
-                        'aadhaar_front': 'aadhaar_front',
-                        'aadhaar_back': 'aadhaar_back',
-                        'permanent_address': 'permanent_address',
-                        'current_address': 'current_address',
-                        'salary_slip': 'salary_slip',
-                        'bank_statement': 'bank_statement',
-                        'form_16': 'form_16',
-                        'service_book': 'service_book',
+    required_document_types = {"photo", "pan_front", "aadhaar_front"}
+    excluded_extra_types = required_document_types | {"resume"}
+    extra_document_choices = [
+        (value, label)
+        for value, label in ApplicantDocument.DOCUMENT_TYPE_CHOICES
+        if value not in excluded_extra_types
+    ]
+    allowed_extra_document_types = {value for value, _label in extra_document_choices}
+
+    def _build_unique_applicant_username(base_value):
+        raw = str(base_value or "").strip().lower()
+        sanitized = re.sub(r"[^a-z0-9_]", "", raw)
+        base = sanitized or "applicant"
+        candidate = base[:80]
+        counter = 1
+        while Applicant.objects.filter(username=candidate).exists():
+            suffix = str(counter)
+            candidate = f"{base[: max(1, 80 - len(suffix))]}{suffix}"
+            counter += 1
+        return candidate
+
+    if request.method == "POST":
+        if is_employee:
+            if step == 1:
+                form = EmployeeRegistrationStep1Form(request.POST)
+                if form.is_valid():
+                    total_experience_years = form.cleaned_data.get("total_experience_years")
+                    current_salary = form.cleaned_data.get("current_salary")
+                    expected_salary = form.cleaned_data.get("expected_salary")
+                    applicant_data = {
+                        "role": normalized_role,
+                        "full_name": form.cleaned_data.get("full_name"),
+                        "mobile": form.cleaned_data.get("mobile"),
+                        "email": form.cleaned_data.get("email"),
+                        "city": form.cleaned_data.get("city"),
+                        "state": form.cleaned_data.get("state"),
+                        "pin_code": form.cleaned_data.get("pin_code"),
+                        "gender": form.cleaned_data.get("gender"),
+                        "current_job_title": form.cleaned_data.get("current_job_title"),
+                        "total_experience_years": str(total_experience_years) if total_experience_years is not None else None,
+                        "current_salary": str(current_salary) if current_salary is not None else None,
+                        "expected_salary": str(expected_salary) if expected_salary is not None else None,
+                        "notice_period": form.cleaned_data.get("notice_period"),
                     }
-                    
-                    for field_name, doc_type in document_mapping.items():
-                        if field_name in request.FILES:
-                            ApplicantDocument.objects.create(
-                                loan_application=loan_app,
-                                document_type=doc_type,
-                                file=request.FILES[field_name],
-                                is_required=field_name in ['photo', 'pan_front', 'pan_back', 'aadhaar_front', 'aadhaar_back', 'permanent_address']
-                            )
-                    
-                    # Clear session
+                    applicant_data["username"] = _build_unique_applicant_username(
+                        applicant_data.get("mobile")
+                        or applicant_data.get("email")
+                        or applicant_data.get("full_name")
+                    )
+                    request.session[session_key] = applicant_data
+                    request.session.modified = True
+                    return redirect(f"/register/{normalized_role}/step/2/")
+
+            elif step == 2:
+                if not applicant_data:
+                    return redirect(f"/register/{normalized_role}/step/1/")
+                form = EmployeeResumeUploadForm(request.POST, request.FILES)
+                if form.is_valid():
+                    try:
+                        applicant_payload = {
+                            "role": applicant_data.get("role", normalized_role),
+                            "full_name": applicant_data.get("full_name"),
+                            "username": applicant_data.get("username")
+                            or _build_unique_applicant_username(
+                                applicant_data.get("mobile") or applicant_data.get("full_name")
+                            ),
+                            "mobile": applicant_data.get("mobile"),
+                            "email": applicant_data.get("email"),
+                            "city": applicant_data.get("city"),
+                            "state": applicant_data.get("state"),
+                            "pin_code": applicant_data.get("pin_code"),
+                            "gender": applicant_data.get("gender"),
+                            "current_job_title": applicant_data.get("current_job_title"),
+                            "total_experience_years": applicant_data.get("total_experience_years"),
+                            "current_salary": applicant_data.get("current_salary"),
+                            "expected_salary": applicant_data.get("expected_salary"),
+                            "notice_period": applicant_data.get("notice_period"),
+                        }
+                        applicant = Applicant.objects.create(**applicant_payload)
+                        loan_app = LoanApplication.objects.create(applicant=applicant)
+                        ApplicantDocument.objects.create(
+                            loan_application=loan_app,
+                            document_type="resume",
+                            file=form.cleaned_data["resume"],
+                            is_required=True,
+                        )
+                        return redirect(f"/register/{normalized_role}/step/3/?applicant_id={applicant.id}")
+                    except Exception as e:
+                        if "username" in str(e).lower():
+                            messages.error(request, "Username already exists. Please try again.")
+                        else:
+                            messages.error(request, f"Error during registration: {str(e)}")
+                        return redirect(f"/register/{normalized_role}/step/1/")
+
+            elif step == 3:
+                applicant_id = request.GET.get("applicant_id") or request.POST.get("applicant_id")
+                if not applicant_id:
+                    return redirect(f"/register/{normalized_role}/step/1/")
+
+                try:
+                    applicant = Applicant.objects.get(id=applicant_id, role=normalized_role)
+                except Applicant.DoesNotExist:
+                    return redirect(f"/register/{normalized_role}/step/1/")
+
+                loan_app = applicant.loan_application
+                loan_app.status = "New Entry"
+                loan_app.save()
+
+                ActivityLog.objects.create(
+                    action="loan_added",
+                    description=f"New {role_labels.get(applicant.role, applicant.role.title())} application from {applicant.full_name}",
+                )
+
+                if session_key in request.session:
                     del request.session[session_key]
                     request.session.modified = True
-                    
-                    return redirect(f'/register/{role}/step/4/?applicant_id={applicant.id}')
-                
-                except Exception as e:
-                    # Handle duplicate username or other errors
-                    if 'username' in str(e).lower():
-                        messages.error(request, 'Username already exists. Please choose a different username.')
-                    else:
-                        messages.error(request, f'Error during registration: {str(e)}')
-                    # Go back to step 1 to re-enter data
-                    return redirect(f'/register/{role}/step/1/')
-        
-        elif step == 4:
-            applicant_id = request.GET.get('applicant_id')
-            applicant = Applicant.objects.get(id=applicant_id)
-            
-            # Mark as submitted
-            loan_app = applicant.loan_application
-            loan_app.status = 'New Entry'
-            loan_app.save()
-            
-            # Log activity
-            ActivityLog.objects.create(
-                action='loan_added',
-                description=f"New {applicant.role.title()} application from {applicant.full_name}",
-            )
-            
-            messages.success(request, 'Application submitted successfully! Your application has been added to the New Entries list.')
-            
-            # Clear session if it exists
-            if session_key in request.session:
-                del request.session[session_key]
-                request.session.modified = True
-            
-            return redirect('new_entries')
-    
-    else:
-        if step == 1:
-            form = ApplicantStep1Form(initial={'role': role})
-        elif step == 2:
-            form = ApplicantStep2Form(initial=applicant_data)
-        elif step == 3:
-            form = DocumentUploadForm()
-        elif step == 4:
-            # Get applicant from URL parameter
-            applicant_id = request.GET.get('applicant_id')
-            if applicant_id:
-                applicant = Applicant.objects.get(id=applicant_id)
-                applicant_data = {
-                    'full_name': applicant.full_name,
-                    'role': applicant.role,
-                    'mobile': applicant.mobile,
-                    'email': applicant.email,
-                    'city': applicant.city,
-                    'state': applicant.state,
-                    'bank_name': applicant.bank_name,
-                    'account_number': applicant.account_number,
-                }
-            form = None
+
+                return redirect(f"/register/{normalized_role}/step/3/?submitted=1")
+
         else:
-            form = None
-    
+            if step == 1:
+                form = ApplicantStep1Form(request.POST)
+                if form.is_valid():
+                    applicant_data = {
+                        "role": normalized_role,
+                        "full_name": form.cleaned_data.get("full_name"),
+                        "username": form.cleaned_data.get("username"),
+                        "mobile": form.cleaned_data.get("mobile"),
+                        "email": form.cleaned_data.get("email"),
+                        "city": form.cleaned_data.get("city"),
+                        "state": form.cleaned_data.get("state"),
+                        "pin_code": form.cleaned_data.get("pin_code"),
+                        "gender": form.cleaned_data.get("gender"),
+                    }
+                    request.session[session_key] = applicant_data
+                    request.session.modified = True
+                    return redirect(f"/register/{normalized_role}/step/2/")
+
+            elif step == 2:
+                if not applicant_data:
+                    return redirect(f"/register/{normalized_role}/step/1/")
+                form = ApplicantStep2Form(request.POST)
+                if form.is_valid():
+                    applicant_data.update(
+                        {
+                            "bank_name": form.cleaned_data.get("bank_name"),
+                            "account_number": form.cleaned_data.get("bank_account_number"),
+                            "ifsc_code": form.cleaned_data.get("ifsc_code"),
+                            "bank_type": form.cleaned_data.get("bank_type"),
+                        }
+                    )
+                    request.session[session_key] = applicant_data
+                    request.session.modified = True
+                    return redirect(f"/register/{normalized_role}/step/3/")
+
+            elif step == 3:
+                if not applicant_data:
+                    return redirect(f"/register/{normalized_role}/step/1/")
+                form = DocumentUploadForm(request.POST, request.FILES)
+                if form.is_valid():
+                    optional_doc_types = request.POST.getlist("extra_document_type[]")
+                    optional_doc_files = request.FILES.getlist("extra_document_file[]")
+                    selected_types = set(required_document_types)
+                    optional_documents = []
+                    optional_rows = max(len(optional_doc_types), len(optional_doc_files))
+
+                    for idx in range(optional_rows):
+                        doc_type = (optional_doc_types[idx] if idx < len(optional_doc_types) else "").strip()
+                        doc_file = optional_doc_files[idx] if idx < len(optional_doc_files) else None
+                        if not doc_type and not doc_file:
+                            continue
+                        if doc_type and not doc_file:
+                            form.add_error(None, f"Please upload a file for additional document row {idx + 1}.")
+                            continue
+                        if doc_file and not doc_type:
+                            form.add_error(None, f"Please select document type for additional document row {idx + 1}.")
+                            continue
+                        if doc_type not in allowed_extra_document_types:
+                            form.add_error(None, f"Invalid document type selected in row {idx + 1}.")
+                            continue
+                        if doc_type in selected_types:
+                            form.add_error(None, f"Duplicate document type selected in row {idx + 1}.")
+                            continue
+                        selected_types.add(doc_type)
+                        optional_documents.append((doc_type, doc_file))
+
+                    if not form.errors:
+                        try:
+                            applicant_payload = {
+                                "role": applicant_data.get("role", normalized_role),
+                                "full_name": applicant_data.get("full_name"),
+                                "username": applicant_data.get("username"),
+                                "mobile": applicant_data.get("mobile"),
+                                "email": applicant_data.get("email"),
+                                "city": applicant_data.get("city"),
+                                "state": applicant_data.get("state"),
+                                "pin_code": applicant_data.get("pin_code"),
+                                "gender": applicant_data.get("gender"),
+                                "bank_name": applicant_data.get("bank_name"),
+                                "account_number": applicant_data.get("account_number"),
+                                "ifsc_code": applicant_data.get("ifsc_code"),
+                                "bank_type": applicant_data.get("bank_type"),
+                            }
+                            applicant = Applicant.objects.create(**applicant_payload)
+                            loan_app = LoanApplication.objects.create(applicant=applicant)
+
+                            ApplicantDocument.objects.create(
+                                loan_application=loan_app,
+                                document_type="photo",
+                                file=form.cleaned_data["photo"],
+                                is_required=True,
+                            )
+                            ApplicantDocument.objects.create(
+                                loan_application=loan_app,
+                                document_type="pan_front",
+                                file=form.cleaned_data["pan_card"],
+                                is_required=True,
+                            )
+                            ApplicantDocument.objects.create(
+                                loan_application=loan_app,
+                                document_type="aadhaar_front",
+                                file=form.cleaned_data["aadhaar_card"],
+                                is_required=True,
+                            )
+
+                            for doc_type, doc_file in optional_documents:
+                                ApplicantDocument.objects.create(
+                                    loan_application=loan_app,
+                                    document_type=doc_type,
+                                    file=doc_file,
+                                    is_required=False,
+                                )
+
+                            return redirect(f"/register/{normalized_role}/step/4/?applicant_id={applicant.id}")
+                        except Exception as e:
+                            if "username" in str(e).lower():
+                                messages.error(request, "Username already exists. Please choose a different username.")
+                            else:
+                                messages.error(request, f"Error during registration: {str(e)}")
+                            return redirect(f"/register/{normalized_role}/step/1/")
+
+            elif step == 4:
+                applicant_id = request.GET.get("applicant_id") or request.POST.get("applicant_id")
+                if not applicant_id:
+                    return redirect(f"/register/{normalized_role}/step/1/")
+
+                try:
+                    applicant = Applicant.objects.get(id=applicant_id, role=normalized_role)
+                except Applicant.DoesNotExist:
+                    return redirect(f"/register/{normalized_role}/step/1/")
+
+                loan_app = applicant.loan_application
+                loan_app.status = "New Entry"
+                loan_app.save()
+
+                ActivityLog.objects.create(
+                    action="loan_added",
+                    description=f"New {role_labels.get(applicant.role, applicant.role.title())} application from {applicant.full_name}",
+                )
+
+                if session_key in request.session:
+                    del request.session[session_key]
+                    request.session.modified = True
+
+                return redirect(f"/register/{normalized_role}/step/4/?submitted=1")
+
+    else:
+        if is_employee:
+            if step == 1:
+                form = EmployeeRegistrationStep1Form(initial=applicant_data or None)
+            elif step == 2:
+                if not applicant_data:
+                    return redirect(f"/register/{normalized_role}/step/1/")
+                form = EmployeeResumeUploadForm()
+            elif step == 3:
+                applicant_id = request.GET.get("applicant_id")
+                if not applicant_id:
+                    return redirect(f"/register/{normalized_role}/step/1/")
+                try:
+                    applicant = Applicant.objects.get(id=applicant_id, role=normalized_role)
+                except Applicant.DoesNotExist:
+                    return redirect(f"/register/{normalized_role}/step/1/")
+                docs = applicant.loan_application.documents.all().order_by("uploaded_at")
+                applicant_data = {
+                    "id": applicant.id,
+                    "full_name": applicant.full_name,
+                    "mobile": applicant.mobile,
+                    "email": applicant.email,
+                    "city": applicant.city,
+                    "state": applicant.state,
+                    "pin_code": applicant.pin_code,
+                    "gender": applicant.get_gender_display(),
+                    "current_job_title": applicant.current_job_title,
+                    "total_experience_years": applicant.total_experience_years,
+                    "current_salary": applicant.current_salary,
+                    "expected_salary": applicant.expected_salary,
+                    "notice_period": applicant.notice_period,
+                    "documents": [
+                        {
+                            "document_type": doc.document_type,
+                            "document_type_display": doc.get_document_type_display(),
+                        }
+                        for doc in docs
+                    ],
+                }
+                form = None
+            else:
+                form = None
+        else:
+            if step == 1:
+                form = ApplicantStep1Form(initial=applicant_data or None)
+            elif step == 2:
+                if not applicant_data:
+                    return redirect(f"/register/{normalized_role}/step/1/")
+                form = ApplicantStep2Form(
+                    initial={
+                        "bank_name": applicant_data.get("bank_name", ""),
+                        "bank_account_number": applicant_data.get("account_number", ""),
+                        "ifsc_code": applicant_data.get("ifsc_code", ""),
+                        "bank_type": applicant_data.get("bank_type", ""),
+                    }
+                )
+            elif step == 3:
+                if not applicant_data:
+                    return redirect(f"/register/{normalized_role}/step/1/")
+                form = DocumentUploadForm()
+            elif step == 4:
+                applicant_id = request.GET.get("applicant_id")
+                if not applicant_id:
+                    return redirect(f"/register/{normalized_role}/step/1/")
+                try:
+                    applicant = Applicant.objects.get(id=applicant_id, role=normalized_role)
+                except Applicant.DoesNotExist:
+                    return redirect(f"/register/{normalized_role}/step/1/")
+                docs = applicant.loan_application.documents.all().order_by("uploaded_at")
+                applicant_data = {
+                    "id": applicant.id,
+                    "full_name": applicant.full_name,
+                    "role": applicant.role,
+                    "role_display": role_labels.get(applicant.role, applicant.role.title()),
+                    "username": applicant.username,
+                    "mobile": applicant.mobile,
+                    "email": applicant.email,
+                    "city": applicant.city,
+                    "state": applicant.state,
+                    "pin_code": applicant.pin_code,
+                    "gender": applicant.get_gender_display(),
+                    "bank_name": applicant.bank_name,
+                    "account_number": applicant.account_number,
+                    "ifsc_code": applicant.ifsc_code,
+                    "bank_type": applicant.bank_type,
+                    "bank_type_display": bank_type_labels.get(applicant.bank_type, applicant.bank_type or "-"),
+                    "documents": [
+                        {
+                            "document_type": doc.document_type,
+                            "document_type_display": doc.get_document_type_display(),
+                        }
+                        for doc in docs
+                    ],
+                }
+                form = None
+            else:
+                form = None
+
     context = {
-        'form': form,
-        'step': step,
-        'role': role,
-        'progress': (step - 1) * 25,
-        'applicant_data': applicant_data,
+        "form": form,
+        "step": step,
+        "role": normalized_role,
+        "role_display": role_labels.get(normalized_role, normalized_role.title()),
+        "progress": progress,
+        "applicant_data": applicant_data,
+        "extra_document_choices": extra_document_choices,
+        "is_employee_registration": is_employee,
+        "is_review_step": (is_employee and step == 3) or ((not is_employee) and step == 4),
+        "step_labels": ["Details", "Resume", "Review"] if is_employee else ["Details", "Bank", "Documents", "Review"],
+        "show_success_message": False,
+        "success_message_text": success_message_text,
+        "success_redirect_url": "/admin-login/",
     }
-    
-    return render(request, 'core/registration_wizard.html', context)
+
+    return render(request, "core/registration_wizard.html", context)
 
 
 def new_entries(request):

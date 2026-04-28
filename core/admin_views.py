@@ -17,6 +17,7 @@ from .decorators import admin_required
 from .loan_sync import extract_assignment_context, role_label, find_related_loan, find_related_loan_application
 from .onboarding_utils import collect_onboarding_payload, collect_onboarding_documents, collect_onboarding_payload_from_source
 from .followup_utils import auto_move_overdue_to_follow_up
+from .upload_limits import validate_loan_document_batch
 
 logger = logging.getLogger(__name__)
 
@@ -1680,6 +1681,10 @@ def admin_add_loan(request):
                 return 'other' if index == 1 else f'other_{index}'
 
             documents_files = request.FILES.getlist('document_file[]')
+            is_valid_upload, upload_error = validate_loan_document_batch(documents_files)
+            if not is_valid_upload:
+                messages.error(request, upload_error)
+                return redirect(self_add_loan_route)
             document_name_sequence = expanded_document_names if len(expanded_document_names) >= len(documents_files) else document_names
             for idx, uploaded_file in enumerate(documents_files, start=1):
                 if not uploaded_file:

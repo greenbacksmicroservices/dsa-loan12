@@ -2271,6 +2271,13 @@ function downloadLoanDetailsA4() {
         </tr>
     `).join('') : '<tr><td colspan="5">No status history found</td></tr>';
 
+    const extraRowsHtml = extraDetails.length ? extraDetails.map((row) => `
+        <div class="print-cell">
+            <div class="print-label">${printableValue(row.label || '-')}</div>
+            <div class="print-value">${printableValue(row.value || '-')}</div>
+        </div>
+    `).join('') : '';
+
     printWindow.document.write(`
         <html>
             <head>

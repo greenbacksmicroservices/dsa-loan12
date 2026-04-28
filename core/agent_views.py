@@ -17,6 +17,7 @@ from .models import Loan, Agent, Complaint, User, LoanDocument, LoanStatusHistor
 from .loan_sync import sync_loan_to_application
 from .followup_utils import auto_move_overdue_to_follow_up
 from .role_decorators import agent_required
+from .upload_limits import validate_loan_document_batch
 
 
 def get_agent_loan_queryset(user, agent):
@@ -349,6 +350,10 @@ def agent_add_loan(request):
             # Admin's add-loan flow uses `document_name[]` + `document_file[]`; we do the same here
             # so that agent-created loans also show documents in view pages.
             documents_files = request.FILES.getlist('document_file[]')
+            is_valid_upload, upload_error = validate_loan_document_batch(documents_files)
+            if not is_valid_upload:
+                messages.error(request, upload_error)
+                return redirect('agent_add_loan')
             document_name_sequence = expanded_document_names if len(expanded_document_names) >= len(documents_files) else document_names
 
             if documents_files:

@@ -147,6 +147,12 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
+# Upload sizing
+# - App-level validation enforces 3MB per document and ~50MB total for add-loan forms.
+# - These limits keep Django request parsing above that threshold to avoid premature rejection.
+DATA_UPLOAD_MAX_MEMORY_SIZE = config('DATA_UPLOAD_MAX_MEMORY_SIZE', default=60 * 1024 * 1024, cast=int)
+FILE_UPLOAD_MAX_MEMORY_SIZE = config('FILE_UPLOAD_MAX_MEMORY_SIZE', default=3 * 1024 * 1024, cast=int)
+
 # Security settings for production deployment
 USE_HTTPS = env_bool('USE_HTTPS', default=not DEBUG)
 SECURE_SSL_REDIRECT = env_bool('SECURE_SSL_REDIRECT', default=USE_HTTPS)
@@ -265,4 +271,3 @@ CELERY_BEAT_SCHEDULE = {
 #         'schedule': 300,  # Every 5 minutes
 #     },
 # }
-

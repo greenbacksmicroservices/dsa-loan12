@@ -434,14 +434,16 @@
                     <tr>
                         <th style="width: 6%;">ID</th>
                         <th style="width: 8%;">Photo</th>
-                        <th style="width: 15%;">Name</th>
-                        <th style="width: 18%;">Email</th>
-                        <th style="width: 12%;">Phone</th>
-                        <th style="width: 10%;">Status</th>
-                        <th style="width: 8%;">Assigned</th>
-                        <th style="width: 8%;">Approved</th>
+                        <th style="width: 12%;">Name</th>
+                        <th style="width: 15%;">Email</th>
+                        <th style="width: 10%;">Phone</th>
+                        <th style="width: 11%;">Location</th>
+                        <th style="width: 12%;">Created Under</th>
+                        <th style="width: 8%;">Status</th>
+                        <th style="width: 6%;">Assigned</th>
+                        <th style="width: 6%;">Approved</th>
                         <th style="width: 8%;">Joined</th>
-                        <th style="width: 12%;">Actions</th>
+                        <th style="width: 10%;">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -464,6 +466,8 @@
                         </td>
                         <td><span style="color: #1f2937;">{{ employee.email|default:"-" }}</span></td>
                         <td><span style="color: #1f2937;">{{ employee.phone|default:"-" }}</span></td>
+                        <td><span class="date-text">{{ employee_location_display|get_item:employee.id|default:"-" }}</span></td>
+                        <td><span class="date-text">{{ employee_creator_display|get_item:employee.id|default:"Admin - System" }}</span></td>
                         <td>
                             <span class="employee-status-badge {% if employee.is_active %}status-active{% else %}status-inactive{% endif %}">
                                 {% if employee.is_active %}✓ Active{% else %}✗ Inactive{% endif %}
@@ -578,6 +582,10 @@
                             <input type="text" name="onb_perm_city" id="employeePermCity" placeholder="City">
                         </div>
                         <div class="form-group">
+                            <label>Permanent District</label>
+                            <input type="text" name="onb_perm_district" id="employeePermDistrict" placeholder="District">
+                        </div>
+                        <div class="form-group">
                             <label>Permanent PIN Code</label>
                             <input type="text" name="onb_perm_pin" id="employeePermPin" placeholder="PIN Code">
                         </div>
@@ -606,6 +614,10 @@
                         <div class="form-group">
                             <label>Present City</label>
                             <input type="text" name="onb_present_city" id="employeePresentCity" placeholder="City">
+                        </div>
+                        <div class="form-group">
+                            <label>Present District</label>
+                            <input type="text" name="onb_present_district" id="employeePresentDistrict" placeholder="District">
                         </div>
                         <div class="form-group">
                             <label>Present PIN Code</label>
@@ -1018,14 +1030,16 @@ function ensureEmployeesTable() {
                 <tr>
                     <th style="width: 6%;">ID</th>
                     <th style="width: 8%;">Photo</th>
-                    <th style="width: 15%;">Name</th>
-                    <th style="width: 18%;">Email</th>
-                    <th style="width: 12%;">Phone</th>
-                    <th style="width: 10%;">Status</th>
-                    <th style="width: 8%;">Assigned</th>
-                    <th style="width: 8%;">Approved</th>
+                    <th style="width: 12%;">Name</th>
+                    <th style="width: 15%;">Email</th>
+                    <th style="width: 10%;">Phone</th>
+                    <th style="width: 11%;">Location</th>
+                    <th style="width: 12%;">Created Under</th>
+                    <th style="width: 8%;">Status</th>
+                    <th style="width: 6%;">Assigned</th>
+                    <th style="width: 6%;">Approved</th>
                     <th style="width: 8%;">Joined</th>
-                    <th style="width: 12%;">Actions</th>
+                    <th style="width: 10%;">Actions</th>
                 </tr>
             </thead>
             <tbody></tbody>
@@ -1046,6 +1060,15 @@ function insertEmployeeRow(employee) {
     const name = escapeHtml(rawName);
     const email = escapeHtml(rawEmail || '-');
     const phone = escapeHtml(rawPhone || '-');
+    const city = String(employee.city || '').trim();
+    const pinCode = String(employee.pin_code || '').trim();
+    const district = String(employee.district || '').trim();
+    const locationParts = [];
+    if (city) locationParts.push(city);
+    if (pinCode && pinCode !== '-') locationParts.push(`PIN ${pinCode}`);
+    if (district) locationParts.push(`District ${district}`);
+    const location = escapeHtml(locationParts.length ? locationParts.join(' | ') : '-');
+    const createdUnder = escapeHtml(employee.created_under || 'Admin - System');
     const status = employee.status === 'active' ? 'active' : 'inactive';
     const statusLabel = status === 'active' ? '✓ Active' : '✗ Inactive';
     const createdAt = escapeHtml(employee.created_at || '-');
@@ -1067,6 +1090,8 @@ function insertEmployeeRow(employee) {
             </td>
             <td><span style="color: #1f2937;">${email}</span></td>
             <td><span style="color: #1f2937;">${phone}</span></td>
+            <td><span class="date-text">${location}</span></td>
+            <td><span class="date-text">${createdUnder}</span></td>
             <td>
                 <span class="employee-status-badge ${status === 'active' ? 'status-active' : 'status-inactive'}">
                     ${statusLabel}
@@ -1198,12 +1223,14 @@ function renderOnboardingHtml(onboarding, documents) {
                 ['Permanent Landmark', perm.landmark],
                 ['Permanent State', perm.state],
                 ['Permanent City', perm.city],
+                ['Permanent District', perm.district],
                 ['Permanent PIN', perm.pin_code],
                 ['Present Same as Permanent', pres.same_as_permanent ? 'Yes' : 'No'],
                 ['Present Address', pres.address],
                 ['Present Landmark', pres.landmark],
                 ['Present State', pres.state],
                 ['Present City', pres.city],
+                ['Present District', pres.district],
                 ['Present PIN', pres.pin_code],
             ])}
             ${renderOnboardingSection('SECTION 2: Occupation & Income Details', [
@@ -1308,6 +1335,10 @@ function renderEmployeeViewModal(employee, summary, customers, onboarding, docum
                     <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:10px; margin-bottom:18px;">
                         <div><strong>Phone:</strong> ${escapeHtml(employee.phone || '-')}</div>
                         <div><strong>Employee ID:</strong> ${escapeHtml(employee.employee_id || '-')}</div>
+                        <div><strong>City:</strong> ${escapeHtml(employee.city || '-')}</div>
+                        <div><strong>PIN:</strong> ${escapeHtml(employee.pin_code || '-')}</div>
+                        <div><strong>District:</strong> ${escapeHtml(employee.district || '-')}</div>
+                        <div><strong>Created Under:</strong> ${escapeHtml(employee.created_under || 'Admin - System')}</div>
                         <div><strong>Status:</strong> ${escapeHtml(employee.status || '-')}</div>
                         <div><strong>Assigned Apps:</strong> ${summary.total_assigned_applications || 0}</div>
                     </div>
@@ -1596,12 +1627,14 @@ if (employeePresentSame) {
         const permLandmark = document.getElementById('employeePermLandmark')?.value || '';
         const permState = document.getElementById('employeePermState')?.value || '';
         const permCity = document.getElementById('employeePermCity')?.value || '';
+        const permDistrict = document.getElementById('employeePermDistrict')?.value || '';
         const permPin = document.getElementById('employeePermPin')?.value || '';
 
         const presentAddress = document.getElementById('employeePresentAddress');
         const presentLandmark = document.getElementById('employeePresentLandmark');
         const presentState = document.getElementById('employeePresentState');
         const presentCity = document.getElementById('employeePresentCity');
+        const presentDistrict = document.getElementById('employeePresentDistrict');
         const presentPin = document.getElementById('employeePresentPin');
 
         if (checked) {
@@ -1609,9 +1642,10 @@ if (employeePresentSame) {
             if (presentLandmark) presentLandmark.value = permLandmark;
             if (presentState) presentState.value = permState;
             if (presentCity) presentCity.value = permCity;
+            if (presentDistrict) presentDistrict.value = permDistrict;
             if (presentPin) presentPin.value = permPin;
         }
-        [presentAddress, presentLandmark, presentState, presentCity, presentPin].forEach((field) => {
+        [presentAddress, presentLandmark, presentState, presentCity, presentDistrict, presentPin].forEach((field) => {
             if (!field) return;
             field.readOnly = checked;
             field.style.background = checked ? '#f3f4f6' : '';
