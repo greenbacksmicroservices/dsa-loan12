@@ -1,0 +1,49 @@
+[Unit]
+Description=DSA Loan Django Application (Gunicorn)
+After=network.target mysql.service
+
+[Service]
+Type=notify
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/dsa/dsa-loan12
+
+# Load environment variables from .env.production
+EnvironmentFile=/var/www/dsa/dsa-loan12/.env.production
+
+# Set Python path
+Environment="PATH=/var/www/dsa/dsa-loan12/venv/bin"
+
+# Start Gunicorn
+ExecStart=/var/www/dsa/dsa-loan12/venv/bin/gunicorn \
+    --workers 3 \
+    --worker-class sync \
+    --bind 127.0.0.1:8000 \
+    --timeout 60 \
+    --max-requests 1000 \
+    --max-requests-jitter 50 \
+    --access-logfile /var/log/dsa_loan_gunicorn_access.log \
+    --error-logfile /var/log/dsa_loan_gunicorn_error.log \
+    --log-level info \
+    dsa_loan_management.wsgi:application
+
+# Auto-restart on failure
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+# Process management
+KillMode=mixed
+KillSignal=SIGTERM
+
+# Restart limits
+StartLimitIntervalSec=600
+StartLimitBurst=3
+
+# Security
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
