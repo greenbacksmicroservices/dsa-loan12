@@ -692,6 +692,7 @@
             </div>
         </div>
 
+        {% comment %}
         <!-- ===================== SECTION 2: OCCUPATION & INCOME DETAILS ===================== -->
         <div class="section-header">
             <i class="bi bi-briefcase"></i> SECTION 2: OCCUPATION & INCOME DETAILS
@@ -831,6 +832,9 @@
             </div>
         </div>
 
+        {% endcomment %}
+
+        {% comment %}
         <div id="btDetailsSection">
         <!-- ===================== SECTION 3: OBLIGATION ===================== -->
         <div class="section-header">
@@ -852,15 +856,16 @@
         </div>
 
         </div>
+        {% endcomment %}
 
-        <!-- ===================== SECTION 4: OTHER PRODUCT ===================== -->
+        <!-- ===================== SECTION 4: LOAN DETAILS ===================== -->
         <div class="section-header">
-            <i class="bi bi-cash-stack"></i> SECTION 4: OTHER PRODUCT
+            <i class="bi bi-cash-stack"></i> SECTION 4: LOAN DETAILS
         </div>
         <div class="form-section">
             <div class="form-row">
                 <div class="form-group">
-                    <label>Loan Application Form <span class="required">*</span></label>
+                    <label>Loan Type <span class="required">*</span></label>
                     <select class="form-select" name="service_required" required>
                         <option value="">-- Select Service --</option>
                         <option value="Personal Loan">Personal Loan</option>
@@ -962,6 +967,7 @@
             </div>
         </div>
 
+        {% comment %}
         <!-- ===================== SECTION 6: BALANCE TRANSFER (IF ANY) ===================== -->
         <div class="section-header">
             <i class="bi bi-bank"></i> SECTION 6: BALANCE TRANSFER (IF ANY)
@@ -1000,6 +1006,7 @@
                 </div>
             </div>
         </div>
+        {% endcomment %}
 
         <!-- ===================== SECTION 7: LEAD RECEIVE ===================== -->
         <div class="section-header">
@@ -1063,18 +1070,59 @@
     let documentCount = 0;
     let existingLoanCount = 0;
     let financialDetailCount = 0;
+    const MAX_FILE_SIZE_BYTES = 3 * 1024 * 1024;
+    const MAX_TOTAL_UPLOAD_BYTES = 50 * 1024 * 1024;
 
     const SERVICE_DOCUMENT_REQUIREMENTS = {
-        lap_salary: ['PAN Card', 'Aadhar Front Side', 'Aadhar Back Side (Optional)', 'Photo', 'Permanent Address Proof Own House Proof (Electric Bill or Other Doc)', 'Recent Address Proof', 'Latest 3 Month Salary Slip', 'Bank Statement', 'Service Book', 'Property Documents', 'SOA of Loan Account'],
-        lap_business: ['PAN Card', 'Aadhar Front Side', 'Aadhar Back Side (Optional)', 'Photo', 'Permanent Address Proof Own House Proof (Electric Bill or Other Doc)', 'Current Address Proof', '3 Year Business Vintage Proof', 'Income Proof', '1 Year Bank Statement', 'Property Documents', 'SOA of Loan Account'],
-        business_loan_business: ['PAN Card', 'Aadhar Front Side', 'Aadhar Back Side (Optional)', 'Photo', 'Permanent Address Proof', 'Current Address Proof', '3 Year Business Vintage Proof', 'ITR', '1 Year Bank Statement', 'GST (Mandatory)', 'Udyam (Optional)'],
-        personal_loan_salary: ['PAN Card', 'Aadhar Front Side', 'Aadhar Back Side (Optional)', 'Photo', 'Permanent Address Proof Own House Proof (Electric Bill or Other Doc)', 'Recent Address Proof', 'Latest 3 Month Salary Slip', 'Bank Statement', 'Service Book'],
-        personal_loan_business: ['PAN Card', 'Aadhar Front Side', 'Aadhar Back Side (Optional)', 'Photo', 'Permanent Address Proof Own House Proof (Electric Bill or Other Doc)', 'Current Address Proof', 'ITR', 'GST (Mandatory)', 'Udyam (Mandatory)', 'Degree Certificate (Document)', 'Registration Certificate (Document)'],
-        auto_loan_salary: ['PAN Card', 'Aadhar Front Side', 'Aadhar Back Side (Optional)', 'Photo', 'Permanent Address Proof Own House Proof (Electric Bill or Other Doc)', 'Recent Address Proof', 'Latest 3 Month Salary Slip', 'Latest 3 Month Salary A/C Statement', 'Service Book', 'Vehicle Document'],
-        auto_loan_business: ['PAN Card', 'Aadhar Front Side', 'Aadhar Back Side (Optional)', 'Photo', 'Permanent Address Proof Own House Proof (Electric Bill or Other Doc)', 'Current Address Proof', '3 Year Business Vintage Proof', 'ITR', '1 Year Bank Statement', 'GST (Mandatory)', 'Udyam (Mandatory)', 'Vehicle Document'],
-        home_loan_salary: ['PAN Card', 'Aadhar Front Side', 'Aadhar Back Side (Optional)', 'Photo', 'Permanent Address Proof Own House Proof (Electric Bill or Other Doc)', 'Recent Address Proof', 'Latest 3 Month Salary Slip', 'Bank Statement', 'Property Documents'],
+        lap_salary: ['PAN Card', 'Aadhar Front Side', 'Aadhar Back Side (Optional)', 'Photo', 'Permanent Address Proof Own House Proof (Electric Bill or Other Doc)', 'Recent Address Proof', 'Income Proof', 'Service Book', 'Property Documents', 'SOA of Loan Account'],
+        lap_business: ['PAN Card', 'Aadhar Front Side', 'Aadhar Back Side (Optional)', 'Photo', 'Permanent Address Proof Own House Proof (Electric Bill or Other Doc)', 'Current Address Proof', 'Income Proof', '1 Year Bank Statement', 'Property Documents', 'SOA of Loan Account'],
+        business_loan_business: ['PAN Card', 'Aadhar Front Side', 'Aadhar Back Side (Optional)', 'Photo', 'Permanent Address Proof', 'Current Address Proof', 'Last 2 Year IT Return', '1 Year Bank Statement', 'GST (Mandatory)', 'Udyam (Optional)'],
+        personal_loan_salary: ['PAN Card', 'Aadhar Front Side', 'Aadhar Back Side (Optional)', 'Photo', 'Permanent Address Proof Own House Proof (Electric Bill or Other Doc)', 'Recent Address Proof', 'Latest 3 Month Salary Slip', 'Latest 3 Month Bank Statement of Salary A/C', 'Service Book'],
+        personal_loan_business: ['PAN Card', 'Aadhar Front Side', 'Aadhar Back Side (Optional)', 'Photo', 'Permanent Address Proof Own House Proof (Electric Bill or Other Doc)', 'Current Address Proof', 'Last 2 Year IT Return', 'GST (Mandatory)', 'Udyam (Mandatory)', 'Degree Certificate (Document)', 'Registration Certificate (Document)'],
+        auto_loan_salary: ['PAN Card', 'Aadhar Front Side', 'Aadhar Back Side (Optional)', 'Photo', 'Permanent Address Proof Own House Proof (Electric Bill or Other Doc)', 'Recent Address Proof', 'Income Proof', 'Service Book', 'Vehicle Document'],
+        auto_loan_business: ['PAN Card', 'Aadhar Front Side', 'Aadhar Back Side (Optional)', 'Photo', 'Permanent Address Proof Own House Proof (Electric Bill or Other Doc)', 'Current Address Proof', 'Last 2 Year IT Return', '1 Year Bank Statement', 'GST (Mandatory)', 'Udyam (Mandatory)', 'Vehicle Document'],
+        home_loan_salary: ['PAN Card', 'Aadhar Front Side', 'Aadhar Back Side (Optional)', 'Photo', 'Permanent Address Proof Own House Proof (Electric Bill or Other Doc)', 'Recent Address Proof', 'Income Proof', 'Property Documents'],
         home_loan_business: ['PAN Card', 'Aadhar Front Side', 'Aadhar Back Side (Optional)', 'Photo', 'Permanent Address Proof Own House Proof (Electric Bill or Other Doc)', 'Current Address Proof', 'Income Proof', 'Bank Statement', 'Property Documents']
     };
+
+    function formatUploadSize(sizeInBytes) {
+        return `${(sizeInBytes / (1024 * 1024)).toFixed(2)} MB`;
+    }
+
+    function getTotalSelectedDocumentSize() {
+        let total = 0;
+        document.querySelectorAll('input.document-file').forEach((input) => {
+            const files = Array.from(input.files || []);
+            files.forEach((file) => {
+                total += file.size || 0;
+            });
+        });
+        return total;
+    }
+
+    function validateFileInputSize(fileInput) {
+        const files = Array.from(fileInput.files || []);
+        for (const file of files) {
+            if ((file.size || 0) > MAX_FILE_SIZE_BYTES) {
+                alert(`"${file.name}" is ${formatUploadSize(file.size)}. Maximum allowed per file is 3.00 MB.`);
+                fileInput.value = '';
+                return false;
+            }
+        }
+        return true;
+    }
+
+    function validateTotalUploadSize(changedInput = null) {
+        const totalSize = getTotalSelectedDocumentSize();
+        if (totalSize > MAX_TOTAL_UPLOAD_BYTES) {
+            alert(`Total selected documents are ${formatUploadSize(totalSize)}. Maximum allowed per application is 50.00 MB.`);
+            if (changedInput) {
+                changedInput.value = '';
+            }
+            return false;
+        }
+        return true;
+    }
 
     function getEmploymentTrack() {
         const occupation = (document.querySelector('select[name="occupation"]')?.value || '').toLowerCase();
@@ -1144,12 +1192,16 @@
             'Aadhar Front Side',
             'Aadhar Back Side (Optional)',
             'Photo',
-            'Address Proof',
-            'Income Proof',
-            'Bank Statement'
+            'Address Proof'
         ];
+        if (serviceKey === 'personal_loan') {
+            fallbackDocs.push('Latest 3 Month Salary Slip', 'Latest 3 Month Bank Statement of Salary A/C');
+        }
         if (serviceKey === 'home_loan' || serviceKey === 'lap') {
             fallbackDocs.push('Property Documents');
+        }
+        if (serviceKey === 'auto_loan') {
+            fallbackDocs.push('Vehicle Document');
         }
         return fallbackDocs;
     }
@@ -1184,7 +1236,7 @@
                 <div class="form-group">
                     <label>Upload Document ${isUploadRequired ? '<span class="required">*</span>' : ''}</label>
                     <input type="file" class="form-control document-file" name="document_file[]" accept=".pdf,.jpg,.jpeg,.png,image/jpeg,image/png,application/pdf" multiple ${isUploadRequired ? 'required' : ''}>
-                    <span class="helper-text">PDF/JPG/PNG. Ek hi baar me multiple files select kar sakte hain.</span>
+                    <span class="helper-text">PDF/JPG/PNG. Max 3 MB per file, max 50 MB total per application.</span>
                 </div>
             </div>
             ${isPresetRow ? '' : `
@@ -1196,6 +1248,14 @@
             `}
         `;
         documentsContainer.appendChild(item);
+
+        const fileInput = item.querySelector('.document-file');
+        if (fileInput) {
+            fileInput.addEventListener('change', function() {
+                if (!validateFileInputSize(this)) return;
+                validateTotalUploadSize(this);
+            });
+        }
     }
 
     function removeDocumentField(btn) {
@@ -1435,9 +1495,13 @@
     }
 
     function updateEmploymentSection() {
-        const occupation = document.querySelector('select[name="occupation"]').value;
+        const occupationSelect = document.querySelector('select[name="occupation"]');
         const businessSection = document.getElementById('businessSection');
         const salarySection = document.getElementById('salarySection');
+        if (!occupationSelect || !businessSection || !salarySection) {
+            return;
+        }
+        const occupation = occupationSelect.value;
         const salaryRequiredFields = [
             document.querySelector('input[name="company_name"]'),
             document.querySelector('input[name="designation"]'),
@@ -1493,12 +1557,23 @@
                     alert('Please provide both Document Name and Upload Document for each entered document row.');
                     return;
                 }
+                const selectedFiles = fileEl ? Array.from(fileEl.files || []) : [];
+                for (const selectedFile of selectedFiles) {
+                    if ((selectedFile.size || 0) > MAX_FILE_SIZE_BYTES) {
+                        alert(`"${selectedFile.name}" is ${formatUploadSize(selectedFile.size)}. Maximum allowed per file is 3.00 MB.`);
+                        return;
+                    }
+                }
                 hasAnyUploadedDocument = true;
             }
         }
 
         if (!hasAnyUploadedDocument) {
             alert('Please upload at least one document');
+            return;
+        }
+
+        if (!validateTotalUploadSize()) {
             return;
         }
 

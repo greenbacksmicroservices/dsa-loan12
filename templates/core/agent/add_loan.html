@@ -346,6 +346,7 @@
             </div>
         </div>
 
+        {% comment %}
         <!-- ===================== SECTION 2: OCCUPATION & INCOME DETAILS ===================== -->
         <div class="section-header">
             <i class="bi bi-briefcase"></i> SECTION 2: OCCUPATION & INCOME DETAILS
@@ -484,6 +485,8 @@
                 </div>
             </div>
         </div>
+
+        {% endcomment %}
 
         <div id="btDetailsSection">
         <!-- ===================== SECTION 3: LOAN TYPE ===================== -->
@@ -670,6 +673,7 @@
             </div>
         </div>
 
+        {% comment %}
         <!-- ===================== SECTION 6: BALANCE TRANSFER (IF ANY) ===================== -->
         <div class="section-header">
             <i class="bi bi-bank"></i> SECTION 6: BALANCE TRANSFER (IF ANY)
@@ -748,6 +752,7 @@
                 </div>
             </div>
         </div>
+        {% endcomment %}
 
         <!-- ===================== SECTION 7: LEAD RECEIVE ===================== -->
         <div class="section-header">
@@ -920,9 +925,13 @@
     }
 
     function updateEmploymentSection() {
-        const occupation = document.querySelector('select[name="occupation"]').value;
+        const occupationSelect = document.querySelector('select[name="occupation"]');
         const businessSection = document.getElementById('businessSection');
         const salarySection = document.getElementById('salarySection');
+        if (!occupationSelect || !businessSection || !salarySection) {
+            return;
+        }
+        const occupation = occupationSelect.value;
 
         if (occupation === 'Business' || occupation === 'Self Employed') {
             businessSection.style.display = 'block';
@@ -939,36 +948,11 @@
     document.getElementById('loanForm').addEventListener('submit', function(e) {
         e.preventDefault();
 
-        // Validate that required SOA & Forcloser documents are uploaded
-        const documents = document.querySelectorAll('.document-item');
-        let hasSoa = false;
-        let hasForcloser = false;
-        let hasAnyDocument = false;
-
-        documents.forEach(doc => {
-            const nameEl = doc.querySelector('.document-name');
-            const fileEl = doc.querySelector('.document-file');
-            const name = nameEl ? nameEl.value : '';
-            const file = fileEl ? fileEl.value : '';
-
-            if (name && file) {
-                hasAnyDocument = true;
-                if (name === 'SOA') hasSoa = true;
-                if (name === 'Forcloser') hasForcloser = true;
-            }
-        });
-
-        if (!hasAnyDocument) {
-            alert('Please upload at least one document');
+        if (!this.checkValidity()) {
+            this.reportValidity();
             return;
         }
 
-        if (!hasSoa || !hasForcloser) {
-            alert('Please upload both SOA and Forcloser documents');
-            return;
-        }
-
-        // Disable submit button after successful validation
         const submitBtn = this.querySelector('button[type=\"submit\"]');
         if (submitBtn) {
             submitBtn.disabled = true;

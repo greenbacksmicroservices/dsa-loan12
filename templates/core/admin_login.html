@@ -221,12 +221,20 @@
     <h2>ðŸ” Login</h2>
 
     {% if messages %}
-        <div class="alert alert-danger alert-dismissible fade show mb-3" role="alert" style="background: rgba(220, 53, 69, 0.8); border: 1px solid rgba(220, 53, 69, 0.5);">
-            {% for message in messages %}
-                <strong>Error!</strong> {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" style="filter: brightness(2);"></button>
-            {% endfor %}
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show mb-3" role="alert" style="
+            {% if message.tags == 'success' %}
+                background: rgba(25, 135, 84, 0.88); border: 1px solid rgba(25, 135, 84, 0.55);
+            {% elif message.tags == 'error' or message.tags == 'danger' %}
+                background: rgba(220, 53, 69, 0.8); border: 1px solid rgba(220, 53, 69, 0.5);
+            {% else %}
+                background: rgba(13, 110, 253, 0.8); border: 1px solid rgba(13, 110, 253, 0.5);
+            {% endif %}
+        ">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" style="filter: brightness(2);"></button>
         </div>
+        {% endfor %}
     {% endif %}
 
     <form method="POST" action="/admin-login/" id="loginForm">
@@ -259,13 +267,13 @@
 
     <!-- Registration Section -->
     <div class="register-section">
-        <div class="register-title">ðŸ“ New to DSA Loans?</div>
+        <div class="register-title">New to DSA Loans Registration?</div>
         <div class="register-buttons">
             <button type="button" class="btn-register" onclick="window.location='/register/employee/step/1/';" style="border: none; cursor: pointer;">
                 <i class="bi bi-person-badge"></i> Employee Registration
             </button>
             <button type="button" class="btn-register" onclick="window.location='/register/agent/step/1/';" style="border: none; cursor: pointer;">
-                <i class="bi bi-handshake"></i> Agent Registration
+                <i class="bi bi-handshake"></i> Channel Partner Registration
             </button>
         </div>
         <a class="website-home-link" href="http://jobexhibition.com/">

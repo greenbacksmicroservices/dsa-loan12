@@ -560,9 +560,9 @@
     <form id="loanForm" method="post" enctype="multipart/form-data" novalidate>
         {% csrf_token %}
 
-        <!-- ===================== SECTION 1: APPLICANT INFORMATION ===================== -->
+        <!-- ===================== APPLICANT INFORMATION ===================== -->
         <div class="section-header">
-            <i class="bi bi-person-check"></i> SECTION 1: APPLICANT INFORMATION
+            <i class="bi bi-person-check"></i> APPLICANT INFORMATION
         </div>
         <div class="form-section">
             <div class="info-alert">
@@ -697,9 +697,10 @@
             </div>
         </div>
 
-        <!-- ===================== SECTION 2: OCCUPATION & INCOME DETAILS ===================== -->
+        {% comment %}
+        <!-- ===================== OCCUPATION & INCOME DETAILS ===================== -->
         <div class="section-header">
-            <i class="bi bi-briefcase"></i> SECTION 2: OCCUPATION & INCOME DETAILS
+            <i class="bi bi-briefcase"></i> OCCUPATION & INCOME DETAILS
         </div>
         <div class="form-section">
             <div class="sub-section-title">Employment Information</div>
@@ -836,6 +837,9 @@
             </div>
         </div>
 
+        {% endcomment %}
+
+        {% comment %}
         <div id="btDetailsSection">
         <!-- ===================== SECTION 3: OBLIGATION ===================== -->
         <div class="section-header">
@@ -856,15 +860,16 @@
             </div>
         </div>
         </div>
+        {% endcomment %}
 
-        <!-- ===================== SECTION 4: OTHER PRODUCT ===================== -->
+        <!-- ===================== LOAN DETAILS ===================== -->
         <div class="section-header">
-            <i class="bi bi-cash-stack"></i> SECTION 4: OTHER PRODUCT
+            <i class="bi bi-cash-stack"></i> LOAN DETAILS
         </div>
         <div class="form-section">
             <div class="form-row">
                 <div class="form-group">
-                    <label>Loan Application Form <span class="required">*</span></label>
+                    <label>Loan Type <span class="required">*</span></label>
                     <select class="form-select" name="service_required" required>
                         <option value="">-- Select Service --</option>
                         <option value="Personal Loan">Personal Loan</option>
@@ -903,7 +908,7 @@
             <div class="sub-section-title">Service Required Based Documents</div>
             <div class="info-alert">
                 <i class="bi bi-info-circle"></i>
-                Service aur Occupation ke hisaab se required documents auto-open honge. Har required document ke liye file upload karna zaroori hai.
+                Service aur Occupation ke hisaab se suggested documents auto-open honge. Document upload optional hai.
             </div>
             <div class="service-documents-shell">
                 <div id="documents-container"></div>
@@ -915,9 +920,9 @@
             </div>
         </div>
 
-        <!-- ===================== SECTION 5: REFERENCE ===================== -->
+        <!-- ===================== REFERENCE ===================== -->
         <div class="section-header">
-            <i class="bi bi-person-vcard"></i> SECTION 5: REFERENCE
+            <i class="bi bi-person-vcard"></i> REFERENCE
         </div>
         <div class="form-section">
             <div class="info-alert">
@@ -966,6 +971,7 @@
             </div>
         </div>
 
+        {% comment %}
         <!-- ===================== SECTION 6: BALANCE TRANSFER (IF ANY) ===================== -->
         <div class="section-header">
             <i class="bi bi-bank"></i> SECTION 6: BALANCE TRANSFER (IF ANY)
@@ -1004,11 +1010,12 @@
                 </div>
             </div>
         </div>
+        {% endcomment %}
 
         {% if request.user.role != 'agent' %}
-        <!-- ===================== SECTION 7: LEAD RECEIVE ===================== -->
+        <!-- ===================== LEAD RECEIVE ===================== -->
         <div class="section-header">
-            <i class="bi bi-person-plus"></i> SECTION 7: LEAD RECEIVE
+            <i class="bi bi-person-plus"></i> LEAD RECEIVE
         </div>
         <div class="form-section">
             <div class="info-alert">
@@ -1069,6 +1076,8 @@
     let documentCount = 0;
     let existingLoanCount = 0;
     let financialDetailCount = 0;
+    const MAX_FILE_SIZE_BYTES = 3 * 1024 * 1024;
+    const MAX_TOTAL_UPLOAD_BYTES = 50 * 1024 * 1024;
 
     const SERVICE_DOCUMENT_REQUIREMENTS = {
         lap_salary: [
@@ -1078,8 +1087,7 @@
             'Photo',
             'Permanent Address Proof Own House Proof (Electric Bill or Other Doc)',
             'Recent Address Proof',
-            'Latest 3 Month Salary Slip',
-            'Bank Statement',
+            'Income Proof',
             'Service Book',
             'Property Documents',
             'SOA of Loan Account',
@@ -1092,7 +1100,6 @@
             'Photo',
             'Permanent Address Proof Own House Proof (Electric Bill or Other Doc)',
             'Current Address Proof',
-            '3 Year Business Vintage Proof',
             'Income Proof',
             '1 Year Bank Statement',
             'Property Documents',
@@ -1106,8 +1113,7 @@
             'Photo',
             'Permanent Address Proof',
             'Current Address Proof',
-            '3 Year Business Vintage Proof',
-            'ITR',
+            'Last 2 Year IT Return',
             '1 Year Bank Statement',
             'GST (Mandatory)',
             'Udyam (Optional)'
@@ -1120,7 +1126,7 @@
             'Permanent Address Proof Own House Proof (Electric Bill or Other Doc)',
             'Recent Address Proof',
             'Latest 3 Month Salary Slip',
-            'Bank Statement',
+            'Latest 3 Month Bank Statement of Salary A/C',
             'Service Book'
         ],
         personal_loan_business: [
@@ -1130,7 +1136,7 @@
             'Photo',
             'Permanent Address Proof Own House Proof (Electric Bill or Other Doc)',
             'Current Address Proof',
-            'ITR',
+            'Last 2 Year IT Return',
             'GST (Mandatory)',
             'Udyam (Mandatory)',
             'Degree Certificate (Document)',
@@ -1143,8 +1149,7 @@
             'Photo',
             'Permanent Address Proof Own House Proof (Electric Bill or Other Doc)',
             'Recent Address Proof',
-            'Latest 3 Month Salary Slip',
-            'Latest 3 Month Salary A/C Statement',
+            'Income Proof',
             'Service Book',
             'Vehicle Document'
         ],
@@ -1155,8 +1160,7 @@
             'Photo',
             'Permanent Address Proof Own House Proof (Electric Bill or Other Doc)',
             'Current Address Proof',
-            '3 Year Business Vintage Proof',
-            'ITR',
+            'Last 2 Year IT Return',
             '1 Year Bank Statement',
             'GST (Mandatory)',
             'Udyam (Mandatory)',
@@ -1169,8 +1173,7 @@
             'Photo',
             'Permanent Address Proof Own House Proof (Electric Bill or Other Doc)',
             'Recent Address Proof',
-            'Latest 3 Month Salary Slip',
-            'Bank Statement',
+            'Income Proof',
             'Property Documents'
         ],
         home_loan_business: [
@@ -1185,6 +1188,45 @@
             'Property Documents'
         ]
     };
+
+    function formatUploadSize(sizeInBytes) {
+        return `${(sizeInBytes / (1024 * 1024)).toFixed(2)} MB`;
+    }
+
+    function getTotalSelectedDocumentSize() {
+        let total = 0;
+        document.querySelectorAll('input.document-file').forEach((input) => {
+            const files = Array.from(input.files || []);
+            files.forEach((file) => {
+                total += file.size || 0;
+            });
+        });
+        return total;
+    }
+
+    function validateFileInputSize(fileInput) {
+        const files = Array.from(fileInput.files || []);
+        for (const file of files) {
+            if ((file.size || 0) > MAX_FILE_SIZE_BYTES) {
+                alert(`"${file.name}" is ${formatUploadSize(file.size)}. Maximum allowed per file is 3.00 MB.`);
+                fileInput.value = '';
+                return false;
+            }
+        }
+        return true;
+    }
+
+    function validateTotalUploadSize(changedInput = null) {
+        const totalSize = getTotalSelectedDocumentSize();
+        if (totalSize > MAX_TOTAL_UPLOAD_BYTES) {
+            alert(`Total selected documents are ${formatUploadSize(totalSize)}. Maximum allowed per application is 50.00 MB.`);
+            if (changedInput) {
+                changedInput.value = '';
+            }
+            return false;
+        }
+        return true;
+    }
 
     function getEmploymentTrack() {
         const occupation = (document.querySelector('select[name="occupation"]')?.value || '').toLowerCase();
@@ -1254,12 +1296,16 @@
             'Aadhar Front Side',
             'Aadhar Back Side (Optional)',
             'Photo',
-            'Address Proof',
-            'Income Proof',
-            'Bank Statement'
+            'Address Proof'
         ];
+        if (serviceKey === 'personal_loan') {
+            fallbackDocs.push('Latest 3 Month Salary Slip', 'Latest 3 Month Bank Statement of Salary A/C');
+        }
         if (serviceKey === 'home_loan' || serviceKey === 'lap') {
             fallbackDocs.push('Property Documents');
+        }
+        if (serviceKey === 'auto_loan') {
+            fallbackDocs.push('Vehicle Document');
         }
         return fallbackDocs;
     }
@@ -1271,30 +1317,28 @@
         return serviceKey === 'business_loan' && employmentTrack === 'business' && normalizedName === 'permanent address proof';
     }
 
-    function addDocumentField(isPreset = false, presetName = '', isMandatory = Boolean(isPreset)) {
+    function addDocumentField(isPreset = false, presetName = '', isMandatory = false) {
         documentCount++;
         const documentsContainer = document.getElementById('documents-container');
         if (!documentsContainer) return;
 
         const isPresetRow = Boolean(isPreset);
-        const isRequired = Boolean(isMandatory);
-        const isUploadRequired = isRequired && !presetName.toLowerCase().includes('optional');
         const item = document.createElement('div');
         item.className = 'document-item';
-        item.dataset.required = isRequired ? 'true' : 'false';
+        item.dataset.required = 'false';
 
         item.innerHTML = `
-            ${isPresetRow ? `<div class="document-item-title"><i class="bi bi-shield-check"></i> ${isRequired ? 'Required Document' : 'Optional Document'}</div>` : ''}
+            ${isPresetRow ? `<div class="document-item-title"><i class="bi bi-shield-check"></i> Suggested Document</div>` : ''}
             <div class="form-row">
                 <div class="form-group">
-                    <label>Document Name ${isUploadRequired ? '<span class="required">*</span>' : ''}</label>
-                    <input type="text" class="form-control document-name" name="document_name[]" placeholder="e.g., Aadhar Card, PAN Card, Bank Statement, etc." value="${presetName.replace(/"/g, '&quot;')}" ${isPresetRow ? 'readonly' : ''} ${isUploadRequired ? 'required' : ''}>
+                    <label>Document Name</label>
+                    <input type="text" class="form-control document-name" name="document_name[]" placeholder="e.g., Aadhar Card, PAN Card, Bank Statement, etc." value="${presetName.replace(/"/g, '&quot;')}" ${isPresetRow ? 'readonly' : ''}>
                     <span class="helper-text">Provide a meaningful name for the document</span>
                 </div>
                 <div class="form-group">
-                    <label>Upload Document ${isUploadRequired ? '<span class="required">*</span>' : ''}</label>
-                    <input type="file" class="form-control document-file" name="document_file[]" accept=".pdf,.jpg,.jpeg,.png,image/jpeg,image/png,application/pdf" multiple ${isUploadRequired ? 'required' : ''}>
-                    <span class="helper-text">PDF/JPG/PNG. Ek hi baar me multiple files select kar sakte hain.</span>
+                    <label>Upload Document</label>
+                    <input type="file" class="form-control document-file" name="document_file[]" accept=".pdf,.jpg,.jpeg,.png,image/jpeg,image/png,application/pdf" multiple>
+                    <span class="helper-text">PDF/JPG/PNG. Max 3 MB per file, max 50 MB total per application.</span>
                 </div>
             </div>
             ${isPresetRow ? '' : `
@@ -1306,14 +1350,19 @@
             `}
         `;
         documentsContainer.appendChild(item);
+
+        const fileInput = item.querySelector('.document-file');
+        if (fileInput) {
+            fileInput.addEventListener('change', function() {
+                if (!validateFileInputSize(this)) return;
+                validateTotalUploadSize(this);
+            });
+        }
     }
 
     function removeDocumentField(btn) {
         const row = btn.closest('.document-item');
         if (!row) return;
-        if (row.dataset.required === 'true') {
-            return;
-        }
         row.remove();
     }
 
@@ -1329,8 +1378,7 @@
         const requiredDocuments = getRequiredDocumentList();
         if (requiredDocuments.length) {
             requiredDocuments.forEach((docName) => {
-                const isOptional = isOptionalPresetDocument(serviceKey, employmentTrack, docName);
-                addDocumentField(true, docName, !isOptional);
+                addDocumentField(true, docName, false);
             });
             return;
         }
@@ -1563,9 +1611,13 @@
     }
 
     function updateEmploymentSection() {
-        const occupation = document.querySelector('select[name="occupation"]').value;
+        const occupationSelect = document.querySelector('select[name="occupation"]');
         const businessSection = document.getElementById('businessSection');
         const salarySection = document.getElementById('salarySection');
+        if (!occupationSelect || !businessSection || !salarySection) {
+            return;
+        }
+        const occupation = occupationSelect.value;
 
         if (occupation === 'Business' || occupation === 'Professional Self Employed') {
             businessSection.style.display = 'block';
@@ -1583,31 +1635,33 @@
         e.preventDefault();
 
         const documents = document.querySelectorAll('#documents-container .document-item');
-        let hasAnyUploadedDocument = false;
 
         for (const doc of documents) {
             const nameEl = doc.querySelector('.document-name');
             const fileEl = doc.querySelector('.document-file');
             const name = nameEl ? nameEl.value.trim() : '';
             const hasFile = fileEl ? fileEl.files.length > 0 : false;
-            const isRequiredRow = doc.dataset.required === 'true';
+            const isPresetName = nameEl ? nameEl.hasAttribute('readonly') : false;
 
-            if (isRequiredRow && (!name || !hasFile)) {
-                alert(`Please upload required document: ${name || 'Document'}`);
-                return;
-            }
-
-            if (name || hasFile) {
-                if (!name || !hasFile) {
-                    alert('Please provide both Document Name and Upload Document for each entered document row.');
+            if (hasFile) {
+                if (!name) {
+                    alert('Please provide Document Name for uploaded document.');
                     return;
                 }
-                hasAnyUploadedDocument = true;
+                const selectedFiles = fileEl ? Array.from(fileEl.files || []) : [];
+                for (const selectedFile of selectedFiles) {
+                    if ((selectedFile.size || 0) > MAX_FILE_SIZE_BYTES) {
+                        alert(`"${selectedFile.name}" is ${formatUploadSize(selectedFile.size)}. Maximum allowed per file is 3.00 MB.`);
+                        return;
+                    }
+                }
+            } else if (name && !isPresetName) {
+                alert('Please provide both Document Name and Upload Document for each entered document row.');
+                return;
             }
         }
 
-        if (!hasAnyUploadedDocument) {
-            alert('Please upload at least one document');
+        if (!validateTotalUploadSize()) {
             return;
         }
 

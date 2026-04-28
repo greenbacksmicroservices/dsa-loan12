@@ -436,6 +436,11 @@ class Applicant(models.Model):
     state = models.CharField(max_length=100)
     pin_code = models.CharField(max_length=10)
     gender = models.CharField(max_length=10, choices=GENDER_CHOICES)
+    current_job_title = models.CharField(max_length=150, blank=True, null=True)
+    total_experience_years = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True)
+    current_salary = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True)
+    expected_salary = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True)
+    notice_period = models.CharField(max_length=120, blank=True, null=True)
     
     # Step 2: Loan & Bank Details
     loan_type = models.CharField(max_length=50, choices=LOAN_TYPE_CHOICES, blank=True, null=True)
@@ -606,6 +611,7 @@ class ApplicantDocument(models.Model):
         ('bank_statement', 'Bank Statement'),
         ('form_16', 'Form 16'),
         ('service_book', 'Service Book'),
+        ('resume', 'Resume'),
     ]
     
     loan_application = models.ForeignKey(LoanApplication, on_delete=models.CASCADE, related_name='documents')
@@ -858,4 +864,3 @@ class SubAdminEntry(models.Model):
     
     def __str__(self):
         return f"{self.applicant_name} - {self.loan_type} (â‚¹{self.loan_amount})"
-

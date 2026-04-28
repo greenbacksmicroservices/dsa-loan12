@@ -11,6 +11,7 @@ from django.views.decorators.http import require_http_methods
 from django.db.models import Q, Count, Sum
 from django.core.paginator import Paginator
 import json
+import re
 
 from .models import User, EmployeeProfile, LoanApplication, Loan, UserOnboardingProfile, UserOnboardingDocument
 from .onboarding_utils import collect_onboarding_payload, collect_onboarding_documents
@@ -21,6 +22,67 @@ from django.contrib.auth.models import Group
 def is_admin(user):
     """Check if user is admin"""
     return user.is_authenticated and user.role == 'admin'
+
+
+def _role_label(user_obj):
+    role = getattr(user_obj, 'role', '') or ''
+    return {
+        'admin': 'Admin',
+        'subadmin': 'Partner',
+        'employee': 'Employee',
+        'agent': 'Channel Partner',
+        'dsa': 'DSA',
+    }.get(role, role.title() if role else 'System')
+
+
+def _extract_subadmin_id(notes):
+    match = re.search(r'\[subadmin:(\d+)\]', str(notes or ''), flags=re.IGNORECASE)
+    if not match:
+        return None
+    try:
+        return int(match.group(1))
+    except (TypeError, ValueError):
+        return None
+
+
+def _resolve_creator_info(user_obj, onboarding_payload=None, employee_profile=None):
+    payload = onboarding_payload or {}
+    meta = payload.get('_meta') if isinstance(payload, dict) else None
+    creator_role = ''
+    creator_name = ''
+
+    if isinstance(meta, dict):
+        creator_role = str(meta.get('created_by_role') or '').strip()
+        creator_name = str(meta.get('created_by_name') or '').strip()
+
+    if not creator_role or not creator_name:
+        profile = employee_profile or getattr(user_obj, 'employee_profile', None)
+        subadmin_id = _extract_subadmin_id(getattr(profile, 'notes', '')) if profile else None
+        if subadmin_id:
+            subadmin = User.objects.filter(id=subadmin_id, role='subadmin').only('first_name', 'last_name', 'username').first()
+            if subadmin:
+                creator_role = 'Partner'
+                creator_name = subadmin.get_full_name() or subadmin.username or 'Partner'
+
+    if not creator_role or not creator_name:
+        creator_role = 'Admin'
+        creator_name = 'System'
+
+    return {
+        'role': creator_role,
+        'name': creator_name,
+        'display': f"{creator_role} - {creator_name}",
+    }
+
+
+def _extract_location(onboarding_payload):
+    payload = onboarding_payload or {}
+    section1 = payload.get('section1') if isinstance(payload, dict) else {}
+    perm = (section1 or {}).get('permanent_address') or {}
+    city = (perm.get('city') or '').strip()
+    pin = (perm.get('pin_code') or '').strip()
+    district = (perm.get('district') or '').strip()
+    return city, pin, district
 
 
 @login_required(login_url='admin_login')
@@ -65,7 +127,7 @@ def api_get_employees(request):
         per_page = request.GET.get('per_page', 10)
         
         # Build query
-        employees = User.objects.filter(role='employee')
+        employees = User.objects.filter(role='employee').select_related('employee_profile', 'onboarding_profile')
         
         # Search by name or email
         if search_query:
@@ -84,6 +146,11 @@ def api_get_employees(request):
         employee_list = []
         for user in page_obj:
             employee_profile = getattr(user, 'employee_profile', None)
+            onboarding_payload = {}
+            if hasattr(user, 'onboarding_profile') and user.onboarding_profile:
+                onboarding_payload = user.onboarding_profile.data or {}
+            creator_info = _resolve_creator_info(user, onboarding_payload, employee_profile)
+            city, pin_code, district = _extract_location(onboarding_payload)
             
             # Get assigned loans count
             assigned_loans = LoanApplication.objects.filter(
@@ -98,10 +165,12 @@ def api_get_employees(request):
                 'phone': user.phone or 'N/A',
                 'photo_url': user.profile_photo.url if user.profile_photo else '/static/images/default-avatar.png',
                 'gender': user.gender or 'Other',
-                'state': getattr(user, 'state', None) or '-',
-                'city': getattr(user, 'city', None) or '-',
+                'state': ((onboarding_payload.get('section1') or {}).get('permanent_address') or {}).get('state') or '-',
+                'city': city or '-',
+                'district': district or '-',
                 'address': user.address or '-',
-                'pin_code': getattr(user, 'pin_code', None) or '-',
+                'pin_code': pin_code or '-',
+                'created_under': creator_info['display'],
                 'role': employee_profile.get_employee_role_display() if employee_profile else 'Loan Processor',
                 'status': 'Active' if user.is_active else 'Inactive',
                 'is_active': user.is_active,
@@ -148,6 +217,8 @@ def api_add_employee(request):
         pin_code = request.POST.get('pin_code', '').strip() or request.POST.get('onb_perm_pin', '').strip()
         state = request.POST.get('state', '').strip() or request.POST.get('onb_perm_state', '').strip()
         city = request.POST.get('city', '').strip() or request.POST.get('onb_perm_city', '').strip()
+        district = request.POST.get('district', '').strip() or request.POST.get('onb_perm_district', '').strip()
+        dob = request.POST.get('onb_dob', '').strip()
         profile_photo = request.FILES.get('profile_photo', None)
         
         # Validation
@@ -202,6 +273,8 @@ def api_add_employee(request):
         address_parts = [address]
         if city:
             address_parts.append(f"City: {city}")
+        if district:
+            address_parts.append(f"District: {district}")
         if state:
             address_parts.append(f"State: {state}")
         if pin_code:
@@ -219,6 +292,7 @@ def api_add_employee(request):
             gender=gender,
             address=normalized_address,
             is_active=True,
+            date_of_birth=dob or None,
         )
         
         # Handle photo upload
@@ -241,6 +315,13 @@ def api_add_employee(request):
         )
 
         onboarding_payload = collect_onboarding_payload(request)
+        creator_info = {
+            'created_by_id': request.user.id,
+            'created_by_name': request.user.get_full_name() or request.user.username or 'System',
+            'created_by_role': _role_label(request.user),
+        }
+        if isinstance(onboarding_payload, dict):
+            onboarding_payload['_meta'] = creator_info
         if onboarding_payload:
             profile, _ = UserOnboardingProfile.objects.get_or_create(
                 user=user,
@@ -262,6 +343,7 @@ def api_add_employee(request):
                 file=doc_file,
             )
         
+        created_under = f"{creator_info['created_by_role']} - {creator_info['created_by_name']}"
         return JsonResponse({
             'success': True,
             'message': 'Employee added successfully',
@@ -275,6 +357,10 @@ def api_add_employee(request):
                 'photo_url': user.profile_photo.url if user.profile_photo else '',
                 'created_at': user.date_joined.strftime('%b %d, %Y') if user.date_joined else '',
                 'status': 'active',
+                'city': city or '-',
+                'pin_code': pin_code or '-',
+                'district': district or '-',
+                'created_under': created_under,
             }
         }, status=201)
         
@@ -509,6 +595,8 @@ def api_get_employee(request, employee_id):
                 }
                 for doc in user.onboarding_documents.all()
             ]
+        creator_info = _resolve_creator_info(user, onboarding, profile)
+        city, pin_code, district = _extract_location(onboarding)
 
         return JsonResponse({
             'success': True,
@@ -529,6 +617,12 @@ def api_get_employee(request, employee_id):
                 'total_disbursed': float(profile.total_disbursed_amount) if profile else 0.0,
                 'assigned_loans': assigned_loans,
                 'notes': profile.notes if profile else '',
+                'city': city or '-',
+                'pin_code': pin_code or '-',
+                'district': district or '-',
+                'created_under': creator_info['display'],
+                'created_by_role': creator_info['role'],
+                'created_by_name': creator_info['name'],
             }
             ,
             'summary': summary,

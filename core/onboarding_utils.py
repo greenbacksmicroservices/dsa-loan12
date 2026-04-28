@@ -66,6 +66,7 @@ def collect_onboarding_payload_from_source(source):
                 'landmark': _get(source, 'onb_perm_landmark'),
                 'state': _get(source, 'onb_perm_state'),
                 'city': _get(source, 'onb_perm_city'),
+                'district': _get(source, 'onb_perm_district'),
                 'pin_code': _get(source, 'onb_perm_pin'),
             },
             'present_address': {
@@ -74,6 +75,7 @@ def collect_onboarding_payload_from_source(source):
                 'landmark': _get(source, 'onb_present_landmark'),
                 'state': _get(source, 'onb_present_state'),
                 'city': _get(source, 'onb_present_city'),
+                'district': _get(source, 'onb_present_district'),
                 'pin_code': _get(source, 'onb_present_pin'),
             },
         },
