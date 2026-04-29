@@ -269,13 +269,36 @@ def admin_all_employees(request):
         pin = (perm.get('pin_code') or '').strip()
         district = (perm.get('district') or '').strip()
 
+        if not city and isinstance(onboarding, dict):
+            city = str(onboarding.get('city') or '').strip()
+        if not pin and isinstance(onboarding, dict):
+            pin = str(onboarding.get('pin_code') or onboarding.get('pin') or '').strip()
+        if not district and isinstance(onboarding, dict):
+            district = str(onboarding.get('district') or '').strip()
+
+        if not city or not pin or not district:
+            address_text = str(getattr(employee, 'address', '') or '')
+            if address_text:
+                if not city:
+                    match_city = re.search(r'City:\s*([^|,\n]+)', address_text, flags=re.IGNORECASE)
+                    if match_city:
+                        city = match_city.group(1).strip()
+                if not pin:
+                    match_pin = re.search(r'PIN:\s*([A-Za-z0-9-]+)', address_text, flags=re.IGNORECASE)
+                    if match_pin:
+                        pin = match_pin.group(1).strip()
+                if not district:
+                    match_district = re.search(r'District:\s*([^|,\n]+)', address_text, flags=re.IGNORECASE)
+                    if match_district:
+                        district = match_district.group(1).strip()
+
         location_parts = []
         if city:
             location_parts.append(city)
-        if pin:
-            location_parts.append(f"PIN {pin}")
         if district:
             location_parts.append(f"District {district}")
+        if pin:
+            location_parts.append(f"PIN {pin}")
         employee_location_display[employee.id] = " | ".join(location_parts) if location_parts else '-'
 
         creator_role = ''
@@ -330,10 +353,63 @@ def admin_all_agents(request):
     if request.user.role != 'admin':
         return redirect('dashboard')
     
-    agents = Agent.objects.filter(status='active')
+    agents = Agent.objects.filter(status='active').select_related(
+        'created_by',
+        'user',
+        'user__onboarding_profile',
+    ).order_by('-created_at')
+
+    agent_location_display = {}
+    for agent in agents:
+        city = str(getattr(agent, 'city', '') or '').strip()
+        pin = str(getattr(agent, 'pin_code', '') or '').strip()
+        district = ''
+
+        onboarding = {}
+        agent_user = getattr(agent, 'user', None)
+        if agent_user and hasattr(agent_user, 'onboarding_profile') and agent_user.onboarding_profile:
+            onboarding = agent_user.onboarding_profile.data or {}
+
+        section1 = onboarding.get('section1') if isinstance(onboarding, dict) else {}
+        perm = (section1 or {}).get('permanent_address') or {}
+        if not city:
+            city = str(perm.get('city') or '').strip()
+        if not pin:
+            pin = str(perm.get('pin_code') or '').strip()
+        district = str(perm.get('district') or '').strip()
+        if not district and isinstance(onboarding, dict):
+            district = str(onboarding.get('district') or '').strip()
+
+        if not city or not pin or not district:
+            address_text = str(
+                getattr(agent, 'address', '') or getattr(agent_user, 'address', '') or ''
+            )
+            if address_text:
+                if not city:
+                    city_match = re.search(r'City:\s*([^|,\n]+)', address_text, flags=re.IGNORECASE)
+                    if city_match:
+                        city = city_match.group(1).strip()
+                if not district:
+                    district_match = re.search(r'District:\s*([^|,\n]+)', address_text, flags=re.IGNORECASE)
+                    if district_match:
+                        district = district_match.group(1).strip()
+                if not pin:
+                    pin_match = re.search(r'PIN:\s*([A-Za-z0-9-]+)', address_text, flags=re.IGNORECASE)
+                    if pin_match:
+                        pin = pin_match.group(1).strip()
+
+        location_parts = []
+        if city:
+            location_parts.append(city)
+        if district:
+            location_parts.append(f"District {district}")
+        if pin:
+            location_parts.append(f"PIN {pin}")
+        agent_location_display[agent.id] = " | ".join(location_parts) if location_parts else '-'
     
     context = {
         'agents': agents,
+        'agent_location_display': agent_location_display,
     }
     
     return render(request, 'core/admin/agents_list.html', context)

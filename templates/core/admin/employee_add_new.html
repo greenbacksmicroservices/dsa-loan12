@@ -1,434 +1,201 @@
-{% extends 'core/admin/admin_base.html' %}
+﻿{% extends 'core/admin/admin_base.html' %}
 {% load static %}
 
 {% block title %}Add New Employee - Admin Panel{% endblock %}
 
 {% block content %}
 <style>
-    .page-container {
-        padding: 30px;
-        max-width: 900px;
+    .page-wrap {
+        max-width: 760px;
         margin: 0 auto;
+        padding: 24px;
     }
 
-    .page-header {
-        display: flex;
-        align-items: center;
-        gap: 15px;
-        margin-bottom: 30px;
-        padding-bottom: 20px;
-        border-bottom: 2px solid #e5e7eb;
+    .card-box {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        box-shadow: 0 10px 22px rgba(15, 23, 42, 0.08);
+        padding: 24px;
     }
 
-    .page-header a {
-        color: #6b7280;
-        text-decoration: none;
-        font-size: 14px;
-        transition: color 0.3s;
-    }
-
-    .page-header a:hover {
-        color: #1f2937;
-    }
-
-    .page-title {
-        font-size: 28px;
-        font-weight: 700;
-        color: #1f2937;
+    .card-title {
         margin: 0;
-    }
-
-    .form-container {
-        background: white;
-        border-radius: 8px;
-        padding: 30px;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    }
-
-    .form-section {
-        margin-bottom: 30px;
-    }
-
-    .form-section-title {
-        font-size: 16px;
-        font-weight: 600;
-        color: #1f2937;
-        margin-bottom: 20px;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding-bottom: 10px;
-        border-bottom: 1px solid #f3f4f6;
-    }
-
-    .form-section-title i {
-        color: #1abc9c;
-        font-size: 18px;
-    }
-
-    .form-group {
-        margin-bottom: 20px;
-    }
-
-    .form-row {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 20px;
-    }
-
-    .form-row.full {
-        grid-template-columns: 1fr;
-    }
-
-    .form-row.three-col {
-        grid-template-columns: 1fr 1fr 1fr;
-    }
-
-    label {
-        display: block;
-        font-weight: 600;
-        color: #374151;
-        margin-bottom: 8px;
-        font-size: 14px;
-    }
-
-    .required {
-        color: #ef4444;
+        font-size: 24px;
         font-weight: 700;
+        color: #111827;
     }
 
-    input[type="text"],
-    input[type="email"],
-    input[type="tel"],
-    input[type="date"],
-    input[type="file"],
-    select,
-    textarea {
-        width: 100%;
-        padding: 12px 14px;
+    .card-subtitle {
+        margin: 8px 0 20px;
+        color: #4b5563;
+        font-size: 14px;
+    }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+    }
+
+    .field {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .field label {
+        margin-bottom: 6px;
+        font-size: 13px;
+        font-weight: 700;
+        color: #1f2937;
+    }
+
+    .field input,
+    .field select {
         border: 1px solid #d1d5db;
-        border-radius: 6px;
+        border-radius: 10px;
+        padding: 11px 12px;
         font-size: 14px;
-        font-family: inherit;
-        transition: all 0.3s;
-    }
-
-    input[type="text"]:focus,
-    input[type="email"]:focus,
-    input[type="tel"]:focus,
-    input[type="date"]:focus,
-    input[type="file"]:focus,
-    select:focus,
-    textarea:focus {
+        color: #111827;
         outline: none;
-        border-color: #1abc9c;
-        box-shadow: 0 0 0 3px rgba(26, 188, 156, 0.1);
     }
 
-    textarea {
-        resize: vertical;
-        min-height: 80px;
+    .field input:focus,
+    .field select:focus {
+        border-color: #2563eb;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
     }
 
-    .photo-upload-container {
+    .actions {
+        margin-top: 22px;
         display: flex;
-        gap: 20px;
-        align-items: flex-start;
-    }
-
-    .photo-preview {
-        width: 120px;
-        height: 120px;
-        border-radius: 8px;
-        background: #f3f4f6;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        overflow: hidden;
-        border: 2px dashed #d1d5db;
-    }
-
-    .photo-preview img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-    }
-
-    .photo-upload-actions {
-        flex: 1;
-    }
-
-    .photo-input-wrapper {
-        position: relative;
-        overflow: hidden;
-        display: inline-block;
-    }
-
-    .photo-input-wrapper input[type="file"] {
-        position: absolute;
-        left: -9999px;
-    }
-
-    .btn-upload-photo {
-        background: linear-gradient(135deg, #1abc9c 0%, #16a085 100%);
-        color: white;
-        padding: 10px 16px;
-        border: none;
-        border-radius: 6px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.3s;
-        display: inline-block;
-        font-size: 14px;
-    }
-
-    .btn-upload-photo:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 16px rgba(26, 188, 156, 0.3);
-    }
-
-    .photo-help-text {
-        display: block;
-        font-size: 12px;
-        color: #6b7280;
-        margin-top: 8px;
-    }
-
-    .form-actions {
-        display: flex;
-        gap: 12px;
-        margin-top: 40px;
-        padding-top: 30px;
-        border-top: 1px solid #f3f4f6;
+        gap: 10px;
+        justify-content: flex-end;
     }
 
     .btn {
-        padding: 12px 24px;
         border: none;
-        border-radius: 6px;
+        border-radius: 10px;
+        padding: 10px 16px;
         font-weight: 600;
         cursor: pointer;
-        transition: all 0.3s;
-        font-size: 14px;
+        text-decoration: none;
         display: inline-flex;
         align-items: center;
         gap: 8px;
     }
 
     .btn-primary {
-        background: linear-gradient(135deg, #1abc9c 0%, #16a085 100%);
-        color: white;
-    }
-
-    .btn-primary:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 16px rgba(26, 188, 156, 0.3);
+        background: #2563eb;
+        color: #fff;
     }
 
     .btn-secondary {
-        background: #f3f4f6;
-        color: #374151;
-        border: 1px solid #d1d5db;
-    }
-
-    .btn-secondary:hover {
         background: #e5e7eb;
+        color: #1f2937;
     }
 
-    .form-message {
-        padding: 12px 16px;
-        border-radius: 6px;
-        margin-bottom: 20px;
+    .msg {
         display: none;
+        margin-bottom: 14px;
+        border-radius: 10px;
+        padding: 10px 12px;
+        font-size: 13px;
+        font-weight: 600;
     }
 
-    .form-message.success {
-        background: #d1fae5;
-        color: #065f46;
-        border: 1px solid #a7f3d0;
+    .msg.success {
         display: block;
+        background: #dcfce7;
+        color: #166534;
+        border: 1px solid #86efac;
     }
 
-    .form-message.error {
+    .msg.error {
+        display: block;
         background: #fee2e2;
         color: #991b1b;
         border: 1px solid #fecaca;
-        display: block;
     }
 
-    .loading-spinner {
-        display: none;
-        width: 16px;
-        height: 16px;
-        border: 2px solid rgba(255, 255, 255, 0.3);
-        border-top: 2px solid white;
+    .spinner {
+        width: 14px;
+        height: 14px;
+        border: 2px solid rgba(255, 255, 255, 0.4);
+        border-top-color: #fff;
         border-radius: 50%;
         animation: spin 0.8s linear infinite;
+        display: none;
     }
 
     @keyframes spin {
         to { transform: rotate(360deg); }
     }
 
-    .btn-primary:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-        transform: none;
-    }
-
     @media (max-width: 768px) {
-        .form-row {
+        .page-wrap {
+            padding: 16px;
+        }
+
+        .form-grid {
             grid-template-columns: 1fr;
-        }
-
-        .form-row.three-col {
-            grid-template-columns: 1fr;
-        }
-
-        .photo-upload-container {
-            flex-direction: column;
-        }
-
-        .page-container {
-            padding: 20px;
-        }
-
-        .form-container {
-            padding: 20px;
         }
     }
 </style>
 
-<div class="page-container">
-    <div class="page-header">
-        <a href="{% url 'employee_management' %}">
-            <i class="fas fa-chevron-left"></i> Back to Employees
-        </a>
-        <h1 class="page-title">➕ Add New Employee</h1>
-    </div>
+<div class="page-wrap">
+    <div class="card-box">
+        <h1 class="card-title">Add New Employee</h1>
+        <p class="card-subtitle">Only basic details are required.</p>
 
-    <div class="form-container">
-        <div id="formMessage" class="form-message"></div>
+        <div id="formMessage" class="msg"></div>
 
-        <form id="employeeForm" enctype="multipart/form-data">
+        <form id="employeeForm" enctype="multipart/form-data" novalidate>
             {% csrf_token %}
-
-            <!-- Personal Information Section -->
-            <div class="form-section">
-                <div class="form-section-title">
-                    <i class="fas fa-user-circle"></i> Personal Information
+            <div class="form-grid">
+                <div class="field">
+                    <label for="fullName">Name *</label>
+                    <input type="text" id="fullName" name="full_name" placeholder="Employee full name" required>
                 </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Full Name <span class="required">*</span></label>
-                        <input type="text" id="fullName" name="full_name" required
-                               placeholder="Enter full name" autocomplete="name">
-                    </div>
-                    <div class="form-group">
-                        <label>Gender</label>
-                        <select id="gender" name="gender">
-                            <option value="Other">Select Gender</option>
-                            <option value="Male">Male</option>
-                            <option value="Female">Female</option>
-                            <option value="Other">Other</option>
-                        </select>
-                    </div>
+                <div class="field">
+                    <label for="email">Email *</label>
+                    <input type="email" id="email" name="email" placeholder="example@gmail.com" required>
                 </div>
-            </div>
-
-            <!-- Photo Section -->
-            <div class="form-section">
-                <div class="form-section-title">
-                    <i class="fas fa-camera"></i> Profile Photo
+                <div class="field">
+                    <label for="phone">Phone Number *</label>
+                    <input type="tel" id="phone" name="phone" placeholder="10-15 digits" required>
                 </div>
-
-                <div class="photo-upload-container">
-                    <div class="photo-preview" id="photoPreview">
-                        <i class="fas fa-image" style="font-size: 40px; color: #d1d5db;"></i>
-                    </div>
-                    <div class="photo-upload-actions">
-                        <label class="photo-input-wrapper">
-                            <button type="button" class="btn-upload-photo">
-                                <i class="fas fa-upload"></i> Upload Photo
-                            </button>
-                            <input type="file" id="photoInput" name="profile_photo" 
-                                   accept="image/*" onchange="handlePhotoUpload(event)">
-                        </label>
-                        <span class="photo-help-text">JPG, PNG or GIF (Max 5MB)</span>
-                    </div>
+                <div class="field">
+                    <label for="gender">Gender *</label>
+                    <select id="gender" name="gender" required>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other" selected>Other</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="city">City *</label>
+                    <input type="text" id="city" name="city" placeholder="City" required>
+                </div>
+                <div class="field">
+                    <label for="district">District *</label>
+                    <input type="text" id="district" name="district" placeholder="District" required>
+                </div>
+                <div class="field">
+                    <label for="pinCode">PIN Code *</label>
+                    <input type="text" id="pinCode" name="pin_code" placeholder="6-digit PIN" pattern="[0-9]{6}" maxlength="6" required>
+                </div>
+                <div class="field">
+                    <label for="password">Password *</label>
+                    <input type="password" id="password" name="password" placeholder="Minimum 6 characters" minlength="6" required>
                 </div>
             </div>
 
-            <!-- Contact Information Section -->
-            <div class="form-section">
-                <div class="form-section-title">
-                    <i class="fas fa-envelope"></i> Contact Information
-                </div>
-
-                <div class="form-row full">
-                    <div class="form-group">
-                        <label>Email <span class="required">*</span></label>
-                        <input type="email" id="email" name="email" required
-                               placeholder="employee@example.com" autocomplete="email">
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Phone Number <span class="required">*</span></label>
-                        <input type="tel" id="phone" name="phone" required
-                               placeholder="10-digit mobile number" autocomplete="tel">
-                    </div>
-                    <div class="form-group">
-                        <label>Password <span class="required">*</span></label>
-                        <input type="password" id="password" name="password" required
-                               placeholder="At least 8 characters">
-                    </div>
-                </div>
-            </div>
-
-            <!-- Address Information Section -->
-            <div class="form-section">
-                <div class="form-section-title">
-                    <i class="fas fa-map-marker-alt"></i> Address Information
-                </div>
-
-                <div class="form-row full">
-                    <div class="form-group">
-                        <label>Address</label>
-                        <textarea id="address" name="address" 
-                                  placeholder="Enter street address" autocomplete="street-address"></textarea>
-                    </div>
-                </div>
-
-                <div class="form-row three-col">
-                    <div class="form-group">
-                        <label>Pin/Postal Code</label>
-                        <input type="text" id="pin" name="pin_code" 
-                               placeholder="Postal code" autocomplete="postal-code">
-                    </div>
-                    <div class="form-group">
-                        <label>State</label>
-                        <input type="text" id="state" name="state" 
-                               placeholder="State" autocomplete="address-level1">
-                    </div>
-                    <div class="form-group">
-                        <label>City</label>
-                        <input type="text" id="city" name="city" 
-                               placeholder="City" autocomplete="address-level2">
-                    </div>
-                </div>
-            </div>
-
-            <!-- Form Actions -->
-            <div class="form-actions">
-                <a href="{% url 'employee_management' %}" class="btn btn-secondary">
-                    <i class="fas fa-times"></i> Cancel
-                </a>
-                <button type="submit" class="btn btn-primary" id="submitBtn" disabled>
-                    <span class="loading-spinner" id="spinner"></span>
-                    <span id="submitBtnText">Add Employee</span>
+            <div class="actions">
+                <a href="{% url 'employee_management' %}" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary" id="submitBtn">
+                    <span class="spinner" id="spinner"></span>
+                    <span id="submitBtnText">Save Employee</span>
                 </button>
             </div>
         </form>
@@ -440,54 +207,43 @@ const form = document.getElementById('employeeForm');
 const submitBtn = document.getElementById('submitBtn');
 const spinner = document.getElementById('spinner');
 const formMessage = document.getElementById('formMessage');
-const photoInput = document.getElementById('photoInput');
-const photoPreview = document.getElementById('photoPreview');
 
-// Enable submit button when form has values
-form.addEventListener('change', () => {
-    const fullName = document.getElementById('fullName').value.trim();
-    const email = document.getElementById('email').value.trim();
-    const phone = document.getElementById('phone').value.trim();
-    const password = document.getElementById('password').value.trim();
-    
-    submitBtn.disabled = !(fullName && email && phone && password);
-});
-
-// Photo upload handler
-function handlePhotoUpload(event) {
-    const file = event.target.files[0];
-    if (file) {
-        // Validate file size (5MB max)
-        if (file.size > 5 * 1024 * 1024) {
-            showMessage('Photo size must be less than 5MB', 'error');
-            photoInput.value = '';
-            return;
-        }
-
-        // Show preview
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            photoPreview.innerHTML = `<img src="${e.target.result}" alt="Photo preview">`;
-        };
-        reader.readAsDataURL(file);
-    }
+function showMessage(message, type) {
+    formMessage.textContent = message;
+    formMessage.className = `msg ${type}`;
 }
 
-// Form submission
-form.addEventListener('submit', async (e) => {
-    e.preventDefault();
+form.addEventListener('submit', async (event) => {
+    event.preventDefault();
 
     const fullName = document.getElementById('fullName').value.trim();
     const email = document.getElementById('email').value.trim();
     const phone = document.getElementById('phone').value.trim();
+    const city = document.getElementById('city').value.trim();
+    const district = document.getElementById('district').value.trim();
+    const pinCode = document.getElementById('pinCode').value.trim();
     const password = document.getElementById('password').value.trim();
 
-    if (!fullName || !email || !phone || !password) {
-        showMessage('Please fill in all required fields', 'error');
+    if (!fullName || !email || !phone || !city || !district || !pinCode || !password) {
+        showMessage('Please fill all required fields.', 'error');
         return;
     }
 
-    // Show loading state
+    if (!/^\d{10,15}$/.test(phone)) {
+        showMessage('Phone number must be 10-15 digits.', 'error');
+        return;
+    }
+
+    if (!/^\d{6}$/.test(pinCode)) {
+        showMessage('PIN code must be 6 digits.', 'error');
+        return;
+    }
+
+    if (password.length < 6) {
+        showMessage('Password must be at least 6 characters.', 'error');
+        return;
+    }
+
     submitBtn.disabled = true;
     spinner.style.display = 'inline-block';
 
@@ -503,39 +259,20 @@ form.addEventListener('submit', async (e) => {
 
         const result = await response.json();
 
-        if (result.success) {
-            showMessage('✓ Employee added successfully!', 'success');
-            
-            setTimeout(() => {
-                window.location.href = '{% url "employee_management" %}';
-            }, 1500);
-        } else {
-            showMessage(`✗ Error: ${result.error}`, 'error');
+        if (!response.ok || !result.success) {
+            throw new Error(result.error || 'Failed to add employee');
         }
+
+        showMessage(result.message || 'Employee added successfully!', 'success');
+        setTimeout(() => {
+            window.location.href = '{% url "employee_management" %}';
+        }, 900);
     } catch (error) {
-        showMessage(`✗ Error: ${error.message}`, 'error');
+        showMessage(error.message || 'Error adding employee.', 'error');
     } finally {
         submitBtn.disabled = false;
         spinner.style.display = 'none';
     }
 });
-
-function showMessage(message, type) {
-    formMessage.textContent = message;
-    formMessage.className = `form-message ${type}`;
-    formMessage.style.display = 'block';
-    
-    if (type === 'error') {
-        setTimeout(() => {
-            formMessage.style.display = 'none';
-        }, 5000);
-    }
-}
-
-// Initial state
-window.addEventListener('load', () => {
-    submitBtn.disabled = true;
-});
 </script>
-
 {% endblock %}

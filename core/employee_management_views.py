@@ -75,13 +75,37 @@ def _resolve_creator_info(user_obj, onboarding_payload=None, employee_profile=No
     }
 
 
-def _extract_location(onboarding_payload):
+def _extract_location(onboarding_payload, user_obj=None):
     payload = onboarding_payload or {}
     section1 = payload.get('section1') if isinstance(payload, dict) else {}
     perm = (section1 or {}).get('permanent_address') or {}
     city = (perm.get('city') or '').strip()
     pin = (perm.get('pin_code') or '').strip()
     district = (perm.get('district') or '').strip()
+
+    if not city and isinstance(payload, dict):
+        city = str(payload.get('city') or '').strip()
+    if not pin and isinstance(payload, dict):
+        pin = str(payload.get('pin_code') or payload.get('pin') or '').strip()
+    if not district and isinstance(payload, dict):
+        district = str(payload.get('district') or '').strip()
+
+    if user_obj and (not city or not pin or not district):
+        address_text = str(getattr(user_obj, 'address', '') or '')
+        if address_text:
+            if not city:
+                city_match = re.search(r'City:\s*([^|,\n]+)', address_text, flags=re.IGNORECASE)
+                if city_match:
+                    city = city_match.group(1).strip()
+            if not district:
+                district_match = re.search(r'District:\s*([^|,\n]+)', address_text, flags=re.IGNORECASE)
+                if district_match:
+                    district = district_match.group(1).strip()
+            if not pin:
+                pin_match = re.search(r'PIN:\s*([A-Za-z0-9-]+)', address_text, flags=re.IGNORECASE)
+                if pin_match:
+                    pin = pin_match.group(1).strip()
+
     return city, pin, district
 
 
@@ -150,7 +174,7 @@ def api_get_employees(request):
             if hasattr(user, 'onboarding_profile') and user.onboarding_profile:
                 onboarding_payload = user.onboarding_profile.data or {}
             creator_info = _resolve_creator_info(user, onboarding_payload, employee_profile)
-            city, pin_code, district = _extract_location(onboarding_payload)
+            city, pin_code, district = _extract_location(onboarding_payload, user)
             
             # Get assigned loans count
             assigned_loans = LoanApplication.objects.filter(
@@ -172,7 +196,7 @@ def api_get_employees(request):
                 'pin_code': pin_code or '-',
                 'created_under': creator_info['display'],
                 'role': employee_profile.get_employee_role_display() if employee_profile else 'Loan Processor',
-                'status': 'Active' if user.is_active else 'Inactive',
+                'status': 'active' if user.is_active else 'inactive',
                 'is_active': user.is_active,
                 'total_leads': employee_profile.total_leads if employee_profile else 0,
                 'approved_loans': employee_profile.approved_loans if employee_profile else 0,
@@ -227,6 +251,9 @@ def api_add_employee(request):
             'email': email,
             'phone': phone,
             'password': password,
+            'city': city,
+            'district': district,
+            'pin_code': pin_code,
         }
         
         for field_name, field_value in required_fields.items():
@@ -262,6 +289,12 @@ def api_add_employee(request):
                 'success': False,
                 'error': 'Phone number must be 10-15 digits'
             }, status=400)
+
+        if not pin_code.isdigit() or len(pin_code) != 6:
+            return JsonResponse({
+                'success': False,
+                'error': 'PIN code must be 6 digits'
+            }, status=400)
         
         # Parse full name
         name_parts = full_name.split(' ', 1)
@@ -281,8 +314,15 @@ def api_add_employee(request):
             address_parts.append(f"PIN: {pin_code}")
         normalized_address = " | ".join([part for part in address_parts if part])
 
+        base_username = email.split('@')[0]
+        username = base_username
+        suffix = 1
+        while User.objects.filter(username=username).exists():
+            username = f"{base_username}{suffix}"
+            suffix += 1
+
         user = User.objects.create_user(
-            username=email.split('@')[0],  # Username from email prefix
+            username=username,
             email=email,
             password=password,
             first_name=first_name,
@@ -596,7 +636,7 @@ def api_get_employee(request, employee_id):
                 for doc in user.onboarding_documents.all()
             ]
         creator_info = _resolve_creator_info(user, onboarding, profile)
-        city, pin_code, district = _extract_location(onboarding)
+        city, pin_code, district = _extract_location(onboarding, user)
 
         return JsonResponse({
             'success': True,
@@ -615,6 +655,7 @@ def api_get_employee(request, employee_id):
                 'approved_loans': profile.approved_loans if profile else 0,
                 'rejected_loans': profile.rejected_loans if profile else 0,
                 'total_disbursed': float(profile.total_disbursed_amount) if profile else 0.0,
+                'disbursed_amount': float(profile.total_disbursed_amount) if profile else 0.0,
                 'assigned_loans': assigned_loans,
                 'notes': profile.notes if profile else '',
                 'city': city or '-',
