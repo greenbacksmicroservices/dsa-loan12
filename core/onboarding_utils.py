@@ -33,6 +33,50 @@ def collect_onboarding_payload_from_source(source):
     mobile = _get(source, 'onb_mobile') or _get(source, 'phone')
     email = _get(source, 'onb_email') or _get(source, 'email')
     gender = _get(source, 'onb_gender') or _get(source, 'gender')
+    base_address = _get(source, 'address')
+    base_state = _get(source, 'state')
+    base_city = _get(source, 'city')
+    base_district = _get(source, 'district')
+    base_pin = _get(source, 'pin_code') or _get(source, 'pin')
+
+    perm_address = _get(source, 'onb_perm_address') or base_address
+    perm_landmark = _get(source, 'onb_perm_landmark')
+    perm_state = _get(source, 'onb_perm_state') or base_state
+    perm_city = _get(source, 'onb_perm_city') or base_city
+    perm_district = _get(source, 'onb_perm_district') or base_district
+    perm_pin = _get(source, 'onb_perm_pin') or base_pin
+
+    present_address_raw = _get(source, 'onb_present_address')
+    present_landmark_raw = _get(source, 'onb_present_landmark')
+    present_state_raw = _get(source, 'onb_present_state')
+    present_city_raw = _get(source, 'onb_present_city')
+    present_district_raw = _get(source, 'onb_present_district')
+    present_pin_raw = _get(source, 'onb_present_pin')
+
+    has_present_values = any([
+        present_address_raw,
+        present_landmark_raw,
+        present_state_raw,
+        present_city_raw,
+        present_district_raw,
+        present_pin_raw,
+    ])
+    same_as_permanent = bool(_get(source, 'onb_present_same')) or not has_present_values
+
+    if same_as_permanent:
+        present_address = present_address_raw or perm_address
+        present_landmark = present_landmark_raw or perm_landmark
+        present_state = present_state_raw or perm_state
+        present_city = present_city_raw or perm_city
+        present_district = present_district_raw or perm_district
+        present_pin = present_pin_raw or perm_pin
+    else:
+        present_address = present_address_raw
+        present_landmark = present_landmark_raw
+        present_state = present_state_raw
+        present_city = present_city_raw
+        present_district = present_district_raw
+        present_pin = present_pin_raw
 
     references = []
     ref_names = _getlist(source, 'ref_name')
@@ -62,21 +106,21 @@ def collect_onboarding_payload_from_source(source):
             'gender': gender,
             'marital_status': _get(source, 'onb_marital_status'),
             'permanent_address': {
-                'address': _get(source, 'onb_perm_address') or _get(source, 'address'),
-                'landmark': _get(source, 'onb_perm_landmark'),
-                'state': _get(source, 'onb_perm_state'),
-                'city': _get(source, 'onb_perm_city'),
-                'district': _get(source, 'onb_perm_district'),
-                'pin_code': _get(source, 'onb_perm_pin'),
+                'address': perm_address,
+                'landmark': perm_landmark,
+                'state': perm_state,
+                'city': perm_city,
+                'district': perm_district,
+                'pin_code': perm_pin,
             },
             'present_address': {
-                'same_as_permanent': bool(_get(source, 'onb_present_same')),
-                'address': _get(source, 'onb_present_address'),
-                'landmark': _get(source, 'onb_present_landmark'),
-                'state': _get(source, 'onb_present_state'),
-                'city': _get(source, 'onb_present_city'),
-                'district': _get(source, 'onb_present_district'),
-                'pin_code': _get(source, 'onb_present_pin'),
+                'same_as_permanent': same_as_permanent,
+                'address': present_address,
+                'landmark': present_landmark,
+                'state': present_state,
+                'city': present_city,
+                'district': present_district,
+                'pin_code': present_pin,
             },
         },
         'section2': {

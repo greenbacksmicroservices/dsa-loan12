@@ -15,6 +15,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 import json
+import re
 
 from .models import User, Loan, EmployeeProfile, LoanApplication, Agent, UserOnboardingProfile, UserOnboardingDocument
 from .decorators import admin_required
@@ -1015,14 +1016,30 @@ def api_add_agent(request):
         phone = request.POST.get('phone', '').strip()
         gender = request.POST.get('gender', 'Other').strip()
         address = request.POST.get('address', '').strip()
+        city = (
+            request.POST.get('city', '').strip()
+            or request.POST.get('onb_perm_city', '').strip()
+        )
+        district = (
+            request.POST.get('district', '').strip()
+            or request.POST.get('onb_perm_district', '').strip()
+        )
+        pin_code = (
+            request.POST.get('pin_code', '').strip()
+            or request.POST.get('onb_perm_pin', '').strip()
+        )
+        state = (
+            request.POST.get('state', '').strip()
+            or request.POST.get('onb_perm_state', '').strip()
+        )
         password = request.POST.get('password', '').strip()
-        profile_photo = request.FILES.get('profile_photo', None)
+        profile_photo = request.FILES.get('profile_photo') or request.FILES.get('photo')
 
         # Validation
-        if not name or not email or not phone or not password:
+        if not name or not email or not phone or not city or not district or not pin_code or not password:
             return JsonResponse({
                 'success': False,
-                'error': 'Name, Email, Phone, and Password are required'
+                'error': 'Name, Email, Phone, City, District, PIN Code, and Password are required'
             }, status=400)
 
         # Check email uniqueness
@@ -1053,6 +1070,23 @@ def api_add_agent(request):
                 'error': 'Password must be at least 6 characters'
             }, status=400)
 
+        if not pin_code.isdigit() or len(pin_code) != 6:
+            return JsonResponse({
+                'success': False,
+                'error': 'PIN code must be 6 digits'
+            }, status=400)
+
+        address_parts = [address]
+        if city:
+            address_parts.append(f"City: {city}")
+        if district:
+            address_parts.append(f"District: {district}")
+        if state:
+            address_parts.append(f"State: {state}")
+        if pin_code:
+            address_parts.append(f"PIN: {pin_code}")
+        normalized_address = " | ".join([part for part in address_parts if part])
+
         # Generate username from email
         base_username = email.split('@')[0]
         username = base_username
@@ -1076,7 +1110,7 @@ def api_add_agent(request):
             role='agent',
             phone=phone,
             gender=gender,
-            address=address,
+            address=normalized_address,
             is_active=True,
         )
 
@@ -1097,15 +1131,14 @@ def api_add_agent(request):
             name=name,
             email=email,
             phone=phone,
-            address=address,
+            address=normalized_address,
             gender=gender,
+            city=city,
+            state=state or None,
+            pin_code=pin_code,
             status='active',
             created_by=request.user
         )
-        agent.city = request.POST.get('onb_perm_city', '').strip() or agent.city
-        agent.state = request.POST.get('onb_perm_state', '').strip() or agent.state
-        agent.pin_code = request.POST.get('onb_perm_pin', '').strip() or agent.pin_code
-        agent.save()
 
         # Reuse user photo if available
         if user.profile_photo:
@@ -1116,6 +1149,13 @@ def api_add_agent(request):
             agent.save()
 
         onboarding_payload = collect_onboarding_payload(request)
+        creator_name = request.user.get_full_name() or request.user.username or 'System'
+        if isinstance(onboarding_payload, dict):
+            onboarding_payload['_meta'] = {
+                'created_by_id': request.user.id,
+                'created_by_name': creator_name,
+                'created_by_role': 'Admin',
+            }
         if onboarding_payload:
             profile, _ = UserOnboardingProfile.objects.get_or_create(
                 user=user,
@@ -1148,6 +1188,10 @@ def api_add_agent(request):
                 'status': agent.status,
                 'photo_url': agent.profile_photo.url if agent.profile_photo else '',
                 'created_at': agent.created_at.strftime('%b %d, %Y') if agent.created_at else '',
+                'city': city or '',
+                'district': district or '',
+                'pin_code': pin_code or '',
+                'created_by': creator_name,
             }
         }, status=201)
 
@@ -1303,6 +1347,18 @@ def api_get_agent(request, agent_id):
                 for doc in agent_user.onboarding_documents.all()
             ]
 
+        section1 = onboarding.get('section1') if isinstance(onboarding, dict) else {}
+        perm = (section1 or {}).get('permanent_address') or {}
+        district = str(perm.get('district') or '').strip()
+        if not district and isinstance(onboarding, dict):
+            district = str(onboarding.get('district') or '').strip()
+        if not district:
+            address_text = str(agent.address or (agent_user.address if agent_user else '') or '')
+            if address_text:
+                match = re.search(r'District:\s*([^|,\n]+)', address_text, flags=re.IGNORECASE)
+                if match:
+                    district = match.group(1).strip()
+
         return JsonResponse({
             'success': True,
             'agent': {
@@ -1314,6 +1370,10 @@ def api_get_agent(request, agent_id):
                 'gender': agent.gender or 'Other',
                 'status': agent.status or 'active',
                 'photo_url': agent.profile_photo.url if agent.profile_photo else '',
+                'city': agent.city or str(perm.get('city') or '').strip(),
+                'state': agent.state or str(perm.get('state') or '').strip(),
+                'pin_code': agent.pin_code or str(perm.get('pin_code') or '').strip(),
+                'district': district or '',
             },
             'summary': summary,
             'customers': customers,

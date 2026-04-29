@@ -12,7 +12,7 @@ from django.utils import timezone
 import json
 import logging
 
-from .models import LoanApplication, Applicant, ApplicantDocument, LoanAssignment, LoanStatusHistory, User, Agent, Loan, LoanDocument, ActivityLog, SubAdminEntry, UserOnboardingProfile, UserOnboardingDocument
+from .models import LoanApplication, Applicant, ApplicantDocument, LoanAssignment, LoanStatusHistory, User, Agent, Loan, LoanDocument, ActivityLog, SubAdminEntry, UserOnboardingProfile, UserOnboardingDocument, EmployeeProfile
 from .decorators import admin_required
 from .loan_sync import extract_assignment_context, role_label, find_related_loan, find_related_loan_application
 from .onboarding_utils import collect_onboarding_payload, collect_onboarding_documents, collect_onboarding_payload_from_source
@@ -1248,42 +1248,74 @@ def add_agent(request):
     GET: Show form
     POST: Create new agent/employee
     """
+    context = {
+        'page_title': 'Add New Agent/Employee',
+    }
+
     if request.method == 'POST':
         try:
-            first_name = request.POST.get('first_name', '').strip()
-            last_name = request.POST.get('last_name', '').strip()
+            full_name = request.POST.get('full_name', '').strip()
+            first_name_raw = request.POST.get('first_name', '').strip()
+            last_name_raw = request.POST.get('last_name', '').strip()
+            if not full_name:
+                full_name = " ".join([part for part in [first_name_raw, last_name_raw] if part]).strip()
+
             email = request.POST.get('email', '').strip()
             phone = request.POST.get('phone', '').strip()
             gender = request.POST.get('gender', '').strip()
-            address = request.POST.get('address', '').strip()
+            city = request.POST.get('city', '').strip() or request.POST.get('onb_perm_city', '').strip()
+            district = request.POST.get('district', '').strip() or request.POST.get('onb_perm_district', '').strip()
+            pin_code = request.POST.get('pin_code', '').strip() or request.POST.get('onb_perm_pin', '').strip()
+            state = request.POST.get('state', '').strip() or request.POST.get('onb_perm_state', '').strip()
+            address_input = request.POST.get('address', '').strip()
             password = request.POST.get('password', '').strip()
-            role = request.POST.get('role', 'agent').strip()  # agent, employee, subadmin
-            photo = request.FILES.get('photo')
+            role = request.POST.get('role', 'agent').strip().lower()  # agent, employee, subadmin
+            photo = request.FILES.get('photo') or request.FILES.get('profile_photo')
+
+            if role not in {'agent', 'employee', 'subadmin'}:
+                role = 'agent'
             
             # Validate required fields
-            if not all([first_name, email, phone, password]):
+            if not all([full_name, email, phone, city, district, pin_code, password]):
                 messages.error(request, 'Please fill all required fields')
-                return render(request, 'core/admin/add_agent.html')
+                return render(request, 'core/admin/add_agent.html', context)
             
             # Validate email format
             if not email or '@' not in email:
                 messages.error(request, 'Invalid email address')
-                return render(request, 'core/admin/add_agent.html')
+                return render(request, 'core/admin/add_agent.html', context)
             
             # Check if email already exists
             if User.objects.filter(email=email).exists():
                 messages.error(request, 'Email already exists')
-                return render(request, 'core/admin/add_agent.html')
+                return render(request, 'core/admin/add_agent.html', context)
             
             # Check phone format
-            if not phone.isdigit() or len(phone) < 10:
-                messages.error(request, 'Invalid phone number. Must be at least 10 digits')
-                return render(request, 'core/admin/add_agent.html')
+            if not phone.isdigit() or len(phone) < 10 or len(phone) > 15:
+                messages.error(request, 'Invalid phone number. Must be 10-15 digits')
+                return render(request, 'core/admin/add_agent.html', context)
+
+            if not pin_code.isdigit() or len(pin_code) != 6:
+                messages.error(request, 'PIN code must be exactly 6 digits')
+                return render(request, 'core/admin/add_agent.html', context)
 
             # Validate password length
             if len(password) < 6:
                 messages.error(request, 'Password must be at least 6 characters')
-                return render(request, 'core/admin/add_agent.html')
+                return render(request, 'core/admin/add_agent.html', context)
+
+            name_parts = full_name.split(' ', 1)
+            first_name = name_parts[0]
+            last_name = name_parts[1] if len(name_parts) > 1 else ''
+
+            address = address_input or " | ".join([
+                part for part in [
+                    f"City: {city}" if city else '',
+                    f"District: {district}" if district else '',
+                    f"State: {state}" if state else '',
+                    f"PIN: {pin_code}" if pin_code else '',
+                ] if part
+            ])
             
             # Generate username from email
             base_username = email.split('@')[0]
@@ -1310,36 +1342,50 @@ def add_agent(request):
             if photo:
                 user.profile_photo = photo
                 user.save()
+
+            display_name = user.get_full_name() or user.username
             
             # If role is agent, create Agent profile
             if role == 'agent':
                 agent = Agent.objects.create(
                     user=user,
-                    name=f"{first_name} {last_name}".strip(),
+                    name=display_name,
                     email=email,
                     phone=phone,
                     status='active',
                     gender=gender or None,
                     address=address,
-                    city=request.POST.get('onb_perm_city', '').strip(),
-                    state=request.POST.get('onb_perm_state', '').strip(),
-                    pin_code=request.POST.get('onb_perm_pin', '').strip(),
+                    city=city or None,
+                    state=state or None,
+                    pin_code=pin_code or None,
+                    created_by=request.user,
                 )
                 if photo:
                     agent.profile_photo = photo
                     agent.save()
-                success_msg = f'Agent {first_name} {last_name} created successfully with username: {username}'
+                success_msg = f'Agent {display_name} created successfully with username: {username}'
             
             # If role is subadmin, mark as subadmin
             elif role == 'subadmin':
                 user.is_subadmin = True
-                user.save()
-                success_msg = f'Partner {first_name} {last_name} created successfully with username: {username}'
+                user.save(update_fields=['is_subadmin'])
+                success_msg = f'Partner {display_name} created successfully with username: {username}'
             
             else:  # employee
-                success_msg = f'Employee {first_name} {last_name} created successfully with username: {username}'
+                EmployeeProfile.objects.get_or_create(
+                    user=user,
+                    defaults={'employee_role': 'loan_processor'},
+                )
+                success_msg = f'Employee {display_name} created successfully with username: {username}'
 
             onboarding_payload = collect_onboarding_payload(request)
+            creator_info = {
+                'created_by_id': request.user.id,
+                'created_by_name': request.user.get_full_name() or request.user.username or 'System',
+                'created_by_role': role_label(request.user),
+            }
+            if isinstance(onboarding_payload, dict):
+                onboarding_payload['_meta'] = creator_info
             if onboarding_payload:
                 profile, _ = UserOnboardingProfile.objects.get_or_create(
                     user=user,
@@ -1362,16 +1408,17 @@ def add_agent(request):
                 )
             
             messages.success(request, success_msg)
-            return redirect('admin_all_agents' if role == 'agent' else 'admin_all_employees')
+            if role == 'agent':
+                return redirect('admin_all_agents')
+            if role == 'subadmin':
+                return redirect('admin_subadmin_management')
+            return redirect('admin_all_employees')
         
         except Exception as e:
             logger.error(f"Error creating agent: {str(e)}")
             messages.error(request, f'Error creating user: {str(e)}')
-            return render(request, 'core/admin/add_agent.html')
-    
-    context = {
-        'page_title': 'Add New Agent/Employee',
-    }
+            return render(request, 'core/admin/add_agent.html', context)
+
     return render(request, 'core/admin/add_agent.html', context)
 
 
@@ -1738,7 +1785,12 @@ def admin_add_loan(request):
         'page_title': 'Add New Loan Application',
         'recent_loans': recent_loans,
     }
-    template_name = 'core/admin/add_loan.html' if request.user.role == 'admin' else 'core/employee/add_loan.html'
+    template_map = {
+        'admin': 'core/admin/add_loan.html',
+        'employee': 'core/employee/add_loan.html',
+        'subadmin': 'core/employee/add_loan.html',
+    }
+    template_name = template_map.get(request.user.role, 'core/admin/add_loan.html')
     return render(request, template_name, context)
 
 

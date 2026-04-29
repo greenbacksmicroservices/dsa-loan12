@@ -509,7 +509,7 @@
         <div class="recent-applications-title">
             <i class="bi bi-clock-history"></i> Recent Loan Applications
         </div>
-        <table class="applications-table table-grid">
+        <table class="applications-table">
             <thead>
                 <tr>
                     <th>Applicant Name</th>
@@ -551,15 +551,18 @@
         </table>
     </div>
     {% else %}
-    <div class="empty-message"></div>
+    <div class="empty-message">
+        <p><i class="bi bi-inbox" style="font-size: 24px;"></i></p>
+        <p>No applications yet. Start adding new loan applications below.</p>
+    </div>
     {% endif %}
 
     <form id="loanForm" method="post" enctype="multipart/form-data" novalidate>
         {% csrf_token %}
 
-        <!-- ===================== SECTION 1: APPLICANT INFORMATION ===================== -->
+        <!-- ===================== APPLICANT INFORMATION ===================== -->
         <div class="section-header">
-            <i class="bi bi-person-check"></i> SECTION 1: APPLICANT INFORMATION
+            <i class="bi bi-person-check"></i> APPLICANT INFORMATION
         </div>
         <div class="form-section">
             <div class="info-alert">
@@ -587,9 +590,11 @@
 
             <div class="form-row">
                 <div class="form-group">
+                    {% if request.user.role != 'agent' %}
                     <label>Loan ID (Manual)</label>
                     <input type="text" class="form-control" name="loan_uid" placeholder="Enter manual loan ID (optional)">
                     <div class="helper-text">Leave blank to auto-generate</div>
+                    {% endif %}
                 </div>
             </div>
 
@@ -693,9 +698,9 @@
         </div>
 
         {% comment %}
-        <!-- ===================== SECTION 2: OCCUPATION & INCOME DETAILS ===================== -->
+        <!-- ===================== OCCUPATION & INCOME DETAILS ===================== -->
         <div class="section-header">
-            <i class="bi bi-briefcase"></i> SECTION 2: OCCUPATION & INCOME DETAILS
+            <i class="bi bi-briefcase"></i> OCCUPATION & INCOME DETAILS
         </div>
         <div class="form-section">
             <div class="sub-section-title">Employment Information</div>
@@ -779,15 +784,15 @@
                 <div class="sub-section-title">Salary Details</div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Company <span class="required">*</span></label>
+                        <label>Company</label>
                         <input type="text" class="form-control" name="company_name" placeholder="Company/Organization name">
                     </div>
                     <div class="form-group">
-                        <label>Designation <span class="required">*</span></label>
+                        <label>Designation</label>
                         <input type="text" class="form-control" name="designation" placeholder="Job title/position">
                     </div>
                     <div class="form-group">
-                        <label>Official Email ID <span class="required">*</span></label>
+                        <label>Official Email ID</label>
                         <input type="email" class="form-control" name="official_email_id" placeholder="Official email address">
                     </div>
                 </div>
@@ -854,13 +859,12 @@
                 </button>
             </div>
         </div>
-
         </div>
         {% endcomment %}
 
-        <!-- ===================== SECTION 4: LOAN DETAILS ===================== -->
+        <!-- ===================== LOAN DETAILS ===================== -->
         <div class="section-header">
-            <i class="bi bi-cash-stack"></i> SECTION 4: LOAN DETAILS
+            <i class="bi bi-cash-stack"></i> LOAN DETAILS
         </div>
         <div class="form-section">
             <div class="form-row">
@@ -896,15 +900,15 @@
 
             <div class="form-row">
                 <div class="form-group full-width">
-                    <label>Loan Purpose <span class="required">*</span></label>
-                    <textarea class="form-control" name="loan_purpose" rows="3" placeholder="Loan Purpose / Requirement" required></textarea>
+                    <label>Loan Purpose</label>
+                    <textarea class="form-control" name="loan_purpose" rows="3" placeholder="Loan Purpose / Requirement"></textarea>
                 </div>
             </div>
 
             <div class="sub-section-title">Service Required Based Documents</div>
             <div class="info-alert">
                 <i class="bi bi-info-circle"></i>
-                Service aur Occupation ke hisaab se required documents auto-open honge. Har required document ke liye file upload karna zaroori hai.
+                Service aur Occupation ke hisaab se suggested documents auto-open honge. Document upload optional hai.
             </div>
             <div class="service-documents-shell">
                 <div id="documents-container"></div>
@@ -916,9 +920,9 @@
             </div>
         </div>
 
-        <!-- ===================== SECTION 5: REFERENCE ===================== -->
+        <!-- ===================== REFERENCE ===================== -->
         <div class="section-header">
-            <i class="bi bi-person-vcard"></i> SECTION 5: REFERENCE
+            <i class="bi bi-person-vcard"></i> REFERENCE
         </div>
         <div class="form-section">
             <div class="info-alert">
@@ -1008,9 +1012,10 @@
         </div>
         {% endcomment %}
 
-        <!-- ===================== SECTION 7: LEAD RECEIVE ===================== -->
+        {% if request.user.role != 'agent' %}
+        <!-- ===================== LEAD RECEIVE ===================== -->
         <div class="section-header">
-            <i class="bi bi-person-plus"></i> SECTION 7: LEAD RECEIVE
+            <i class="bi bi-person-plus"></i> LEAD RECEIVE
         </div>
         <div class="form-section">
             <div class="info-alert">
@@ -1048,6 +1053,7 @@
                 </div>
             </div>
         </div>
+        {% endif %}
 
         <!-- Form Actions -->
         <div class="form-row full-width">
@@ -1074,15 +1080,113 @@
     const MAX_TOTAL_UPLOAD_BYTES = 50 * 1024 * 1024;
 
     const SERVICE_DOCUMENT_REQUIREMENTS = {
-        lap_salary: ['PAN Card', 'Aadhar Front Side', 'Aadhar Back Side (Optional)', 'Photo', 'Permanent Address Proof Own House Proof (Electric Bill or Other Doc)', 'Recent Address Proof', 'Income Proof', 'Service Book', 'Property Documents', 'SOA of Loan Account'],
-        lap_business: ['PAN Card', 'Aadhar Front Side', 'Aadhar Back Side (Optional)', 'Photo', 'Permanent Address Proof Own House Proof (Electric Bill or Other Doc)', 'Current Address Proof', 'Income Proof', '1 Year Bank Statement', 'Property Documents', 'SOA of Loan Account'],
-        business_loan_business: ['PAN Card', 'Aadhar Front Side', 'Aadhar Back Side (Optional)', 'Photo', 'Permanent Address Proof', 'Current Address Proof', 'Last 2 Year IT Return', '1 Year Bank Statement', 'GST (Mandatory)', 'Udyam (Optional)'],
-        personal_loan_salary: ['PAN Card', 'Aadhar Front Side', 'Aadhar Back Side (Optional)', 'Photo', 'Permanent Address Proof Own House Proof (Electric Bill or Other Doc)', 'Recent Address Proof', 'Latest 3 Month Salary Slip', 'Latest 3 Month Bank Statement of Salary A/C', 'Service Book'],
-        personal_loan_business: ['PAN Card', 'Aadhar Front Side', 'Aadhar Back Side (Optional)', 'Photo', 'Permanent Address Proof Own House Proof (Electric Bill or Other Doc)', 'Current Address Proof', 'Last 2 Year IT Return', 'GST (Mandatory)', 'Udyam (Mandatory)', 'Degree Certificate (Document)', 'Registration Certificate (Document)'],
-        auto_loan_salary: ['PAN Card', 'Aadhar Front Side', 'Aadhar Back Side (Optional)', 'Photo', 'Permanent Address Proof Own House Proof (Electric Bill or Other Doc)', 'Recent Address Proof', 'Income Proof', 'Service Book', 'Vehicle Document'],
-        auto_loan_business: ['PAN Card', 'Aadhar Front Side', 'Aadhar Back Side (Optional)', 'Photo', 'Permanent Address Proof Own House Proof (Electric Bill or Other Doc)', 'Current Address Proof', 'Last 2 Year IT Return', '1 Year Bank Statement', 'GST (Mandatory)', 'Udyam (Mandatory)', 'Vehicle Document'],
-        home_loan_salary: ['PAN Card', 'Aadhar Front Side', 'Aadhar Back Side (Optional)', 'Photo', 'Permanent Address Proof Own House Proof (Electric Bill or Other Doc)', 'Recent Address Proof', 'Income Proof', 'Property Documents'],
-        home_loan_business: ['PAN Card', 'Aadhar Front Side', 'Aadhar Back Side (Optional)', 'Photo', 'Permanent Address Proof Own House Proof (Electric Bill or Other Doc)', 'Current Address Proof', 'Income Proof', 'Bank Statement', 'Property Documents']
+        lap_salary: [
+            'PAN Card',
+            'Aadhar Front Side',
+            'Aadhar Back Side (Optional)',
+            'Photo',
+            'Permanent Address Proof Own House Proof (Electric Bill or Other Doc)',
+            'Recent Address Proof',
+            'Income Proof',
+            'Service Book',
+            'Property Documents',
+            'SOA of Loan Account',
+            'Co-applicant PAN/Aadhar/Photo (If Required)'
+        ],
+        lap_business: [
+            'PAN Card',
+            'Aadhar Front Side',
+            'Aadhar Back Side (Optional)',
+            'Photo',
+            'Permanent Address Proof Own House Proof (Electric Bill or Other Doc)',
+            'Current Address Proof',
+            'Income Proof',
+            '1 Year Bank Statement',
+            'Property Documents',
+            'SOA of Loan Account',
+            'Co-applicant PAN/Aadhar/Photo (If Required)'
+        ],
+        business_loan_business: [
+            'PAN Card',
+            'Aadhar Front Side',
+            'Aadhar Back Side (Optional)',
+            'Photo',
+            'Permanent Address Proof',
+            'Current Address Proof',
+            'Last 2 Year IT Return',
+            '1 Year Bank Statement',
+            'GST (Mandatory)',
+            'Udyam (Optional)'
+        ],
+        personal_loan_salary: [
+            'PAN Card',
+            'Aadhar Front Side',
+            'Aadhar Back Side (Optional)',
+            'Photo',
+            'Permanent Address Proof Own House Proof (Electric Bill or Other Doc)',
+            'Recent Address Proof',
+            'Latest 3 Month Salary Slip',
+            'Latest 3 Month Bank Statement of Salary A/C',
+            'Service Book'
+        ],
+        personal_loan_business: [
+            'PAN Card',
+            'Aadhar Front Side',
+            'Aadhar Back Side (Optional)',
+            'Photo',
+            'Permanent Address Proof Own House Proof (Electric Bill or Other Doc)',
+            'Current Address Proof',
+            'Last 2 Year IT Return',
+            'GST (Mandatory)',
+            'Udyam (Mandatory)',
+            'Degree Certificate (Document)',
+            'Registration Certificate (Document)'
+        ],
+        auto_loan_salary: [
+            'PAN Card',
+            'Aadhar Front Side',
+            'Aadhar Back Side (Optional)',
+            'Photo',
+            'Permanent Address Proof Own House Proof (Electric Bill or Other Doc)',
+            'Recent Address Proof',
+            'Income Proof',
+            'Service Book',
+            'Vehicle Document'
+        ],
+        auto_loan_business: [
+            'PAN Card',
+            'Aadhar Front Side',
+            'Aadhar Back Side (Optional)',
+            'Photo',
+            'Permanent Address Proof Own House Proof (Electric Bill or Other Doc)',
+            'Current Address Proof',
+            'Last 2 Year IT Return',
+            '1 Year Bank Statement',
+            'GST (Mandatory)',
+            'Udyam (Mandatory)',
+            'Vehicle Document'
+        ],
+        home_loan_salary: [
+            'PAN Card',
+            'Aadhar Front Side',
+            'Aadhar Back Side (Optional)',
+            'Photo',
+            'Permanent Address Proof Own House Proof (Electric Bill or Other Doc)',
+            'Recent Address Proof',
+            'Income Proof',
+            'Property Documents'
+        ],
+        home_loan_business: [
+            'PAN Card',
+            'Aadhar Front Side',
+            'Aadhar Back Side (Optional)',
+            'Photo',
+            'Permanent Address Proof Own House Proof (Electric Bill or Other Doc)',
+            'Current Address Proof',
+            'Income Proof',
+            'Bank Statement',
+            'Property Documents'
+        ]
     };
 
     function formatUploadSize(sizeInBytes) {
@@ -1213,29 +1317,27 @@
         return serviceKey === 'business_loan' && employmentTrack === 'business' && normalizedName === 'permanent address proof';
     }
 
-    function addDocumentField(isPreset = false, presetName = '', isMandatory = Boolean(isPreset)) {
+    function addDocumentField(isPreset = false, presetName = '', isMandatory = false) {
         documentCount++;
         const documentsContainer = document.getElementById('documents-container');
         if (!documentsContainer) return;
 
         const isPresetRow = Boolean(isPreset);
-        const isRequired = Boolean(isMandatory);
-        const isUploadRequired = isRequired && !presetName.toLowerCase().includes('optional');
         const item = document.createElement('div');
         item.className = 'document-item';
-        item.dataset.required = isRequired ? 'true' : 'false';
+        item.dataset.required = 'false';
 
         item.innerHTML = `
-            ${isPresetRow ? `<div class="document-item-title"><i class="bi bi-shield-check"></i> ${isRequired ? 'Required Document' : 'Optional Document'}</div>` : ''}
+            ${isPresetRow ? `<div class="document-item-title"><i class="bi bi-shield-check"></i> Suggested Document</div>` : ''}
             <div class="form-row">
                 <div class="form-group">
-                    <label>Document Name ${isUploadRequired ? '<span class="required">*</span>' : ''}</label>
-                    <input type="text" class="form-control document-name" name="document_name[]" placeholder="e.g., Aadhar Card, PAN Card, Bank Statement, etc." value="${presetName.replace(/"/g, '&quot;')}" ${isPresetRow ? 'readonly' : ''} ${isUploadRequired ? 'required' : ''}>
+                    <label>Document Name</label>
+                    <input type="text" class="form-control document-name" name="document_name[]" placeholder="e.g., Aadhar Card, PAN Card, Bank Statement, etc." value="${presetName.replace(/"/g, '&quot;')}" ${isPresetRow ? 'readonly' : ''}>
                     <span class="helper-text">Provide a meaningful name for the document</span>
                 </div>
                 <div class="form-group">
-                    <label>Upload Document ${isUploadRequired ? '<span class="required">*</span>' : ''}</label>
-                    <input type="file" class="form-control document-file" name="document_file[]" accept=".pdf,.jpg,.jpeg,.png,image/jpeg,image/png,application/pdf" multiple ${isUploadRequired ? 'required' : ''}>
+                    <label>Upload Document</label>
+                    <input type="file" class="form-control document-file" name="document_file[]" accept=".pdf,.jpg,.jpeg,.png,image/jpeg,image/png,application/pdf" multiple>
                     <span class="helper-text">PDF/JPG/PNG. Max 3 MB per file, max 50 MB total per application.</span>
                 </div>
             </div>
@@ -1261,9 +1363,6 @@
     function removeDocumentField(btn) {
         const row = btn.closest('.document-item');
         if (!row) return;
-        if (row.dataset.required === 'true') {
-            return;
-        }
         row.remove();
     }
 
@@ -1279,8 +1378,7 @@
         const requiredDocuments = getRequiredDocumentList();
         if (requiredDocuments.length) {
             requiredDocuments.forEach((docName) => {
-                const isOptional = isOptionalPresetDocument(serviceKey, employmentTrack, docName);
-                addDocumentField(true, docName, !isOptional);
+                addDocumentField(true, docName, false);
             });
             return;
         }
@@ -1308,8 +1406,26 @@
                         <input type="text" class="form-control" data-field="bank" name="existing_loan_${index}_bank" placeholder="Name of bank/financial institution">
                     </div>
                     <div class="form-group">
-                        <label>Current Outstanding Amount</label>
+                        <label>Amount Taken</label>
+                        <input type="number" class="form-control" data-field="amount_taken" name="existing_loan_${index}_amount_taken" placeholder="Original loan amount" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>EMI Left</label>
+                        <input type="number" class="form-control" data-field="emi_left" name="existing_loan_${index}_emi_left" placeholder="Number of EMIs remaining" min="0">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Outstanding Amount</label>
                         <input type="number" class="form-control" data-field="amount_left" name="existing_loan_${index}_amount_left" placeholder="Remaining amount to be paid" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Tenure</label>
+                        <input type="text" class="form-control" data-field="duration" name="existing_loan_${index}_duration" placeholder="e.g., 2 years 6 months">
+                    </div>
+                    <div class="form-group">
+                        <label>EMI Amount</label>
+                        <input type="text" class="form-control" data-field="emi_over" name="existing_loan_${index}_emi_over" placeholder="Monthly EMI amount">
                     </div>
                 </div>
             </div>
@@ -1502,35 +1618,16 @@
             return;
         }
         const occupation = occupationSelect.value;
-        const salaryRequiredFields = [
-            document.querySelector('input[name="company_name"]'),
-            document.querySelector('input[name="designation"]'),
-            document.querySelector('input[name="official_email_id"]')
-        ];
 
         if (occupation === 'Business' || occupation === 'Professional Self Employed') {
             businessSection.style.display = 'block';
             salarySection.style.display = 'none';
-            salaryRequiredFields.forEach((field) => {
-                if (!field) return;
-                field.required = false;
-                field.value = '';
-            });
         } else if (occupation === 'Salaried' || occupation === 'Professional' || occupation === 'Professional Salaried') {
             businessSection.style.display = 'none';
             salarySection.style.display = 'block';
-            salaryRequiredFields.forEach((field) => {
-                if (!field) return;
-                field.required = true;
-            });
         } else {
             businessSection.style.display = 'none';
             salarySection.style.display = 'none';
-            salaryRequiredFields.forEach((field) => {
-                if (!field) return;
-                field.required = false;
-                field.value = '';
-            });
         }
     }
 
@@ -1538,23 +1635,17 @@
         e.preventDefault();
 
         const documents = document.querySelectorAll('#documents-container .document-item');
-        let hasAnyUploadedDocument = false;
 
         for (const doc of documents) {
             const nameEl = doc.querySelector('.document-name');
             const fileEl = doc.querySelector('.document-file');
             const name = nameEl ? nameEl.value.trim() : '';
             const hasFile = fileEl ? fileEl.files.length > 0 : false;
-            const isRequiredRow = doc.dataset.required === 'true';
+            const isPresetName = nameEl ? nameEl.hasAttribute('readonly') : false;
 
-            if (isRequiredRow && (!name || !hasFile)) {
-                alert(`Please upload required document: ${name || 'Document'}`);
-                return;
-            }
-
-            if (name || hasFile) {
-                if (!name || !hasFile) {
-                    alert('Please provide both Document Name and Upload Document for each entered document row.');
+            if (hasFile) {
+                if (!name) {
+                    alert('Please provide Document Name for uploaded document.');
                     return;
                 }
                 const selectedFiles = fileEl ? Array.from(fileEl.files || []) : [];
@@ -1564,13 +1655,10 @@
                         return;
                     }
                 }
-                hasAnyUploadedDocument = true;
+            } else if (name && !isPresetName) {
+                alert('Please provide both Document Name and Upload Document for each entered document row.');
+                return;
             }
-        }
-
-        if (!hasAnyUploadedDocument) {
-            alert('Please upload at least one document');
-            return;
         }
 
         if (!validateTotalUploadSize()) {
