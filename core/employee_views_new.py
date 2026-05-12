@@ -13,6 +13,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods, require_POST, require_GET
 from django.http import JsonResponse
+from django.urls import reverse
 from django.db.models import Sum, Count, Q, F
 from django.contrib import messages
 from django.utils import timezone
@@ -27,6 +28,12 @@ from datetime import timedelta
 from .models import User, Loan, LoanApplication, Agent, ActivityLog, LoanDocument
 from .followup_utils import auto_move_overdue_to_follow_up
 from .loan_sync import find_related_loan_application
+from .updated_document_utils import (
+    UPDATED_DOCUMENT_LABEL,
+    UPDATED_DOCUMENT_STATUS_KEY,
+    application_has_updated_documents,
+    loan_has_updated_documents,
+)
 
 # ============================================================
 # EMPLOYEE DASHBOARD
@@ -104,6 +111,22 @@ def employee_dashboard_stats(request):
 # ============================================================
 # EMPLOYEE ALL LOANS PAGE
 # ============================================================
+
+def _display_user(user_obj, fallback='-'):
+    if not user_obj:
+        return fallback
+    return user_obj.get_full_name() or user_obj.username or fallback
+
+
+def _partner_under_for(created_by=None, assigned_agent=None):
+    partner = None
+    if created_by and getattr(created_by, 'role', '') == 'subadmin':
+        partner = created_by
+    elif assigned_agent and getattr(assigned_agent, 'created_by', None) and assigned_agent.created_by.role == 'subadmin':
+        partner = assigned_agent.created_by
+    if not partner:
+        return '-'
+    return _display_user(partner, 'Partner')
 
 @login_required
 @require_http_methods(["GET"])
@@ -183,6 +206,7 @@ def employee_all_loans_api(request):
             workflow_status_map = {
                 'new_entry': 'New Entry',
                 'waiting': 'Waiting for Processing',
+                UPDATED_DOCUMENT_STATUS_KEY: 'Waiting for Processing',
                 'follow_up': 'Required Follow-up',
                 follow_up_pending_label: 'New Entry',
                 'approved': 'Approved',
@@ -205,6 +229,8 @@ def employee_all_loans_api(request):
 
             if status_filter == follow_up_pending_label:
                 app_qs = app_qs.filter(follow_up_pending_q)
+            elif status_filter == UPDATED_DOCUMENT_STATUS_KEY:
+                app_qs = app_qs.filter(status='Waiting for Processing').exclude(approval_notes__icontains=follow_up_pending_text)
             elif status_filter:
                 mapped_status = workflow_status_map.get(status_filter)
                 if mapped_status:
@@ -214,7 +240,9 @@ def employee_all_loans_api(request):
 
             total_loans = app_qs.count()
             new_entry_count = app_qs.filter(status='New Entry').exclude(approval_notes__icontains=follow_up_pending_text).count()
-            waiting_count = app_qs.filter(status='Waiting for Processing').exclude(approval_notes__icontains=follow_up_pending_text).count()
+            waiting_apps = list(app_qs.filter(status='Waiting for Processing').exclude(approval_notes__icontains=follow_up_pending_text))
+            updated_document_count = sum(1 for app in waiting_apps if application_has_updated_documents(app))
+            waiting_count = len(waiting_apps) - updated_document_count
             banking_count = app_qs.filter(status='Required Follow-up').count()
             follow_up_pending_count = app_qs.filter(follow_up_pending_q).count()
             approved_count = app_qs.filter(status='Approved').count()
@@ -229,19 +257,34 @@ def employee_all_loans_api(request):
             for app in page_obj:
                 applicant = app.applicant
                 submitted_by = app.assigned_agent.name if app.assigned_agent else 'Unknown'
+                processed_by = _display_user(app.assigned_employee, '-')
+                partner_under = _partner_under_for(getattr(app, 'assigned_by', None), app.assigned_agent)
                 is_follow_up_pending = (
                     app.status in ['New Entry', 'Waiting for Processing']
                     and follow_up_pending_text.lower() in str(app.approval_notes or '').lower()
                 )
+                is_updated_document = (
+                    app.status == 'Waiting for Processing'
+                    and not is_follow_up_pending
+                    and application_has_updated_documents(app)
+                )
                 compact_status = (
                     follow_up_pending_label
                     if is_follow_up_pending
-                    else reverse_workflow_status_map.get(app.status, status_filter or 'waiting')
+                    else (
+                        UPDATED_DOCUMENT_STATUS_KEY
+                        if is_updated_document
+                        else reverse_workflow_status_map.get(app.status, status_filter or 'waiting')
+                    )
                 )
                 status_display = (
                     'Follow Up'
                     if is_follow_up_pending
-                    else ('Banking Processing' if app.status == 'Required Follow-up' else app.status)
+                    else (
+                        UPDATED_DOCUMENT_LABEL
+                        if is_updated_document
+                        else ('Banking Processing' if app.status == 'Required Follow-up' else app.status)
+                    )
                 )
                 loans_data.append({
                     'id': app.id,
@@ -253,12 +296,15 @@ def employee_all_loans_api(request):
                     'tenure_months': applicant.tenure_months or 0,
                     'remarks': app.approval_notes or app.rejection_reason or '',
                     'submitted_by': submitted_by,
+                    'processed_by': processed_by,
+                    'partner_under': partner_under,
                     'assigned_date': app.assigned_at.strftime('%Y-%m-%d') if app.assigned_at else '-',
                     'created_date': app.created_at.strftime('%Y-%m-%d') if app.created_at else '-',
                     'created_time': app.created_at.strftime('%H:%M') if app.created_at else '',
                     'status': compact_status,
                     'status_display': status_display,
                     'follow_up_pending': is_follow_up_pending,
+                    'updated_document': is_updated_document,
                     'entity_type': 'application',
                 })
         else:
@@ -290,6 +336,13 @@ def employee_all_loans_api(request):
                 app_has_marker = follow_up_marker in str(getattr(related_app, 'approval_notes', '') or '').lower()
                 follow_up_pending_cache[loan_obj.id] = app_has_marker
                 return app_has_marker
+
+            def is_updated_document_loan(loan_obj):
+                if not loan_obj or loan_obj.status != 'waiting':
+                    return False
+                if is_follow_up_pending_loan(loan_obj):
+                    return False
+                return loan_has_updated_documents(loan_obj)
 
             linked_application_ids = set()
             for legacy_loan in legacy_loans:
@@ -332,10 +385,19 @@ def employee_all_loans_api(request):
                     app.status in ['New Entry', 'Waiting for Processing']
                     and follow_up_pending_marker in str(app.approval_notes or '').lower()
                 )
+                is_updated_document = (
+                    app.status == 'Waiting for Processing'
+                    and not is_follow_up_pending
+                    and application_has_updated_documents(app)
+                )
                 compact_status = (
                     follow_up_pending_label
                     if is_follow_up_pending
-                    else workflow_status_reverse_map.get(app.status, '')
+                    else (
+                        UPDATED_DOCUMENT_STATUS_KEY
+                        if is_updated_document
+                        else workflow_status_reverse_map.get(app.status, '')
+                    )
                 )
                 if not compact_status:
                     continue
@@ -343,12 +405,18 @@ def employee_all_loans_api(request):
                 if status_filter == follow_up_pending_label and not is_follow_up_pending:
                     continue
                 if status_filter and status_filter != follow_up_pending_label:
-                    if compact_status != status_filter:
-                        continue
-                    if compact_status in ['new_entry', 'waiting'] and is_follow_up_pending:
-                        continue
+                    if status_filter == UPDATED_DOCUMENT_STATUS_KEY:
+                        if not is_updated_document:
+                            continue
+                    else:
+                        if compact_status != status_filter:
+                            continue
+                        if compact_status in ['new_entry', 'waiting'] and is_follow_up_pending:
+                            continue
 
                 submitted_by = app.assigned_agent.name if app.assigned_agent else 'Unknown'
+                processed_by = _display_user(app.assigned_employee, '-')
+                partner_under = _partner_under_for(getattr(app, 'assigned_by', None), app.assigned_agent)
                 workflow_rows.append({
                     'id': app.id,
                     'loan_id': loan_identifier,
@@ -359,6 +427,8 @@ def employee_all_loans_api(request):
                     'tenure_months': applicant.tenure_months or 0,
                     'remarks': app.approval_notes or app.rejection_reason or '',
                     'submitted_by': submitted_by,
+                    'processed_by': processed_by,
+                    'partner_under': partner_under,
                     'assigned_date': app.assigned_at.strftime('%Y-%m-%d') if app.assigned_at else '-',
                     'created_date': app.created_at.strftime('%Y-%m-%d') if app.created_at else '-',
                     'created_time': app.created_at.strftime('%H:%M') if app.created_at else '',
@@ -366,15 +436,22 @@ def employee_all_loans_api(request):
                     'status_display': (
                         'Follow Up'
                         if is_follow_up_pending
-                        else ('Banking Processing' if app.status == 'Required Follow-up' else app.status)
+                        else (
+                            UPDATED_DOCUMENT_LABEL
+                            if is_updated_document
+                            else ('Banking Processing' if app.status == 'Required Follow-up' else app.status)
+                        )
                     ),
                     'follow_up_pending': is_follow_up_pending,
+                    'updated_document': is_updated_document,
                     'entity_type': 'application',
                     '_sort_ts': app.updated_at or app.created_at,
                 })
 
             if status_filter == follow_up_pending_label:
                 legacy_loans = [loan for loan in legacy_loans if is_follow_up_pending_loan(loan)]
+            elif status_filter == UPDATED_DOCUMENT_STATUS_KEY:
+                legacy_loans = [loan for loan in legacy_loans if is_updated_document_loan(loan)]
             elif status_filter:
                 legacy_loans = [
                     loan for loan in legacy_loans
@@ -388,12 +465,23 @@ def employee_all_loans_api(request):
                 submitted_by = 'Unknown'
                 if loan.assigned_agent:
                     submitted_by = loan.assigned_agent.name or loan.assigned_agent.user.get_full_name() if loan.assigned_agent.user else 'Unknown'
+                processed_by = _display_user(loan.assigned_employee, '-')
+                partner_under = _partner_under_for(loan.created_by, loan.assigned_agent)
                 is_follow_up_pending = is_follow_up_pending_loan(loan)
-                status_key = follow_up_pending_label if is_follow_up_pending else loan.status
+                is_updated_document = is_updated_document_loan(loan)
+                status_key = (
+                    follow_up_pending_label
+                    if is_follow_up_pending
+                    else (UPDATED_DOCUMENT_STATUS_KEY if is_updated_document else loan.status)
+                )
                 status_display = (
                     'Follow Up'
                     if is_follow_up_pending
-                    else ('Banking Processing' if loan.status == 'follow_up' else loan.get_status_display())
+                    else (
+                        UPDATED_DOCUMENT_LABEL
+                        if is_updated_document
+                        else ('Banking Processing' if loan.status == 'follow_up' else loan.get_status_display())
+                    )
                 )
                 legacy_rows.append({
                     'id': loan.id,
@@ -405,12 +493,15 @@ def employee_all_loans_api(request):
                     'tenure_months': loan.tenure_months or 0,
                     'remarks': loan.remarks or '',
                     'submitted_by': submitted_by,
+                    'processed_by': processed_by,
+                    'partner_under': partner_under,
                     'assigned_date': loan.assigned_at.strftime('%Y-%m-%d') if loan.assigned_at else '-',
                     'created_date': loan.created_at.strftime('%Y-%m-%d') if loan.created_at else '-',
                     'created_time': loan.created_at.strftime('%H:%M') if loan.created_at else '',
                     'status': status_key,
                     'status_display': status_display,
                     'follow_up_pending': is_follow_up_pending,
+                    'updated_document': is_updated_document,
                     'entity_type': 'legacy',
                     '_sort_ts': loan.updated_at or loan.created_at,
                 })
@@ -421,6 +512,7 @@ def employee_all_loans_api(request):
             total_loans = len(combined_rows)
             new_entry_count = sum(1 for row in combined_rows if row['status'] == 'new_entry')
             waiting_count = sum(1 for row in combined_rows if row['status'] == 'waiting')
+            updated_document_count = sum(1 for row in combined_rows if row['status'] == UPDATED_DOCUMENT_STATUS_KEY)
             banking_count = sum(1 for row in combined_rows if row['status'] == 'follow_up')
             follow_up_pending_count = sum(1 for row in combined_rows if row['status'] == follow_up_pending_label)
             approved_count = sum(1 for row in combined_rows if row['status'] == 'approved')
@@ -443,6 +535,7 @@ def employee_all_loans_api(request):
                 'total_loans': total_loans,
                 'new_entry': new_entry_count,
                 'waiting': waiting_count,
+                'updated_document': updated_document_count,
                 'banking_processing': banking_count,
                 'follow_up_pending': follow_up_pending_count,
                 'approved': approved_count,
@@ -569,39 +662,121 @@ def _employee_has_assigned_loan(user, loan_id):
     )
 
 
+def _user_can_open_loan_detail(user, loan_id):
+    role = getattr(user, 'role', '')
+    if role == 'employee':
+        return _employee_has_assigned_loan(user, loan_id)
+    if role == 'agent':
+        try:
+            agent_profile = Agent.objects.get(user=user)
+        except Agent.DoesNotExist:
+            return False
+        return (
+            LoanApplication.objects.filter(id=loan_id, assigned_agent=agent_profile).exists()
+            or Loan.objects.filter(id=loan_id, assigned_agent=agent_profile).exists()
+        )
+    if role == 'admin':
+        return LoanApplication.objects.filter(id=loan_id).exists() or Loan.objects.filter(id=loan_id).exists()
+    if role == 'subadmin':
+        try:
+            from .subadmin_views import _subadmin_scoped_loans_qs
+
+            return _subadmin_scoped_loans_qs(user).filter(id=loan_id).exists() or LoanApplication.objects.filter(
+                id=loan_id,
+                assigned_by=user,
+            ).exists()
+        except Exception:
+            return False
+    return False
+
+
+def _safe_back_path(raw_path):
+    back_path = str(raw_path or '').strip()
+    if not back_path:
+        return ''
+    if not back_path.startswith('/'):
+        return ''
+    if back_path.startswith('//'):
+        return ''
+    return back_path
+
+
+def _loan_detail_layout_context(request):
+    role = getattr(request.user, 'role', '')
+    query_back = _safe_back_path(request.GET.get('back'))
+
+    if role == 'admin':
+        return {
+            'base_template': 'core/admin/admin_base.html',
+            'back_url': query_back or reverse('admin_all_loans'),
+            'back_label': 'Back to All Loans',
+        }
+    if role == 'subadmin':
+        return {
+            'base_template': 'core/base.html',
+            'back_url': query_back or reverse('subadmin_all_loans'),
+            'back_label': 'Back to All Loans',
+        }
+    if role == 'agent':
+        return {
+            'base_template': 'core/base.html',
+            'back_url': query_back or reverse('agent_my_applications'),
+            'back_label': 'Back to My Applications',
+        }
+    return {
+        'base_template': 'core/base.html',
+        'back_url': query_back or reverse('employee_new_entry_request'),
+        'back_label': 'Back',
+    }
+
+
 @login_required
 @require_http_methods(["GET"])
 def employee_loan_detail_page(request, loan_id):
     """Render loan detail page for employee"""
-    if request.user.role != 'employee':
+    if request.user.role not in ['employee', 'agent', 'admin', 'subadmin']:
         return redirect('dashboard')
 
-    if not _employee_has_assigned_loan(request.user, loan_id):
-        messages.error(request, 'Loan not found or not assigned to you')
+    if not _user_can_open_loan_detail(request.user, loan_id):
+        messages.error(request, 'Loan not found or access denied')
+        if request.user.role == 'admin':
+            return redirect('admin_all_loans')
+        if request.user.role == 'subadmin':
+            return redirect('subadmin_all_loans')
+        if request.user.role == 'agent':
+            return redirect('agent_my_applications')
         return redirect('employee_new_entry_request')
 
-    return render(request, 'core/employee/loan_detail.html', {'loan_id': loan_id})
+    context = {
+        'loan_id': loan_id,
+        **_loan_detail_layout_context(request),
+    }
+    return render(request, 'core/employee/loan_detail.html', context)
 
 
 @login_required
 @require_http_methods(["GET"])
 def employee_bank_processing_page(request, loan_id):
     """Dedicated bank processing page for an assigned loan."""
-    if request.user.role != 'employee':
+    if request.user.role not in ['employee', 'agent', 'admin', 'subadmin']:
         return redirect('dashboard')
 
-    if not _employee_has_assigned_loan(request.user, loan_id):
-        messages.error(request, 'Loan not found or not assigned to you')
+    if not _user_can_open_loan_detail(request.user, loan_id):
+        messages.error(request, 'Loan not found or access denied')
+        if request.user.role == 'admin':
+            return redirect('admin_all_loans')
+        if request.user.role == 'subadmin':
+            return redirect('subadmin_all_loans')
+        if request.user.role == 'agent':
+            return redirect('agent_my_applications')
         return redirect('employee_new_entry_request')
 
-    return render(
-        request,
-        'core/employee/loan_detail.html',
-        {
-            'loan_id': loan_id,
-            'is_bank_processing_page': True,
-        },
-    )
+    context = {
+        'loan_id': loan_id,
+        'is_bank_processing_page': True,
+        **_loan_detail_layout_context(request),
+    }
+    return render(request, 'core/employee/loan_detail.html', context)
 
 
 @api_view(['GET'])
@@ -908,8 +1083,11 @@ def employee_my_agents_api(request):
         return Response({'error': 'Only employees can access'}, status=status.HTTP_403_FORBIDDEN)
     
     try:
-        # Get agents created by this employee
-        agents = Agent.objects.filter(created_by=request.user).exclude(status='blocked').order_by('-created_at')
+        from django.db.models import Q
+        # Get agents created by this employee or assigned under this employee
+        agents = Agent.objects.filter(
+            Q(created_by=request.user) | Q(under_employee=request.user)
+        ).exclude(status='blocked').order_by('-created_at').distinct()
         
         agents_data = []
         for agent in agents:

@@ -32,6 +32,13 @@
             <span class="view-details" style="color:#d69e2e;">View Details →</span>
         </a>
 
+        <a class="insight-card c-updated text-decoration-none" href="{% url 'agent_my_applications' %}?status=updated_document">
+            <p class="status-title">Updated Document</p>
+            <h2 class="main-value" id="stat-updated-document">0</h2>
+            <p class="description">Ready for Banking Process</p>
+            <span class="view-details" style="color:#059669;">View Details &rarr;</span>
+        </a>
+
         <a class="insight-card c-bank text-decoration-none" href="{% url 'agent_my_applications' %}?status=follow_up">
             <p class="status-title">Banking Processing Queue</p>
             <h2 class="main-value" id="stat-banking">0</h2>
@@ -101,6 +108,7 @@
                     <option value="draft">Draft</option>
                     <option value="new_entry">New Application</option>
                     <option value="waiting">Document Pending</option>
+                    <option value="updated_document">Updated Document</option>
                     <option value="follow_up">Bank Stage</option>
                     <option value="follow_up_pending">Follow Up</option>
                     <option value="approved">Approved</option>
@@ -149,6 +157,7 @@ function getStatusClass(status) {
         draft: 'bg-secondary',
         new_entry: 'bg-primary',
         waiting: 'bg-warning text-dark',
+        updated_document: 'bg-success',
         waiting_for_processing: 'bg-warning text-dark',
         follow_up: 'bg-info text-dark',
         follow_up_pending: 'bg-warning text-dark',
@@ -186,11 +195,12 @@ function renderCharts(data) {
     recordChartInstance = new Chart(barEl, {
         type: 'bar',
         data: {
-            labels: ['New Application', 'Document Pending', 'Banking', 'Follow Up', 'Approved', 'Rejected', 'Disbursed'],
+            labels: ['New Application', 'Document Pending', 'Updated Document', 'Banking', 'Follow Up', 'Approved', 'Rejected', 'Disbursed'],
             datasets: [{
                 data: [
                     data.new_entry || 0,
                     data.waiting || 0,
+                    data.updated_document || 0,
                     data.bank_stage || 0,
                     data.follow_up_pending || 0,
                     data.approved || 0,
@@ -198,7 +208,7 @@ function renderCharts(data) {
                     data.disbursed || 0
                 ],
                 borderRadius: 8,
-                backgroundColor: ['#3b82f6', '#f59e0b', '#7c3aed', '#ea580c', '#16a34a', '#dc2626', '#0f766e']
+                backgroundColor: ['#3b82f6', '#f59e0b', '#16a34a', '#7c3aed', '#ea580c', '#22c55e', '#dc2626', '#0f766e']
             }]
         },
         options: {
@@ -212,18 +222,19 @@ function renderCharts(data) {
     statusChartInstance = new Chart(pieEl, {
         type: 'doughnut',
         data: {
-            labels: ['New Application', 'Document Pending', 'Banking Processing', 'Follow Up', 'Approved', 'Rejected', 'Disbursed'],
+            labels: ['New Application', 'Document Pending', 'Updated Document', 'Banking Processing', 'Follow Up', 'Approved', 'Rejected', 'Disbursed'],
             datasets: [{
                 data: [
                     data.new_entry || 0,
                     data.waiting || 0,
+                    data.updated_document || 0,
                     data.bank_stage || 0,
                     data.follow_up_pending || 0,
                     data.approved || 0,
                     data.rejected || 0,
                     data.disbursed || 0
                 ],
-                backgroundColor: ['#3b82f6', '#f59e0b', '#7c3aed', '#ea580c', '#22c55e', '#ef4444', '#0f172a'],
+                backgroundColor: ['#3b82f6', '#f59e0b', '#16a34a', '#7c3aed', '#ea580c', '#22c55e', '#ef4444', '#0f172a'],
                 borderWidth: 0
             }]
         },
@@ -240,7 +251,7 @@ function applyFilters() {
     const filter = document.getElementById('filterRecent').value;
 
     const filtered = allEntries.filter((entry) => {
-        const hay = `${entry.id} ${entry.applicant_name} ${entry.mobile_number}`.toLowerCase();
+        const hay = `${entry.loan_id || entry.id} ${entry.id} ${entry.applicant_name} ${entry.mobile_number}`.toLowerCase();
         const searchMatch = hay.includes(search);
         const statusMatch = !filter || entry.status === filter;
         return searchMatch && statusMatch;
@@ -262,13 +273,15 @@ function renderEntryRows(entries) {
             const normalized = String(raw || '').trim().toLowerCase();
             if (normalized === 'new entry') return 'New Application';
             if (normalized === 'in processing' || normalized === 'waiting for processing') return 'Document Pending';
+            if (normalized === 'updated document') return 'Updated Document';
             return raw;
         })();
         const stage = entry.stage || 'Document Pending';
         const detailUrl = entry.detail_url || `/agent/my-applications/?loan_id=${entry.id}`;
+        const displayLoanId = entry.loan_id || entry.id || '-';
         return `
             <tr>
-                <td>#${entry.id}</td>
+                <td>#${displayLoanId}</td>
                 <td class="fw-semibold">${entry.applicant_name || '-'}</td>
                 <td>${entry.mobile_number || '-'}</td>
                 <td><span class="badge bg-light text-dark text-uppercase">${entry.loan_type || '-'}</span></td>
@@ -290,6 +303,7 @@ function loadDashboardStats() {
         .then((data) => {
             document.getElementById('stat-new-entry').textContent = data.new_entry || 0;
             document.getElementById('stat-waiting').textContent = data.waiting || 0;
+            document.getElementById('stat-updated-document').textContent = data.updated_document || 0;
             document.getElementById('stat-banking').textContent = data.bank_stage || 0;
             document.getElementById('stat-followup-pending').textContent = data.follow_up_pending || 0;
             document.getElementById('stat-approved').textContent = data.approved || 0;
@@ -419,6 +433,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     .c-new { color: #4c51bf; }
     .c-process { color: #ecc94b; }
+    .c-updated { color: #16a34a; }
     .c-bank { color: #38b2ac; }
     .c-follow { color: #ed64a1; }
     .c-approved { color: #48bb78; }

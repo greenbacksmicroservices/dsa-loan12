@@ -154,21 +154,41 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = config('DATA_UPLOAD_MAX_MEMORY_SIZE', default=60 *
 FILE_UPLOAD_MAX_MEMORY_SIZE = config('FILE_UPLOAD_MAX_MEMORY_SIZE', default=3 * 1024 * 1024, cast=int)
 
 # Security settings for production deployment
-USE_HTTPS = env_bool('USE_HTTPS', default=not DEBUG)
-SECURE_SSL_REDIRECT = env_bool('SECURE_SSL_REDIRECT', default=USE_HTTPS)
-SESSION_COOKIE_SECURE = env_bool('SESSION_COOKIE_SECURE', default=USE_HTTPS)
+# Default local behavior: HTTP only (runserver does not terminate TLS).
+USE_HTTPS = env_bool('USE_HTTPS', default=False)
+FORCE_LOCAL_HTTP = env_bool('FORCE_LOCAL_HTTP', default=True)
+
+_LOCAL_HOST_MARKERS = {'localhost', '127.0.0.1', '[::1]'}
+_loopback_only_hosts = all(
+    (host in _LOCAL_HOST_MARKERS) or host.startswith('127.')
+    for host in ALLOWED_HOSTS
+) if ALLOWED_HOSTS else True
+
+# Keep HTTPS redirects/cookies disabled for loopback development to prevent
+# `SSL_ERROR_RX_RECORD_TOO_LONG` on `https://127.0.0.1:8000`.
+if DEBUG or (FORCE_LOCAL_HTTP and _loopback_only_hosts):
+    SECURE_SSL_REDIRECT = False
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
+    SECURE_HSTS_SECONDS = 0
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+    SECURE_HSTS_PRELOAD = False
+else:
+    SECURE_SSL_REDIRECT = env_bool('SECURE_SSL_REDIRECT', default=USE_HTTPS)
+    SESSION_COOKIE_SECURE = env_bool('SESSION_COOKIE_SECURE', default=USE_HTTPS)
+    SECURE_HSTS_SECONDS = config('SECURE_HSTS_SECONDS', default=31536000 if USE_HTTPS else 0, cast=int)
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = env_bool('SECURE_HSTS_INCLUDE_SUBDOMAINS', default=USE_HTTPS)
+    SECURE_HSTS_PRELOAD = env_bool('SECURE_HSTS_PRELOAD', default=False)
+    CSRF_COOKIE_SECURE = env_bool('CSRF_COOKIE_SECURE', default=USE_HTTPS)
+
 SESSION_COOKIE_SAMESITE = config('SESSION_COOKIE_SAMESITE', default='Lax')
-CSRF_COOKIE_SECURE = env_bool('CSRF_COOKIE_SECURE', default=USE_HTTPS)
 CSRF_COOKIE_SAMESITE = config('CSRF_COOKIE_SAMESITE', default='Lax')
-SECURE_HSTS_SECONDS = config('SECURE_HSTS_SECONDS', default=31536000 if USE_HTTPS else 0, cast=int)
-SECURE_HSTS_INCLUDE_SUBDOMAINS = env_bool('SECURE_HSTS_INCLUDE_SUBDOMAINS', default=USE_HTTPS)
-SECURE_HSTS_PRELOAD = env_bool('SECURE_HSTS_PRELOAD', default=False)
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_REFERRER_POLICY = config('SECURE_REFERRER_POLICY', default='same-origin')
 X_FRAME_OPTIONS = config('X_FRAME_OPTIONS', default='DENY')
 
-if env_bool('USE_X_FORWARDED_PROTO', default=True):
+if env_bool('USE_X_FORWARDED_PROTO', default=False):
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # Default primary key field type

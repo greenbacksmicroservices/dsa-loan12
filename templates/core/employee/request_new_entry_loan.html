@@ -685,8 +685,40 @@
         <div id="collect-modal-body">
             <div class="assigned-info" id="collect-info"></div>
             <div class="form-group">
-                <label for="collect-bank-remark">Bank Remark (Optional)</label>
-                <textarea id="collect-bank-remark" rows="3" placeholder="Banking verification remark..."></textarea>
+                <label for="collect-bank-name">Bank Name *</label>
+                <input id="collect-bank-name" type="text" placeholder="Enter bank name" required>
+            </div>
+            <div class="form-group">
+                <label for="collect-banker-name">Banker Name *</label>
+                <input id="collect-banker-name" type="text" placeholder="Enter banker name" required>
+            </div>
+            <div class="form-group">
+                <label for="collect-banker-phone">Banker Phone *</label>
+                <input id="collect-banker-phone" type="text" placeholder="Enter banker phone" required>
+            </div>
+            <div class="form-group">
+                <label for="collect-banker-email">Banker Email *</label>
+                <input id="collect-banker-email" type="email" placeholder="Enter banker email" required>
+            </div>
+            <div class="form-group">
+                <label for="collect-verified-amount">Verified Loan Amount *</label>
+                <input id="collect-verified-amount" type="number" min="0" step="0.01" placeholder="120000" required>
+            </div>
+            <div class="form-group">
+                <label for="collect-final-amount">Final Loan Amount *</label>
+                <input id="collect-final-amount" type="number" min="0" step="0.01" placeholder="120000" required>
+            </div>
+            <div class="form-group">
+                <label for="collect-dsa-name">DSA Name *</label>
+                <input id="collect-dsa-name" type="text" placeholder="Enter DSA name" required>
+            </div>
+            <div class="form-group">
+                <label for="collect-description">Description</label>
+                <textarea id="collect-description" rows="2" placeholder="Banking processing notes"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="collect-bank-remark">Remark</label>
+                <textarea id="collect-bank-remark" rows="3" placeholder="Remark"></textarea>
             </div>
         </div>
         <div class="modal-actions">
@@ -963,6 +995,14 @@
         document.getElementById(modalId).classList.remove('active');
         // Reset form data
         if (modalId === 'collect-modal') {
+            document.getElementById('collect-bank-name').value = '';
+            document.getElementById('collect-banker-name').value = '';
+            document.getElementById('collect-banker-phone').value = '';
+            document.getElementById('collect-banker-email').value = '';
+            document.getElementById('collect-verified-amount').value = '';
+            document.getElementById('collect-final-amount').value = '';
+            document.getElementById('collect-dsa-name').value = '';
+            document.getElementById('collect-description').value = '';
             document.getElementById('collect-bank-remark').value = '';
         } else if (modalId === 'approve-modal') {
             document.getElementById('approval-notes').value = '';
@@ -1040,11 +1080,44 @@
     function confirmCollect() {
         if (!currentLoanId) return;
 
+        const bankName = document.getElementById('collect-bank-name').value.trim();
+        const bankerName = document.getElementById('collect-banker-name').value.trim();
+        const bankerPhone = document.getElementById('collect-banker-phone').value.trim();
+        const bankerEmail = document.getElementById('collect-banker-email').value.trim();
+        const verifiedLoanAmount = document.getElementById('collect-verified-amount').value.trim();
+        const finalLoanAmount = document.getElementById('collect-final-amount').value.trim();
+        const dsaName = document.getElementById('collect-dsa-name').value.trim();
+        const bankerDescription = document.getElementById('collect-description').value.trim();
         const btn = document.getElementById('btn-confirm-collect');
         btn.innerHTML = '<div class="loader"></div>';
         btn.disabled = true;
 
         const bankRemark = document.getElementById('collect-bank-remark').value.trim();
+        if (!bankName || !bankerName || !bankerPhone || !bankerEmail || !verifiedLoanAmount || !finalLoanAmount || !dsaName) {
+            showError('Bank name, banker details, verified/final amount and DSA name are required.');
+            btn.innerHTML = 'Move to Banking Processing';
+            btn.disabled = false;
+            return;
+        }
+        const phoneDigits = bankerPhone.replace(/\D/g, '');
+        if (phoneDigits.length < 10 || phoneDigits.length > 15) {
+            showError('Banker phone must be 10 to 15 digits.');
+            btn.innerHTML = 'Move to Banking Processing';
+            btn.disabled = false;
+            return;
+        }
+        if (!bankerEmail.includes('@')) {
+            showError('Please enter valid banker email.');
+            btn.innerHTML = 'Move to Banking Processing';
+            btn.disabled = false;
+            return;
+        }
+        if (Number(verifiedLoanAmount) <= 0 || Number(finalLoanAmount) <= 0) {
+            showError('Verified and Final loan amount must be greater than zero.');
+            btn.innerHTML = 'Move to Banking Processing';
+            btn.disabled = false;
+            return;
+        }
 
         fetch(`/api/employee/loan/${currentLoanId}/collect/`, {
             method: 'POST',
@@ -1052,7 +1125,17 @@
                 'Content-Type': 'application/json',
                 'X-CSRFToken': getCookie('csrftoken')
             },
-            body: JSON.stringify({ bank_remark: bankRemark })
+            body: JSON.stringify({
+                bank_name: bankName,
+                banker_name: bankerName,
+                banker_phone: bankerPhone,
+                banker_email: bankerEmail,
+                verified_loan_amount: verifiedLoanAmount,
+                final_loan_amount: finalLoanAmount,
+                dsa_name: dsaName,
+                banker_description: bankerDescription,
+                bank_remark: bankRemark
+            })
         })
         .then(response => response.json())
         .then(data => {

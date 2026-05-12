@@ -394,6 +394,10 @@
                         <div class="info-value">{{ loan_app.loan_type }}</div>
                     </div>
                     <div class="info-item">
+                        <div class="info-label">Loan ID</div>
+                        <div class="info-value">#{{ loan_app.id }}</div>
+                    </div>
+                    <div class="info-item">
                         <div class="info-label">Requested Amount (₹)</div>
                         <div class="info-value">₹{{ loan_app.requested_amount|floatformat:2 }}</div>
                     </div>

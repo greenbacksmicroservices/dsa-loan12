@@ -369,6 +369,40 @@
             background: #f3f4f6;
         }
 
+        .notification-item {
+            display: block;
+            padding: 10px 16px;
+            border-bottom: 1px solid #e5e7eb;
+            text-decoration: none;
+            color: inherit;
+            transition: background-color 0.2s ease;
+        }
+
+        .notification-item:hover {
+            background: #f8fafc;
+        }
+
+        .notification-item:last-child {
+            border-bottom: 0;
+        }
+
+        .notification-item-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        .notification-item-text {
+            font-size: 12px;
+            color: #475569;
+        }
+
+        .notification-item-time {
+            font-size: 11px;
+            color: #64748b;
+            margin-top: 2px;
+        }
+
         body.dark-mode .main-content,
         body.dark-mode .header,
         body.dark-mode .page-content,
@@ -383,6 +417,53 @@
             color: #e5e7eb;
             background: #1f2937;
             border-color: #374151;
+        }
+
+        body.dark-mode .notification-item {
+            border-bottom-color: #334155;
+        }
+
+        body.dark-mode .notification-item:hover {
+            background: #1e293b;
+        }
+
+        body.dark-mode .notification-item-title {
+            color: #e5e7eb;
+        }
+
+        body.dark-mode .notification-item-text {
+            color: #cbd5e1;
+        }
+
+        body.dark-mode .notification-item-time {
+            color: #94a3b8;
+        }
+
+        body.dark-mode .bg-white,
+        body.dark-mode .bg-light,
+        body.dark-mode .table-light,
+        body.dark-mode .modal-header,
+        body.dark-mode .modal-footer {
+            background-color: #111827 !important;
+            color: #e5e7eb !important;
+            border-color: #334155 !important;
+        }
+
+        body.dark-mode .text-dark,
+        body.dark-mode .text-body,
+        body.dark-mode .text-black,
+        body.dark-mode .text-secondary,
+        body.dark-mode .text-muted {
+            color: #cbd5e1 !important;
+        }
+
+        body.dark-mode i.bi,
+        body.dark-mode i.fas,
+        body.dark-mode i.far,
+        body.dark-mode i.fa,
+        body.dark-mode i[class^="fa-"],
+        body.dark-mode i[class*=" fa-"] {
+            color: inherit;
         }
 
         /* SubAdmin Table Grid Polish */
@@ -452,23 +533,59 @@
             background: #1e293b !important;
         }
 
-        body.dark-mode [style*="background: #fff"],
-        body.dark-mode [style*="background:#fff"],
-        body.dark-mode [style*="background: #ffffff"],
-        body.dark-mode [style*="background:#ffffff"],
-        body.dark-mode [style*="background: white"],
-        body.dark-mode [style*="background-color: #fff"],
-        body.dark-mode [style*="background-color:#fff"],
-        body.dark-mode [style*="background-color: #ffffff"],
-        body.dark-mode [style*="background-color:#ffffff"],
-        body.dark-mode [style*="background-color: white"],
-        body.dark-mode [style*="background: #f9fafb"],
-        body.dark-mode [style*="background:#f9fafb"],
-        body.dark-mode [style*="background-color: #f9fafb"],
-        body.dark-mode [style*="background-color:#f9fafb"] {
+        body.dark-mode [style*="background: #fff" i],
+        body.dark-mode [style*="background:#fff" i],
+        body.dark-mode [style*="background: #ffffff" i],
+        body.dark-mode [style*="background:#ffffff" i],
+        body.dark-mode [style*="background: white" i],
+        body.dark-mode [style*="background-color: #fff" i],
+        body.dark-mode [style*="background-color:#fff" i],
+        body.dark-mode [style*="background-color: #ffffff" i],
+        body.dark-mode [style*="background-color:#ffffff" i],
+        body.dark-mode [style*="background-color: white" i],
+        body.dark-mode [style*="background: #f9fafb" i],
+        body.dark-mode [style*="background:#f9fafb" i],
+        body.dark-mode [style*="background-color: #f9fafb" i],
+        body.dark-mode [style*="background-color:#f9fafb" i],
+        body.dark-mode [style*="background: #f5f5f5" i],
+        body.dark-mode [style*="background:#f5f5f5" i],
+        body.dark-mode [style*="background-color: #f5f5f5" i],
+        body.dark-mode [style*="background-color:#f5f5f5" i],
+        body.dark-mode [style*="background: #f0f0f0" i],
+        body.dark-mode [style*="background:#f0f0f0" i],
+        body.dark-mode [style*="background-color: #f0f0f0" i],
+        body.dark-mode [style*="background-color:#f0f0f0" i],
+        body.dark-mode [style*="background: #fafafa" i],
+        body.dark-mode [style*="background:#fafafa" i],
+        body.dark-mode [style*="background-color: #fafafa" i],
+        body.dark-mode [style*="background-color:#fafafa" i],
+        body.dark-mode [style*="background-color: rgb(255, 255, 255)" i],
+        body.dark-mode [style*="background-color: rgb(245, 245, 245)" i],
+        body.dark-mode [style*="background-color: rgb(249, 250, 251)" i] {
             background: #111827 !important;
             color: #e5e7eb !important;
             border-color: #334155 !important;
+        }
+
+        body.dark-mode [style*="color: #111827" i],
+        body.dark-mode [style*="color:#111827" i],
+        body.dark-mode [style*="color: #1f2937" i],
+        body.dark-mode [style*="color:#1f2937" i],
+        body.dark-mode [style*="color: #374151" i],
+        body.dark-mode [style*="color:#374151" i],
+        body.dark-mode [style*="color: #334155" i],
+        body.dark-mode [style*="color:#334155" i],
+        body.dark-mode [style*="color: rgb(17, 24, 39)" i] {
+            color: #e5e7eb !important;
+        }
+
+        body.dark-mode [style*="color: #4b5563" i],
+        body.dark-mode [style*="color:#4b5563" i],
+        body.dark-mode [style*="color: #6b7280" i],
+        body.dark-mode [style*="color:#6b7280" i],
+        body.dark-mode [style*="color: #64748b" i],
+        body.dark-mode [style*="color:#64748b" i] {
+            color: #94a3b8 !important;
         }
 
         /* Print / Download PDF (hide navigation) */
@@ -507,21 +624,20 @@
     
     {% block extra_css %}{% endblock %}
 </head>
-<body>
+<body data-role="{% if user.is_authenticated %}{{ user.role }}{% else %}subadmin{% endif %}">
     <div class="main-container">
         <!-- SIDEBAR -->
         <aside class="sidebar">
             <!-- Logo Section -->
             <div class="sidebar-header">
-                <div class="brand-badge">SA</div>
-                <div class="brand-text">Partner</div>
+                <div class="brand-text">{{ sidebar_brand_text|default:"DREAM CAPITAL" }}</div>
             </div>
             <div class="sidebar-profile-section">
                 <div class="profile-photo">
                     <img src="{% if user.profile_photo %}{{ user.profile_photo.url }}{% else %}https://via.placeholder.com/64{% endif %}" alt="Profile">
                 </div>
                 <div class="profile-name">{{ user.get_full_name|default:user.username }}</div>
-                <div class="profile-role">Partner</div>
+                <div class="profile-role">{{ sidebar_profile_label|default:"DREAM CAPITAL" }}</div>
                 <div class="profile-email">{{ user.email|default:"subadmin@gmail.com" }}</div>
             </div>
             
@@ -544,10 +660,10 @@
                     <span>Add New Loan</span>
                 </a>
                 
-                <!-- Staff Management -->
+                <!-- Channel Partner -->
                 <a href="{% url 'subadmin_my_agents' %}" class="sidebar-link {% if request.resolver_match.url_name == 'subadmin_my_agents' %}active{% endif %}">
                     <i class="fas fa-user-tie"></i>
-                    <span>Staff Management</span>
+                    <span>Channel Partner</span>
                 </a>
                 
                 <!-- Employee Management -->
@@ -577,10 +693,6 @@
             
             <!-- Footer -->
             <div class="sidebar-footer">
-                <a href="{% url 'admin_logout' %}" class="logout-btn">
-                    <i class="fas fa-sign-out-alt"></i>
-                    <span>Logout</span>
-                </a>
                 <p style="font-size: 11px; color: rgba(255,255,255,0.82); font-weight: 600; text-align: center;"><a href="https://serviceexhibition.com/" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: none;">&copy; GREENBACKS LEXVERSE PRIVATE LIMITED</a></p>
             </div>
         </aside>
@@ -601,16 +713,17 @@
                     <div style="position: relative;">
                         <button @click="notificationOpen = !notificationOpen" class="notification-btn">
                             <i class="fas fa-bell" style="font-size: 18px;"></i>
-                            <span style="position: absolute; top: 4px; right: 4px; width: 8px; height: 8px; background-color: #ef4444; border-radius: 50%;"></span>
+                            <span id="panelNotificationCount" style="display:none; position:absolute; top:-4px; right:-4px; min-width:18px; height:18px; padding:0 5px; border-radius:999px; background:#dc2626; color:#fff; font-size:10px; line-height:18px; text-align:center; font-weight:700;">0</span>
                         </button>
                         
                         <!-- Notification Dropdown -->
                         <div x-show="notificationOpen" @click.outside="notificationOpen = false" class="dropdown-menu" style="width: 320px;" x-cloak>
-                            <div style="padding: 16px; border-bottom: 1px solid #e5e7eb;">
-                                <h3 style="font-weight: 600; color: #111827;">Notifications</h3>
+                            <div style="padding: 16px; border-bottom: 1px solid #e5e7eb; display:flex; align-items:center; justify-content:space-between; gap:10px;">
+                                <h3 style="font-weight: 600; color: #111827; margin:0;">Notifications</h3>
+                                <button id="panelNotificationsClearBtn" type="button" class="btn btn-link p-0 text-decoration-none" style="font-size:11px;">Clear All</button>
                             </div>
-                            <div style="padding: 16px; font-size: 14px; color: #4b5563;">
-                                <p>No new notifications</p>
+                            <div id="panelNotificationsList" style="max-height:320px; overflow-y:auto; padding: 8px 0; font-size: 14px; color: #4b5563;">
+                                <p style="padding: 12px 16px; margin: 0;">Loading notifications...</p>
                             </div>
                         </div>
                     </div>
@@ -669,8 +782,159 @@
             localStorage.setItem('partnerThemeMode', next);
             applyThemeMode(next);
         }
+
+        function getPanelRoleKey() {
+            return document.body?.dataset?.role || 'panel';
+        }
+
+        function notificationDismissedStorageKey() {
+            return `panelNotificationsDismissed:${getPanelRoleKey()}`;
+        }
+
+        function readDismissedNotificationSignatures() {
+            try {
+                const raw = localStorage.getItem(notificationDismissedStorageKey());
+                const parsed = JSON.parse(raw || '[]');
+                if (!Array.isArray(parsed)) return [];
+                return parsed.filter((item) => typeof item === 'string' && item.length > 0);
+            } catch (_error) {
+                return [];
+            }
+        }
+
+        function saveDismissedNotificationSignatures(values) {
+            const unique = Array.from(new Set(Array.isArray(values) ? values : []))
+                .filter((item) => typeof item === 'string' && item.length > 0);
+            localStorage.setItem(notificationDismissedStorageKey(), JSON.stringify(unique.slice(-400)));
+        }
+
+        function dismissPanelNotifications(signatures) {
+            const nextValues = readDismissedNotificationSignatures().concat(Array.isArray(signatures) ? signatures : []);
+            saveDismissedNotificationSignatures(nextValues);
+        }
+
+        function normaliseNotificationSignature(item) {
+            const id = String(item?.id || '').trim();
+            const title = String(item?.title || '').trim();
+            const message = String(item?.message || '').trim();
+            const type = String(item?.type || '').trim();
+            const url = String(item?.url || '').trim();
+            const createdAtRaw = String(item?.created_at || '').trim();
+            const createdAtTs = Date.parse(createdAtRaw);
+            const createdAt = Number.isFinite(createdAtTs) ? new Date(createdAtTs).toISOString() : '';
+            const includeTimestamp = id.includes('_loan_');
+            const parts = [id, title, message, type, url];
+            if (includeTimestamp) parts.push(createdAt);
+            return parts.join('||');
+        }
+
+        let latestVisibleNotificationSignatures = [];
+
+        function renderPanelNotifications(payload) {
+            const listEl = document.getElementById('panelNotificationsList');
+            const countEl = document.getElementById('panelNotificationCount');
+            if (!listEl || !countEl) return;
+            const notifications = Array.isArray(payload?.notifications) ? payload.notifications : [];
+            const dismissed = new Set(readDismissedNotificationSignatures());
+            const mappedNotifications = notifications.map((item) => ({
+                raw: item,
+                signature: normaliseNotificationSignature(item),
+            }));
+            const visibleNotifications = mappedNotifications.filter((item) => !dismissed.has(item.signature));
+            const unreadCount = visibleNotifications.length;
+            latestVisibleNotificationSignatures = visibleNotifications.map((item) => item.signature);
+
+            if (unreadCount > 0) {
+                countEl.textContent = unreadCount > 99 ? '99+' : String(unreadCount);
+                countEl.style.display = 'inline-block';
+            } else {
+                countEl.textContent = '0';
+                countEl.style.display = 'none';
+            }
+
+            if (!visibleNotifications.length) {
+                listEl.innerHTML = '<p style="padding: 12px 16px; margin: 0;" class="text-muted">No new notifications</p>';
+                return;
+            }
+
+            const escapeHtml = (value) => String(value || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+
+            listEl.innerHTML = visibleNotifications.map((item) => {
+                const entry = item.raw || {};
+                const url = entry.url || '#';
+                const title = escapeHtml(entry.title || 'Update');
+                const message = escapeHtml(entry.message || '');
+                const time = escapeHtml(entry.time || '');
+                const encodedSignature = encodeURIComponent(item.signature);
+                return `
+                    <a href="${url}" class="notification-item" data-notification-signature="${encodedSignature}">
+                        <div class="notification-item-title">${title}</div>
+                        <div class="notification-item-text">${message}</div>
+                        <div class="notification-item-time">${time}</div>
+                    </a>
+                `;
+            }).join('');
+        }
+
+        async function loadPanelNotifications() {
+            try {
+                const response = await fetch('/api/notifications/', {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    credentials: 'same-origin',
+                });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const data = await response.json();
+                renderPanelNotifications(data || {});
+            } catch (_error) {
+                const listEl = document.getElementById('panelNotificationsList');
+                if (listEl && !listEl.dataset.errorShown) {
+                    listEl.dataset.errorShown = '1';
+                    listEl.innerHTML = '<p style="padding: 12px 16px; margin: 0;" class="text-muted">Notifications unavailable right now.</p>';
+                }
+            }
+        }
+
+        function bindPanelNotificationInteractions() {
+            const listEl = document.getElementById('panelNotificationsList');
+            if (!listEl || listEl.dataset.readHandlerBound === '1') return;
+            listEl.dataset.readHandlerBound = '1';
+            listEl.addEventListener('click', function(event) {
+                const itemLink = event.target.closest('a[data-notification-signature]');
+                if (!itemLink) return;
+                const encodedSignature = itemLink.getAttribute('data-notification-signature') || '';
+                if (!encodedSignature) return;
+                let signature = encodedSignature;
+                try {
+                    signature = decodeURIComponent(encodedSignature);
+                } catch (_decodeError) {}
+                dismissPanelNotifications([signature]);
+                setTimeout(loadPanelNotifications, 30);
+            });
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             applyThemeMode(localStorage.getItem('partnerThemeMode') || 'light');
+            bindPanelNotificationInteractions();
+            const clearBtn = document.getElementById('panelNotificationsClearBtn');
+            if (clearBtn) {
+                clearBtn.addEventListener('click', function(event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    dismissPanelNotifications(latestVisibleNotificationSignatures);
+                    renderPanelNotifications({ notifications: [], unread_count: 0 });
+                });
+            }
+            loadPanelNotifications();
+            setInterval(loadPanelNotifications, 8000);
+            document.addEventListener('visibilitychange', function() {
+                if (!document.hidden) loadPanelNotifications();
+            });
+            window.addEventListener('focus', loadPanelNotifications);
         });
     </script>
     {% block extra_js %}{% endblock %}

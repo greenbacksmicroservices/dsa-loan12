@@ -19,6 +19,10 @@ from .models import (
 from .decorators import admin_required, employee_required
 from .followup_utils import auto_move_overdue_to_follow_up
 from .loan_sync import find_related_loan_application
+from .updated_document_utils import (
+    UPDATED_DOCUMENT_STATUS_KEY,
+    loan_has_updated_documents,
+)
 
 APP_STATUS_TO_LOAN_KEY = {
     'New Entry': 'new_entry',
@@ -49,6 +53,8 @@ def _effective_status_key_for_loan(loan_obj, related_app=None):
     if related_app is None:
         related_app = find_related_loan_application(loan_obj)
     if not related_app:
+        if legacy_key == 'waiting' and loan_has_updated_documents(loan_obj):
+            return UPDATED_DOCUMENT_STATUS_KEY
         return legacy_key
 
     app_key = APP_STATUS_TO_LOAN_KEY.get(getattr(related_app, 'status', ''), '')
@@ -59,13 +65,17 @@ def _effective_status_key_for_loan(loan_obj, related_app=None):
     if app_key in ['follow_up', 'approved', 'rejected', 'disbursed']:
         return app_key
 
-    return legacy_key
+    effective_key = app_key if app_key in ['new_entry', 'waiting'] else legacy_key
+    if effective_key == 'waiting' and loan_has_updated_documents(loan_obj, related_app=related_app):
+        return UPDATED_DOCUMENT_STATUS_KEY
+    return effective_key
 
 
 def _compute_status_breakdown(loans_qs):
     counts = {
         'new_entries': 0,
         'waiting': 0,
+        'updated_document': 0,
         'follow_up': 0,
         'follow_up_pending': 0,
         'approved': 0,
@@ -78,6 +88,8 @@ def _compute_status_breakdown(loans_qs):
         status_key = _effective_status_key_for_loan(loan)
         if status_key == 'new_entry':
             counts['new_entries'] += 1
+        elif status_key == UPDATED_DOCUMENT_STATUS_KEY:
+            counts['updated_document'] += 1
         elif status_key in ['waiting', 'follow_up', 'follow_up_pending', 'approved', 'rejected', 'disbursed']:
             counts[status_key] += 1
         counts['total'] += 1
@@ -433,6 +445,7 @@ def api_dashboard_stats(request):
         follow_up_pending = status_counts['follow_up_pending']
         new_entries = status_counts['new_entries']
         waiting = status_counts['waiting']
+        updated_document = status_counts['updated_document']
         follow_up = status_counts['follow_up']
         approved = status_counts['approved']
         rejected = status_counts['rejected']
@@ -454,6 +467,7 @@ def api_dashboard_stats(request):
         follow_up_pending = status_counts['follow_up_pending']
         new_entries = status_counts['new_entries']
         waiting = status_counts['waiting']
+        updated_document = status_counts['updated_document']
         follow_up = status_counts['follow_up']
         approved = status_counts['approved']
         rejected = status_counts['rejected']
@@ -475,6 +489,7 @@ def api_dashboard_stats(request):
             'data': {
                 'new_entries': 0,
                 'waiting': 0,
+                'updated_document': 0,
                 'follow_up': 0,
                 'follow_up_pending': 0,
                 'approved': 0,
@@ -491,6 +506,7 @@ def api_dashboard_stats(request):
         'data': {
             'new_entries': new_entries,
             'waiting': waiting,
+            'updated_document': updated_document,
             'follow_up': follow_up,
             'follow_up_pending': follow_up_pending,
             'approved': approved,

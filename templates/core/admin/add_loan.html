@@ -502,60 +502,7 @@
         {% endfor %}
     </div>
     {% endif %}
-
-    <!-- Recent Applications Section -->
-    {% if recent_loans %}
-    <div class="recent-applications-section">
-        <div class="recent-applications-title">
-            <i class="bi bi-clock-history"></i> Recent Loan Applications
-        </div>
-        <table class="applications-table">
-            <thead>
-                <tr>
-                    <th>Applicant Name</th>
-                    <th>Phone</th>
-                    <th>Loan Amount</th>
-                    <th>Loan Type</th>
-                    <th>Created Date</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for loan in recent_loans %}
-                <tr>
-                    <td class="applicant-name">{{ loan.applicant_name }}</td>
-                    <td><span class="phone-badge">{{ loan.phone }}</span></td>
-                    <td><span class="loan-amount-badge">₹ {% if loan.loan_amount_required %}{{ loan.loan_amount_required|floatformat:"0" }}{% else %}—{% endif %}</span></td>
-                    <td>{{ loan.service_required|default:"—" }}</td>
-                    <td>{{ loan.created_date|date:"d M Y" }}</td>
-                    <td>
-                        {% if loan.status == "new_entry" %}
-                            <span class="status-badge status-new">NEW APPLICATION</span>
-                        {% elif loan.status == "waiting" %}
-                            <span class="status-badge status-waiting">DOCUMENT PENDING</span>
-                        {% elif loan.status == "approved" %}
-                            <span class="status-badge status-approved">APPROVED</span>
-                        {% else %}
-                            <span class="status-badge">{{ loan.status|upper }}</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        <div class="table-actions">
-                            <button class="btn-action" title="View Details">View</button>
-                        </div>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    {% else %}
-    <div class="empty-message">
-        <p><i class="bi bi-inbox" style="font-size: 24px;"></i></p>
-        <p>No applications yet. Start adding new loan applications below.</p>
-    </div>
-    {% endif %}
+    <!-- Recent Loan Applications block removed by panel requirement -->
 
     <form id="loanForm" method="post" enctype="multipart/form-data" novalidate>
         {% csrf_token %}
@@ -1735,3 +1682,5 @@
 </script>
 
 {% endblock %}
+
+

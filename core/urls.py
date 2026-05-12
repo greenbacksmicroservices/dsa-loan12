@@ -37,6 +37,7 @@ urlpatterns = [
     
     # Frontend Views
     path('login/', views.login_view, name='login'),
+    path('welcome/', views.welcome_view, name='welcome'),
     path('logout/', views.logout_view, name='logout'),
     path('dashboard/', views.dashboard, name='dashboard'),
     path('password-reset/', password_reset_otp_views.password_reset_otp_request, name='password_reset'),
@@ -68,6 +69,7 @@ urlpatterns = [
     # Admin Loan Status Pages
     path('admin/new-entries/', admin_views.admin_new_entries, name='admin_new_entries'),
     path('admin/in-processing/', admin_views.admin_in_processing, name='admin_in_processing'),
+    path('admin/updated-document/', admin_views.admin_updated_document, name='admin_updated_document'),
     path('admin/follow-ups/', admin_views.admin_follow_ups, name='admin_follow_ups'),
     path('admin/approved/', admin_views.admin_approved, name='admin_approved'),
     path('admin/rejected/', admin_views.admin_rejected, name='admin_rejected'),
@@ -119,6 +121,7 @@ urlpatterns = [
     path('agent/sub-agents/add/', agent_views.agent_add_employee, name='agent_add_employee'),
     path('agent/sub-agents/create/', agent_views.create_sub_agent, name='create_sub_agent'),
     path('agent/my-applications/', agent_views.agent_my_applications, name='agent_my_applications'),
+    path('agent/loan/<int:loan_id>/detail/', agent_views.agent_loan_detail, name='agent_loan_detail'),
     path('agent/forward-application/', agent_views.agent_forward_application, name='agent_forward_application'),
     path('agent/loan/<int:loan_id>/edit-reverted/', agent_views.agent_resubmit_reverted_loan, name='agent_resubmit_reverted_loan'),
     path('agent/reports/', agent_views.agent_reports, name='agent_reports'),
@@ -129,6 +132,7 @@ urlpatterns = [
     path('agent/settings/', agent_views.agent_settings, name='agent_settings'),
     path('api/agent/dashboard-stats/', agent_views.api_agent_dashboard_stats, name='api_agent_dashboard_stats'),
     path('api/agent/notifications/', agent_views.agent_notifications, name='agent_notifications'),
+    path('api/notifications/', views.panel_notifications, name='panel_notifications'),
     path('api/agent/recent-entries/', agent_views.api_agent_recent_entries, name='api_agent_recent_entries'),
     
     # Employee Dashboard & Views
@@ -149,6 +153,7 @@ urlpatterns = [
     path('employee/loans/total/', employee_views.employee_loan_status_list, {'status_key': 'total'}, name='employee_loans_total'),
     path('employee/loans/new-entry/', employee_views.employee_loan_status_list, {'status_key': 'new_entry'}, name='employee_loans_new_entry'),
     path('employee/loans/in-processing/', employee_views.employee_loan_status_list, {'status_key': 'waiting'}, name='employee_loans_waiting'),
+    path('employee/loans/updated-document/', employee_views.employee_loan_status_list, {'status_key': 'updated_document'}, name='employee_loans_updated_document'),
     path('employee/loans/awaiting/', employee_views.employee_loan_status_list, {'status_key': 'awaiting'}, name='employee_loans_awaiting'),
     path('employee/loans/approved/', employee_views.employee_loan_status_list, {'status_key': 'approved'}, name='employee_loans_approved'),
     path('employee/loans/rejected/', employee_views.employee_loan_status_list, {'status_key': 'rejected'}, name='employee_loans_rejected'),
@@ -171,6 +176,7 @@ urlpatterns = [
     path('api/employee/my-agents/', employee_views_new.employee_my_agents_api, name='api_employee_my_agents'),
     path('api/employee/add-agent/', employee_views_new.employee_add_agent_api, name='api_employee_add_agent'),
     path('api/employee/loan/<int:loan_id>/collect/', views.employee_collect_for_banking, name='api_employee_collect_loan'),
+    path('api/employee/loan/<int:loan_id>/updated-document/', views.employee_mark_updated_document, name='api_employee_updated_document'),
     path('api/employee/loan/<int:loan_id>/document-pending/', views.employee_move_to_document_pending, name='api_employee_document_pending'),
     path('api/employee/loan/<int:loan_id>/revert/', views.employee_revert_loan_to_agent, name='api_employee_revert_loan'),
     path('api/employee/loan/<int:loan_id>/sign/', views.employee_sign_off_loan, name='api_employee_sign_off_loan'),
@@ -328,6 +334,9 @@ urlpatterns = [
     path('api/profile/update/', admin_api.api_update_user_profile, name='api_update_user_profile'),
     path('api/profile/change-password/', admin_api.api_change_user_password, name='api_change_user_password'),
     path('api/profile/upload-photo/', admin_api.api_upload_profile_photo, name='api_upload_profile_photo'),
+    path('api/profile/upload-document/', admin_api.api_upload_user_document, name='api_upload_user_document'),
+    path('api/profile/documents/', admin_api.api_get_user_documents, name='api_get_user_documents_self'),
+    path('api/profile/<int:user_id>/documents/', admin_api.api_get_user_documents, name='api_get_user_documents_other'),
     
     # ========== PROCESSING REQUESTS API (NEW) ==========
     path('api/processing-requests/', admin_api.api_admin_processing_requests, name='api_processing_requests'),
@@ -503,4 +512,3 @@ urlpatterns = [
     path('api/admin/loan/<int:loan_id>/reassign/', admin_assign_views.admin_reassign_loan, name='api_admin_reassign_loan'),
     path('api/admin/loan/<int:loan_id>/assignment-status/', admin_assign_views.admin_get_assignment_status, name='api_admin_assignment_status'),
 ]
-

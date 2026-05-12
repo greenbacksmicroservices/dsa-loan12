@@ -83,6 +83,9 @@ const PAGE_FILTER = '{{ status_key }}';
 let refreshTimer = null;
 let CURRENT_APPROVED_LOAN_ID = null;
 let CURRENT_APPROVED_ENTITY_TYPE = '';
+let CURRENT_BANKING_ACTION = null;
+let CURRENT_BANKING_LOAN_ID = null;
+let CURRENT_BANKING_ENTITY_TYPE = '';
 let PAGE_SIZE = 10;
 let CURRENT_PAGE = 1;
 
@@ -107,6 +110,102 @@ async function postJson(url, payload) {
         throw new Error(data.error || data.message || 'Action failed');
     }
     return data;
+}
+
+async function markUpdatedDocument(loanId, entityType = '') {
+    const remark = prompt('Update Document remark (optional):') || '';
+    try {
+        await postJson(`/api/employee/loan/${loanId}/updated-document/`, {
+            entity_type: entityType || '',
+            remark
+        });
+        if (PAGE_FILTER === 'waiting') {
+            window.location.href = '/employee/loans/updated-document/';
+            return;
+        }
+        await loadLoans();
+    } catch (error) {
+        alert(error.message || 'Could not update document status.');
+    }
+}
+
+function openBankingActionModal(action, loanId, entityType = '', applicantName = '') {
+    CURRENT_BANKING_ACTION = action;
+    CURRENT_BANKING_LOAN_ID = loanId;
+    CURRENT_BANKING_ENTITY_TYPE = entityType || '';
+    const title = document.getElementById('bankingActionTitle');
+    const name = document.getElementById('bankingActionApplicant');
+    const collectBox = document.getElementById('bankingCollectFields');
+    const rejectBox = document.getElementById('bankingRejectFields');
+    if (title) title.textContent = action === 'collect' ? 'Move To Banking Processing' : 'Reject Loan';
+    if (name) name.textContent = applicantName ? `Applicant: ${applicantName}` : '';
+    if (collectBox) collectBox.style.display = action === 'collect' ? '' : 'none';
+    if (rejectBox) rejectBox.style.display = action === 'reject' ? '' : 'none';
+    ['bankingBankName', 'bankingBankerName', 'bankingBankerPhone', 'bankingBankerEmail', 'bankingVerifiedLoanAmount', 'bankingFinalLoanAmount', 'bankingDsaName', 'bankingDescription', 'bankingBankRemark', 'bankingRejectBankerName', 'bankingRejectBankerPhone', 'bankingRejectBankerEmail', 'bankingRejectReason', 'bankingRejectDescription', 'bankingRejectRemark']
+        .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    new bootstrap.Modal(document.getElementById('bankingActionModal')).show();
+}
+
+async function submitBankingAction() {
+    if (!CURRENT_BANKING_ACTION || !CURRENT_BANKING_LOAN_ID) return;
+    try {
+        if (CURRENT_BANKING_ACTION === 'collect') {
+            const bankName = (document.getElementById('bankingBankName')?.value || '').trim();
+            const bankerName = (document.getElementById('bankingBankerName')?.value || '').trim();
+            const bankerPhone = (document.getElementById('bankingBankerPhone')?.value || '').trim();
+            const bankerEmail = (document.getElementById('bankingBankerEmail')?.value || '').trim();
+            const verifiedLoanAmount = (document.getElementById('bankingVerifiedLoanAmount')?.value || '').trim();
+            const finalLoanAmount = (document.getElementById('bankingFinalLoanAmount')?.value || '').trim();
+            const dsaName = (document.getElementById('bankingDsaName')?.value || '').trim();
+            if (!bankName || !bankerName || !bankerPhone || !bankerEmail || !verifiedLoanAmount || !finalLoanAmount || !dsaName) {
+                throw new Error('Bank name, banker details, verified/final amount and DSA name are required.');
+            }
+            const phoneDigits = bankerPhone.replace(/\D/g, '');
+            if (phoneDigits.length < 10 || phoneDigits.length > 15) {
+                throw new Error('Banker phone must be 10 to 15 digits.');
+            }
+            if (!bankerEmail.includes('@')) {
+                throw new Error('Please enter a valid banker email.');
+            }
+            if (Number(verifiedLoanAmount) <= 0 || Number(finalLoanAmount) <= 0) {
+                throw new Error('Verified and Final loan amount must be greater than zero.');
+            }
+            await postJson(`/api/employee/loan/${CURRENT_BANKING_LOAN_ID}/collect/`, {
+                entity_type: CURRENT_BANKING_ENTITY_TYPE,
+                bank_name: bankName,
+                banker_name: bankerName,
+                banker_phone: bankerPhone,
+                banker_email: bankerEmail,
+                verified_loan_amount: verifiedLoanAmount,
+                final_loan_amount: finalLoanAmount,
+                dsa_name: dsaName,
+                banker_description: (document.getElementById('bankingDescription')?.value || '').trim(),
+                bank_remark: (document.getElementById('bankingBankRemark')?.value || '').trim()
+            });
+        } else {
+            const bankerName = (document.getElementById('bankingRejectBankerName')?.value || '').trim();
+            const bankerPhone = (document.getElementById('bankingRejectBankerPhone')?.value || '').trim();
+            const bankerEmail = (document.getElementById('bankingRejectBankerEmail')?.value || '').trim();
+            const reason = (document.getElementById('bankingRejectReason')?.value || '').trim();
+            if (!bankerName || !bankerPhone || !bankerEmail) {
+                throw new Error('Banker name, phone and email are required.');
+            }
+            if (!reason) throw new Error('Rejection reason is required.');
+            await postJson(`/api/employee/loan/${CURRENT_BANKING_LOAN_ID}/reject/`, {
+                entity_type: CURRENT_BANKING_ENTITY_TYPE,
+                banker_name: bankerName,
+                banker_phone: bankerPhone,
+                banker_email: bankerEmail,
+                banker_description: (document.getElementById('bankingRejectDescription')?.value || '').trim(),
+                rejection_reason: reason,
+                bank_remark: (document.getElementById('bankingRejectRemark')?.value || '').trim()
+            });
+        }
+        bootstrap.Modal.getInstance(document.getElementById('bankingActionModal')).hide();
+        await loadLoans();
+    } catch (error) {
+        alert(error.message || 'Action failed.');
+    }
 }
 
 function splitApprovalNotes(rawText) {
@@ -311,8 +410,11 @@ function filterByStatus(loans) {
     if (PAGE_FILTER === 'waiting') {
         return loans.filter(l => l.status === 'waiting');
     }
+    if (PAGE_FILTER === 'updated_document') {
+        return loans.filter(l => l.status === 'updated_document');
+    }
     if (PAGE_FILTER === 'awaiting') {
-        return loans.filter(l => ['waiting', 'follow_up'].includes(l.status));
+        return loans.filter(l => ['waiting', 'updated_document', 'follow_up'].includes(l.status));
     }
     if (PAGE_FILTER === 'follow_up_pending') {
         return loans.filter(l => l.status === 'follow_up_pending');
@@ -407,6 +509,7 @@ function renderLoansTable(loans) {
     const statusMap = {
         'new_entry': 'primary',
         'waiting': 'warning',
+        'updated_document': 'success',
         'follow_up': 'info',
         'follow_up_pending': 'warning',
         'approved': 'success',
@@ -417,6 +520,7 @@ function renderLoansTable(loans) {
     const statusLabels = {
         'new_entry': 'New Application',
         'waiting': 'Document Pending',
+        'updated_document': 'Updated Document',
         'follow_up': 'Banking Processing',
         'follow_up_pending': 'Follow Up',
         'approved': 'Approved',
@@ -435,6 +539,7 @@ function renderLoansTable(loans) {
                         <th>Type</th>
                         <th>Amount (₹)</th>
                         <th>Status</th>
+                        <th>Submitted / Processed</th>
                         <th>Date</th>
                         <th>Action</th>
                     </tr>
@@ -452,25 +557,38 @@ function renderLoansTable(loans) {
                                     ${normalizeStatusLabel(l.status_display, l.status, statusLabels)}
                                 </span>
                             </td>
+                            <td style="font-size: 12px;">
+                                <div><strong>Channel Partner:</strong> ${l.submitted_by || '-'}</div>
+                                <div><strong>Employee:</strong> ${l.processed_by || '-'}</div>
+                                <div><strong>Partner:</strong> ${l.partner_under || '-'}</div>
+                            </td>
                             <td style="font-size: 13px;">${l.assigned_date || 'N/A'}</td>
                             <td>
                                 <div style="display: flex; gap: 6px; flex-wrap: wrap;">
                                      ${l.status === 'approved'
                                          ? `<button class="btn btn-sm btn-primary" type="button" onclick="openApprovedProcessModal(${l.id}, '${(l.entity_type || '').replace(/'/g, "\\'")}')">Process</button>`
-                                         : (l.status === 'follow_up_pending'
-                                             ? `<a href="/employee/loan/${l.id}/detail/" class="btn btn-sm btn-warning">Edit</a>`
-                                             : (l.status === 'rejected'
-                                                 ? `<a href="/employee/loan/${l.id}/detail/" class="btn btn-sm btn-success">View</a>`
-                                                 : (l.status === 'disbursed'
-                                                     ? `
-                                                         <a href="/employee/loan/${l.id}/detail/" class="btn btn-sm btn-success">View</a>
-                                                         <a href="/employee/loan/${l.id}/detail/" class="btn btn-sm btn-outline-primary">Download</a>
-                                                     `
-                                                     : `
-                                                         <a href="/employee/loan/${l.id}/detail/" class="btn btn-sm btn-success">View</a>
-                                                         <button class="btn btn-sm btn-warning" type="button" onclick="openEditLoanModal(${l.id})">Edit</button>
-                                                         <a href="/employee/loan/${l.id}/detail/" class="btn btn-sm btn-outline-primary">Download</a>
-                                                     `
+                                         : (l.status === 'updated_document'
+                                             ? `
+                                                 <button class="btn btn-sm btn-info text-white" type="button" onclick="openBankingActionModal('collect', ${l.id}, '${(l.entity_type || '').replace(/'/g, "\\'")}', '${(l.applicant_name || '').replace(/'/g, "\\'")}')">Banking Processing</button>
+                                                 <button class="btn btn-sm btn-danger" type="button" onclick="openBankingActionModal('reject', ${l.id}, '${(l.entity_type || '').replace(/'/g, "\\'")}', '${(l.applicant_name || '').replace(/'/g, "\\'")}')">Rejected</button>
+                                                 <a href="/employee/loan/${l.id}/detail/" class="btn btn-sm btn-outline-primary">Download</a>
+                                             `
+                                             : (l.status === 'follow_up_pending'
+                                                 ? `<a href="/employee/loan/${l.id}/detail/" class="btn btn-sm btn-warning">Edit</a>`
+                                                 : (l.status === 'rejected'
+                                                     ? `<a href="/employee/loan/${l.id}/detail/" class="btn btn-sm btn-success">View</a>`
+                                                     : (l.status === 'disbursed'
+                                                         ? `
+                                                             <a href="/employee/loan/${l.id}/detail/" class="btn btn-sm btn-success">View</a>
+                                                             <a href="/employee/loan/${l.id}/detail/" class="btn btn-sm btn-outline-primary">Download</a>
+                                                         `
+                                                         : `
+                                                             <a href="/employee/loan/${l.id}/detail/" class="btn btn-sm btn-success">View</a>
+                                                             <button class="btn btn-sm btn-warning" type="button" onclick="openEditLoanModal(${l.id})">Edit</button>
+                                                             ${l.status === 'waiting' ? `<button class="btn btn-sm btn-primary" type="button" onclick="markUpdatedDocument(${l.id}, '${(l.entity_type || '').replace(/'/g, "\\'")}')">Update Document</button>` : ''}
+                                                             <a href="/employee/loan/${l.id}/detail/" class="btn btn-sm btn-outline-primary">Download</a>
+                                                         `
+                                                     )
                                                  )
                                              )
                                          )
@@ -805,6 +923,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (titleEl) titleEl.textContent = 'Document Pending Loans';
         if (badgeEl) badgeEl.textContent = 'Document Pending';
     }
+    if (PAGE_FILTER === 'updated_document') {
+        if (titleEl) titleEl.textContent = 'Updated Document Loans';
+        if (badgeEl) badgeEl.textContent = 'Updated Document';
+    }
 
     loadLoans();
     refreshTimer = setInterval(loadLoans, 15000);
@@ -878,6 +1000,88 @@ window.addEventListener('beforeunload', () => refreshTimer && clearInterval(refr
             <div class="modal-footer">
                 <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 <button class="btn btn-primary" type="button" onclick="submitEditLoan()">Save Changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="bankingActionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="bankingActionTitle">Banking Action</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-3" id="bankingActionApplicant"></p>
+                <div id="bankingCollectFields" class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Bank Name *</label>
+                        <input id="bankingBankName" class="form-control" type="text" placeholder="Enter bank name">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Banker Name *</label>
+                        <input id="bankingBankerName" class="form-control" type="text" placeholder="Enter banker name">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Banker Phone *</label>
+                        <input id="bankingBankerPhone" class="form-control" type="text" placeholder="Enter banker phone">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Banker Email *</label>
+                        <input id="bankingBankerEmail" class="form-control" type="email" placeholder="Enter banker email">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Verified Loan Amount *</label>
+                        <input id="bankingVerifiedLoanAmount" class="form-control" type="number" min="0" step="0.01" placeholder="120000">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Final Loan Amount *</label>
+                        <input id="bankingFinalLoanAmount" class="form-control" type="number" min="0" step="0.01" placeholder="120000">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">DSA Name *</label>
+                        <input id="bankingDsaName" class="form-control" type="text" placeholder="Enter DSA name">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Description</label>
+                        <textarea id="bankingDescription" class="form-control" rows="2" placeholder="Banking processing notes"></textarea>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Remark</label>
+                        <textarea id="bankingBankRemark" class="form-control" rows="2" placeholder="Remark"></textarea>
+                    </div>
+                </div>
+                <div id="bankingRejectFields" class="row g-3" style="display:none;">
+                    <div class="col-md-4">
+                        <label class="form-label">Banker Name *</label>
+                        <input id="bankingRejectBankerName" class="form-control" type="text">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Banker Phone *</label>
+                        <input id="bankingRejectBankerPhone" class="form-control" type="text">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Banker Email *</label>
+                        <input id="bankingRejectBankerEmail" class="form-control" type="email">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Rejection Reason *</label>
+                        <textarea id="bankingRejectReason" class="form-control" rows="3"></textarea>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Description</label>
+                        <textarea id="bankingRejectDescription" class="form-control" rows="2"></textarea>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Bank Remark</label>
+                        <textarea id="bankingRejectRemark" class="form-control" rows="2"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-primary" type="button" onclick="submitBankingAction()">Submit</button>
             </div>
         </div>
     </div>

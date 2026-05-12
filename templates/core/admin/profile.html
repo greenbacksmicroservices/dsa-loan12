@@ -161,6 +161,60 @@
             </div>
         </div>
     </div>
+
+    <!-- Document Uploads Section -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <h3 class="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
+            <i class="fas fa-file-upload text-blue-600 w-5"></i>
+            My Documents (PAN, Aadhar, Passbook/Cancel Check)
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- PAN Card -->
+            <div class="border rounded-lg p-4 bg-gray-50">
+                <h4 class="font-semibold text-gray-800 mb-2">PAN Card</h4>
+                <template x-if="documents.pan">
+                    <div class="mb-3 flex justify-between items-center bg-white p-2 border rounded">
+                        <span class="text-sm text-green-600 font-medium"><i class="fas fa-check-circle"></i> Uploaded</span>
+                        <div>
+                            <a :href="documents.pan.url" target="_blank" class="text-blue-600 hover:underline text-xs mr-2">View</a>
+                            <a :href="documents.pan.url" download class="text-green-600 hover:underline text-xs">Download</a>
+                        </div>
+                    </div>
+                </template>
+                <input type="file" @change="uploadDocument('pan', $event)" class="text-sm w-full file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" accept=".pdf,.jpg,.jpeg,.png">
+            </div>
+
+            <!-- Aadhar Card -->
+            <div class="border rounded-lg p-4 bg-gray-50">
+                <h4 class="font-semibold text-gray-800 mb-2">Aadhar Card</h4>
+                <template x-if="documents.aadhar">
+                    <div class="mb-3 flex justify-between items-center bg-white p-2 border rounded">
+                        <span class="text-sm text-green-600 font-medium"><i class="fas fa-check-circle"></i> Uploaded</span>
+                        <div>
+                            <a :href="documents.aadhar.url" target="_blank" class="text-blue-600 hover:underline text-xs mr-2">View</a>
+                            <a :href="documents.aadhar.url" download class="text-green-600 hover:underline text-xs">Download</a>
+                        </div>
+                    </div>
+                </template>
+                <input type="file" @change="uploadDocument('aadhar', $event)" class="text-sm w-full file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" accept=".pdf,.jpg,.jpeg,.png">
+            </div>
+
+            <!-- Passbook / Cancel Check -->
+            <div class="border rounded-lg p-4 bg-gray-50">
+                <h4 class="font-semibold text-gray-800 mb-2">Passbook / Cancel Check</h4>
+                <template x-if="documents.passbook">
+                    <div class="mb-3 flex justify-between items-center bg-white p-2 border rounded">
+                        <span class="text-sm text-green-600 font-medium"><i class="fas fa-check-circle"></i> Uploaded</span>
+                        <div>
+                            <a :href="documents.passbook.url" target="_blank" class="text-blue-600 hover:underline text-xs mr-2">View</a>
+                            <a :href="documents.passbook.url" download class="text-green-600 hover:underline text-xs">Download</a>
+                        </div>
+                    </div>
+                </template>
+                <input type="file" @change="uploadDocument('passbook', $event)" class="text-sm w-full file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" accept=".pdf,.jpg,.jpeg,.png">
+            </div>
+        </div>
+    </div>
     
     <!-- Save Changes Button -->
     <div x-show="editMode" class="flex items-center gap-4">
@@ -196,6 +250,60 @@ function profileManager() {
             current_password: '',
             new_password: '',
             confirm_password: ''
+        },
+        documents: {
+            pan: null,
+            aadhar: null,
+            passbook: null
+        },
+
+        init() {
+            this.loadDocuments();
+        },
+
+        async loadDocuments() {
+            try {
+                const response = await fetch('{% url "api_get_user_documents_self" %}');
+                const data = await response.json();
+                if (data.success && data.documents) {
+                    data.documents.forEach(doc => {
+                        if (doc.type === 'pan' || doc.type === 'aadhar' || doc.type === 'passbook') {
+                            this.documents[doc.type] = doc;
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading documents:', error);
+            }
+        },
+
+        async uploadDocument(type, event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('document_type', type);
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('{% url "api_upload_user_document" %}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: formData
+                });
+                const data = await response.json();
+                if (data.success) {
+                    this.documents[type] = data.document;
+                    alert('Document uploaded successfully!');
+                } else {
+                    alert('Error uploading document: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error uploading:', error);
+                alert('Error uploading document');
+            }
         },
         
         toggleEditMode() {

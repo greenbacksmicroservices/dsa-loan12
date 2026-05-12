@@ -1,4 +1,4 @@
-from django.db import models
+﻿from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.core.validators import RegexValidator
 from django.utils import timezone
@@ -64,6 +64,7 @@ class Agent(models.Model):
         choices=[('active', 'Active'), ('blocked', 'Blocked')],
         default='active'
     )
+    under_employee = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='assigned_agents')
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='created_agents')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
