@@ -38,7 +38,7 @@ server {
     error_log /var/log/nginx/dsa_loan_error.log warn;
 
     # Request size limit
-    client_max_body_size 20M;
+    client_max_body_size 100M;
 
     # Gzip compression
     gzip on;
