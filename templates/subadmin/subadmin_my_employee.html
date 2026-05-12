@@ -72,6 +72,15 @@
                 <input type="file" name="profile_photo" accept="image/*" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500">
             </div>
             <div class="md:col-span-2">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Channel Partners Under Employee (Optional)</label>
+                <select name="channel_partner_ids" id="subadmin-add-channel-partners" multiple size="5" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500">
+                    {% for partner in channel_partner_options %}
+                        <option value="{{ partner.id }}">{{ partner.name|default:partner.user.get_full_name|default:partner.user.username }}</option>
+                    {% endfor %}
+                </select>
+                <p class="text-xs text-gray-500 mt-1">Hold Ctrl (Windows) / Cmd (Mac) to select multiple Channel Partners.</p>
+            </div>
+            <div class="md:col-span-2">
                 <button type="submit" class="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold">Save Employee</button>
             </div>
         </form>
@@ -223,6 +232,15 @@
                     <label class="block text-sm font-medium text-gray-700 mb-1">Profile Photo</label>
                     <input type="file" id="employee-modal-photo" class="w-full px-4 py-2 border border-gray-300 rounded-lg" accept="image/*">
                 </div>
+                <div class="md:col-span-2" id="employee-modal-channel-partners-wrapper">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Channel Partners Under Employee</label>
+                    <select id="employee-modal-channel-partners" multiple size="5" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                        {% for partner in channel_partner_options %}
+                            <option value="{{ partner.id }}">{{ partner.name|default:partner.user.get_full_name|default:partner.user.username }}</option>
+                        {% endfor %}
+                    </select>
+                    <p class="text-xs text-gray-500 mt-1">Multiple select supported.</p>
+                </div>
                 <div class="md:col-span-2 hidden" id="employee-modal-photo-preview-wrapper">
                     <img id="employee-modal-photo-preview" src="" alt="Profile" class="w-20 h-20 rounded-full object-cover border">
                 </div>
@@ -313,6 +331,15 @@ function getCookie(name) {
 
 const csrftoken = getCookie('csrftoken');
 
+function setMultiSelectValues(selectId, selectedValues) {
+    const select = document.getElementById(selectId);
+    if (!select) return;
+    const selectedSet = new Set((selectedValues || []).map((value) => String(value)));
+    Array.from(select.options).forEach((option) => {
+        option.selected = selectedSet.has(String(option.value));
+    });
+}
+
 function setEmployeeSummary(summary, customers) {
     document.getElementById('emp-sum-submitted').textContent = summary.total_submitted_applications || 0;
     document.getElementById('emp-sum-assigned').textContent = summary.total_assigned_applications || 0;
@@ -366,6 +393,7 @@ function openEmployeeModal(mode, employeeId) {
             document.getElementById('employee-modal-status').value = employee.status || 'active';
             document.getElementById('employee-modal-address').value = employee.address || '';
             document.getElementById('employee-modal-password').value = '';
+            setMultiSelectValues('employee-modal-channel-partners', employee.assigned_channel_partner_ids || []);
 
             const preview = document.getElementById('employee-modal-photo-preview');
             const previewWrapper = document.getElementById('employee-modal-photo-preview-wrapper');
@@ -405,6 +433,7 @@ function setEmployeeModalMode(mode) {
         'employee-modal-address',
         'employee-modal-password',
         'employee-modal-photo',
+        'employee-modal-channel-partners',
     ];
     fields.forEach(id => {
         const el = document.getElementById(id);
@@ -439,6 +468,12 @@ function saveEmployeeChanges() {
     const photoInput = document.getElementById('employee-modal-photo');
     if (photoInput.files && photoInput.files[0]) {
         formData.append('profile_photo', photoInput.files[0]);
+    }
+    const partnerSelect = document.getElementById('employee-modal-channel-partners');
+    if (partnerSelect) {
+        Array.from(partnerSelect.selectedOptions).forEach((option) => {
+            formData.append('channel_partner_ids', option.value);
+        });
     }
 
     fetch(`/subadmin/employees/${employeeId}/update/`, {

@@ -556,6 +556,15 @@
                             <label>Password *</label>
                             <input type="password" name="password" id="employeePassword" required placeholder="Create login password">
                         </div>
+                        <div class="form-group" style="grid-column: 1 / -1;">
+                            <label>Channel Partners Under Employee (Optional)</label>
+                            <select name="channel_partner_ids" id="employeeChannelPartners" multiple size="5">
+                                {% for partner in channel_partner_options %}
+                                    <option value="{{ partner.id }}">{{ partner.name|default:partner.user.get_full_name|default:partner.user.username }}</option>
+                                {% endfor %}
+                            </select>
+                            <small style="color:#64748b;">Hold Ctrl (Windows) / Cmd (Mac) to select multiple Channel Partners.</small>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -603,6 +612,17 @@
                     <div class="form-group">
                         <label>Address</label>
                         <textarea name="address" id="editEmployeeAddress" placeholder="Address"></textarea>
+                    </div>
+                </div>
+                <div class="form-grid full" style="margin-top: 16px;">
+                    <div class="form-group">
+                        <label>Channel Partners Under Employee</label>
+                        <select id="editEmployeeChannelPartners" name="channel_partner_ids" multiple size="5">
+                            {% for partner in channel_partner_options %}
+                                <option value="{{ partner.id }}">{{ partner.name|default:partner.user.get_full_name|default:partner.user.username }}</option>
+                            {% endfor %}
+                        </select>
+                        <small style="color:#64748b;">Multiple select supported.</small>
                     </div>
                 </div>
                 <div class="form-grid" style="margin-top: 16px;">
@@ -1195,6 +1215,13 @@ function openEditEmployeeModal(employeeId) {
         document.getElementById('editEmployeeGender').value = employee.gender || 'Other';
         document.getElementById('editEmployeeStatus').value = employee.status || (employee.is_active ? 'active' : 'inactive');
         document.getElementById('editEmployeePassword').value = '';
+        const assignedPartnerIds = new Set((employee.assigned_channel_partner_ids || []).map((id) => String(id)));
+        const editPartnerSelect = document.getElementById('editEmployeeChannelPartners');
+        if (editPartnerSelect) {
+            Array.from(editPartnerSelect.options).forEach((option) => {
+                option.selected = assignedPartnerIds.has(String(option.value));
+            });
+        }
 
         modal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
@@ -1210,6 +1237,12 @@ function closeEditEmployeeModal() {
     if (modal) {
         modal.style.display = 'none';
         document.body.style.overflow = 'auto';
+    }
+    const editPartnerSelect = document.getElementById('editEmployeeChannelPartners');
+    if (editPartnerSelect) {
+        Array.from(editPartnerSelect.options).forEach((option) => {
+            option.selected = false;
+        });
     }
     currentEditingEmployeeId = null;
 }
@@ -1228,6 +1261,10 @@ if (editEmployeeForm) {
             gender: document.getElementById('editEmployeeGender').value,
             status: document.getElementById('editEmployeeStatus').value
         };
+        const editPartnerSelect = document.getElementById('editEmployeeChannelPartners');
+        payload.channel_partner_ids = editPartnerSelect
+            ? Array.from(editPartnerSelect.selectedOptions).map((option) => option.value)
+            : [];
         const password = document.getElementById('editEmployeePassword').value.trim();
         if (password) payload.password = password;
 

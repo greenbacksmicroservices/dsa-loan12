@@ -20,12 +20,17 @@
             <p class="description">Total New Applications</p>
             <span class="view-details" style="color:#4c51bf;">View Details →</span>
         </a>
-
         <a class="insight-card c-process" href="{% url 'employee_loans_waiting' %}">
             <p class="status-title">Document Pending</p>
             <h2 class="main-value" id="stat-waiting">0</h2>
             <p class="description">Pending Review</p>
             <span class="view-details" style="color:#d69e2e;">View Details →</span>
+        </a>
+        <a class="insight-card c-updated" href="{% url 'employee_loans_updated_document' %}">
+            <p class="status-title">Updated Document</p>
+            <h2 class="main-value" id="stat-updated-document">0</h2>
+            <p class="description">Ready for Banking Process</p>
+            <span class="view-details" style="color:#059669;">View Details →</span>
         </a>
 
         <a class="insight-card c-bank" href="{% url 'employee_loans_followup' %}">
@@ -175,6 +180,7 @@
 
     .c-new { color: #4c51bf; }
     .c-process { color: #ecc94b; }
+    .c-updated { color: #16a34a; }
     .c-bank { color: #38b2ac; }
     .c-follow { color: #ed64a1; }
     .c-approved { color: #48bb78; }
@@ -541,6 +547,7 @@
             if (data.success) {
                 document.getElementById('stat-new-entry').textContent = data.new_entry || 0;
                 document.getElementById('stat-waiting').textContent = data.waiting || 0;
+                document.getElementById('stat-updated-document').textContent = data.updated_document || 0;
                 document.getElementById('stat-banking').textContent = data.follow_up || 0;
                 document.getElementById('stat-follow-up-pending').textContent = data.follow_up_pending || 0;
                 document.getElementById('stat-approved').textContent = data.approved || 0;
@@ -562,10 +569,11 @@
         const canvas = document.getElementById('statusChart');
         if (!canvas) return;
 
-        const labels = ['New Application', 'Document Pending', 'Banking', 'Follow Up', 'Approved', 'Rejected', 'Disbursed'];
+        const labels = ['New Application', 'Document Pending', 'Updated Document', 'Banking', 'Follow Up', 'Approved', 'Rejected', 'Disbursed'];
         const values = [
             data.new_entry || 0,
             data.waiting || 0,
+            data.updated_document || 0,
             data.follow_up || 0,
             data.follow_up_pending || 0,
             data.approved || 0,
@@ -585,7 +593,7 @@
                 labels,
                 datasets: [{
                     data: values,
-                    backgroundColor: ['#3b82f6', '#f59e0b', '#7c3aed', '#ea580c', '#10b981', '#ef4444', '#6366f1']
+                    backgroundColor: ['#3b82f6', '#f59e0b', '#16a34a', '#7c3aed', '#ea580c', '#10b981', '#ef4444', '#6366f1']
                 }]
             },
             options: {
@@ -703,6 +711,7 @@
             const statusBadges = {
                 'new_entry': 'bg-info',
                 'waiting': 'bg-warning text-dark',
+                'updated_document': 'bg-success',
                 'follow_up_pending': 'bg-warning text-dark',
                 'approved': 'bg-success',
                 'rejected': 'bg-danger',
@@ -717,6 +726,7 @@
                 const text = String(label || '').trim().toLowerCase();
                 if (text === 'new entry') return 'New Application';
                 if (text === 'in processing' || text === 'waiting for processing') return 'Document Pending';
+                if (text === 'updated document') return 'Updated Document';
                 return label;
             })(rawStatusLabel);
             const isFollowUpPending = loan.status === 'follow_up_pending';

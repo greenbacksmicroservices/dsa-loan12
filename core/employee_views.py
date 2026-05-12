@@ -295,6 +295,11 @@ def employee_loan_status_list(request, status_key):
             'subtitle': 'Applications waiting for employee review',
             'badge': 'In Processing'
         },
+        'updated_document': {
+            'title': 'Updated Document Loans',
+            'subtitle': 'Document-pending cases with complete updated documents',
+            'badge': 'Updated Document'
+        },
         'awaiting': {
             'title': 'Awaiting Action',
             'subtitle': 'Waiting and follow-up loans that need your action',

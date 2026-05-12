@@ -214,23 +214,15 @@
                                         <a class="btn btn-sm btn-outline-warning" href="{% url 'agent_resubmit_reverted_loan' loan.id %}" title="Edit and Re-submit">
                                             <i class="bi bi-pencil-square"></i> Re-submit
                                         </a>
-                                        {% else %}
-                                        <button class="btn btn-sm btn-outline-primary" onclick="viewLoanDetails({{ loan.id }}, '{{ loan.full_name|escapejs }}')" title="View Full Loan Application Form">
+                                    {% else %}
+                                        <a class="btn btn-sm btn-outline-primary"
+                                           href="{% url 'agent_loan_detail' loan.id %}"
+                                           title="View Full Details + Documents">
                                             <i class="bi bi-eye"></i> View
-                                        </button>
-                                        {% if loan.status == 'draft' or loan.status == 'new_entry' or loan.status == 'waiting' %}
-                                        <button class="btn btn-sm btn-outline-warning" onclick="openLoanEditPopup({{ loan.id }}, '{{ loan.status }}')" title="Edit / Forward">
-                                            <i class="bi bi-pencil-square"></i> Edit
-                                        </button>
-                                        {% endif %}
+                                        </a>
                                         <button class="btn btn-sm btn-outline-success" onclick="downloadLoanDetails({{ loan.id }}, '{{ loan.full_name|escapejs }}')" title="Download Full Loan Application Form">
                                             <i class="bi bi-download"></i> Download
                                         </button>
-                                        {% if loan.status == 'new_entry' %}
-                                        <button class="btn btn-sm btn-outline-warning" onclick="openLoanEditPopup({{ loan.id }}, '{{ loan.status }}')" title="Forward with Manual Loan ID">
-                                            <i class="bi bi-send"></i> Forward
-                                        </button>
-                                        {% endif %}
                                         {% endif %}
                                     </td>
                                 </tr>
@@ -329,66 +321,46 @@ function sanitizeAgentVisibleRemarks(rawText) {
 function viewLoanDetails(loanId, loanName) {
     const modal = new bootstrap.Modal(document.getElementById('loanDetailsModal'));
     const body = document.getElementById('loan-details-body');
-    
-    // Fetch loan details via API
-    fetch(`/api/loans/${loanId}/`, {
-        headers: {
-            'X-CSRFToken': getCookie('csrftoken')
-        },
+    fetch(`/api/loan/${loanId}/details/`, {
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
         credentials: 'same-origin'
     })
-    .then(response => response.json())
-    .then(loan => {
+    .then(async (response) => {
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || payload.success === false) {
+            throw new Error(payload.error || 'Failed to load loan details');
+        }
+        return payload.data || payload;
+    })
+    .then((loan) => {
         const statusColor = {
-            'draft': 'secondary',
             'new_entry': 'info',
             'waiting': 'warning',
+            'updated_document': 'success',
             'follow_up': 'info',
             'approved': 'success',
             'rejected': 'danger',
             'disbursed': 'primary'
-        }[loan.status] || 'secondary';
-        
-        const statusText = {
-            'draft': 'Draft',
-            'new_entry': 'New Application',
-            'waiting': 'Document Pending',
-            'follow_up': 'Bank Stage',
-            'approved': 'Approved',
-            'rejected': 'Rejected',
-            'disbursed': 'Disbursed'
-        }[loan.status] || loan.status;
-        
-        const parsedDetailRows = String(loan.remarks || '')
-            .split(/\r?\n/)
-            .map(line => line.trim())
-            .filter(line => line.includes(':'))
-            .map(line => {
-                const splitIndex = line.indexOf(':');
-                return {
-                    key: line.slice(0, splitIndex).trim(),
-                    value: line.slice(splitIndex + 1).trim()
-                };
-            })
-            .filter(item => item.key && item.value);
+        }[String(loan.status_key || '').toLowerCase()] || 'secondary';
 
-        const detailsHtml = parsedDetailRows.length
-            ? parsedDetailRows.map(item => `<tr><td class="fw-semibold">${item.key}</td><td>${item.value}</td></tr>`).join('')
+        const details = Array.isArray(loan.full_application_details) ? loan.full_application_details : [];
+        const detailsHtml = details.length
+            ? details.map((item) => `<tr><td class="fw-semibold">${item.label || '-'}</td><td>${item.value || '-'}</td></tr>`).join('')
             : '<tr><td colspan="2" class="text-muted">No additional form details found.</td></tr>';
 
         body.innerHTML = `
             <div class="row">
                 <div class="col-md-6 mb-3">
                     <label class="form-label small text-muted">Loan ID</label>
-                    <p class="form-control-plaintext fw-bold">#${loan.id}</p>
+                    <p class="form-control-plaintext fw-bold">${loan.loan_id || loan.user_id || '#' + loan.id}</p>
                 </div>
                 <div class="col-md-6 mb-3">
                     <label class="form-label small text-muted">Applicant Name</label>
-                    <p class="form-control-plaintext fw-600">${loan.full_name}</p>
+                    <p class="form-control-plaintext fw-600">${loan.full_name || '-'}</p>
                 </div>
                 <div class="col-md-6 mb-3">
                     <label class="form-label small text-muted">Phone Number</label>
-                    <p class="form-control-plaintext"><a href="tel:${loan.mobile_number}">${loan.mobile_number}</a></p>
+                    <p class="form-control-plaintext"><a href="tel:${loan.mobile_number || ''}">${loan.mobile_number || '-'}</a></p>
                 </div>
                 <div class="col-md-6 mb-3">
                     <label class="form-label small text-muted">Email</label>
@@ -400,31 +372,28 @@ function viewLoanDetails(loanId, loanName) {
                 </div>
                 <div class="col-md-6 mb-3">
                     <label class="form-label small text-muted">Loan Amount</label>
-                    <p class="form-control-plaintext fw-bold text-primary">&#8377;${parseFloat(loan.loan_amount).toLocaleString('en-IN')}</p>
+                    <p class="form-control-plaintext fw-bold text-primary">&#8377;${Number(loan.loan_amount || 0).toLocaleString('en-IN')}</p>
                 </div>
                 <div class="col-md-6 mb-3">
                     <label class="form-label small text-muted">Loan Type</label>
-                    <p class="form-control-plaintext"><span class="badge bg-info text-dark">${loan.loan_type}</span></p>
+                    <p class="form-control-plaintext"><span class="badge bg-info text-dark">${loan.loan_type || '-'}</span></p>
                 </div>
                 <div class="col-md-6 mb-3">
                     <label class="form-label small text-muted">Status</label>
-                    <p class="form-control-plaintext"><span class="badge bg-${statusColor}">${statusText}</span></p>
+                    <p class="form-control-plaintext"><span class="badge bg-${statusColor}">${loan.status_display || loan.status || '-'}</span></p>
                 </div>
                 <div class="col-md-6 mb-3">
                     <label class="form-label small text-muted">Created Date</label>
-                    <p class="form-control-plaintext">${new Date(loan.created_at).toLocaleDateString('en-IN')}</p>
+                    <p class="form-control-plaintext">${loan.created_at ? new Date(loan.created_at).toLocaleDateString('en-IN') : '-'}</p>
                 </div>
                 <div class="col-12 mb-3">
                     <label class="form-label small text-muted">Address</label>
-                    <p class="form-control-plaintext">${loan.permanent_address || 'N/A'}</p>
+                    <p class="form-control-plaintext">${loan.permanent_address || '-'}</p>
                 </div>
                 <div class="col-12 mb-3">
                     <div class="d-flex justify-content-between align-items-center">
                         <label class="form-label small text-muted mb-0">Full Loan Application Form</label>
                         <div class="d-flex gap-2">
-                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="openLoanEditPopup(${loan.id}, '${loan.status || ''}')">
-                                <i class="bi bi-pencil-square"></i> Edit
-                            </button>
                             <button type="button" class="btn btn-sm btn-outline-success" onclick="downloadLoanDetails(${loan.id}, '${(loan.full_name || '').replace(/'/g, "\\'")}')">
                                 <i class="bi bi-download"></i> Download
                             </button>
@@ -445,7 +414,7 @@ function viewLoanDetails(loanId, loanName) {
             </div>
         `;
     })
-    .catch(error => {
+    .catch((error) => {
         body.innerHTML = `<div class="alert alert-danger">Error loading loan details: ${error.message}</div>`;
     });
     
@@ -453,17 +422,27 @@ function viewLoanDetails(loanId, loanName) {
 }
 
 function downloadLoanDetails(loanId, loanName) {
-    fetch(`/api/loans/${loanId}/`, {
+    fetch(`/api/loan/${loanId}/details/`, {
         headers: { 'X-CSRFToken': getCookie('csrftoken') },
         credentials: 'same-origin'
     })
-    .then(response => response.json())
-    .then(loan => {
+    .then(async (response) => {
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || payload.success === false) {
+            throw new Error(payload.error || 'Failed to load loan details');
+        }
+        return payload.data || payload;
+    })
+    .then((loan) => {
         const printWindow = window.open('', '_blank');
         if (!printWindow) {
             alert('Please allow popups to download A4 print.');
             return;
         }
+        const details = Array.isArray(loan.full_application_details) ? loan.full_application_details : [];
+        const detailRows = details.length
+            ? details.map((item) => `<div class="row full"><span class="label">${item.label || '-'}</span> ${item.value || '-'}</div>`).join('')
+            : '<div class="row full"><span class="label">Form Details:</span> No additional details found.</div>';
         printWindow.document.write(`
             <html>
                 <head>
@@ -487,10 +466,10 @@ function downloadLoanDetails(loanId, loanName) {
                         <div class="row"><span class="label">Email:</span> ${loan.email || '-'}</div>
                         <div class="row"><span class="label">Loan Type:</span> ${loan.loan_type || '-'}</div>
                         <div class="row"><span class="label">Amount:</span> Rs. ${Number(loan.loan_amount || 0).toLocaleString('en-IN')}</div>
-                        <div class="row"><span class="label">Status:</span> ${loan.status || '-'}</div>
+                        <div class="row"><span class="label">Status:</span> ${loan.status_display || loan.status || '-'}</div>
                         <div class="row"><span class="label">Created:</span> ${loan.created_at ? new Date(loan.created_at).toLocaleString() : '-'}</div>
                         <div class="row full"><span class="label">Address:</span> ${loan.permanent_address || '-'}</div>
-                        <div class="row full"><span class="label">Remarks:</span> ${(loan.remarks || '-').replace(/\n/g, '<br>')}</div>
+                        ${detailRows}
                     </div>
                 </body>
             </html>
@@ -498,6 +477,9 @@ function downloadLoanDetails(loanId, loanName) {
         printWindow.document.close();
         printWindow.focus();
         setTimeout(() => printWindow.print(), 250);
+    })
+    .catch((error) => {
+        alert(error.message || 'Unable to download details right now.');
     });
 }
 
@@ -567,5 +549,4 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 {% endblock %}
-
 

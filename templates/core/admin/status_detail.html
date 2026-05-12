@@ -254,6 +254,8 @@
                         <i class="fas fa-file-alt"></i> New Applications
                     {% elif status_name == 'Waiting for Processing' %}
                         <i class="fas fa-hourglass-half"></i> Document Pending
+                    {% elif status_name == 'Updated Document' %}
+                        <i class="fas fa-file-circle-check"></i> Updated Document
                     {% elif status_name == 'Required Follow-up' or status_name == 'Banking Processing' %}
                         <i class="fas fa-university"></i> Banking Processing
                     {% elif status_name == 'Approved' %}
@@ -305,7 +307,7 @@
                         <th style="padding: 15px 20px; font-weight: 600; color: #2d3748; font-size: 13px; text-transform: uppercase;">Phone</th>
                         <th style="padding: 15px 20px; font-weight: 600; color: #2d3748; font-size: 13px; text-transform: uppercase;">Loan Amount</th>
                         <th style="padding: 15px 20px; font-weight: 600; color: #2d3748; font-size: 13px; text-transform: uppercase;">Date Applied</th>
-                        {% if status_name == 'Waiting for Processing' or status_name == 'Required Follow-up' or status_name == 'Banking Processing' or status_name == 'Approved' or status_name == 'Rejected' or status_name == 'Disbursed' %}
+                        {% if status_name == 'Waiting for Processing' or status_name == 'Updated Document' or status_name == 'Required Follow-up' or status_name == 'Banking Processing' or status_name == 'Approved' or status_name == 'Rejected' or status_name == 'Disbursed' %}
                         <th style="padding: 15px 20px; font-weight: 600; color: #2d3748; font-size: 13px; text-transform: uppercase;">Assigned To</th>
                         <th style="padding: 15px 20px; font-weight: 600; color: #2d3748; font-size: 13px; text-transform: uppercase;">Assigned By</th>
                         {% endif %}
@@ -320,7 +322,7 @@
                         <td style="padding: 15px 20px; color: #666;">{{ app.applicant.mobile|default:"-" }}</td>
                         <td style="padding: 15px 20px; font-weight: 600; color: #2d5016;">â‚¹{{ app.applicant.loan_amount|floatformat:0 }}</td>
                         <td style="padding: 15px 20px; color: #666; font-size: 13px;">{{ app.created_at|date:"M d, Y" }}</td>
-                        {% if status_name == 'Waiting for Processing' or status_name == 'Required Follow-up' or status_name == 'Banking Processing' or status_name == 'Approved' or status_name == 'Rejected' or status_name == 'Disbursed' %}
+                        {% if status_name == 'Waiting for Processing' or status_name == 'Updated Document' or status_name == 'Required Follow-up' or status_name == 'Banking Processing' or status_name == 'Approved' or status_name == 'Rejected' or status_name == 'Disbursed' %}
                         <td style="padding: 15px 20px; font-weight: 600; color: #374151;">
                             {% if app.assigned_employee %}
                                 {{ app.assigned_employee.first_name }} {{ app.assigned_employee.last_name }}
@@ -356,12 +358,21 @@
                                 {% endif %}
                                 {% if status_name == 'Waiting for Processing' %}
                                 <button type="button" class="action-btn collect"
-                                    onclick="openAdminAction('collect', {{ app.id }}, '{{ app.applicant.full_name|escapejs }}')">
-                                    <i class="fas fa-university"></i> Bank Process
+                                    onclick="openAdminAction('updated', {{ app.id }}, '{{ app.applicant.full_name|escapejs }}')">
+                                    <i class="fas fa-file-circle-check"></i> Update Document
                                 </button>
                                 <button type="button" class="action-btn reject"
                                     onclick="openAdminAction('reject', {{ app.id }}, '{{ app.applicant.full_name|escapejs }}')">
                                     <i class="fas fa-times-circle"></i> Reject
+                                </button>
+                                {% elif status_name == 'Updated Document' %}
+                                <button type="button" class="action-btn collect"
+                                    onclick="openAdminAction('collect', {{ app.id }}, '{{ app.applicant.full_name|escapejs }}')">
+                                    <i class="fas fa-university"></i> Banking Processing
+                                </button>
+                                <button type="button" class="action-btn reject"
+                                    onclick="openAdminAction('reject', {{ app.id }}, '{{ app.applicant.full_name|escapejs }}')">
+                                    <i class="fas fa-times-circle"></i> Rejected
                                 </button>
                                 {% elif status_name == 'Required Follow-up' or status_name == 'Banking Processing' %}
                                 <button type="button" class="action-btn approve"
@@ -501,35 +512,72 @@ function viewDetails(appId, fullName, email, phone, loanType, loanAmount) {
                                 <h4 style="margin: 0 0 15px 0; color: #1f2937; font-weight: 700; font-size: 16px; border-bottom: 2px solid #667eea; padding-bottom: 10px;">
                                     <i class="fas fa-user" style="color: #667eea; margin-right: 8px;"></i> Name & Contact Details
                                 </h4>
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Full Name</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.full_name || '-'}</p></div>
-                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Email</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.email || '-'}</p></div>
-                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Mobile Number</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.mobile || '-'}</p></div>
-                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Alternate Mobile</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.alternate_mobile || '-'}</p></div>
-                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Father's Name</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.father_name || '-'}</p></div>
-                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Mother's Name</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.mother_name || '-'}</p></div>
-                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Date of Birth</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${formattedDOB}</p></div>
-                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Gender</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.gender || '-'}</p></div>
-                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Marital Status</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.marital_status || '-'}</p></div>
-                                </div>
+                                <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                                    <tbody>
+                                        <tr style="border-bottom: 1px solid #e5e7eb;">
+                                            <th style="padding: 10px; text-align: left; color: #6b7280; width: 25%;">Full Name</th>
+                                            <td style="padding: 10px; color: #1f2937; font-weight: 600; width: 25%;">${app.full_name || '-'}</td>
+                                            <th style="padding: 10px; text-align: left; color: #6b7280; width: 25%;">Email</th>
+                                            <td style="padding: 10px; color: #1f2937; font-weight: 600; width: 25%;">${app.email || '-'}</td>
+                                        </tr>
+                                        <tr style="border-bottom: 1px solid #e5e7eb;">
+                                            <th style="padding: 10px; text-align: left; color: #6b7280;">Mobile Number</th>
+                                            <td style="padding: 10px; color: #1f2937; font-weight: 600;">${app.mobile || '-'}</td>
+                                            <th style="padding: 10px; text-align: left; color: #6b7280;">Alternate Mobile</th>
+                                            <td style="padding: 10px; color: #1f2937; font-weight: 600;">${app.alternate_mobile || '-'}</td>
+                                        </tr>
+                                        <tr style="border-bottom: 1px solid #e5e7eb;">
+                                            <th style="padding: 10px; text-align: left; color: #6b7280;">Father's Name</th>
+                                            <td style="padding: 10px; color: #1f2937; font-weight: 600;">${app.father_name || '-'}</td>
+                                            <th style="padding: 10px; text-align: left; color: #6b7280;">Mother's Name</th>
+                                            <td style="padding: 10px; color: #1f2937; font-weight: 600;">${app.mother_name || '-'}</td>
+                                        </tr>
+                                        <tr style="border-bottom: 1px solid #e5e7eb;">
+                                            <th style="padding: 10px; text-align: left; color: #6b7280;">Date of Birth</th>
+                                            <td style="padding: 10px; color: #1f2937; font-weight: 600;">${formattedDOB}</td>
+                                            <th style="padding: 10px; text-align: left; color: #6b7280;">Gender</th>
+                                            <td style="padding: 10px; color: #1f2937; font-weight: 600;">${app.gender || '-'}</td>
+                                        </tr>
+                                        <tr>
+                                            <th style="padding: 10px; text-align: left; color: #6b7280;">Marital Status</th>
+                                            <td style="padding: 10px; color: #1f2937; font-weight: 600;" colspan="3">${app.marital_status || '-'}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
                                 
                                 <!-- Permanent Address -->
                                 <h5 style="margin: 20px 0 10px 0; color: #374151; font-weight: 600; font-size: 14px;">Permanent Address</h5>
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Address</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.permanent_address || '-'}</p></div>
-                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Landmark</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.permanent_landmark || '-'}</p></div>
-                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">City</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.permanent_city || '-'}</p></div>
-                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">PIN Code</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.permanent_pin || '-'}</p></div>
-                                </div>
+                                <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                                    <tbody>
+                                        <tr style="border-bottom: 1px solid #e5e7eb;">
+                                            <th style="padding: 10px; text-align: left; color: #6b7280; width: 25%;">Address</th>
+                                            <td style="padding: 10px; color: #1f2937; font-weight: 600; width: 75%;" colspan="3">${app.permanent_address || '-'}</td>
+                                        </tr>
+                                        <tr>
+                                            <th style="padding: 10px; text-align: left; color: #6b7280; width: 25%;">Landmark</th>
+                                            <td style="padding: 10px; color: #1f2937; font-weight: 600; width: 25%;">${app.permanent_landmark || '-'}</td>
+                                            <th style="padding: 10px; text-align: left; color: #6b7280; width: 25%;">City / PIN</th>
+                                            <td style="padding: 10px; color: #1f2937; font-weight: 600; width: 25%;">${app.permanent_city || '-'} / ${app.permanent_pin || '-'}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
 
                                 <!-- Present Address -->
                                 <h5 style="margin: 20px 0 10px 0; color: #374151; font-weight: 600; font-size: 14px;">Present Address</h5>
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Address</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.present_address || '-'}</p></div>
-                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Landmark</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.present_landmark || '-'}</p></div>
-                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">City</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.present_city || '-'}</p></div>
-                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">PIN Code</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.present_pin || '-'}</p></div>
-                                </div>
+                                <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                                    <tbody>
+                                        <tr style="border-bottom: 1px solid #e5e7eb;">
+                                            <th style="padding: 10px; text-align: left; color: #6b7280; width: 25%;">Address</th>
+                                            <td style="padding: 10px; color: #1f2937; font-weight: 600; width: 75%;" colspan="3">${app.present_address || '-'}</td>
+                                        </tr>
+                                        <tr>
+                                            <th style="padding: 10px; text-align: left; color: #6b7280; width: 25%;">Landmark</th>
+                                            <td style="padding: 10px; color: #1f2937; font-weight: 600; width: 25%;">${app.present_landmark || '-'}</td>
+                                            <th style="padding: 10px; text-align: left; color: #6b7280; width: 25%;">City / PIN</th>
+                                            <td style="padding: 10px; color: #1f2937; font-weight: 600; width: 25%;">${app.present_city || '-'} / ${app.present_pin || '-'}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
                             </div>
 
                             <!-- SECTION 2: OCCUPATION & INCOME DETAILS -->
@@ -537,13 +585,27 @@ function viewDetails(appId, fullName, email, phone, loanType, loanAmount) {
                                 <h4 style="margin: 0 0 15px 0; color: #1f2937; font-weight: 700; font-size: 16px; border-bottom: 2px solid #667eea; padding-bottom: 10px;">
                                     <i class="fas fa-briefcase" style="color: #667eea; margin-right: 8px;"></i> Occupation & Income Details
                                 </h4>
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Occupation</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.occupation || '-'}</p></div>
-                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Date of Joining</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${formattedDOJ}</p></div>
-                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Year of Experience</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.year_of_experience || '-'}</p></div>
-                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Additional Income</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.additional_income || 'No'}</p></div>
-                                </div>
-                                ${app.extra_income_details ? `<div style="margin-top: 10px;"><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Extra Income Details</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.extra_income_details}</p></div>` : ''}
+                                <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                                    <tbody>
+                                        <tr style="border-bottom: 1px solid #e5e7eb;">
+                                            <th style="padding: 10px; text-align: left; color: #6b7280; width: 25%;">Occupation</th>
+                                            <td style="padding: 10px; color: #1f2937; font-weight: 600; width: 25%;">${app.occupation || '-'}</td>
+                                            <th style="padding: 10px; text-align: left; color: #6b7280; width: 25%;">Date of Joining</th>
+                                            <td style="padding: 10px; color: #1f2937; font-weight: 600; width: 25%;">${formattedDOJ}</td>
+                                        </tr>
+                                        <tr>
+                                            <th style="padding: 10px; text-align: left; color: #6b7280;">Experience (Years)</th>
+                                            <td style="padding: 10px; color: #1f2937; font-weight: 600;">${app.year_of_experience || '-'}</td>
+                                            <th style="padding: 10px; text-align: left; color: #6b7280;">Additional Income</th>
+                                            <td style="padding: 10px; color: #1f2937; font-weight: 600;">${app.additional_income || 'No'}</td>
+                                        </tr>
+                                        ${app.extra_income_details ? `
+                                        <tr style="border-top: 1px solid #e5e7eb;">
+                                            <th style="padding: 10px; text-align: left; color: #6b7280;">Extra Income Details</th>
+                                            <td style="padding: 10px; color: #1f2937; font-weight: 600;" colspan="3">${app.extra_income_details}</td>
+                                        </tr>` : ''}
+                                    </tbody>
+                                </table>
                             </div>
 
                             <!-- SECTION 4: LOAN REQUEST -->
@@ -551,12 +613,22 @@ function viewDetails(appId, fullName, email, phone, loanType, loanAmount) {
                                 <h4 style="margin: 0 0 15px 0; color: #1f2937; font-weight: 700; font-size: 16px; border-bottom: 2px solid #667eea; padding-bottom: 10px;">
                                     <i class="fas fa-money-bill-wave" style="color: #667eea; margin-right: 8px;"></i> Loan Request Details
                                 </h4>
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Service Required</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.loan_type || '-'}</p></div>
-                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Loan Tenure (Months)</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.loan_tenure || '-'}</p></div>
-                                    <div style="grid-column: 1 / -1;"><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Loan Amount Required</p><p style="margin: 0; color: #2d5016; font-weight: 700; font-size: 18px;">â‚¹${app.loan_amount || '0'}</p></div>
-                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Any Charges or Fee</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.charges_fee}</p></div>
-                                </div>
+                                <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                                    <tbody>
+                                        <tr style="border-bottom: 1px solid #e5e7eb;">
+                                            <th style="padding: 10px; text-align: left; color: #6b7280; width: 25%;">Service Required</th>
+                                            <td style="padding: 10px; color: #1f2937; font-weight: 600; width: 25%;">${app.loan_type || '-'}</td>
+                                            <th style="padding: 10px; text-align: left; color: #6b7280; width: 25%;">Loan Tenure (Months)</th>
+                                            <td style="padding: 10px; color: #1f2937; font-weight: 600; width: 25%;">${app.loan_tenure || '-'}</td>
+                                        </tr>
+                                        <tr>
+                                            <th style="padding: 10px; text-align: left; color: #6b7280;">Loan Amount Required</th>
+                                            <td style="padding: 10px; color: #2d5016; font-weight: 700; font-size: 18px;">â‚¹${app.loan_amount || '0'}</td>
+                                            <th style="padding: 10px; text-align: left; color: #6b7280;">Any Charges or Fee</th>
+                                            <td style="padding: 10px; color: #1f2937; font-weight: 600;">${app.charges_fee}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
                             </div>
 
                             <!-- SECTION 6: BALANCE TRANSFER (IF ANY) -->
@@ -564,14 +636,31 @@ function viewDetails(appId, fullName, email, phone, loanType, loanAmount) {
                                 <h4 style="margin: 0 0 15px 0; color: #1f2937; font-weight: 700; font-size: 16px; border-bottom: 2px solid #667eea; padding-bottom: 10px;">
                                     <i class="fas fa-credit-card" style="color: #667eea; margin-right: 8px;"></i> Balance Transfer (If Any)
                                 </h4>
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">CIBIL Score</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.cibil_score || '-'}</p></div>
-                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Aadhar Number</p><p style="margin: 0; color: #1f2937; font-weight: 600;">****${app.aadhar_number ? app.aadhar_number.slice(-4) : '-'}</p></div>
-                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">PAN Number</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.pan_number || '-'}</p></div>
-                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Bank Name</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.bank_name || '-'}</p></div>
-                                    <div><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Account Number</p><p style="margin: 0; color: #1f2937; font-weight: 600;">****${app.account_number ? app.account_number.slice(-4) : '-'}</p></div>
-                                </div>
-                                ${app.remarks ? `<div style="margin-top: 10px;"><p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; font-weight: 600;">Remarks / Suggestions</p><p style="margin: 0; color: #1f2937; font-weight: 600;">${app.remarks}</p></div>` : ''}
+                                <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                                    <tbody>
+                                        <tr style="border-bottom: 1px solid #e5e7eb;">
+                                            <th style="padding: 10px; text-align: left; color: #6b7280; width: 25%;">CIBIL Score</th>
+                                            <td style="padding: 10px; color: #1f2937; font-weight: 600; width: 25%;">${app.cibil_score || '-'}</td>
+                                            <th style="padding: 10px; text-align: left; color: #6b7280; width: 25%;">Aadhar Number</th>
+                                            <td style="padding: 10px; color: #1f2937; font-weight: 600; width: 25%;">****${app.aadhar_number ? app.aadhar_number.slice(-4) : '-'}</td>
+                                        </tr>
+                                        <tr style="border-bottom: 1px solid #e5e7eb;">
+                                            <th style="padding: 10px; text-align: left; color: #6b7280;">PAN Number</th>
+                                            <td style="padding: 10px; color: #1f2937; font-weight: 600;">${app.pan_number || '-'}</td>
+                                            <th style="padding: 10px; text-align: left; color: #6b7280;">Bank Name</th>
+                                            <td style="padding: 10px; color: #1f2937; font-weight: 600;">${app.bank_name || '-'}</td>
+                                        </tr>
+                                        <tr>
+                                            <th style="padding: 10px; text-align: left; color: #6b7280;">Account Number</th>
+                                            <td style="padding: 10px; color: #1f2937; font-weight: 600;" colspan="3">****${app.account_number ? app.account_number.slice(-4) : '-'}</td>
+                                        </tr>
+                                        ${app.remarks ? `
+                                        <tr style="border-top: 1px solid #e5e7eb;">
+                                            <th style="padding: 10px; text-align: left; color: #6b7280;">Remarks / Suggestions</th>
+                                            <td style="padding: 10px; color: #1f2937; font-weight: 600;" colspan="3">${app.remarks}</td>
+                                        </tr>` : ''}
+                                    </tbody>
+                                </table>
                             </div>
 
                             <!-- SECTION 7: DOCUMENTS -->
@@ -644,7 +733,18 @@ function openAdminAction(action, appId, applicantName) {
 
     const safeName = currentAdminApplicant || 'this applicant';
 
-    if (action === 'collect') {
+    if (action === 'updated') {
+        title.textContent = 'Update Document';
+        confirmBtn.className = 'action-btn collect';
+        confirmBtn.textContent = 'Update';
+        body.innerHTML = `
+            <div style="font-size: 13px; color: #374151;">Move <strong>${safeName}</strong> to Updated Document.</div>
+            <div>
+                <label for="adminUpdatedDocumentRemark">Remark</label>
+                <textarea id="adminUpdatedDocumentRemark" rows="3" placeholder="Updated document remark..."></textarea>
+            </div>
+        `;
+    } else if (action === 'collect') {
         title.textContent = 'Move To Banking Processing';
         confirmBtn.className = 'action-btn collect';
         confirmBtn.textContent = 'Move';
@@ -773,7 +873,13 @@ async function confirmAdminAction() {
     let payload = {};
 
     try {
-         if (currentAdminAction === 'collect') {
+         if (currentAdminAction === 'updated') {
+             endpoint = `/api/employee/loan/${currentAdminAppId}/updated-document/`;
+             payload = {
+                 remark: (document.getElementById('adminUpdatedDocumentRemark')?.value || '').trim(),
+                 entity_type: 'application',
+             };
+         } else if (currentAdminAction === 'collect') {
              const bankerName = (document.getElementById('adminBankerName')?.value || '').trim();
              const bankerPhone = (document.getElementById('adminBankerPhone')?.value || '').trim();
              const bankerEmail = (document.getElementById('adminBankerEmail')?.value || '').trim();

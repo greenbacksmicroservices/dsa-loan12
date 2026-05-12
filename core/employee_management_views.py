@@ -13,7 +13,7 @@ from django.core.paginator import Paginator
 import json
 import re
 
-from .models import User, EmployeeProfile, LoanApplication, Loan, UserOnboardingProfile, UserOnboardingDocument
+from .models import User, EmployeeProfile, LoanApplication, Loan, UserOnboardingProfile, UserOnboardingDocument, Agent, AgentAssignment
 from .onboarding_utils import collect_onboarding_payload, collect_onboarding_documents
 from .decorators import admin_required
 from django.contrib.auth.models import Group
@@ -107,6 +107,40 @@ def _extract_location(onboarding_payload, user_obj=None):
                     pin = pin_match.group(1).strip()
 
     return city, pin, district
+
+
+def _parse_channel_partner_ids(raw_values):
+    ids = []
+    for value in raw_values or []:
+        try:
+            parsed = int(str(value).strip())
+        except (TypeError, ValueError):
+            continue
+        if parsed > 0:
+            ids.append(parsed)
+    return sorted(set(ids))
+
+
+def _sync_employee_channel_partners(employee_user, channel_partner_ids, assigned_by_user=None):
+    """
+    Keep AgentAssignment rows in sync for a single employee.
+    Admin scope: any active agent can be linked.
+    """
+    valid_ids = set(
+        Agent.objects.filter(id__in=channel_partner_ids, status='active').values_list('id', flat=True)
+    )
+
+    AgentAssignment.objects.filter(employee=employee_user).exclude(agent_id__in=valid_ids).delete()
+    existing_ids = set(
+        AgentAssignment.objects.filter(employee=employee_user, agent_id__in=valid_ids).values_list('agent_id', flat=True)
+    )
+    create_rows = [
+        AgentAssignment(agent_id=agent_id, employee=employee_user, assigned_by=assigned_by_user)
+        for agent_id in valid_ids
+        if agent_id not in existing_ids
+    ]
+    if create_rows:
+        AgentAssignment.objects.bulk_create(create_rows, ignore_conflicts=True)
 
 
 @login_required(login_url='admin_login')
@@ -243,6 +277,7 @@ def api_add_employee(request):
         city = request.POST.get('city', '').strip() or request.POST.get('onb_perm_city', '').strip()
         district = request.POST.get('district', '').strip() or request.POST.get('onb_perm_district', '').strip()
         dob = request.POST.get('onb_dob', '').strip()
+        channel_partner_ids = _parse_channel_partner_ids(request.POST.getlist('channel_partner_ids'))
         profile_photo = request.FILES.get('profile_photo', None)
         
         # Validation
@@ -354,6 +389,8 @@ def api_add_employee(request):
             employee_role='loan_processor',
         )
 
+        _sync_employee_channel_partners(user, channel_partner_ids, assigned_by_user=request.user)
+
         onboarding_payload = collect_onboarding_payload(request)
         creator_info = {
             'created_by_id': request.user.id,
@@ -401,6 +438,7 @@ def api_add_employee(request):
                 'pin_code': pin_code or '-',
                 'district': district or '-',
                 'created_under': created_under,
+                'assigned_channel_partner_ids': channel_partner_ids,
             }
         }, status=201)
         
@@ -419,6 +457,9 @@ def api_update_employee(request, employee_id):
     try:
         user = get_object_or_404(User, id=employee_id, role='employee')
         data = json.loads(request.body)
+        channel_partner_ids = None
+        if 'channel_partner_ids' in data:
+            channel_partner_ids = _parse_channel_partner_ids(data.get('channel_partner_ids') or [])
         
         # Update User fields
         if 'email' in data:
@@ -451,6 +492,9 @@ def api_update_employee(request, employee_id):
             user.is_active = data['status'] == 'active'
         
         user.save()
+
+        if channel_partner_ids is not None:
+            _sync_employee_channel_partners(user, channel_partner_ids, assigned_by_user=request.user)
         
         # Update EmployeeProfile
         try:
@@ -637,6 +681,20 @@ def api_get_employee(request, employee_id):
             ]
         creator_info = _resolve_creator_info(user, onboarding, profile)
         city, pin_code, district = _extract_location(onboarding, user)
+        assigned_partner_links = list(
+            AgentAssignment.objects.filter(employee=user)
+            .select_related('agent')
+            .order_by('-assigned_at')
+        )
+        assigned_channel_partners = [
+            {
+                'id': link.agent_id,
+                'name': link.agent.name if link.agent else '-',
+            }
+            for link in assigned_partner_links
+            if link.agent_id
+        ]
+        assigned_channel_partner_ids = [item['id'] for item in assigned_channel_partners]
 
         return JsonResponse({
             'success': True,
@@ -664,6 +722,8 @@ def api_get_employee(request, employee_id):
                 'created_under': creator_info['display'],
                 'created_by_role': creator_info['role'],
                 'created_by_name': creator_info['name'],
+                'assigned_channel_partners': assigned_channel_partners,
+                'assigned_channel_partner_ids': assigned_channel_partner_ids,
             }
             ,
             'summary': summary,

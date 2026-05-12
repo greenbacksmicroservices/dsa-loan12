@@ -1488,3 +1488,29 @@ def api_delete_agent(request, agent_id):
             'success': False,
             'error': str(e)
         }, status=500)
+
+
+@login_required
+@require_POST
+def api_upload_user_document(request):
+    try:
+        document_type = request.POST.get('document_type')
+        file = request.FILES.get('file')
+        if not document_type or not file:
+            return JsonResponse({'success': False, 'error': 'Document type and file are required.'}, status=400)
+        UserOnboardingDocument.objects.filter(user=request.user, document_type=document_type).delete()
+        doc = UserOnboardingDocument.objects.create(user=request.user, document_type=document_type, file=file)
+        return JsonResponse({'success': True, 'message': 'Document uploaded', 'document': {'id': doc.id, 'type': doc.document_type, 'url': doc.file.url}})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+@login_required
+@require_GET
+def api_get_user_documents(request, user_id=None):
+    try:
+        target_user = User.objects.get(id=user_id) if user_id and request.user.role in ['admin', 'subadmin'] else request.user
+        docs = UserOnboardingDocument.objects.filter(user=target_user)
+        documents = [{'id': doc.id, 'type': doc.document_type, 'url': doc.file.url} for doc in docs]
+        return JsonResponse({'success': True, 'documents': documents})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)

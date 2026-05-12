@@ -91,6 +91,7 @@
     /* Color variations */
     .c-new { color: #4c51bf; }
     .c-process { color: #ecc94b; }
+    .c-updated { color: #16a34a; }
     .c-bank { color: #38b2ac; }
     .c-follow { color: #ed64a1; }
     .c-approved { color: #48bb78; }
@@ -274,6 +275,13 @@
             <span class="view-details" style="color:#d69e2e;">View Details →</span>
         </a>
 
+        <a href="/admin/all-loans/?status=updated_document" class="insight-card c-updated">
+            <p class="status-title">Updated Document</p>
+            <h2 class="main-value" id="stat-updated-document">{{ updated_document_count }}</h2>
+            <p class="description">Ready for Banking Process</p>
+            <span class="view-details" style="color:#059669;">View Details &rarr;</span>
+        </a>
+
         <a href="/admin/all-loans/?status=follow_up" class="insight-card c-bank">
             <p class="status-title">Banking Processing</p>
             <h2 class="main-value" id="stat-followup">{{ followup_count }}</h2>
@@ -439,13 +447,14 @@
             statusChart = new Chart(ctx2, {
                 type: 'doughnut',
                 data: {
-                    labels: ['New Application', 'Document Pending', 'Banking Processing', 'Follow Up', 'Approved', 'Rejected', 'Disbursed'],
+                    labels: ['New Application', 'Document Pending', 'Updated Document', 'Banking Processing', 'Follow Up', 'Approved', 'Rejected', 'Disbursed'],
                     datasets: [
                         {
-                            data: [1, 0, 0, 0, 2, 1, 1],
+                            data: [1, 0, 0, 0, 0, 2, 1, 1],
                             backgroundColor: [
                                 '#3b82f6',
                                 '#f59e0b',
+                                '#16a34a',
                                 '#8b5cf6',
                                 '#f97316',
                                 '#10b981',
@@ -488,6 +497,7 @@
 
             setText('stat-new-entry', stats.new_entries);
             setText('stat-processing', stats.waiting);
+            setText('stat-updated-document', stats.updated_document);
             setText('stat-followup', stats.follow_up);
             setText('stat-follow-up-pending', stats.follow_up_pending);
             setText('stat-approved', stats.approved);
@@ -503,6 +513,7 @@
                 statusChart.data.datasets[0].data = [
                     stats.new_entries || 0,
                     stats.waiting || 0,
+                    stats.updated_document || 0,
                     stats.follow_up || 0,
                     stats.follow_up_pending || 0,
                     stats.approved || 0,

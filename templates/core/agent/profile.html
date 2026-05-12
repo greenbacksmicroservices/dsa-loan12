@@ -83,6 +83,89 @@
                         </table>
                     </div>
                 </div>
+                
+                <div class="mt-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <h6 class="mb-1"><i class="fas fa-file-upload text-primary"></i> KYC Documents Upload</h6>
+                            <div class="text-muted small">Pan, Aadhar, Passbook/Cancel check/statement</div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2 flex-wrap mb-3">
+                        <form id="uploadPanForm" method="POST" enctype="multipart/form-data" class="m-0">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="upload_onboarding_doc" />
+                            <input type="hidden" name="document_type" value="pan_card" />
+                            <input type="file" name="document_file" id="panFileInput" class="d-none" accept="image/*,.pdf" required />
+                            <button type="button" class="btn btn-outline-info btn-sm" onclick="document.getElementById('panFileInput').click()">
+                                <i class="fas fa-id-card"></i> Pan
+                            </button>
+                        </form>
+
+                        <form id="uploadAadharForm" method="POST" enctype="multipart/form-data" class="m-0">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="upload_onboarding_doc" />
+                            <input type="hidden" name="document_type" value="aadhaar_card" />
+                            <input type="file" name="document_file" id="aadhaarFileInput" class="d-none" accept="image/*,.pdf" required />
+                            <button type="button" class="btn btn-outline-info btn-sm" onclick="document.getElementById('aadhaarFileInput').click()">
+                                <i class="fas fa-user-friends"></i> Aadhar
+                            </button>
+                        </form>
+
+                        <form id="uploadBankForm" method="POST" enctype="multipart/form-data" class="m-0">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="upload_onboarding_doc" />
+                            <input type="hidden" name="document_type" value="bank_statement" />
+                            <input type="file" name="document_file" id="bankFileInput" class="d-none" accept="image/*,.pdf" required />
+                            <button type="button" class="btn btn-outline-info btn-sm" onclick="document.getElementById('bankFileInput').click()">
+                                <i class="fas fa-receipt"></i> Passbook/Cancel check/statement
+                            </button>
+                        </form>
+                    </div>
+
+                    <div class="text-muted small mb-2">Uploaded (for realtime visibility across panels)</div>
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Document</th>
+                                    <th>Uploaded</th>
+                                    <th>File</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if onboarding_documents %}
+                                    {% for doc in onboarding_documents %}
+                                        <tr>
+                                            <td class="fw-semibold">
+                                                {% if doc.document_type == 'pan_card' %}Pan
+                                                {% elif doc.document_type == 'aadhaar_card' %}Aadhar
+                                                {% elif doc.document_type == 'bank_statement' %}Passbook/Cancel check/statement
+                                                {% else %}{{ doc.document_type }}
+                                                {% endif %}
+                                            </td>
+                                            <td class="text-muted">{{ doc.uploaded_at|date:"d M, Y H:i" }}</td>
+                                            <td>
+                                                {% if doc.file %}
+                                                    <a class="btn btn-sm btn-outline-primary" target="_blank" href="{{ doc.file.url }}">
+                                                        Open
+                                                    </a>
+                                                {% else %}
+                                                    -
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="3" class="text-center text-muted">No documents uploaded yet.</td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
 

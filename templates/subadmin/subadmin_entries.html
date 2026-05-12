@@ -40,7 +40,7 @@
                     {% if entries %}
                         {% for entry in entries %}
                         <tr class="hover:bg-gray-50 transition">
-                            <td class="px-6 py-4 font-semibold text-gray-900">#{{ entry.id }}</td>
+                            <td class="px-6 py-4 font-semibold text-gray-900">#{{ entry.loan_id|default:entry.id }}</td>
                             <td class="px-6 py-4 text-gray-700">{{ entry.applicant_name }}</td>
                             <td class="px-6 py-4 text-gray-700">{{ entry.applicant_phone }}</td>
                             <td class="px-6 py-4 text-gray-700">{{ entry.applicant_email }}</td>

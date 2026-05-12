@@ -13,11 +13,25 @@ from datetime import datetime, timedelta
 import csv
 from openpyxl import Workbook
 
-from .models import Loan, Agent, Complaint, User, LoanDocument, LoanStatusHistory, AgentAssignment
+from .models import (
+    Loan,
+    Agent,
+    Complaint,
+    User,
+    LoanDocument,
+    LoanStatusHistory,
+    AgentAssignment,
+    UserOnboardingDocument,
+)
 from .loan_sync import sync_loan_to_application
 from .followup_utils import auto_move_overdue_to_follow_up
 from .role_decorators import agent_required
 from .upload_limits import validate_loan_document_batch
+from .updated_document_utils import (
+    UPDATED_DOCUMENT_LABEL,
+    UPDATED_DOCUMENT_STATUS_KEY,
+    loan_has_updated_documents,
+)
 
 
 def get_agent_loan_queryset(user, agent):
@@ -80,6 +94,37 @@ def _is_follow_up_pending(loan_obj):
     return loan_obj.status in ['new_entry', 'waiting'] and _has_revert_marker(loan_obj.remarks)
 
 
+def _effective_status_key_for_loan(loan_obj):
+    if not loan_obj:
+        return ''
+    if _is_follow_up_pending(loan_obj):
+        return 'follow_up_pending'
+    raw_status = str(getattr(loan_obj, 'status', '') or '').strip().lower()
+    if raw_status == 'waiting' and loan_has_updated_documents(loan_obj):
+        return UPDATED_DOCUMENT_STATUS_KEY
+    return raw_status
+
+
+def _status_breakdown(loans_iterable):
+    counts = {
+        'new_entry': 0,
+        'waiting': 0,
+        UPDATED_DOCUMENT_STATUS_KEY: 0,
+        'follow_up': 0,
+        'follow_up_pending': 0,
+        'approved': 0,
+        'rejected': 0,
+        'disbursed': 0,
+        'total': 0,
+    }
+    for loan_obj in loans_iterable:
+        status_key = _effective_status_key_for_loan(loan_obj)
+        if status_key in counts:
+            counts[status_key] += 1
+        counts['total'] += 1
+    return counts
+
+
 @agent_required
 def agent_dashboard(request):
     """
@@ -89,24 +134,29 @@ def agent_dashboard(request):
     agent = Agent.objects.get(user=request.user)
 
     # Include both created and assigned loans for a reliable live dashboard view
-    agent_loans = get_agent_loan_queryset(request.user, agent)
-    follow_up_pending_count = agent_loans.filter(_follow_up_pending_q()).count()
+    agent_loans_qs = get_agent_loan_queryset(request.user, agent)
+    agent_loans = list(agent_loans_qs)
+    counts = _status_breakdown(agent_loans)
 
     # Real-time dashboard statistics
     dashboard_data = {
-        'total_assigned': agent_loans.count(),
-        'processing': agent_loans.filter(status__in=['new_entry', 'waiting', 'follow_up']).exclude(_follow_up_pending_q()).count(),
-        'follow_up_pending': follow_up_pending_count,
-        'approved': agent_loans.filter(status='approved').count(),
-        'rejected': agent_loans.filter(status='rejected').count(),
-        'disbursed': agent_loans.filter(status='disbursed').count(),
-        'total_amount': agent_loans.aggregate(Sum('loan_amount'))['loan_amount__sum'] or 0,
+        'total_assigned': counts['total'],
+        'processing': counts['new_entry'] + counts['waiting'] + counts[UPDATED_DOCUMENT_STATUS_KEY] + counts['follow_up'],
+        'new_entry': counts['new_entry'],
+        'waiting': counts['waiting'],
+        'updated_document': counts[UPDATED_DOCUMENT_STATUS_KEY],
+        'bank_stage': counts['follow_up'],
+        'follow_up_pending': counts['follow_up_pending'],
+        'approved': counts['approved'],
+        'rejected': counts['rejected'],
+        'disbursed': counts['disbursed'],
+        'total_amount': agent_loans_qs.aggregate(Sum('loan_amount'))['loan_amount__sum'] or 0,
     }
 
     context = {
         'agent': agent,
         'dashboard': dashboard_data,
-        'recent_loans': agent_loans.order_by('-created_at')[:10],
+        'recent_loans': agent_loans_qs.order_by('-created_at')[:10],
     }
     return render(request, 'core/agent/dashboard.html', context)
 
@@ -138,315 +188,11 @@ def agent_new_entries(request):
 @require_http_methods(["GET", "POST"])
 def agent_add_loan(request):
     """
-    Allow agents to add new comprehensive loan applications.
-    Includes all applicant details, address, loan, bank, and additional information.
+    Unified Add New Loan form for Channel Partner.
+    Reuses the same real-time form/workflow used by admin/employee/subadmin.
     """
-    if request.method == 'POST':
-        try:
-            # Validate mobile number
-            mobile = request.POST.get('mobile_no', '').strip()
-            if not mobile:
-                mobile = '9999999999'
-            if len(mobile) < 9:
-                messages.error(request, 'Please provide a valid mobile number')
-                return redirect('agent_add_loan')
-
-            # Agent panel should not accept manual Loan ID.
-            loan_uid = ''
-            
-            # Validate email only if provided
-            email = request.POST.get('email_id', '').strip()
-            if email and '@' not in email:
-                messages.error(request, 'Please provide a valid email address')
-                return redirect('agent_add_loan')
-            
-            # Handle save as draft
-            save_as_draft = request.POST.get('save_as_draft') == 'true'
-            
-            # Create loan with comprehensive details
-            agent = Agent.objects.get(user=request.user)
-            assigned_employee = _resolve_employee_for_agent(agent)
-            auto_assign = bool(assigned_employee) and not save_as_draft
-            # Keep freshly submitted applications in New Application stage.
-            loan_status = 'draft' if save_as_draft else 'new_entry'
-            assigned_at = timezone.now() if auto_assign else None
-
-            loan_type_map = {
-                'personal': 'personal',
-                'personal loan': 'personal',
-                'home': 'home',
-                'home loan': 'home',
-                'lap': 'lap',
-                'loan against property': 'lap',
-                'business': 'business',
-                'business loan': 'business',
-                'auto': 'car',
-                'auto loan': 'car',
-                'education': 'education',
-                'education loan': 'education',
-                'car': 'car',
-                'car loan': 'car',
-                'security': 'other',
-                'security loan': 'other',
-                'credit card': 'other',
-                'other': 'other',
-            }
-            raw_loan_type = request.POST.get('service_required', 'personal').strip().lower()
-            mapped_loan_type = loan_type_map.get(raw_loan_type, 'other')
-            
-            # Extract city and pin code with fallback
-            city = request.POST.get('permanent_city', '').strip() or request.POST.get('city', '').strip() or 'Unknown'
-            pin_code = request.POST.get('permanent_pin', '').strip() or request.POST.get('pin_code', '').strip() or '000000'
-            
-            # Validate PIN code
-            if pin_code and len(pin_code) != 6:
-                try:
-                    pin_int = int(pin_code)
-                    pin_code = str(pin_int).zfill(6)
-                except ValueError:
-                    pin_code = '000000'
-
-            remarks_field_map = {
-                'alternate_mobile': 'Alternate Mobile',
-                'fathers_name': 'Father Name',
-                'mothers_name': 'Mother Name',
-                'dob': 'Date of Birth',
-                'gender': 'Gender',
-                'marital_status': 'Marital Status',
-                'permanent_address': 'Permanent Address',
-                'permanent_landmark': 'Permanent Landmark',
-                'permanent_city': 'Permanent City',
-                'permanent_pin': 'Permanent PIN',
-                'present_address': 'Present Address',
-                'present_landmark': 'Present Landmark',
-                'present_city': 'Present City',
-                'present_pin': 'Present PIN',
-                'occupation': 'Occupation',
-                'date_of_joining': 'Date of Joining',
-                'year_of_experience': 'Experience (Years)',
-                'additional_income': 'Additional Income',
-                'company_name': 'Company Name',
-                'official_email_id': 'Official Email ID',
-                'designation': 'Designation',
-                'previous_company': 'Previous Company',
-                'company_address': 'Company Address',
-                'company_landmark': 'Company Landmark',
-                'salary': 'Salary',
-                'gross_salary': 'Gross Salary',
-                'net_salary': 'Net Salary',
-                'extra_income': 'Additional Income',
-                'business_address': 'Business Address',
-                'business_landmark': 'Business Landmark',
-                'business_pin': 'Business PIN',
-                'nature_of_business': 'Nature of Business',
-                'stock_value': 'Stock Value',
-                'no_of_employees': 'Number of Employees',
-                'itr_details': 'ITR Details',
-                'charges_or_fee': 'Charges/Fee',
-                'loan_purpose': 'Loan Purpose',
-                'service_required_other': 'Service Required (Other)',
-                'cibil_score': 'CIBIL Score',
-                'aadhar_number': 'Aadhar Number',
-                'pan_number': 'PAN Number',
-                'bank_name': 'Bank Name',
-                'account_number': 'Account Number',
-                'ifsc_code': 'IFSC Code',
-                'bank_type': 'Bank Type',
-                'ref1_name': 'Reference 1 Name',
-                'ref1_mobile': 'Reference 1 Mobile',
-                'ref1_address': 'Reference 1 Address',
-                'ref2_name': 'Reference 2 Name',
-                'ref2_mobile': 'Reference 2 Mobile',
-                'ref2_address': 'Reference 2 Address',
-                'remarks_suggestions': 'Remarks/Suggestions',
-                'declaration': 'Declaration',
-            }
-            remarks_lines = []
-            for field_name, label in remarks_field_map.items():
-                value = (request.POST.get(field_name) or '').strip()
-                if value:
-                    remarks_lines.append(f"{label}: {value}")
-
-            handled_fields = set(remarks_field_map.keys())
-            skip_fields = {
-                'csrfmiddlewaretoken',
-                'name',
-                'email_id',
-                'mobile_no',
-                'loan_uid',
-                'service_required',
-                'loan_amount_required',
-                'loan_tenure',
-                'interest_rate',
-                'same_as_permanent',
-                'save_as_draft',
-            }
-            for key, raw_value in request.POST.items():
-                if key in handled_fields or key in skip_fields or key.endswith('[]'):
-                    continue
-                value = (raw_value or '').strip()
-                if not value:
-                    continue
-                remarks_lines.append(f"{key.replace('_', ' ').title()}: {value}")
-
-            document_names = [(name or '').strip() for name in request.POST.getlist('document_name[]')]
-            expanded_document_names = [(name or '').strip() for name in request.POST.getlist('document_name_expanded[]')]
-            for idx, doc_name in enumerate(document_names, start=1):
-                if doc_name:
-                    remarks_lines.append(f"Document {idx}: {doc_name}")
-            remarks_blob = "\n".join(remarks_lines) if remarks_lines else None
-            
-            loan = Loan.objects.create(
-                # Applicant Information - CORRECTED FIELD NAMES FROM FORM
-                full_name=request.POST.get('name', '').strip() or 'Unknown Applicant',
-                user_id=loan_uid or None,
-                mobile_number=mobile,  # CRITICAL: MUST NOT BE NULL!
-                email=email,
-                
-                # Address Information
-                permanent_address=request.POST.get('permanent_address', '').strip(),
-                current_address=request.POST.get('present_address', '').strip(),
-                city=city,
-                state=request.POST.get('state', '').strip() or 'Unknown',
-                pin_code=pin_code,
-                
-                # Loan Details
-                loan_type=mapped_loan_type,
-                loan_amount=float(request.POST.get('loan_amount_required', 0) or 0),
-                tenure_months=int(request.POST.get('loan_tenure', 0) or 0),
-                interest_rate=float(request.POST.get('interest_rate', 0) or 0),
-                loan_purpose=(request.POST.get('loan_purpose') or request.POST.get('remarks_suggestions') or '').strip() or None,
-                
-                # Bank Details
-                bank_name=request.POST.get('bank_name', '').strip(),
-                bank_account_number=request.POST.get('account_number', '').strip() or None,
-                bank_ifsc_code=request.POST.get('ifsc_code', '').strip() or None,
-                bank_type=request.POST.get('bank_type', '').strip() or None,
-                
-                # Assignment
-                assigned_agent=agent,
-                assigned_employee=assigned_employee,
-                assigned_at=assigned_at,
-                
-                # Status (draft/new entry or auto-assigned waiting)
-                status=loan_status,
-                applicant_type='agent',
-                created_by=request.user,
-                
-                # Additional Information
-                remarks=remarks_blob,
-            )
-            
-            # Handle photo upload
-            if 'applicant_photo' in request.FILES:
-                try:
-                    loan.applicant_photo = request.FILES['applicant_photo']
-                except Exception as photo_error:
-                    print(f"Photo upload error: {str(photo_error)}")
-            
-            loan.save()
-
-            # Save loan documents (SOA/Forcloser/etc.) created via document inputs.
-            # Admin's add-loan flow uses `document_name[]` + `document_file[]`; we do the same here
-            # so that agent-created loans also show documents in view pages.
-            documents_files = request.FILES.getlist('document_file[]')
-            is_valid_upload, upload_error = validate_loan_document_batch(documents_files)
-            if not is_valid_upload:
-                messages.error(request, upload_error)
-                return redirect('agent_add_loan')
-            document_name_sequence = expanded_document_names if len(expanded_document_names) >= len(documents_files) else document_names
-
-            if documents_files:
-                def get_document_type(raw_name, index):
-                    normalized = (raw_name or '').lower().strip()
-                    type_map = [
-                        ('pan', 'pan_card'),
-                        ('aadhaar', 'aadhaar_card'),
-                        ('aadhar', 'aadhaar_card'),
-                        ('co applicant pan', 'co_applicant_pan'),
-                        ('co-applicant pan', 'co_applicant_pan'),
-                        ('co applicant aadhar', 'co_applicant_aadhaar'),
-                        ('co-applicant aadhar', 'co_applicant_aadhaar'),
-                        ('co applicant aadhaar', 'co_applicant_aadhaar'),
-                        ('co-applicant aadhaar', 'co_applicant_aadhaar'),
-                        ('co applicant photo', 'co_applicant_photo'),
-                        ('co-applicant photo', 'co_applicant_photo'),
-                        ('soa', 'soa_existing_loan'),
-                        ('forclos', 'forclosure_document'),
-                        ('forclose', 'forclosure_document'),
-                        ('forclosure', 'forclosure_document'),
-                        ('photo', 'applicant_photo'),
-                        ('permanent address', 'permanent_address_proof'),
-                        ('recent address', 'current_address_proof'),
-                        ('current address', 'current_address_proof'),
-                        ('salary slip', 'salary_slip'),
-                        ('bank statement', 'bank_statement'),
-                        ('form 16', 'form_16'),
-                        ('service book', 'service_book'),
-                        ('property', 'property_documents'),
-                        ('patta', 'property_documents'),
-                        ('pauti', 'property_documents'),
-                        ('ror', 'property_documents'),
-                        ('bda approval', 'property_documents'),
-                        ('rc', 'other_rc'),
-                        ('insurance certificate', 'other_insurance_certificate'),
-                        ('insurance', 'other_insurance'),
-                        ('gst', 'other_gst'),
-                        ('business vintage', 'other_business_vintage'),
-                        ('itr', 'other_itr_with_computation'),
-                    ]
-                    for token, mapped in type_map:
-                        if token in normalized:
-                            return mapped
-                    return 'other' if index == 1 else f'other_{index}'
-
-                for idx, uploaded_file in enumerate(documents_files, start=1):
-                    if not uploaded_file:
-                        continue
-                    if idx - 1 < len(document_name_sequence):
-                        doc_name = document_name_sequence[idx - 1]
-                    elif document_names:
-                        doc_name = document_names[-1]
-                    else:
-                        doc_name = ''
-                    document_type = get_document_type(doc_name, idx)
-                    if LoanDocument.objects.filter(loan=loan, document_type=document_type).exists():
-                        document_type = f"{document_type}_{idx}"
-
-                    LoanDocument.objects.create(
-                        loan=loan,
-                        document_type=document_type[:50],
-                        file=uploaded_file,
-                        is_required=False,
-                    )
-            
-            if save_as_draft:
-                messages.success(request, f'Application saved as draft! You can continue later.')
-            else:
-                messages.success(request, f'Loan application submitted successfully! Application ID: {loan.id}')
-            
-            return redirect('agent_my_applications')
-        except Exception as e:
-            messages.error(request, f'Error creating loan: {str(e)}')
-    
-    context = {
-        'page_title': 'Add New Loan Application',
-    }
-    # Reuse the same Add New Loan Application form for all panels.
-    recent_qs = Loan.objects.filter(created_by=request.user).order_by('-created_at')[:8]
-    recent_loans = [{
-        'applicant_name': loan.full_name or '-',
-        'phone': loan.mobile_number or '-',
-        'loan_amount_required': loan.loan_amount,
-        'service_required': loan.get_loan_type_display(),
-        'created_date': loan.created_at,
-        'status': loan.status,
-    } for loan in recent_qs]
-
-    context.update({
-        'recent_loans': recent_loans,
-    })
-    return render(request, 'core/admin/add_loan.html', context)
+    from .admin_views import admin_add_loan
+    return admin_add_loan(request)
 
 
 @agent_required
@@ -592,7 +338,8 @@ def agent_my_applications(request):
     agent = Agent.objects.get(user=request.user)
     
     # Show both created and assigned applications
-    all_loans = get_agent_loan_queryset(request.user, agent).order_by('-created_at')
+    all_loans_qs = get_agent_loan_queryset(request.user, agent).order_by('-created_at')
+    all_loans = list(all_loans_qs)
     
     # Filter by status if provided
     status_filter = request.GET.get('status')
@@ -601,32 +348,30 @@ def agent_my_applications(request):
         'processing': 'waiting',
         'bank': 'follow_up',
         'followup_pending': 'follow_up_pending',
+        'updated': UPDATED_DOCUMENT_STATUS_KEY,
     }
     normalized_status = status_alias_map.get(status_filter, status_filter) if status_filter else None
-    if normalized_status == 'follow_up_pending':
-        loans = all_loans.filter(_follow_up_pending_q())
-    elif normalized_status:
-        loans = all_loans.filter(status=normalized_status)
-        if normalized_status in ['new_entry', 'waiting']:
-            loans = loans.exclude(remarks__icontains='Revert Remark ')
+    if normalized_status:
+        loans = [loan for loan in all_loans if _effective_status_key_for_loan(loan) == normalized_status]
     else:
-        loans = all_loans
+        loans = list(all_loans)
 
     for loan in loans:
-        loan.has_revert_pending = _is_follow_up_pending(loan)
-    
+        loan.has_revert_pending = _effective_status_key_for_loan(loan) == 'follow_up_pending'
+
     recent_submitted = list(all_loans[:10])
     for loan in recent_submitted:
-        loan.has_revert_pending = _is_follow_up_pending(loan)
-    
+        loan.has_revert_pending = _effective_status_key_for_loan(loan) == 'follow_up_pending'
+
     # Get counts by status
-    total_count = all_loans.count()
-    follow_up_pending_count = all_loans.filter(_follow_up_pending_q()).count()
-    processing_count = all_loans.filter(status__in=['new_entry', 'waiting', 'follow_up']).exclude(_follow_up_pending_q()).count()
-    approved_count = all_loans.filter(status='approved').count()
-    rejected_count = all_loans.filter(status='rejected').count()
-    disbursed_count = all_loans.filter(status='disbursed').count()
-    active_count = all_loans.exclude(status__in=['rejected', 'disbursed']).count()
+    counts = _status_breakdown(all_loans)
+    total_count = counts['total']
+    follow_up_pending_count = counts['follow_up_pending']
+    processing_count = counts['new_entry'] + counts['waiting'] + counts[UPDATED_DOCUMENT_STATUS_KEY] + counts['follow_up']
+    approved_count = counts['approved']
+    rejected_count = counts['rejected']
+    disbursed_count = counts['disbursed']
+    active_count = total_count - rejected_count - disbursed_count
     focus_loan_id = request.GET.get('loan_id', '').strip()
     
     context = {
@@ -645,6 +390,7 @@ def agent_my_applications(request):
             ('draft', 'Draft'),
             ('new_entry', 'New Entry'),
             ('waiting', 'Processing'),
+            (UPDATED_DOCUMENT_STATUS_KEY, UPDATED_DOCUMENT_LABEL),
             ('follow_up', 'Bank Stage'),
             ('follow_up_pending', 'Follow Up'),
             ('approved', 'Approved'),
@@ -653,6 +399,21 @@ def agent_my_applications(request):
         ]
     }
     return render(request, 'core/agent/my_applications.html', context)
+
+
+@agent_required
+def agent_loan_detail(request, loan_id):
+    """
+    Render the interactive loan detail page (documents upload + pending/updated state).
+
+    This uses the legacy Loan id in most agent flows, so the page relies on the
+    `/api/employee/loan/<loan_id>/detail/` endpoint which can fall back to legacy
+    records and return documents with access control for agents.
+    """
+    agent = Agent.objects.get(user=request.user)
+    loan = get_object_or_404(get_agent_loan_queryset(request.user, agent), id=loan_id)
+    # Share the same UI with employee, but hide employee-only actions in JS by role.
+    return render(request, 'core/employee/loan_detail.html', {'loan_id': loan.id})
 
 
 @agent_required
@@ -1176,20 +937,22 @@ def api_agent_dashboard_stats(request):
     auto_move_overdue_to_follow_up()
 
     agent = Agent.objects.get(user=request.user)
-    agent_loans = get_agent_loan_queryset(request.user, agent)
-    follow_up_pending_count = agent_loans.filter(_follow_up_pending_q()).count()
+    agent_loans_qs = get_agent_loan_queryset(request.user, agent)
+    agent_loans = list(agent_loans_qs)
+    counts = _status_breakdown(agent_loans)
     
     data = {
-        'total_assigned': agent_loans.count(),
-        'processing': agent_loans.filter(status__in=['new_entry', 'waiting', 'follow_up']).exclude(_follow_up_pending_q()).count(),
-        'approved': agent_loans.filter(status='approved').count(),
-        'rejected': agent_loans.filter(status='rejected').count(),
-        'disbursed': agent_loans.filter(status='disbursed').count(),
-        'total_amount': float(agent_loans.aggregate(Sum('loan_amount'))['loan_amount__sum'] or 0),
-        'new_entry': agent_loans.filter(status='new_entry').exclude(remarks__icontains='Revert Remark ').count(),
-        'waiting': agent_loans.filter(status='waiting').exclude(remarks__icontains='Revert Remark ').count(),
-        'bank_stage': agent_loans.filter(status='follow_up').count(),
-        'follow_up_pending': follow_up_pending_count,
+        'total_assigned': counts['total'],
+        'processing': counts['new_entry'] + counts['waiting'] + counts[UPDATED_DOCUMENT_STATUS_KEY] + counts['follow_up'],
+        'approved': counts['approved'],
+        'rejected': counts['rejected'],
+        'disbursed': counts['disbursed'],
+        'total_amount': float(agent_loans_qs.aggregate(Sum('loan_amount'))['loan_amount__sum'] or 0),
+        'new_entry': counts['new_entry'],
+        'waiting': counts['waiting'],
+        'updated_document': counts[UPDATED_DOCUMENT_STATUS_KEY],
+        'bank_stage': counts['follow_up'],
+        'follow_up_pending': counts['follow_up_pending'],
         'timestamp': timezone.now().isoformat(),
     }
     
@@ -1275,10 +1038,36 @@ def agent_profile(request):
 
         elif action == 'notification_settings':
             messages.success(request, "Notification settings updated successfully.")
+        
+        elif action == 'upload_onboarding_doc':
+            """
+            Upload agent onboarding/KYC documents (Pan, Aadhar, Passbook/Cancel check/statement).
+            Stored in UserOnboardingDocument so other panels can display the uploaded files.
+            """
+            document_type = (request.POST.get('document_type') or '').strip()
+            document_file = request.FILES.get('document_file')
+            if not document_type:
+                messages.error(request, 'Document type required.')
+                return redirect('agent_profile')
+            if not document_file:
+                messages.error(request, 'Document file required.')
+                return redirect('agent_profile')
+            if document_file.size > 10 * 1024 * 1024:
+                messages.error(request, 'File size must be <= 10MB.')
+                return redirect('agent_profile')
+            
+            UserOnboardingDocument.objects.update_or_create(
+                user=request.user,
+                document_type=document_type,
+                defaults={'file': document_file},
+            )
+            messages.success(request, 'Document uploaded successfully.')
+            return redirect('agent_profile')
     
     context = {
         'agent': agent,
         'page_title': 'My Profile',
+        'onboarding_documents': request.user.onboarding_documents.all().order_by('-uploaded_at'),
     }
     return render(request, 'core/agent/profile.html', context)
 
@@ -1351,8 +1140,7 @@ def api_agent_recent_entries(request):
         # Format response data
         loans_data = []
         for loan in recent_loans:
-            is_follow_up_pending = _is_follow_up_pending(loan)
-            status_key = 'follow_up_pending' if is_follow_up_pending else loan.status
+            status_key = _effective_status_key_for_loan(loan)
             loan_data = {
                 'id': loan.id,
                 'applicant_name': loan.full_name or 'N/A',
@@ -1395,6 +1183,7 @@ def get_status_badge(status):
         'new_entry': 'primary',
         'waiting_for_processing': 'warning',
         'waiting': 'warning',
+        UPDATED_DOCUMENT_STATUS_KEY: 'success',
         'processing': 'info',
         'follow_up_pending': 'warning',
         'approved': 'success',
@@ -1410,6 +1199,7 @@ def get_status_label(status):
         'draft': 'Draft',
         'new_entry': 'New Entry',
         'waiting': 'Processing',
+        UPDATED_DOCUMENT_STATUS_KEY: UPDATED_DOCUMENT_LABEL,
         'waiting_for_processing': 'Processing',
         'follow_up': 'Bank Stage',
         'follow_up_pending': 'Follow Up',
@@ -1425,6 +1215,7 @@ def get_stage_label(status):
         'draft': 'Draft',
         'new_entry': 'New Entry',
         'waiting': 'Processing',
+        UPDATED_DOCUMENT_STATUS_KEY: UPDATED_DOCUMENT_LABEL,
         'waiting_for_processing': 'Processing',
         'follow_up': 'Bank Stage',
         'follow_up_pending': 'Follow Up',

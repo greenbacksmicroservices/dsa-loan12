@@ -25,6 +25,7 @@ from .models import (
     LoanDocument,
     EmployeeProfile,
     ActivityLog,
+    AgentAssignment,
 )
 from .loan_sync import (
     application_status_to_loan_status,
@@ -33,6 +34,11 @@ from .loan_sync import (
     sync_loan_to_application,
 )
 from .followup_utils import auto_move_overdue_to_follow_up
+from .updated_document_utils import (
+    UPDATED_DOCUMENT_LABEL,
+    UPDATED_DOCUMENT_STATUS_KEY,
+    loan_has_updated_documents,
+)
 from django.utils import timezone
 from datetime import timedelta
 import json
@@ -49,6 +55,45 @@ def _parse_request_data(request):
         except json.JSONDecodeError:
             return {}
     return request.POST
+
+
+def _parse_channel_partner_ids(raw_values):
+    values = []
+    for raw in raw_values or []:
+        try:
+            parsed = int(str(raw).strip())
+        except (TypeError, ValueError):
+            continue
+        if parsed > 0:
+            values.append(parsed)
+    return sorted(set(values))
+
+
+def _sync_subadmin_employee_channel_partners(subadmin_user, employee_user, partner_ids):
+    """
+    Sync employee <> channel partner mapping within current subadmin scope.
+    Only touches assignments for agents managed by this subadmin.
+    """
+    managed_agent_ids = set(
+        _subadmin_managed_agents_qs(subadmin_user).values_list('id', flat=True)
+    )
+    desired_ids = set(partner_ids) & managed_agent_ids
+
+    AgentAssignment.objects.filter(
+        employee=employee_user,
+        agent_id__in=managed_agent_ids,
+    ).exclude(agent_id__in=desired_ids).delete()
+
+    existing_ids = set(
+        AgentAssignment.objects.filter(employee=employee_user, agent_id__in=desired_ids).values_list('agent_id', flat=True)
+    )
+    create_rows = [
+        AgentAssignment(agent_id=agent_id, employee=employee_user, assigned_by=subadmin_user)
+        for agent_id in desired_ids
+        if agent_id not in existing_ids
+    ]
+    if create_rows:
+        AgentAssignment.objects.bulk_create(create_rows, ignore_conflicts=True)
 
 
 def _subadmin_tag(subadmin_user):
@@ -81,6 +126,7 @@ def _status_label(status_key, follow_up_pending=False):
         'draft': 'Draft',
         'new_entry': 'New Entry',
         'waiting': 'In Processing',
+        UPDATED_DOCUMENT_STATUS_KEY: UPDATED_DOCUMENT_LABEL,
         'follow_up': 'Banking Processing',
         'follow_up_pending': FOLLOW_UP_PENDING_LABEL,
         'approved': 'Approved',
@@ -111,6 +157,39 @@ def _extract_assignment_marker(loan_obj):
     assignment_context = extract_assignment_context(loan_obj)
     display = assignment_context.get('assigned_by_display', '-')
     return display or '-'
+
+
+def _effective_status_key_for_loan(loan_obj):
+    if not loan_obj:
+        return ''
+
+    if _is_follow_up_pending_loan(loan_obj):
+        return 'follow_up_pending'
+
+    raw_status = str(getattr(loan_obj, 'status', '') or '').strip().lower()
+    if raw_status == 'waiting' and loan_has_updated_documents(loan_obj):
+        return UPDATED_DOCUMENT_STATUS_KEY
+    return raw_status
+
+
+def _count_statuses_for_loans(loans_iterable):
+    counts = {
+        'total': 0,
+        'new_entry': 0,
+        'waiting': 0,
+        UPDATED_DOCUMENT_STATUS_KEY: 0,
+        'follow_up': 0,
+        'follow_up_pending': 0,
+        'approved': 0,
+        'rejected': 0,
+        'disbursed': 0,
+    }
+    for loan_obj in loans_iterable:
+        status_key = _effective_status_key_for_loan(loan_obj)
+        if status_key in counts:
+            counts[status_key] += 1
+        counts['total'] += 1
+    return counts
 
 
 def _latest_bank_remark(loan_obj):
@@ -265,8 +344,8 @@ def _serialize_subadmin_loan_details(loan_obj):
         getattr(loan_app, 'sm_signed_at', None) if loan_app and getattr(loan_app, 'sm_signed_at', None)
         else loan_obj.sm_signed_at
     )
-    follow_up_pending = _is_follow_up_pending_loan(loan_obj)
-    status_key = 'follow_up_pending' if follow_up_pending else loan_obj.status
+    status_key = _effective_status_key_for_loan(loan_obj)
+    follow_up_pending = status_key == 'follow_up_pending'
 
     full_application_details = []
     seen_full_detail_labels = set()
@@ -288,7 +367,7 @@ def _serialize_subadmin_loan_details(loan_obj):
 
     ordered_full_rows = [
         ('Loan ID', loan_obj.user_id or f"LOAN-{loan_obj.id:06d}"),
-        ('Status', _status_label(loan_obj.status, follow_up_pending=follow_up_pending)),
+        ('Status', _status_label(status_key, follow_up_pending=follow_up_pending)),
         ('Created At', loan_obj.created_at.strftime('%Y-%m-%d %H:%M') if loan_obj.created_at else '-'),
         ('Updated At', loan_obj.updated_at.strftime('%Y-%m-%d %H:%M') if loan_obj.updated_at else '-'),
         ('Created Under', created_by_display),
@@ -348,12 +427,34 @@ def _serialize_subadmin_loan_details(loan_obj):
     for label, value in ordered_full_rows:
         append_full_detail(label, value)
 
+    parsed_dynamic_details = {}
+    for source_text in [
+        loan_obj.remarks,
+        getattr(loan_app, 'approval_notes', None) if loan_app else None,
+        getattr(loan_app, 'rejection_reason', None) if loan_app else None,
+    ]:
+        for line in str(source_text or '').splitlines():
+            if ':' not in line:
+                continue
+            raw_key, raw_value = line.split(':', 1)
+            key = str(raw_key or '').strip().lower()
+            value = str(raw_value or '').strip()
+            if not key or not value:
+                continue
+            if key.startswith('assigned by '):
+                continue
+            parsed_dynamic_details[key] = value
+
+    for key, value in parsed_dynamic_details.items():
+        label = ' '.join(part.capitalize() for part in key.replace('_', ' ').split())
+        append_full_detail(label, value)
+
     return {
         'id': loan_obj.id,
         'loan_id': loan_obj.user_id or f"LOAN-{loan_obj.id:06d}",
         'status': status_key,
         'status_raw': loan_obj.status,
-        'status_display': _status_label(loan_obj.status, follow_up_pending=follow_up_pending),
+        'status_display': _status_label(status_key, follow_up_pending=follow_up_pending),
         'follow_up_pending': follow_up_pending,
         'created_at': loan_obj.created_at.strftime('%Y-%m-%d %H:%M') if loan_obj.created_at else '',
         'updated_at': loan_obj.updated_at.strftime('%Y-%m-%d %H:%M') if loan_obj.updated_at else '',
@@ -479,26 +580,15 @@ def subadmin_dashboard(request):
     )
     
     # Calculate statistics
-    total_loans = all_loans.count()
-    follow_up_pending_q = _follow_up_pending_q()
-    follow_up_pending_count = all_loans.filter(follow_up_pending_q).count()
-    
-    # Loan status breakdown
-    status_stats = {
-        'total': total_loans,
-        'new_entry': all_loans.filter(status='new_entry').exclude(remarks__icontains='Revert Remark ').count(),
-        'waiting': all_loans.filter(status='waiting').exclude(remarks__icontains='Revert Remark ').count(),
-        'follow_up': all_loans.filter(status='follow_up').count(),
-        'follow_up_pending': follow_up_pending_count,
-        'approved': all_loans.filter(status='approved').count(),
-        'rejected': all_loans.filter(status='rejected').count(),
-        'disbursed': all_loans.filter(status='disbursed').count(),
-    }
+    all_loans_list = list(all_loans)
+    status_stats = _count_statuses_for_loans(all_loans_list)
+    total_loans = status_stats['total']
     
     # Calculate percentages
     total_for_percent = total_loans if total_loans > 0 else 1
     status_stats['new_entry_pct'] = int((status_stats['new_entry'] / total_for_percent) * 100)
     status_stats['waiting_pct'] = int((status_stats['waiting'] / total_for_percent) * 100)
+    status_stats['updated_document_pct'] = int((status_stats[UPDATED_DOCUMENT_STATUS_KEY] / total_for_percent) * 100)
     status_stats['follow_up_pct'] = int((status_stats['follow_up'] / total_for_percent) * 100)
     status_stats['follow_up_pending_pct'] = int((status_stats['follow_up_pending'] / total_for_percent) * 100)
     status_stats['approved_pct'] = int((status_stats['approved'] / total_for_percent) * 100)
@@ -566,24 +656,14 @@ def api_subadmin_dashboard_stats(request):
     try:
         subadmin_user = request.user
         all_loans = _subadmin_scoped_loans_qs(subadmin_user)
-        follow_up_pending_q = _follow_up_pending_q()
-        
-        # Loan status breakdown
-        status_stats = {
-            'total': all_loans.count(),
-            'new_entry': all_loans.filter(status='new_entry').exclude(remarks__icontains='Revert Remark ').count(),
-            'waiting': all_loans.filter(status='waiting').exclude(remarks__icontains='Revert Remark ').count(),
-            'follow_up': all_loans.filter(status='follow_up').count(),
-            'follow_up_pending': all_loans.filter(follow_up_pending_q).count(),
-            'approved': all_loans.filter(status='approved').count(),
-            'rejected': all_loans.filter(status='rejected').count(),
-            'disbursed': all_loans.filter(status='disbursed').count(),
-        }
+        all_loans_list = list(all_loans)
+        status_stats = _count_statuses_for_loans(all_loans_list)
         
         # Calculate percentages
         total_for_percent = status_stats['total'] if status_stats['total'] > 0 else 1
         status_stats['new_entry_pct'] = int((status_stats['new_entry'] / total_for_percent) * 100)
         status_stats['waiting_pct'] = int((status_stats['waiting'] / total_for_percent) * 100)
+        status_stats['updated_document_pct'] = int((status_stats[UPDATED_DOCUMENT_STATUS_KEY] / total_for_percent) * 100)
         status_stats['follow_up_pct'] = int((status_stats['follow_up'] / total_for_percent) * 100)
         status_stats['follow_up_pending_pct'] = int((status_stats['follow_up_pending'] / total_for_percent) * 100)
         status_stats['approved_pct'] = int((status_stats['approved'] / total_for_percent) * 100)
@@ -618,6 +698,7 @@ def api_subadmin_dashboard_stats(request):
             'total': status_stats['total'],
             'new_entry': status_stats['new_entry'],
             'waiting': status_stats['waiting'],
+            'updated_document': status_stats[UPDATED_DOCUMENT_STATUS_KEY],
             'in_processing': status_stats['waiting'],
             'follow_up': status_stats['follow_up'],
             'follow_up_pending': status_stats['follow_up_pending'],
@@ -651,8 +732,8 @@ def api_subadmin_recent_loans(request):
             creator = loan.created_by
             creator_name = (creator.get_full_name() or creator.username) if creator else '-'
             creator_role = _role_label(creator)
-            follow_up_pending = _is_follow_up_pending_loan(loan)
-            status_key = 'follow_up_pending' if follow_up_pending else loan.status
+            status_key = _effective_status_key_for_loan(loan)
+            follow_up_pending = status_key == 'follow_up_pending'
             rows.append({
                 'id': loan.id,
                 'loan_id': loan.user_id or f"LOAN-{loan.id}",
@@ -663,7 +744,7 @@ def api_subadmin_recent_loans(request):
                 'status': status_key,
                 'status_raw': loan.status,
                 'follow_up_pending': follow_up_pending,
-                'status_display': _status_label(loan.status, follow_up_pending=follow_up_pending),
+                'status_display': _status_label(status_key, follow_up_pending=follow_up_pending),
                 'created_under': f"{creator_role} - {creator_name}",
                 'assigned_to': (
                     f"Employee - {loan.assigned_employee.get_full_name() or loan.assigned_employee.username}"
@@ -733,6 +814,8 @@ def subadmin_all_loans(request):
     # Status filter
     if status_filter == 'follow_up_pending':
         loans_qs = loans_qs.filter(id__in=follow_up_pending_ids)
+    elif status_filter == UPDATED_DOCUMENT_STATUS_KEY:
+        loans_qs = loans_qs.filter(status='waiting')
     elif status_filter and status_filter != 'all':
         loans_qs = loans_qs.filter(status=status_filter)
         if status_filter in ['new_entry', 'waiting']:
@@ -770,40 +853,62 @@ def subadmin_all_loans(request):
     
     # Order by latest first
     loans_qs = loans_qs.order_by('-created_at')
-    
+    candidate_loans = list(loans_qs)
+
     # Get filter options (scoped)
     agents = managed_agents_qs.values('id', 'name').distinct()
     employees = managed_employees_qs.values('id', 'first_name', 'last_name').distinct()
 
     # Real-time counts (scoped)
-    all_loans_count = len(scoped_loans_list)
-    status_counts = {
-        'new_entry': scoped_loans.filter(status='new_entry').exclude(id__in=follow_up_pending_ids).count(),
-        'waiting': scoped_loans.filter(status='waiting').exclude(id__in=follow_up_pending_ids).count(),
-        'follow_up': scoped_loans.filter(status='follow_up').count(),
-        'follow_up_pending': len(follow_up_pending_ids),
-        'approved': scoped_loans.filter(status='approved').count(),
-        'rejected': scoped_loans.filter(status='rejected').count(),
-        'disbursed': scoped_loans.filter(status='disbursed').count(),
-    }
-    
+    status_counts = _count_statuses_for_loans(scoped_loans_list)
+    all_loans_count = status_counts['total']
+
+    filtered_loans = []
+    for loan in candidate_loans:
+        effective_status_key = _effective_status_key_for_loan(loan)
+        if status_filter and status_filter != 'all' and effective_status_key != status_filter:
+            continue
+        filtered_loans.append((loan, effective_status_key))
+
     # Pagination
-    paginator = Paginator(loans_qs, per_page)
+    paginator = Paginator(filtered_loans, per_page)
     page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
-    
+
     # Format loans for display
     loans_list = []
-    for loan in page_obj:
+    for loan, status_key in page_obj.object_list:
         creator_role = _role_label(loan.created_by)
         creator_name = (loan.created_by.get_full_name() or loan.created_by.username) if loan.created_by else '-'
+        assignment_context = extract_assignment_context(loan)
         assigned_to = '-'
         if loan.assigned_employee:
             assigned_to = f"Employee - {loan.assigned_employee.get_full_name() or loan.assigned_employee.username}"
         elif loan.assigned_agent:
             assigned_to = f"Agent - {loan.assigned_agent.name}"
-        follow_up_pending = _is_follow_up_pending_loan(loan)
-        status_key = 'follow_up_pending' if follow_up_pending else loan.status
+        submitted_by = '-'
+        if loan.assigned_agent:
+            submitted_by = (
+                loan.assigned_agent.name
+                or (loan.assigned_agent.user.get_full_name() if loan.assigned_agent.user else '')
+                or '-'
+            )
+        elif loan.created_by and loan.created_by.role == 'agent':
+            submitted_by = loan.created_by.get_full_name() or loan.created_by.username or '-'
+        processed_by = (
+            loan.assigned_employee.get_full_name() or loan.assigned_employee.username
+            if loan.assigned_employee else '-'
+        )
+        partner_under = '-'
+        if assignment_context.get('role') == 'subadmin':
+            partner_under = assignment_context.get('assigned_by_name') or '-'
+        elif loan.assigned_agent and loan.assigned_agent.created_by and loan.assigned_agent.created_by.role == 'subadmin':
+            partner_under = (
+                loan.assigned_agent.created_by.get_full_name()
+                or loan.assigned_agent.created_by.username
+                or '-'
+            )
+        follow_up_pending = status_key == 'follow_up_pending'
 
         loans_list.append({
             'id': loan.id,
@@ -816,11 +921,14 @@ def subadmin_all_loans(request):
             'agent': loan.assigned_agent.name if loan.assigned_agent else 'Unassigned',
             'employee': loan.assigned_employee.get_full_name() if loan.assigned_employee else 'Unassigned',
             'assigned_to': assigned_to,
+            'submitted_by': submitted_by,
+            'processed_by': processed_by,
+            'partner_under': partner_under,
             'status': status_key,
             'status_raw': loan.status,
             'status_key': status_key,
             'follow_up_pending': follow_up_pending,
-            'status_display': _status_label(loan.status, follow_up_pending=follow_up_pending),
+            'status_display': _status_label(status_key, follow_up_pending=follow_up_pending),
             'created_under': f"{creator_role} - {creator_name}",
             'assigned_by': _extract_assignment_marker(loan),
             'created_date': loan.created_at,
@@ -849,6 +957,7 @@ def subadmin_all_loans(request):
             'total': all_loans_count,
             'new_entry': status_counts['new_entry'],
             'processing': status_counts['waiting'],
+            'updated_document': status_counts[UPDATED_DOCUMENT_STATUS_KEY],
             'follow_up': status_counts['follow_up'],
             'follow_up_pending': status_counts['follow_up_pending'],
             'approved': status_counts['approved'],
@@ -1050,11 +1159,12 @@ def subadmin_my_agents(request):
         gender = request.POST.get('gender', '').strip()
         address = request.POST.get('address', '').strip()
         password = request.POST.get('password', '').strip()
+        under_employee_id = request.POST.get('under_employee', '').strip()
         profile_photo = request.FILES.get('profile_photo')
 
         # Basic validation
-        if not all([name, agent_id, email, phone, password]):
-            messages.error(request, 'Please fill all required agent fields.')
+        if not all([name, agent_id, email, phone, password, under_employee_id]):
+            messages.error(request, 'Please fill all required agent fields including Employee.')
             return redirect('subadmin_my_agents')
 
         if '@' not in email:
@@ -1085,6 +1195,14 @@ def subadmin_my_agents(request):
         if profile_photo and profile_photo.size > 5 * 1024 * 1024:
             messages.error(request, 'Profile photo must be less than 5MB.')
             return redirect('subadmin_my_agents')
+
+        under_employee = None
+        if under_employee_id:
+            try:
+                under_employee = User.objects.get(id=under_employee_id, role='employee')
+            except User.DoesNotExist:
+                messages.error(request, 'Selected employee not found.')
+                return redirect('subadmin_my_agents')
 
         gender_value = gender if gender in ['Male', 'Female', 'Other'] else None
         name_parts = name.split(' ', 1)
@@ -1120,6 +1238,7 @@ def subadmin_my_agents(request):
                     gender=gender_value,
                     status='active',
                     created_by=request.user,
+                    under_employee=under_employee,
                 )
 
                 if profile_photo and not agent.profile_photo:
@@ -1185,6 +1304,7 @@ def subadmin_my_agents(request):
             'gender': agent.gender or 'N/A',
             'address': agent.address or 'N/A',
             'created_by': agent.created_by.get_full_name() if agent.created_by else 'Admin',
+            'under_employee': agent.under_employee.get_full_name() if agent.under_employee else 'Not Assigned',
             'total_loans': agent.agent_total_loans,
             'approved_count': agent.agent_approved_count,
             'status': agent.status,
@@ -1203,6 +1323,7 @@ def subadmin_my_agents(request):
         'blocked_agents': blocked_agents,
         'search_query': search_query,
         'status_filter': status_filter,
+        'employees': _subadmin_managed_employees_qs(request.user).filter(is_active=True).order_by('first_name', 'last_name'),
     }
     
     return render(request, 'subadmin/subadmin_my_staff.html', context)
@@ -1484,6 +1605,7 @@ def subadmin_my_employees(request):
         address = request.POST.get('address', '').strip()
         password = request.POST.get('password', '').strip()
         profile_photo = request.FILES.get('profile_photo')
+        channel_partner_ids = _parse_channel_partner_ids(request.POST.getlist('channel_partner_ids'))
 
         # Basic validation
         if not all([name, employee_id, email, phone, password]):
@@ -1554,6 +1676,7 @@ def subadmin_my_employees(request):
 
                 EmployeeProfile.objects.get_or_create(user=employee)
                 _mark_employee_under_subadmin(employee, request.user)
+                _sync_subadmin_employee_channel_partners(request.user, employee, channel_partner_ids)
 
             messages.success(request, f'Employee {name} created successfully.')
         except Exception as e:
@@ -1630,6 +1753,7 @@ def subadmin_my_employees(request):
         'active_employees': active_employees,
         'search_query': search_query,
         'status_filter': status_filter,
+        'channel_partner_options': _subadmin_managed_agents_qs(request.user).order_by('name'),
     }
     
     return render(request, 'subadmin/subadmin_my_employee.html', context)
@@ -1743,6 +1867,21 @@ def subadmin_get_employee(request, employee_id):
             'total_customers': scoped_loans_qs.count(),
         }
 
+        partner_links = list(
+            AgentAssignment.objects.filter(employee=user)
+            .select_related('agent')
+            .order_by('-assigned_at')
+        )
+        assigned_channel_partners = [
+            {
+                'id': link.agent_id,
+                'name': link.agent.name if link.agent else '-',
+            }
+            for link in partner_links
+            if link.agent_id
+        ]
+        assigned_channel_partner_ids = [item['id'] for item in assigned_channel_partners]
+
         return JsonResponse({
             'success': True,
             'employee': {
@@ -1756,6 +1895,8 @@ def subadmin_get_employee(request, employee_id):
                 'status': 'active' if user.is_active else 'inactive',
                 'photo_url': user.profile_photo.url if user.profile_photo else '',
                 'role': profile.employee_role if profile else 'loan_processor',
+                'assigned_channel_partners': assigned_channel_partners,
+                'assigned_channel_partner_ids': assigned_channel_partner_ids,
             },
             'summary': summary,
             'customers': customers,
@@ -1773,6 +1914,15 @@ def subadmin_update_employee(request, employee_id):
         user = get_object_or_404(_subadmin_managed_employees_qs(request.user), id=employee_id)
         data = _parse_request_data(request)
         profile_photo = request.FILES.get('profile_photo')
+
+        channel_partner_ids = None
+        if hasattr(data, 'getlist'):
+            channel_partner_ids = _parse_channel_partner_ids(data.getlist('channel_partner_ids'))
+        elif isinstance(data, dict) and 'channel_partner_ids' in data:
+            raw_channel_ids = data.get('channel_partner_ids')
+            if isinstance(raw_channel_ids, str):
+                raw_channel_ids = [part.strip() for part in raw_channel_ids.split(',') if part.strip()]
+            channel_partner_ids = _parse_channel_partner_ids(raw_channel_ids or [])
 
         name = data.get('name', '').strip()
         employee_id_val = data.get('employee_id', '').strip()
@@ -1830,6 +1980,9 @@ def subadmin_update_employee(request, employee_id):
             user.save()
 
             EmployeeProfile.objects.get_or_create(user=user)
+
+            if channel_partner_ids is not None:
+                _sync_subadmin_employee_channel_partners(request.user, user, channel_partner_ids)
 
         return JsonResponse({'success': True, 'message': 'Employee updated successfully'})
     except Exception as e:

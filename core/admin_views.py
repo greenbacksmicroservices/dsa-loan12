@@ -18,6 +18,11 @@ from .loan_sync import extract_assignment_context, role_label, find_related_loan
 from .onboarding_utils import collect_onboarding_payload, collect_onboarding_documents, collect_onboarding_payload_from_source
 from .followup_utils import auto_move_overdue_to_follow_up
 from .upload_limits import validate_loan_document_batch
+from .updated_document_utils import (
+    UPDATED_DOCUMENT_LABEL,
+    UPDATED_DOCUMENT_STATUS_KEY,
+    loan_has_updated_documents,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +53,8 @@ def _status_key_to_display_text(status_key, fallback_text=''):
     key = str(status_key or '').strip().lower()
     if key == 'follow_up_pending':
         return FOLLOW_UP_PENDING_LABEL
+    if key == UPDATED_DOCUMENT_STATUS_KEY:
+        return UPDATED_DOCUMENT_LABEL
     mapping = {
         'new_entry': 'New Entry',
         'waiting': 'Waiting for Processing',
@@ -72,6 +79,8 @@ def _effective_status_key_for_loan(loan_obj, related_app=None):
     if related_app is None:
         related_app = find_related_loan_application(loan_obj)
     if not related_app:
+        if legacy_key == 'waiting' and loan_has_updated_documents(loan_obj):
+            return UPDATED_DOCUMENT_STATUS_KEY
         return legacy_key
 
     app_key = APP_STATUS_TO_LOAN_KEY.get(getattr(related_app, 'status', ''), '')
@@ -83,13 +92,17 @@ def _effective_status_key_for_loan(loan_obj, related_app=None):
     if app_key in ['follow_up', 'approved', 'rejected', 'disbursed']:
         return app_key
 
-    return legacy_key
+    effective_key = app_key if app_key in ['new_entry', 'waiting'] else legacy_key
+    if effective_key == 'waiting' and loan_has_updated_documents(loan_obj, related_app=related_app):
+        return UPDATED_DOCUMENT_STATUS_KEY
+    return effective_key
 
 
 def _compute_status_breakdown(loans_qs):
     counts = {
         'new_entry': 0,
         'waiting': 0,
+        'updated_document': 0,
         'follow_up': 0,
         'follow_up_pending': 0,
         'approved': 0,
@@ -100,7 +113,16 @@ def _compute_status_breakdown(loans_qs):
 
     for loan in loans_qs:
         status_key = _effective_status_key_for_loan(loan)
-        if status_key in ['new_entry', 'waiting', 'follow_up', 'approved', 'rejected', 'disbursed', 'follow_up_pending']:
+        if status_key in [
+            'new_entry',
+            'waiting',
+            'updated_document',
+            'follow_up',
+            'approved',
+            'rejected',
+            'disbursed',
+            'follow_up_pending',
+        ]:
             counts[status_key] += 1
         counts['total'] += 1
 
@@ -295,6 +317,7 @@ def admin_dashboard(request):
         follow_up_pending_count = status_counts['follow_up_pending']
         new_entry_count = status_counts['new_entry']
         in_processing_count = status_counts['waiting']
+        updated_document_count = status_counts['updated_document']
         followup_count = status_counts['follow_up']
         approved_count = status_counts['approved']
         rejected_count = status_counts['rejected']
@@ -326,6 +349,7 @@ def admin_dashboard(request):
             'page_title': 'Admin Dashboard',
             'new_entry_count': new_entry_count,
             'in_processing_count': in_processing_count,
+            'updated_document_count': updated_document_count,
             'followup_count': followup_count,
             'follow_up_pending_count': follow_up_pending_count,
             'approved_count': approved_count,
@@ -379,14 +403,31 @@ def admin_all_loans(request):
     # Apply coarse DB filter (final status filtering happens after effective-status resolution)
     if status_filter == 'follow_up_pending':
         loans = loans.filter(status__in=['new_entry', 'waiting', 'follow_up'])
-    elif status_filter in ['new_entry', 'waiting', 'follow_up']:
+    elif status_filter in ['new_entry', 'waiting', UPDATED_DOCUMENT_STATUS_KEY, 'follow_up']:
         loans = loans.filter(status__in=['new_entry', 'waiting', 'follow_up'])
     elif status_filter in ['approved', 'rejected', 'disbursed']:
         loans = loans.filter(status__in=[status_filter, 'follow_up'])
 
+    # Pre-fetch LoanApplications to avoid N+1 query problem
+    apps = LoanApplication.objects.select_related('applicant').all()
+    app_by_email = {a.applicant.email.lower(): a for a in apps if a.applicant and a.applicant.email}
+    app_by_mobile = {a.applicant.mobile: a for a in apps if a.applicant and a.applicant.mobile}
+    app_by_name = {a.applicant.full_name.lower(): a for a in apps if a.applicant and a.applicant.full_name}
+
     enriched_loans = []
     for loan in loans:
-        related_app = find_related_loan_application(loan)
+        # Fast memory lookup instead of DB query
+        related_app = None
+        if loan.email and loan.email.lower() in app_by_email:
+            related_app = app_by_email[loan.email.lower()]
+        elif loan.mobile_number and loan.mobile_number in app_by_mobile:
+            related_app = app_by_mobile[loan.mobile_number]
+        elif loan.full_name and loan.full_name.lower() in app_by_name:
+            related_app = app_by_name[loan.full_name.lower()]
+
+        if not related_app:
+            related_app = find_related_loan_application(loan)
+
         effective_status_key = _effective_status_key_for_loan(loan, related_app=related_app)
         follow_up_pending = effective_status_key == 'follow_up_pending'
 
@@ -395,7 +436,16 @@ def admin_all_loans(request):
         if status_filter and status_filter != 'follow_up_pending' and effective_status_key != status_filter:
             continue
 
+        if related_app:
+            if not loan.assigned_employee and related_app.assigned_employee:
+                loan.assigned_employee = related_app.assigned_employee
+            if not loan.assigned_agent and related_app.assigned_agent:
+                loan.assigned_agent = related_app.assigned_agent
+
         creator = loan.created_by
+        if related_app and not creator and related_app.assigned_by:
+            creator = related_app.assigned_by
+
         creator_name = (creator.get_full_name() or creator.username) if creator else '-'
         loan.created_under_display = f"{role_label(creator)} - {creator_name}" if creator else 'System'
         if loan.assigned_employee:
@@ -404,10 +454,41 @@ def admin_all_loans(request):
             loan.assigned_to_display = f"Agent - {loan.assigned_agent.name}"
         else:
             loan.assigned_to_display = '-'
+        assignment_context = extract_assignment_context(loan)
+        submitted_by_display = '-'
+        if loan.assigned_agent:
+            submitted_by_display = (
+                loan.assigned_agent.name
+                or (loan.assigned_agent.user.get_full_name() if loan.assigned_agent.user else '')
+                or '-'
+            )
+        elif creator and creator.role == 'agent':
+            submitted_by_display = creator.get_full_name() or creator.username or '-'
+        elif related_app and related_app.assigned_by and related_app.assigned_by.role == 'agent':
+            submitted_by_display = related_app.assigned_by.get_full_name() or related_app.assigned_by.username or '-'
+
+        processed_by_display = (
+            loan.assigned_employee.get_full_name() or loan.assigned_employee.username
+            if loan.assigned_employee else '-'
+        )
+        partner_under_display = '-'
+        if assignment_context.get('role') == 'subadmin':
+            partner_under_display = assignment_context.get('assigned_by_name') or '-'
+        elif loan.assigned_agent and loan.assigned_agent.created_by and loan.assigned_agent.created_by.role == 'subadmin':
+            partner_under_display = (
+                loan.assigned_agent.created_by.get_full_name()
+                or loan.assigned_agent.created_by.username
+                or '-'
+            )
+        elif related_app and related_app.assigned_by and related_app.assigned_by.role == 'subadmin':
+            partner_under_display = related_app.assigned_by.get_full_name() or related_app.assigned_by.username or '-'
+        loan.submitted_by_display = submitted_by_display
+        loan.processed_by_display = processed_by_display
+        loan.partner_under_display = partner_under_display
         loan.follow_up_pending = follow_up_pending
         loan.status_key_display = effective_status_key or loan.status
         loan.status_display_text = _status_key_to_display_text(effective_status_key, fallback_text=loan.get_status_display())
-        loan.assigned_by_display = extract_assignment_context(loan).get('assigned_by_display', '-')
+        loan.assigned_by_display = assignment_context.get('assigned_by_display', '-')
         enriched_loans.append(loan)
     
     context = {
@@ -436,6 +517,7 @@ def api_admin_dashboard_stats(request):
             'total': status_counts['total'],
             'new_entry': status_counts['new_entry'],
             'processing': status_counts['waiting'],
+            'updated_document': status_counts['updated_document'],
             'follow_up': status_counts['follow_up'],
             'follow_up_pending': status_counts['follow_up_pending'],
             'approved': status_counts['approved'],
@@ -760,7 +842,7 @@ def api_admin_all_loans(request):
         # Coarse filter by status (final status decision is computed using related workflow record)
         if status_filter == 'follow_up_pending':
             query = query.filter(status__in=['new_entry', 'waiting', 'follow_up'])
-        elif status_filter in ['new_entry', 'waiting', 'follow_up']:
+        elif status_filter in ['new_entry', 'waiting', UPDATED_DOCUMENT_STATUS_KEY, 'follow_up']:
             query = query.filter(status__in=['new_entry', 'waiting', 'follow_up'])
         elif status_filter in ['approved', 'rejected', 'disbursed']:
             query = query.filter(status__in=[status_filter, 'follow_up'])
@@ -787,6 +869,29 @@ def api_admin_all_loans(request):
                 continue
             status_key = effective_status_key or loan.status
             status_display = _status_key_to_display_text(effective_status_key, fallback_text=loan.get_status_display())
+            assignment_context = extract_assignment_context(loan, related_app)
+            submitted_by = '-'
+            if loan.assigned_agent:
+                submitted_by = (
+                    loan.assigned_agent.name
+                    or (loan.assigned_agent.user.get_full_name() if loan.assigned_agent.user else '')
+                    or '-'
+                )
+            elif loan.created_by and loan.created_by.role == 'agent':
+                submitted_by = loan.created_by.get_full_name() or loan.created_by.username or '-'
+            processed_by = (
+                loan.assigned_employee.get_full_name() or loan.assigned_employee.username
+                if loan.assigned_employee else '-'
+            )
+            partner_under = '-'
+            if assignment_context.get('role') == 'subadmin':
+                partner_under = assignment_context.get('assigned_by_name') or '-'
+            elif loan.assigned_agent and loan.assigned_agent.created_by and loan.assigned_agent.created_by.role == 'subadmin':
+                partner_under = (
+                    loan.assigned_agent.created_by.get_full_name()
+                    or loan.assigned_agent.created_by.username
+                    or '-'
+                )
             loans_data.append({
                 'id': loan.id,
                 'applicant_name': loan.full_name or 'N/A',
@@ -799,6 +904,9 @@ def api_admin_all_loans(request):
                 'follow_up_pending': is_follow_up_pending,
                 'agent': loan.assigned_agent.user.get_full_name() if loan.assigned_agent else '-',
                 'employee': loan.assigned_employee.get_full_name() if loan.assigned_employee else '-',
+                'submitted_by': submitted_by,
+                'processed_by': processed_by,
+                'partner_under': partner_under,
                 'date_applied': loan.created_at.strftime('%Y-%m-%d') if loan.created_at else '-',
             })
         
@@ -1459,10 +1567,11 @@ def admin_add_loan(request):
     current_role = request.user.role
     self_add_loan_route = (
         'admin_add_loan' if current_role == 'admin'
-        else ('employee_add_loan' if current_role == 'employee' else 'subadmin_add_loan')
+        else ('employee_add_loan' if current_role == 'employee'
+              else ('subadmin_add_loan' if current_role == 'subadmin' else 'agent_add_loan'))
     )
 
-    if current_role not in ['admin', 'employee', 'subadmin']:
+    if current_role not in ['admin', 'employee', 'subadmin', 'agent']:
         messages.error(request, 'Access denied.')
         return redirect('dashboard')
 
@@ -1676,7 +1785,7 @@ def admin_add_loan(request):
                 bank_account_number=(request.POST.get('account_number') or '').strip() or None,
                 bank_ifsc_code=(request.POST.get('ifsc_code') or '').strip() or None,
                 status='new_entry',
-                applicant_type='employee',
+                applicant_type='agent' if request.user.role == 'agent' else 'employee',
                 assigned_employee=request.user if request.user.role == 'employee' else None,
                 assigned_at=timezone.now() if request.user.role == 'employee' else None,
                 assigned_agent=agent_profile,
@@ -1765,6 +1874,8 @@ def admin_add_loan(request):
                 return redirect('admin_all_loans')
             if request.user.role == 'subadmin':
                 return redirect('subadmin_all_loans')
+            if request.user.role == 'agent':
+                return redirect('agent_my_applications')
             return redirect('employee_all_loans')
         except Exception as e:
             logger.error(f"Error creating loan: {str(e)}")
@@ -1789,6 +1900,7 @@ def admin_add_loan(request):
         'admin': 'core/admin/add_loan.html',
         'employee': 'core/employee/add_loan.html',
         'subadmin': 'core/employee/add_loan.html',
+        'agent': 'core/employee/add_loan.html',
     }
     template_name = template_map.get(request.user.role, 'core/admin/add_loan.html')
     return render(request, template_name, context)
@@ -2118,12 +2230,32 @@ def admin_new_entries(request):
 @admin_required
 def admin_in_processing(request):
     """View In Processing applications"""
-    applications = LoanApplication.objects.filter(status='Waiting for Processing').select_related('applicant', 'assigned_employee', 'assigned_agent', 'assigned_by').order_by('-created_at')
+    applications = [
+        app for app in LoanApplication.objects.filter(status='Waiting for Processing').select_related('applicant', 'assigned_employee', 'assigned_agent', 'assigned_by').order_by('-created_at')
+        if not loan_has_updated_documents(find_related_loan(app), related_app=app)
+    ]
     
     context = {
         'page_title': 'Document Pending Applications',
         'applications': applications,
         'status_name': 'Waiting for Processing',
+    }
+    return render(request, 'core/admin/status_detail.html', context)
+
+
+@login_required(login_url='admin_login')
+@admin_required
+def admin_updated_document(request):
+    """View Updated Document applications"""
+    applications = [
+        app for app in LoanApplication.objects.filter(status='Waiting for Processing').select_related('applicant', 'assigned_employee', 'assigned_agent', 'assigned_by').order_by('-created_at')
+        if loan_has_updated_documents(find_related_loan(app), related_app=app)
+    ]
+
+    context = {
+        'page_title': 'Updated Document Applications',
+        'applications': applications,
+        'status_name': UPDATED_DOCUMENT_LABEL,
     }
     return render(request, 'core/admin/status_detail.html', context)
 

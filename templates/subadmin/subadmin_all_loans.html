@@ -21,7 +21,7 @@
         <p class="text-sm text-gray-600 mt-1">Scoped view of loans under your subadmin team.</p>
     </div>
 
-    <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-8 gap-4">
+    <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-9 gap-4">
         <a href="{% url 'subadmin_all_loans' %}?status=all" class="bg-slate-700 text-white rounded-lg p-4">
             <p class="text-xs uppercase">Total</p>
             <p class="text-2xl font-bold mt-1">{{ stats.total|default:0 }}</p>
@@ -33,6 +33,10 @@
         <a href="{% url 'subadmin_all_loans' %}?status=waiting" class="bg-amber-500 text-white rounded-lg p-4">
             <p class="text-xs uppercase">Document Pending</p>
             <p class="text-2xl font-bold mt-1">{{ stats.processing|default:0 }}</p>
+        </a>
+        <a href="{% url 'subadmin_all_loans' %}?status=updated_document" class="bg-emerald-500 text-white rounded-lg p-4">
+            <p class="text-xs uppercase">Updated Document</p>
+            <p class="text-2xl font-bold mt-1">{{ stats.updated_document|default:0 }}</p>
         </a>
         <a href="{% url 'subadmin_all_loans' %}?status=follow_up" class="bg-cyan-600 text-white rounded-lg p-4">
             <p class="text-xs uppercase">Bank Processing</p>
@@ -65,6 +69,7 @@
                 <option value="all" {% if status_filter == 'all' or not status_filter %}selected{% endif %}>All Status</option>
                 <option value="new_entry" {% if status_filter == 'new_entry' %}selected{% endif %}>New Application</option>
                 <option value="waiting" {% if status_filter == 'waiting' %}selected{% endif %}>Document Pending</option>
+                <option value="updated_document" {% if status_filter == 'updated_document' %}selected{% endif %}>Updated Document</option>
                 <option value="follow_up" {% if status_filter == 'follow_up' %}selected{% endif %}>Bank Processing</option>
                 <option value="follow_up_pending" {% if status_filter == 'follow_up_pending' %}selected{% endif %}>Follow Up</option>
                 <option value="approved" {% if status_filter == 'approved' %}selected{% endif %}>Approved</option>
@@ -114,7 +119,7 @@
                         <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Amount</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Status</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Created Under</th>
-                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Assigned To</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Submitted / Processed</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Assigned By</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Created</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Actions</th>
@@ -133,31 +138,48 @@
                             <td class="px-4 py-3 text-sm text-gray-700">{{ loan.loan_type }}</td>
                             <td class="px-4 py-3 text-sm font-semibold text-gray-900">Rs. {{ loan.amount|default:0 }}</td>
                             <td class="px-4 py-3 text-sm">
-                                {% if loan.status_key == 'follow_up_pending' %}
-                                    <span class="px-2 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-800">{% if loan.status_display == 'New Entry' %}New Application{% elif loan.status_display == 'Waiting for Processing' or loan.status_display == 'In Processing' %}Document Pending{% else %}{{ loan.status_display }}{% endif %}</span>
-                                {% elif loan.status == 'new_entry' %}
-                                    <span class="px-2 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">{% if loan.status_display == 'New Entry' %}New Application{% elif loan.status_display == 'Waiting for Processing' or loan.status_display == 'In Processing' %}Document Pending{% else %}{{ loan.status_display }}{% endif %}</span>
-                                {% elif loan.status == 'waiting' %}
-                                    <span class="px-2 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">{% if loan.status_display == 'New Entry' %}New Application{% elif loan.status_display == 'Waiting for Processing' or loan.status_display == 'In Processing' %}Document Pending{% else %}{{ loan.status_display }}{% endif %}</span>
-                                {% elif loan.status == 'follow_up' %}
-                                    <span class="px-2 py-1 rounded-full text-xs font-semibold bg-cyan-100 text-cyan-800">{% if loan.status_display == 'New Entry' %}New Application{% elif loan.status_display == 'Waiting for Processing' or loan.status_display == 'In Processing' %}Document Pending{% else %}{{ loan.status_display }}{% endif %}</span>
-                                {% elif loan.status == 'approved' %}
-                                    <span class="px-2 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">{% if loan.status_display == 'New Entry' %}New Application{% elif loan.status_display == 'Waiting for Processing' or loan.status_display == 'In Processing' %}Document Pending{% else %}{{ loan.status_display }}{% endif %}</span>
-                                {% elif loan.status == 'rejected' %}
-                                    <span class="px-2 py-1 rounded-full text-xs font-semibold bg-rose-100 text-rose-800">{% if loan.status_display == 'New Entry' %}New Application{% elif loan.status_display == 'Waiting for Processing' or loan.status_display == 'In Processing' %}Document Pending{% else %}{{ loan.status_display }}{% endif %}</span>
-                                {% elif loan.status == 'disbursed' %}
-                                    <span class="px-2 py-1 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-800">{% if loan.status_display == 'New Entry' %}New Application{% elif loan.status_display == 'Waiting for Processing' or loan.status_display == 'In Processing' %}Document Pending{% else %}{{ loan.status_display }}{% endif %}</span>
+                                {% if loan.status_key == 'new_entry' %}
+                                    <span class="px-2 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">{{ loan.status_display }}</span>
+                                {% elif loan.status_key == 'waiting' %}
+                                    <span class="px-2 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">{{ loan.status_display }}</span>
+                                {% elif loan.status_key == 'updated_document' %}
+                                    <span class="px-2 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">{{ loan.status_display }}</span>
+                                {% elif loan.status_key == 'follow_up' %}
+                                    <span class="px-2 py-1 rounded-full text-xs font-semibold bg-cyan-100 text-cyan-800">{{ loan.status_display }}</span>
+                                {% elif loan.status_key == 'follow_up_pending' %}
+                                    <span class="px-2 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-800">{{ loan.status_display }}</span>
+                                {% elif loan.status_key == 'approved' %}
+                                    <span class="px-2 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">{{ loan.status_display }}</span>
+                                {% elif loan.status_key == 'rejected' %}
+                                    <span class="px-2 py-1 rounded-full text-xs font-semibold bg-rose-100 text-rose-800">{{ loan.status_display }}</span>
+                                {% elif loan.status_key == 'disbursed' %}
+                                    <span class="px-2 py-1 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-800">{{ loan.status_display }}</span>
                                 {% else %}
-                                    <span class="px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-800">{% if loan.status_display == 'New Entry' %}New Application{% elif loan.status_display == 'Waiting for Processing' or loan.status_display == 'In Processing' %}Document Pending{% else %}{{ loan.status_display }}{% endif %}</span>
+                                    <span class="px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-800">{{ loan.status_display }}</span>
                                 {% endif %}
                             </td>
                             <td class="px-4 py-3 text-sm text-gray-700">{{ loan.created_under }}</td>
-                            <td class="px-4 py-3 text-sm text-gray-700">{{ loan.assigned_to }}</td>
+                            <td class="px-4 py-3 text-sm text-gray-700">
+                                <div><strong>Channel Partner:</strong> {{ loan.submitted_by|default:'-' }}</div>
+                                <div><strong>Employee:</strong> {{ loan.processed_by|default:'-' }}</div>
+                                <div><strong>Partner:</strong> {{ loan.partner_under|default:'-' }}</div>
+                            </td>
                             <td class="px-4 py-3 text-sm text-gray-700">{{ loan.assigned_by }}</td>
                             <td class="px-4 py-3 text-sm text-gray-700">{{ loan.created_date|date:"M d, Y H:i" }}</td>
                             <td class="px-4 py-3 text-sm">
                                 <div class="flex flex-wrap gap-2">
                                     <button type="button" onclick="openLoanDetailsModal({{ loan.id }})" class="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700">View</button>
+                                    {% if loan.status_key != 'rejected' and loan.status_key != 'disbursed' %}
+                                        {% if loan.status_key == 'updated_document' %}
+                                        <button type="button" onclick="openPartnerBankingAction('collect', {{ loan.id }}, '{{ loan.applicant_name|escapejs }}')" class="px-2 py-1 bg-cyan-600 text-white rounded text-xs hover:bg-cyan-700">Banking Processing</button>
+                                        <button type="button" onclick="openPartnerBankingAction('reject', {{ loan.id }}, '{{ loan.applicant_name|escapejs }}')" class="px-2 py-1 bg-rose-600 text-white rounded text-xs hover:bg-rose-700">Rejected</button>
+                                        {% else %}
+                                        <a href="/employee/loan/{{ loan.id }}/detail/" class="px-2 py-1 bg-amber-500 text-white rounded text-xs hover:bg-amber-600">Process</a>
+                                        {% endif %}
+                                        {% if loan.status_key == 'waiting' %}
+                                        <button type="button" onclick="markPartnerUpdatedDocument({{ loan.id }})" class="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700">Update Document</button>
+                                        {% endif %}
+                                    {% endif %}
                                     {% if loan.status_key != 'follow_up_pending' %}
                                     <button type="button" onclick="openAssignModal({{ loan.id }}, '{{ loan.applicant_name|escapejs }}')" class="px-2 py-1 bg-emerald-600 text-white rounded text-xs hover:bg-emerald-700">Assign</button>
                                     {% endif %}
@@ -256,6 +278,86 @@
     </div>
 </div>
 
+<div id="partner-banking-modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-lg w-full max-w-2xl p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h3 id="partner-banking-title" class="text-lg font-semibold text-gray-900">Banking Action</h3>
+            <button type="button" onclick="closePartnerBankingAction()" class="text-gray-500 hover:text-gray-700"><i class="fas fa-times"></i></button>
+        </div>
+        <p id="partner-banking-name" class="text-sm text-gray-600 mb-3"></p>
+        <div id="partner-banking-collect" class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Bank Name *</label>
+                <input id="partner-bank-name" class="w-full px-3 py-2 border border-gray-300 rounded-lg" type="text" placeholder="Enter bank name">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Banker Name *</label>
+                <input id="partner-banker-name" class="w-full px-3 py-2 border border-gray-300 rounded-lg" type="text" placeholder="Enter banker name">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Banker Phone *</label>
+                <input id="partner-banker-phone" class="w-full px-3 py-2 border border-gray-300 rounded-lg" type="text" placeholder="Enter banker phone">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Banker Email *</label>
+                <input id="partner-banker-email" class="w-full px-3 py-2 border border-gray-300 rounded-lg" type="email" placeholder="Enter banker email">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Verified Loan Amount *</label>
+                <input id="partner-verified-loan-amount" class="w-full px-3 py-2 border border-gray-300 rounded-lg" type="number" min="0" step="0.01" placeholder="120000">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Final Loan Amount *</label>
+                <input id="partner-final-loan-amount" class="w-full px-3 py-2 border border-gray-300 rounded-lg" type="number" min="0" step="0.01" placeholder="120000">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">DSA Name *</label>
+                <input id="partner-dsa-name" class="w-full px-3 py-2 border border-gray-300 rounded-lg" type="text" placeholder="Enter DSA name">
+            </div>
+            <div class="md:col-span-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <textarea id="partner-banker-description" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="Banking processing notes"></textarea>
+            </div>
+            <div class="md:col-span-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Remark</label>
+                <textarea id="partner-bank-remark" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="Remark"></textarea>
+            </div>
+        </div>
+        <div id="partner-banking-reject" class="space-y-3 hidden">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Banker Name *</label>
+                    <input id="partner-reject-banker-name" class="w-full px-3 py-2 border border-gray-300 rounded-lg" type="text">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Banker Phone *</label>
+                    <input id="partner-reject-banker-phone" class="w-full px-3 py-2 border border-gray-300 rounded-lg" type="text">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Banker Email *</label>
+                    <input id="partner-reject-banker-email" class="w-full px-3 py-2 border border-gray-300 rounded-lg" type="email">
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Rejection Reason *</label>
+                <textarea id="partner-reject-reason" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg"></textarea>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <textarea id="partner-reject-description" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg"></textarea>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Bank Remark</label>
+                <textarea id="partner-reject-remark" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg"></textarea>
+            </div>
+        </div>
+        <div class="flex justify-end gap-2 mt-5">
+            <button type="button" onclick="closePartnerBankingAction()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
+            <button type="button" onclick="submitPartnerBankingAction()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Submit</button>
+        </div>
+    </div>
+</div>
+
 <script>
 function getCookie(name) {
     let cookieValue = null;
@@ -274,6 +376,119 @@ function getCookie(name) {
 
 const csrftoken = getCookie('csrftoken');
 let CURRENT_LOAN_DETAILS = null;
+let PARTNER_BANKING_ACTION = null;
+let PARTNER_BANKING_LOAN_ID = null;
+
+function postPartnerJson(url, payload) {
+    return fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrftoken,
+        },
+        body: JSON.stringify(payload || {}),
+    }).then(async response => {
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || data.success === false) {
+            throw new Error(data.error || data.message || 'Action failed');
+        }
+        return data;
+    });
+}
+
+function markPartnerUpdatedDocument(loanId) {
+    const remark = prompt('Update Document remark (optional):') || '';
+    postPartnerJson(`/api/employee/loan/${loanId}/updated-document/`, {
+        entity_type: 'legacy',
+        remark: remark
+    }).then(() => {
+        const currentUrl = new URL(window.location.href);
+        const activeStatus = (currentUrl.searchParams.get('status') || '').trim();
+        if (!activeStatus || activeStatus === 'waiting') {
+            currentUrl.searchParams.set('status', 'updated_document');
+            window.location.href = currentUrl.toString();
+            return;
+        }
+        window.location.reload();
+    }).catch(error => alert(error.message));
+}
+
+function openPartnerBankingAction(action, loanId, applicantName) {
+    PARTNER_BANKING_ACTION = action;
+    PARTNER_BANKING_LOAN_ID = loanId;
+    document.getElementById('partner-banking-title').textContent = action === 'collect' ? 'Move To Banking Processing' : 'Reject Loan';
+    document.getElementById('partner-banking-name').textContent = applicantName ? `Loan: ${applicantName}` : '';
+    document.getElementById('partner-banking-collect').classList.toggle('hidden', action !== 'collect');
+    document.getElementById('partner-banking-reject').classList.toggle('hidden', action !== 'reject');
+    ['partner-bank-name', 'partner-banker-name', 'partner-banker-phone', 'partner-banker-email', 'partner-verified-loan-amount', 'partner-final-loan-amount', 'partner-dsa-name', 'partner-banker-description', 'partner-bank-remark', 'partner-reject-banker-name', 'partner-reject-banker-phone', 'partner-reject-banker-email', 'partner-reject-reason', 'partner-reject-description', 'partner-reject-remark']
+        .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    const modal = document.getElementById('partner-banking-modal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function closePartnerBankingAction() {
+    const modal = document.getElementById('partner-banking-modal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    PARTNER_BANKING_ACTION = null;
+    PARTNER_BANKING_LOAN_ID = null;
+}
+
+function submitPartnerBankingAction() {
+    if (!PARTNER_BANKING_ACTION || !PARTNER_BANKING_LOAN_ID) return;
+    let endpoint = `/api/employee/loan/${PARTNER_BANKING_LOAN_ID}/${PARTNER_BANKING_ACTION === 'collect' ? 'collect' : 'reject'}/`;
+    let payload = { entity_type: 'legacy' };
+    if (PARTNER_BANKING_ACTION === 'collect') {
+        payload = {
+            ...payload,
+            bank_name: document.getElementById('partner-bank-name').value.trim(),
+            banker_name: document.getElementById('partner-banker-name').value.trim(),
+            banker_phone: document.getElementById('partner-banker-phone').value.trim(),
+            banker_email: document.getElementById('partner-banker-email').value.trim(),
+            verified_loan_amount: document.getElementById('partner-verified-loan-amount').value.trim(),
+            final_loan_amount: document.getElementById('partner-final-loan-amount').value.trim(),
+            dsa_name: document.getElementById('partner-dsa-name').value.trim(),
+            banker_description: document.getElementById('partner-banker-description').value.trim(),
+            bank_remark: document.getElementById('partner-bank-remark').value.trim(),
+        };
+        if (!payload.bank_name || !payload.banker_name || !payload.banker_phone || !payload.banker_email || !payload.verified_loan_amount || !payload.final_loan_amount || !payload.dsa_name) {
+            alert('Bank name, banker details, verified/final amount and DSA name are required.');
+            return;
+        }
+        const phoneDigits = payload.banker_phone.replace(/\D/g, '');
+        if (phoneDigits.length < 10 || phoneDigits.length > 15) {
+            alert('Banker phone must be 10 to 15 digits.');
+            return;
+        }
+        if (!payload.banker_email.includes('@')) {
+            alert('Please enter valid banker email.');
+            return;
+        }
+        if (Number(payload.verified_loan_amount) <= 0 || Number(payload.final_loan_amount) <= 0) {
+            alert('Verified and Final loan amount must be greater than zero.');
+            return;
+        }
+    } else {
+        payload.banker_name = document.getElementById('partner-reject-banker-name').value.trim();
+        payload.banker_phone = document.getElementById('partner-reject-banker-phone').value.trim();
+        payload.banker_email = document.getElementById('partner-reject-banker-email').value.trim();
+        payload.rejection_reason = document.getElementById('partner-reject-reason').value.trim();
+        payload.banker_description = document.getElementById('partner-reject-description').value.trim();
+        payload.bank_remark = document.getElementById('partner-reject-remark').value.trim();
+        if (!payload.banker_name || !payload.banker_phone || !payload.banker_email) {
+            alert('Banker name, phone and email are required.');
+            return;
+        }
+        if (!payload.rejection_reason) {
+            alert('Rejection reason is required.');
+            return;
+        }
+    }
+    postPartnerJson(endpoint, payload)
+        .then(() => window.location.reload())
+        .catch(error => alert(error.message));
+}
 
 function openAssignModal(loanId, applicantName) {
     document.getElementById('assign-loan-id').value = loanId;
@@ -437,6 +652,7 @@ function openLoanDetailsModal(loanId) {
             CURRENT_LOAN_DETAILS = data;
             const docs = data.documents || [];
             const history = data.status_timeline || [];
+            const extraDetails = Array.isArray(data.full_application_details) ? data.full_application_details : [];
             const remarkMeta = splitLeaderFromRemark(data.bank_remark);
 
             const docsHtml = docs.length
@@ -446,6 +662,14 @@ function openLoanDetailsModal(loanId) {
             const historyHtml = history.length
                 ? `<div class="overflow-x-auto"><table class="w-full text-sm border border-gray-200"><thead class="bg-gray-50"><tr><th class="px-3 py-2 text-left">From</th><th class="px-3 py-2 text-left">To</th><th class="px-3 py-2 text-left">By</th><th class="px-3 py-2 text-left">Date</th><th class="px-3 py-2 text-left">Remark</th></tr></thead><tbody>${history.map(row => `<tr class="border-t border-gray-200"><td class="px-3 py-2">${normalizeStatusLabel(row.from_status)}</td><td class="px-3 py-2">${normalizeStatusLabel(row.to_status)}</td><td class="px-3 py-2">${row.changed_by || '-'}</td><td class="px-3 py-2">${row.changed_at || '-'}</td><td class="px-3 py-2">${row.reason || '-'}</td></tr>`).join('')}</tbody></table></div>`
                 : '<p class="text-sm text-gray-500">No status history found.</p>';
+            const extraDetailsHtml = extraDetails.length
+                ? `<div class="grid grid-cols-1 md:grid-cols-2 gap-3">${extraDetails.map(item => `
+                    <div class="border border-gray-200 rounded-lg p-3 bg-gray-50">
+                        <div class="text-[11px] font-semibold uppercase tracking-wide text-gray-500">${item.label || '-'}</div>
+                        <div class="text-sm font-semibold text-gray-900 break-words whitespace-pre-wrap">${item.value || '-'}</div>
+                    </div>
+                `).join('')}</div>`
+                : '<p class="text-sm text-gray-500">No additional captured details available.</p>';
 
             container.innerHTML = `
                 <div class="space-y-4">
@@ -508,6 +732,11 @@ function openLoanDetailsModal(loanId) {
                     <div class="border border-gray-200 rounded-lg p-4">
                         <h4 class="font-semibold text-gray-900 mb-3">Status History</h4>
                         ${historyHtml}
+                    </div>
+
+                    <div class="border border-gray-200 rounded-lg p-4">
+                        <h4 class="font-semibold text-gray-900 mb-3">Captured Form Details</h4>
+                        ${extraDetailsHtml}
                     </div>
                 </div>
             `;
