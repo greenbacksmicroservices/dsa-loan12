@@ -141,7 +141,7 @@ function openBankingActionModal(action, loanId, entityType = '', applicantName =
     if (name) name.textContent = applicantName ? `Applicant: ${applicantName}` : '';
     if (collectBox) collectBox.style.display = action === 'collect' ? '' : 'none';
     if (rejectBox) rejectBox.style.display = action === 'reject' ? '' : 'none';
-    ['bankingBankName', 'bankingBankerName', 'bankingBankerPhone', 'bankingBankerEmail', 'bankingVerifiedLoanAmount', 'bankingFinalLoanAmount', 'bankingDsaName', 'bankingDescription', 'bankingBankRemark', 'bankingRejectBankerName', 'bankingRejectBankerPhone', 'bankingRejectBankerEmail', 'bankingRejectReason', 'bankingRejectDescription', 'bankingRejectRemark']
+    ['bankingBankName', 'bankingBankerName', 'bankingBankerPhone', 'bankingBankerEmail', 'bankingLoanAccountNumber', 'bankingVerifiedLoanAmount', 'bankingFinalLoanAmount', 'bankingDsaName', 'bankingDescription', 'bankingBankRemark', 'bankingRejectBankerName', 'bankingRejectBankerPhone', 'bankingRejectBankerEmail', 'bankingRejectReason', 'bankingRejectDescription', 'bankingRejectRemark']
         .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
     new bootstrap.Modal(document.getElementById('bankingActionModal')).show();
 }
@@ -154,6 +154,7 @@ async function submitBankingAction() {
             const bankerName = (document.getElementById('bankingBankerName')?.value || '').trim();
             const bankerPhone = (document.getElementById('bankingBankerPhone')?.value || '').trim();
             const bankerEmail = (document.getElementById('bankingBankerEmail')?.value || '').trim();
+            const loanAccountNumber = (document.getElementById('bankingLoanAccountNumber')?.value || '').trim();
             const verifiedLoanAmount = (document.getElementById('bankingVerifiedLoanAmount')?.value || '').trim();
             const finalLoanAmount = (document.getElementById('bankingFinalLoanAmount')?.value || '').trim();
             const dsaName = (document.getElementById('bankingDsaName')?.value || '').trim();
@@ -176,6 +177,7 @@ async function submitBankingAction() {
                 banker_name: bankerName,
                 banker_phone: bankerPhone,
                 banker_email: bankerEmail,
+                loan_account_number: loanAccountNumber,
                 verified_loan_amount: verifiedLoanAmount,
                 final_loan_amount: finalLoanAmount,
                 dsa_name: dsaName,
@@ -1030,6 +1032,10 @@ window.addEventListener('beforeunload', () => refreshTimer && clearInterval(refr
                     <div class="col-md-4">
                         <label class="form-label">Banker Email *</label>
                         <input id="bankingBankerEmail" class="form-control" type="email" placeholder="Enter banker email">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Loan Account Number</label>
+                        <input id="bankingLoanAccountNumber" class="form-control" type="text" placeholder="Enter loan account number">
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">Verified Loan Amount *</label>

@@ -26,6 +26,9 @@ class User(AbstractUser):
         blank=True
     )
     profile_photo = models.ImageField(upload_to='profile_photos/', blank=True, null=True)
+    pan_card_doc = models.FileField(upload_to='user_docs/pan/', blank=True, null=True, help_text="Upload PAN")
+    aadhar_card_doc = models.FileField(upload_to='user_docs/aadhar/', blank=True, null=True, help_text="Upload Aadhar")
+    bank_details_doc = models.FileField(upload_to='user_docs/bank/', blank=True, null=True, help_text="Upload Passbook/Cancel Cheque/Statement")
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

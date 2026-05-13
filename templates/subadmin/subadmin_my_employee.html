@@ -111,6 +111,7 @@
                         <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Assigned</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Approved</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Rejected</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Documents</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Status</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Joined</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Actions</th>
@@ -135,6 +136,16 @@
                             <td class="px-4 py-3 text-sm font-semibold text-gray-900">{{ employee.assigned_loans|default:0 }}</td>
                             <td class="px-4 py-3 text-sm font-semibold text-emerald-600">{{ employee.approved|default:0 }}</td>
                             <td class="px-4 py-3 text-sm font-semibold text-rose-600">{{ employee.rejected|default:0 }}</td>
+                            <td class="px-4 py-3 text-sm">
+                                <div class="flex gap-1">
+                                    {% if employee.pan_card_url %}<a href="{{ employee.pan_card_url }}" target="_blank" title="PAN" class="text-blue-600 hover:text-blue-800"><i class="fas fa-id-card"></i></a>{% endif %}
+                                    {% if employee.aadhar_card_url %}<a href="{{ employee.aadhar_card_url }}" target="_blank" title="Aadhar" class="text-blue-600 hover:text-blue-800"><i class="fas fa-fingerprint"></i></a>{% endif %}
+                                    {% if employee.bank_details_url %}<a href="{{ employee.bank_details_url }}" target="_blank" title="Bank Details" class="text-blue-600 hover:text-blue-800"><i class="fas fa-university"></i></a>{% endif %}
+                                    {% if not employee.pan_card_url and not employee.aadhar_card_url and not employee.bank_details_url %}
+                                    <span class="text-gray-400 text-xs">None</span>
+                                    {% endif %}
+                                </div>
+                            </td>
                             <td class="px-4 py-3 text-sm">
                                 {% if employee.status == 'Active' %}
                                     <span class="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-semibold">Active</span>
