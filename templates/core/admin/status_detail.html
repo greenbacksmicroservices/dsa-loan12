@@ -751,6 +751,10 @@ function openAdminAction(action, appId, applicantName) {
         body.innerHTML = `
             <div style="font-size: 13px; color: #374151;">Move <strong>${safeName}</strong> to Banking Processing.</div>
             <div>
+                <label for="adminBankName">Bank Name *</label>
+                <input id="adminBankName" type="text" placeholder="Enter bank name">
+            </div>
+            <div>
                 <label for="adminBankerName">Banker Name *</label>
                 <input id="adminBankerName" type="text" placeholder="Enter banker name">
             </div>
@@ -761,6 +765,22 @@ function openAdminAction(action, appId, applicantName) {
             <div>
                 <label for="adminBankerEmail">Banker Email *</label>
                 <input id="adminBankerEmail" type="email" placeholder="Enter banker email">
+            </div>
+            <div>
+                <label for="adminLoanAccountNumber">Loan Account Number</label>
+                <input id="adminLoanAccountNumber" type="text" placeholder="Enter loan account number">
+            </div>
+            <div>
+                <label for="adminVerifiedLoanAmount">Verified Loan Amount *</label>
+                <input id="adminVerifiedLoanAmount" type="number" min="0" step="0.01" placeholder="120000">
+            </div>
+            <div>
+                <label for="adminFinalLoanAmount">Final Loan Amount *</label>
+                <input id="adminFinalLoanAmount" type="number" min="0" step="0.01" placeholder="120000">
+            </div>
+            <div>
+                <label for="adminDsaName">DSA Name *</label>
+                <input id="adminDsaName" type="text" placeholder="Enter DSA name">
             </div>
              <div>
                  <label for="adminBankerDescription">Description</label>
@@ -880,20 +900,43 @@ async function confirmAdminAction() {
                  entity_type: 'application',
              };
          } else if (currentAdminAction === 'collect') {
+             const bankName = (document.getElementById('adminBankName')?.value || '').trim();
              const bankerName = (document.getElementById('adminBankerName')?.value || '').trim();
              const bankerPhone = (document.getElementById('adminBankerPhone')?.value || '').trim();
              const bankerEmail = (document.getElementById('adminBankerEmail')?.value || '').trim();
+             const loanAccountNumber = (document.getElementById('adminLoanAccountNumber')?.value || '').trim();
+             const verifiedLoanAmount = (document.getElementById('adminVerifiedLoanAmount')?.value || '').trim();
+             const finalLoanAmount = (document.getElementById('adminFinalLoanAmount')?.value || '').trim();
+             const dsaName = (document.getElementById('adminDsaName')?.value || '').trim();
              const bankerDescription = (document.getElementById('adminBankerDescription')?.value || '').trim();
              const bankRemark = (document.getElementById('adminCollectRemark')?.value || '').trim();
-             if (!bankerName || !bankerPhone || !bankerEmail) {
-                 alert('Please fill banker name, phone and email.');
+             if (!bankName || !bankerName || !bankerPhone || !bankerEmail || !verifiedLoanAmount || !finalLoanAmount || !dsaName) {
+                 alert('Please fill bank name, banker details, verified/final amount and DSA name.');
                  throw new Error('Missing banking details');
+             }
+             const phoneDigits = bankerPhone.replace(/\D/g, '');
+             if (phoneDigits.length < 10 || phoneDigits.length > 15) {
+                 alert('Please enter valid banker phone (10-15 digits).');
+                 throw new Error('Invalid banker phone');
+             }
+             if (!bankerEmail.includes('@')) {
+                 alert('Please enter valid banker email.');
+                 throw new Error('Invalid banker email');
+             }
+             if (Number(verifiedLoanAmount) <= 0 || Number(finalLoanAmount) <= 0) {
+                 alert('Verified and Final loan amount must be greater than zero.');
+                 throw new Error('Invalid loan amounts');
              }
              endpoint = `/api/employee/loan/${currentAdminAppId}/collect/`;
              payload = {
+                 bank_name: bankName,
                  banker_name: bankerName,
                 banker_phone: bankerPhone,
                 banker_email: bankerEmail,
+                loan_account_number: loanAccountNumber,
+                verified_loan_amount: verifiedLoanAmount,
+                final_loan_amount: finalLoanAmount,
+                dsa_name: dsaName,
                 banker_description: bankerDescription,
                 bank_remark: bankRemark,
                 entity_type: 'application',

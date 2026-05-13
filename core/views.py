@@ -5480,6 +5480,13 @@ def _build_banking_processing_note(payload):
     banker_name = str(payload.get('banker_name', '')).strip()
     banker_phone = str(payload.get('banker_phone', '')).strip()
     banker_email = str(payload.get('banker_email', '')).strip()
+    loan_account_number = str(
+        payload.get('loan_account_number')
+        or payload.get('current_loan_account_number')
+        or payload.get('bank_account_number')
+        or payload.get('account_number')
+        or ''
+    ).strip()
     banker_description = str(payload.get('banker_description', '')).strip()
 
     lines = []
@@ -5491,6 +5498,8 @@ def _build_banking_processing_note(payload):
         lines.append(f"Banker Phone: {banker_phone}")
     if banker_email:
         lines.append(f"Banker Email: {banker_email}")
+    if loan_account_number:
+        lines.append(f"Loan Account Number: {loan_account_number}")
     if verified_loan_amount:
         lines.append(f"Verified Loan Amount: {verified_loan_amount}")
     if final_loan_amount:
@@ -5518,6 +5527,13 @@ def _collect_banking_processing_fields(payload):
     banker_name = str(payload.get('banker_name') or '').strip()
     banker_phone = str(payload.get('banker_phone') or '').strip()
     banker_email = str(payload.get('banker_email') or '').strip()
+    loan_account_number = str(
+        payload.get('loan_account_number')
+        or payload.get('current_loan_account_number')
+        or payload.get('bank_account_number')
+        or payload.get('account_number')
+        or ''
+    ).strip()
     verified_loan_amount = str(
         payload.get('verified_loan_amount')
         or payload.get('verified_amount')
@@ -5539,6 +5555,7 @@ def _collect_banking_processing_fields(payload):
         'banker_name': banker_name,
         'banker_phone': banker_phone,
         'banker_email': banker_email,
+        'loan_account_number': loan_account_number,
         'verified_loan_amount': verified_loan_amount,
         'final_loan_amount': final_loan_amount,
         'dsa_name': dsa_name,
@@ -5609,6 +5626,7 @@ def _extract_processing_details(*raw_blocks):
         'banker_name': pick('banker name'),
         'banker_phone': pick('banker phone'),
         'banker_email': pick('banker email'),
+        'loan_account_number': pick('loan account number', 'current loan account number', 'account number', 'bank account number'),
         'verified_loan_amount': pick('verified loan amount', 'verified amount', 'verified loan ammount'),
         'final_loan_amount': pick('final loan amount', 'final amount', 'final loan ammount', 'disbursement amount', 'disbursed amount'),
         'dsa_name': pick('dsa name', 'channel partner name', 'sm name'),
@@ -5882,6 +5900,7 @@ def _build_full_application_details(loan_data, parsed_details):
     add('Banker Name', loan_data.get('banker_name'))
     add('Banker Phone', loan_data.get('banker_phone'))
     add('Banker Email', loan_data.get('banker_email'))
+    add('Loan Account Number', loan_data.get('loan_account_number'))
     add('Verified Loan Amount', loan_data.get('verified_loan_amount'))
     add('Final Loan Amount', loan_data.get('final_loan_amount'))
     add('DSA Name', loan_data.get('dsa_name'))
@@ -6529,6 +6548,7 @@ def employee_assigned_loan_detail(request, loan_id):
                 'banker_name': processing_details.get('banker_name') or '',
                 'banker_phone': processing_details.get('banker_phone') or '',
                 'banker_email': processing_details.get('banker_email') or '',
+                'loan_account_number': processing_details.get('loan_account_number') or applicant.account_number or '',
                 'verified_loan_amount': processing_details.get('verified_loan_amount') or '',
                 'final_loan_amount': processing_details.get('final_loan_amount') or '',
                 'dsa_name': processing_details.get('dsa_name') or '',
@@ -6741,6 +6761,14 @@ def employee_assigned_loan_detail(request, loan_id):
                 'banker_name': processing_details.get('banker_name') or '',
                 'banker_phone': processing_details.get('banker_phone') or '',
                 'banker_email': processing_details.get('banker_email') or '',
+                'loan_account_number': (
+                    processing_details.get('loan_account_number')
+                    if processing_details.get('loan_account_number')
+                    else (
+                        related_applicant.account_number if related_applicant and related_applicant.account_number
+                        else legacy.bank_account_number or parsed_legacy.get('account number', '')
+                    )
+                ),
                 'verified_loan_amount': processing_details.get('verified_loan_amount') or '',
                 'final_loan_amount': processing_details.get('final_loan_amount') or '',
                 'dsa_name': processing_details.get('dsa_name') or '',
@@ -7196,6 +7224,7 @@ def employee_collect_for_banking(request, loan_id):
         banking_note = _build_banking_processing_note(payload_for_note)
         processing_bank_name = banking_details.get('bank_name', '')
         processing_dsa_name = banking_details.get('dsa_name', '')
+        processing_loan_account_number = banking_details.get('loan_account_number', '')
 
         def _source_order():
             if preferred_source == 'legacy':
@@ -7242,11 +7271,18 @@ def employee_collect_for_banking(request, loan_id):
                 'updated_at',
             ])
 
-            if processing_bank_name:
+            if processing_bank_name or processing_loan_account_number:
                 applicant = getattr(loan_app, 'applicant', None)
-                if applicant and applicant.bank_name != processing_bank_name:
-                    applicant.bank_name = processing_bank_name
-                    applicant.save(update_fields=['bank_name', 'updated_at'])
+                if applicant:
+                    applicant_fields = []
+                    if processing_bank_name and applicant.bank_name != processing_bank_name:
+                        applicant.bank_name = processing_bank_name
+                        applicant_fields.append('bank_name')
+                    if processing_loan_account_number and applicant.account_number != processing_loan_account_number:
+                        applicant.account_number = processing_loan_account_number
+                        applicant_fields.append('account_number')
+                    if applicant_fields:
+                        applicant.save(update_fields=applicant_fields + ['updated_at'])
 
             LoanStatusHistory.objects.create(
                 loan_application=loan_app,
@@ -7268,6 +7304,9 @@ def employee_collect_for_banking(request, loan_id):
                 if processing_dsa_name and related_loan.sm_name != processing_dsa_name:
                     related_loan.sm_name = processing_dsa_name
                     related_fields.append('sm_name')
+                if processing_loan_account_number and related_loan.bank_account_number != processing_loan_account_number:
+                    related_loan.bank_account_number = processing_loan_account_number
+                    related_fields.append('bank_account_number')
                 if related_fields:
                     related_loan.save(update_fields=related_fields + ['updated_at'])
 
@@ -7287,6 +7326,8 @@ def employee_collect_for_banking(request, loan_id):
                 legacy.bank_name = processing_bank_name
             if processing_dsa_name:
                 legacy.sm_name = processing_dsa_name
+            if processing_loan_account_number:
+                legacy.bank_account_number = processing_loan_account_number
             legacy.is_sm_signed = False
             legacy.sm_signed_at = None
             legacy.remarks = _append_note_line(legacy.remarks, banking_note)
@@ -7295,6 +7336,7 @@ def employee_collect_for_banking(request, loan_id):
                 'assigned_at',
                 'action_taken_at',
                 'bank_name',
+                'bank_account_number',
                 'sm_name',
                 'is_sm_signed',
                 'sm_signed_at',
@@ -7337,9 +7379,17 @@ def employee_collect_for_banking(request, loan_id):
                         'updated_at',
                     ]
                 )
-                if processing_bank_name and synced_application.applicant and synced_application.applicant.bank_name != processing_bank_name:
-                    synced_application.applicant.bank_name = processing_bank_name
-                    synced_application.applicant.save(update_fields=['bank_name', 'updated_at'])
+                if synced_application.applicant:
+                    synced_applicant = synced_application.applicant
+                    synced_applicant_fields = []
+                    if processing_bank_name and synced_applicant.bank_name != processing_bank_name:
+                        synced_applicant.bank_name = processing_bank_name
+                        synced_applicant_fields.append('bank_name')
+                    if processing_loan_account_number and synced_applicant.account_number != processing_loan_account_number:
+                        synced_applicant.account_number = processing_loan_account_number
+                        synced_applicant_fields.append('account_number')
+                    if synced_applicant_fields:
+                        synced_applicant.save(update_fields=synced_applicant_fields + ['updated_at'])
                 LoanStatusHistory.objects.create(
                     loan_application=synced_application,
                     from_status='new_entry' if app_previous_status == 'New Entry' else 'waiting',

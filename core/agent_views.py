@@ -1042,7 +1042,7 @@ def agent_profile(request):
         elif action == 'upload_onboarding_doc':
             """
             Upload agent onboarding/KYC documents (Pan, Aadhar, Passbook/Cancel check/statement).
-            Stored in UserOnboardingDocument so other panels can display the uploaded files.
+            Stored in User model so other panels can display the uploaded files easily.
             """
             document_type = (request.POST.get('document_type') or '').strip()
             document_file = request.FILES.get('document_file')
@@ -1055,15 +1055,17 @@ def agent_profile(request):
             if document_file.size > 10 * 1024 * 1024:
                 messages.error(request, 'File size must be <= 10MB.')
                 return redirect('agent_profile')
-            
-            UserOnboardingDocument.objects.update_or_create(
-                user=request.user,
-                document_type=document_type,
-                defaults={'file': document_file},
-            )
+
+            user = request.user
+            if document_type == 'pan_card':
+                user.pan_card_doc = document_file
+            elif document_type == 'aadhaar_card':
+                user.aadhar_card_doc = document_file
+            elif document_type == 'bank_statement':
+                user.bank_details_doc = document_file
+            user.save()
             messages.success(request, 'Document uploaded successfully.')
-            return redirect('agent_profile')
-    
+            return redirect('agent_profile')    
     context = {
         'agent': agent,
         'page_title': 'My Profile',

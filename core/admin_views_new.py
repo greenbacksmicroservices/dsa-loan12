@@ -143,10 +143,30 @@ def api_admin_processing_requests(request):
         # Admin sees all
         
         # Filter by status
-        if status_filter:
+        status_lookup = {
+            'new_entry': 'new_entry',
+            'new entry': 'new_entry',
+            'waiting': 'waiting',
+            'processing': 'waiting',
+            'in processing': 'waiting',
+            'document pending': 'waiting',
+            'waiting for processing': 'waiting',
+            'follow_up': 'follow_up',
+            'required follow-up': 'follow_up',
+            'required follow up': 'follow_up',
+            'banking processing': 'follow_up',
+            'approved': 'approved',
+            'rejected': 'rejected',
+            'disbursed': 'disbursed',
+        }
+        normalized_status_filter = str(status_filter or '').strip().lower()
+        resolved_status = status_lookup.get(normalized_status_filter)
+        if resolved_status:
+            loans = loans.filter(status=resolved_status)
+        elif status_filter:
             loans = loans.filter(status=status_filter)
         else:
-            loans = loans.filter(status__in=['waiting', 'follow_up'])
+            loans = loans.filter(status__in=['waiting', 'follow_up', 'approved', 'rejected'])
         
         # Search
         if search:
@@ -165,18 +185,36 @@ def api_admin_processing_requests(request):
         
         # Serialize data
         requests_list = []
+        status_display_map = {
+            'new_entry': 'New Entry',
+            'waiting': 'Waiting for Processing',
+            'follow_up': 'Required Follow-up',
+            'approved': 'Approved',
+            'rejected': 'Rejected',
+            'disbursed': 'Disbursed',
+        }
         for loan in page_obj:
             hours_since = loan.get_hours_since_assignment()
+            display_status = status_display_map.get(loan.status, loan.get_status_display())
+            assigned_employee_name = 'Unassigned'
+            if loan.assigned_employee:
+                assigned_employee_name = loan.assigned_employee.get_full_name() or loan.assigned_employee.username or 'Unassigned'
+            elif loan.assigned_agent:
+                assigned_employee_name = loan.assigned_agent.name or 'Unassigned'
             
             request_data = {
                 'id': loan.id,
-                'applicant_name': loan.full_name,
+                'applicant_name': loan.full_name or '-',
                 'applicant_email': loan.email or 'N/A',
-                'applicant_phone': loan.mobile_number,
-                'loan_type': loan.get_loan_type_display(),
-                'loan_amount': float(loan.loan_amount),
-                'status': loan.get_status_display(),
+                'applicant_phone': loan.mobile_number or '-',
+                'applicant_mobile': loan.mobile_number or '-',
+                'applicant_photo': '/static/images/default-avatar.svg',
+                'loan_type': loan.get_loan_type_display() if hasattr(loan, 'get_loan_type_display') else (loan.loan_type or '-'),
+                'loan_amount': float(loan.loan_amount or 0),
+                'status': display_status,
                 'status_value': loan.status,
+                'assigned_employee_name': assigned_employee_name,
+                'assigned_date': loan.assigned_at.isoformat() if loan.assigned_at else None,
                 'assigned_to': {
                     'id': loan.assigned_employee.id if loan.assigned_employee else None,
                     'name': loan.assigned_employee.get_full_name() if loan.assigned_employee else 'Unassigned',
@@ -197,10 +235,31 @@ def api_admin_processing_requests(request):
                 }
             }
             requests_list.append(request_data)
+
+        employees_qs = User.objects.filter(role='employee', is_active=True).values(
+            'id', 'first_name', 'last_name', 'username'
+        )
+        employees_list = []
+        for emp in employees_qs:
+            full_name = f"{(emp.get('first_name') or '').strip()} {(emp.get('last_name') or '').strip()}".strip()
+            employees_list.append({
+                'id': emp['id'],
+                'full_name': full_name or emp.get('username') or f"Employee #{emp['id']}",
+            })
+
+        stats = {
+            'total': paginator.count,
+            'processing': loans.filter(status='waiting').count(),
+            'banking_processing': loans.filter(status='follow_up').count(),
+            'approved': loans.filter(status='approved').count(),
+            'rejected': loans.filter(status='rejected').count(),
+        }
         
         return JsonResponse({
             'success': True,
             'requests': requests_list,
+            'employees': employees_list,
+            'stats': stats,
             'total_count': paginator.count,
             'total_pages': paginator.num_pages,
             'current_page': int(page),

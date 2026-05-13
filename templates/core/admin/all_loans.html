@@ -1156,6 +1156,10 @@
                     <input id="collectBankerEmail" type="email" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px;" placeholder="Enter banker email">
                 </div>
                 <div>
+                    <label style="display: block; color: #1a202c; font-weight: 700; margin-bottom: 8px; font-size: 13px;">Loan Account Number</label>
+                    <input id="collectLoanAccountNumber" type="text" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px;" placeholder="Enter loan account number">
+                </div>
+                <div>
                     <label style="display: block; color: #1a202c; font-weight: 700; margin-bottom: 8px; font-size: 13px;">Verified Loan Amount *</label>
                     <input id="collectVerifiedLoanAmount" type="number" min="0" step="0.01" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px;" placeholder="120000">
                 </div>
@@ -2708,6 +2712,7 @@ function resetActionSelection() {
     const collectBankerName = document.getElementById('collectBankerName');
     const collectBankerPhone = document.getElementById('collectBankerPhone');
     const collectBankerEmail = document.getElementById('collectBankerEmail');
+    const collectLoanAccountNumber = document.getElementById('collectLoanAccountNumber');
     const collectVerifiedLoanAmount = document.getElementById('collectVerifiedLoanAmount');
     const collectFinalLoanAmount = document.getElementById('collectFinalLoanAmount');
     const collectDsaName = document.getElementById('collectDsaName');
@@ -2716,6 +2721,7 @@ function resetActionSelection() {
     if (collectBankerName) collectBankerName.value = '';
     if (collectBankerPhone) collectBankerPhone.value = '';
     if (collectBankerEmail) collectBankerEmail.value = '';
+    if (collectLoanAccountNumber) collectLoanAccountNumber.value = '';
     if (collectVerifiedLoanAmount) collectVerifiedLoanAmount.value = '';
     if (collectFinalLoanAmount) collectFinalLoanAmount.value = '';
     if (collectDsaName) collectDsaName.value = '';
@@ -2851,6 +2857,7 @@ function submitAction() {
         const bankerName = document.getElementById('collectBankerName')?.value.trim() || '';
         const bankerPhone = document.getElementById('collectBankerPhone')?.value.trim() || '';
         const bankerEmail = document.getElementById('collectBankerEmail')?.value.trim() || '';
+        const loanAccountNumber = document.getElementById('collectLoanAccountNumber')?.value.trim() || '';
         const verifiedLoanAmount = document.getElementById('collectVerifiedLoanAmount')?.value.trim() || '';
         const finalLoanAmount = document.getElementById('collectFinalLoanAmount')?.value.trim() || '';
         const dsaName = document.getElementById('collectDsaName')?.value.trim() || '';
@@ -2879,6 +2886,7 @@ function submitAction() {
             banker_name: bankerName,
             banker_phone: bankerPhone,
             banker_email: bankerEmail,
+            loan_account_number: loanAccountNumber,
             verified_loan_amount: verifiedLoanAmount,
             final_loan_amount: finalLoanAmount,
             dsa_name: dsaName,

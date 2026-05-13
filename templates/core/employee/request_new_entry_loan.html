@@ -701,6 +701,10 @@
                 <input id="collect-banker-email" type="email" placeholder="Enter banker email" required>
             </div>
             <div class="form-group">
+                <label for="collect-loan-account-number">Loan Account Number</label>
+                <input id="collect-loan-account-number" type="text" placeholder="Enter loan account number">
+            </div>
+            <div class="form-group">
                 <label for="collect-verified-amount">Verified Loan Amount *</label>
                 <input id="collect-verified-amount" type="number" min="0" step="0.01" placeholder="120000" required>
             </div>
@@ -999,6 +1003,7 @@
             document.getElementById('collect-banker-name').value = '';
             document.getElementById('collect-banker-phone').value = '';
             document.getElementById('collect-banker-email').value = '';
+            document.getElementById('collect-loan-account-number').value = '';
             document.getElementById('collect-verified-amount').value = '';
             document.getElementById('collect-final-amount').value = '';
             document.getElementById('collect-dsa-name').value = '';
@@ -1084,6 +1089,7 @@
         const bankerName = document.getElementById('collect-banker-name').value.trim();
         const bankerPhone = document.getElementById('collect-banker-phone').value.trim();
         const bankerEmail = document.getElementById('collect-banker-email').value.trim();
+        const loanAccountNumber = document.getElementById('collect-loan-account-number').value.trim();
         const verifiedLoanAmount = document.getElementById('collect-verified-amount').value.trim();
         const finalLoanAmount = document.getElementById('collect-final-amount').value.trim();
         const dsaName = document.getElementById('collect-dsa-name').value.trim();
@@ -1130,6 +1136,7 @@
                 banker_name: bankerName,
                 banker_phone: bankerPhone,
                 banker_email: bankerEmail,
+                loan_account_number: loanAccountNumber,
                 verified_loan_amount: verifiedLoanAmount,
                 final_loan_amount: finalLoanAmount,
                 dsa_name: dsaName,

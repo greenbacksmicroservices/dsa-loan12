@@ -135,32 +135,31 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                {% if onboarding_documents %}
-                                    {% for doc in onboarding_documents %}
-                                        <tr>
-                                            <td class="fw-semibold">
-                                                {% if doc.document_type == 'pan_card' %}Pan
-                                                {% elif doc.document_type == 'aadhaar_card' %}Aadhar
-                                                {% elif doc.document_type == 'bank_statement' %}Passbook/Cancel check/statement
-                                                {% else %}{{ doc.document_type }}
-                                                {% endif %}
-                                            </td>
-                                            <td class="text-muted">{{ doc.uploaded_at|date:"d M, Y H:i" }}</td>
-                                            <td>
-                                                {% if doc.file %}
-                                                    <a class="btn btn-sm btn-outline-primary" target="_blank" href="{{ doc.file.url }}">
-                                                        Open
-                                                    </a>
-                                                {% else %}
-                                                    -
-                                                {% endif %}
-                                            </td>
-                                        </tr>
-                                    {% endfor %}
-                                {% else %}
-                                    <tr>
-                                        <td colspan="3" class="text-center text-muted">No documents uploaded yet.</td>
-                                    </tr>
+                                {% if request.user.pan_card_doc %}
+                                <tr>
+                                    <td class="fw-semibold">Pan</td>
+                                    <td class="text-success"><i class="fas fa-check-circle"></i> Uploaded</td>
+                                    <td><a href="{{ request.user.pan_card_doc.url }}" target="_blank" class="btn btn-sm btn-outline-primary">Open</a></td>
+                                </tr>
+                                {% endif %}
+                                {% if request.user.aadhar_card_doc %}
+                                <tr>
+                                    <td class="fw-semibold">Aadhar</td>
+                                    <td class="text-success"><i class="fas fa-check-circle"></i> Uploaded</td>
+                                    <td><a href="{{ request.user.aadhar_card_doc.url }}" target="_blank" class="btn btn-sm btn-outline-primary">Open</a></td>
+                                </tr>
+                                {% endif %}
+                                {% if request.user.bank_details_doc %}
+                                <tr>
+                                    <td class="fw-semibold">Passbook/Cancel check/statement</td>
+                                    <td class="text-success"><i class="fas fa-check-circle"></i> Uploaded</td>
+                                    <td><a href="{{ request.user.bank_details_doc.url }}" target="_blank" class="btn btn-sm btn-outline-primary">Open</a></td>
+                                </tr>
+                                {% endif %}
+                                {% if not request.user.pan_card_doc and not request.user.aadhar_card_doc and not request.user.bank_details_doc %}
+                                <tr>
+                                    <td colspan="3" class="text-center text-muted">No documents uploaded yet.</td>
+                                </tr>
                                 {% endif %}
                             </tbody>
                         </table>

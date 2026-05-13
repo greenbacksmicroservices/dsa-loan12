@@ -347,13 +347,26 @@ def employee_loan_status_list(request, status_key):
 
 
 @login_required
-@require_http_methods(["GET"])
+@require_http_methods(["GET", "POST"])
 def employee_profile(request):
     """Employee profile view"""
     if request.user.role != 'employee':
         messages.error(request, 'Access denied. Employee only.')
         return redirect('dashboard')
-    
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'upload_documents':
+            if 'pan_card_doc' in request.FILES:
+                request.user.pan_card_doc = request.FILES['pan_card_doc']
+            if 'aadhar_card_doc' in request.FILES:
+                request.user.aadhar_card_doc = request.FILES['aadhar_card_doc']
+            if 'bank_details_doc' in request.FILES:
+                request.user.bank_details_doc = request.FILES['bank_details_doc']
+            request.user.save()
+            messages.success(request, 'Documents uploaded successfully.')
+            return redirect('employee_profile')
+
     # Render profile page with user data
     context = {
         'user': request.user
@@ -1303,5 +1316,3 @@ def employee_all_loans_history_api(request):
     
     except Exception as e:
         return Response({'success': False, 'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-

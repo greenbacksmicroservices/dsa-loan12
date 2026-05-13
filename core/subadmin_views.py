@@ -1310,6 +1310,9 @@ def subadmin_my_agents(request):
             'status': agent.status,
             'created_date': agent.created_at.strftime('%Y-%m-%d'),
             'photo_url': photo_url,
+            'pan_card_url': agent.user.pan_card_doc.url if agent.user and agent.user.pan_card_doc else '',
+            'aadhar_card_url': agent.user.aadhar_card_doc.url if agent.user and agent.user.aadhar_card_doc else '',
+            'bank_details_url': agent.user.bank_details_doc.url if agent.user and agent.user.bank_details_doc else '',
         })
     
     context = {
@@ -1741,6 +1744,9 @@ def subadmin_my_employees(request):
             'status': 'Active' if emp.is_active else 'Inactive',
             'created_date': emp.created_at.strftime('%Y-%m-%d'),
             'photo_url': photo_url,
+            'pan_card_url': emp.pan_card_doc.url if emp.pan_card_doc else '',
+            'aadhar_card_url': emp.aadhar_card_doc.url if emp.aadhar_card_doc else '',
+            'bank_details_url': emp.bank_details_doc.url if emp.bank_details_doc else '',
         })
     
     context = {
@@ -2304,6 +2310,22 @@ def subadmin_settings(request):
             user.save()
             update_session_auth_hash(request, user)
             return JsonResponse({'success': True, 'message': 'Password changed successfully.'})
+
+        if action == 'upload_documents':
+            if 'pan_card_doc' in request.FILES:
+                user.pan_card_doc = request.FILES['pan_card_doc']
+            if 'aadhar_card_doc' in request.FILES:
+                user.aadhar_card_doc = request.FILES['aadhar_card_doc']
+            if 'bank_details_doc' in request.FILES:
+                user.bank_details_doc = request.FILES['bank_details_doc']
+            user.save(update_fields=['pan_card_doc', 'aadhar_card_doc', 'bank_details_doc', 'updated_at'])
+            
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({'success': True, 'message': 'Documents uploaded successfully.'})
+            from django.contrib import messages
+            messages.success(request, 'Documents uploaded successfully.')
+            from django.shortcuts import redirect
+            return redirect('subadmin_settings')
 
         return JsonResponse({'success': False, 'message': 'Invalid action.'}, status=400)
     

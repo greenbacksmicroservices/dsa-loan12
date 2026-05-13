@@ -399,6 +399,8 @@
                 <input id="bankerPhoneInput" class="form-control mb-2" type="text" placeholder="Enter banker phone">
                 <label class="form-label">Banker Email *</label>
                 <input id="bankerEmailInput" class="form-control mb-2" type="email" placeholder="Enter banker email">
+                <label class="form-label">Loan Account Number</label>
+                <input id="processingLoanAccountNumberInput" class="form-control mb-2" type="text" placeholder="Enter loan account number">
                 <label class="form-label">Verified Loan Amount *</label>
                 <input id="verifiedLoanAmountInput" class="form-control mb-2" type="number" min="0" step="0.01" placeholder="Enter verified loan amount">
                 <label class="form-label">Final Loan Amount *</label>
@@ -1488,6 +1490,7 @@ document.getElementById('confirmBankProcessing').onclick = async () => {
     const bankerName = document.getElementById('bankerNameInput').value.trim();
     const bankerPhone = document.getElementById('bankerPhoneInput').value.trim();
     const bankerEmail = document.getElementById('bankerEmailInput').value.trim();
+    const loanAccountNumber = document.getElementById('processingLoanAccountNumberInput').value.trim();
     const processingBankName = document.getElementById('processingBankNameInput').value.trim();
     const verifiedLoanAmount = document.getElementById('verifiedLoanAmountInput').value.trim();
     const finalLoanAmount = document.getElementById('finalLoanAmountInput').value.trim();
@@ -1520,6 +1523,7 @@ document.getElementById('confirmBankProcessing').onclick = async () => {
             banker_name: bankerName,
             banker_phone: bankerPhone,
             banker_email: bankerEmail,
+            loan_account_number: loanAccountNumber,
             bank_name: processingBankName,
             verified_loan_amount: verifiedLoanAmount,
             final_loan_amount: finalLoanAmount,

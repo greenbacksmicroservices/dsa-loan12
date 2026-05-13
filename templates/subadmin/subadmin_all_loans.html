@@ -303,6 +303,10 @@
                 <input id="partner-banker-email" class="w-full px-3 py-2 border border-gray-300 rounded-lg" type="email" placeholder="Enter banker email">
             </div>
             <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Loan Account Number</label>
+                <input id="partner-loan-account-number" class="w-full px-3 py-2 border border-gray-300 rounded-lg" type="text" placeholder="Enter loan account number">
+            </div>
+            <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Verified Loan Amount *</label>
                 <input id="partner-verified-loan-amount" class="w-full px-3 py-2 border border-gray-300 rounded-lg" type="number" min="0" step="0.01" placeholder="120000">
             </div>
@@ -420,7 +424,7 @@ function openPartnerBankingAction(action, loanId, applicantName) {
     document.getElementById('partner-banking-name').textContent = applicantName ? `Loan: ${applicantName}` : '';
     document.getElementById('partner-banking-collect').classList.toggle('hidden', action !== 'collect');
     document.getElementById('partner-banking-reject').classList.toggle('hidden', action !== 'reject');
-    ['partner-bank-name', 'partner-banker-name', 'partner-banker-phone', 'partner-banker-email', 'partner-verified-loan-amount', 'partner-final-loan-amount', 'partner-dsa-name', 'partner-banker-description', 'partner-bank-remark', 'partner-reject-banker-name', 'partner-reject-banker-phone', 'partner-reject-banker-email', 'partner-reject-reason', 'partner-reject-description', 'partner-reject-remark']
+    ['partner-bank-name', 'partner-banker-name', 'partner-banker-phone', 'partner-banker-email', 'partner-loan-account-number', 'partner-verified-loan-amount', 'partner-final-loan-amount', 'partner-dsa-name', 'partner-banker-description', 'partner-bank-remark', 'partner-reject-banker-name', 'partner-reject-banker-phone', 'partner-reject-banker-email', 'partner-reject-reason', 'partner-reject-description', 'partner-reject-remark']
         .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
     const modal = document.getElementById('partner-banking-modal');
     modal.classList.remove('hidden');
@@ -446,6 +450,7 @@ function submitPartnerBankingAction() {
             banker_name: document.getElementById('partner-banker-name').value.trim(),
             banker_phone: document.getElementById('partner-banker-phone').value.trim(),
             banker_email: document.getElementById('partner-banker-email').value.trim(),
+            loan_account_number: document.getElementById('partner-loan-account-number').value.trim(),
             verified_loan_amount: document.getElementById('partner-verified-loan-amount').value.trim(),
             final_loan_amount: document.getElementById('partner-final-loan-amount').value.trim(),
             dsa_name: document.getElementById('partner-dsa-name').value.trim(),
