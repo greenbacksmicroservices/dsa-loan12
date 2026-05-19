@@ -589,17 +589,19 @@ def admin_all_employees(request):
     # Count data for each employee
     employee_loans_count = {}
     employee_approved_count = {}
+    employee_channel_partner_count = {}
     employee_creator_display = {}
     employee_location_display = {}
     pending_subadmin_lookup = {}
     subadmin_ids = set()
     
     for employee in employees:
-        employee_loans_count[employee.id] = Loan.objects.filter(assigned_employee=employee).count()
-        employee_approved_count[employee.id] = Loan.objects.filter(
-            assigned_employee=employee,
-            status='approved'
-        ).count()
+        loan_qs = Loan.objects.filter(
+            Q(created_by=employee) | Q(assigned_employee=employee)
+        ).distinct()
+        employee_loans_count[employee.id] = loan_qs.count()
+        employee_approved_count[employee.id] = loan_qs.filter(status='approved').count()
+        employee_channel_partner_count[employee.id] = AgentAssignment.objects.filter(employee=employee).values('agent_id').distinct().count()
 
         onboarding = {}
         if hasattr(employee, 'onboarding_profile') and employee.onboarding_profile:
@@ -682,6 +684,7 @@ def admin_all_employees(request):
         'employees': employees,
         'employee_loans_count': employee_loans_count,
         'employee_approved_count': employee_approved_count,
+        'employee_channel_partner_count': employee_channel_partner_count,
         'employee_creator_display': employee_creator_display,
         'employee_location_display': employee_location_display,
         'channel_partner_options': Agent.objects.filter(status='active').order_by('name'),
@@ -703,7 +706,16 @@ def admin_all_agents(request):
     ).order_by('-created_at')
 
     agent_location_display = {}
+    agent_total_applications = {}
+    agent_running_applications = {}
     for agent in agents:
+        combined_q = Q(assigned_agent=agent)
+        if getattr(agent, 'user_id', None):
+            combined_q |= Q(created_by_id=agent.user_id)
+        loans_qs = Loan.objects.filter(combined_q).distinct()
+        agent_total_applications[agent.id] = loans_qs.count()
+        agent_running_applications[agent.id] = loans_qs.exclude(status__in=['approved', 'rejected', 'disbursed']).count()
+
         city = str(getattr(agent, 'city', '') or '').strip()
         pin = str(getattr(agent, 'pin_code', '') or '').strip()
         district = ''
@@ -753,6 +765,8 @@ def admin_all_agents(request):
     context = {
         'agents': agents,
         'agent_location_display': agent_location_display,
+        'agent_total_applications': agent_total_applications,
+        'agent_running_applications': agent_running_applications,
     }
     
     return render(request, 'core/admin/agents_list.html', context)
@@ -5881,21 +5895,36 @@ def _build_full_application_details(loan_data, parsed_details):
         seen_labels.add(key)
         rows.append({'label': label, 'value': text})
 
+    add('Loan ID (Manual)', loan_data.get('loan_reference'))
     add('Applicant Name', loan_data.get('applicant_name'))
     add('Mobile Number', loan_data.get('mobile'))
+    add('Alternate Mobile', loan_data.get('alternate_mobile'))
     add('Email', loan_data.get('email'))
+    add('Father Name', loan_data.get('father_name'))
+    add('Mother Name', loan_data.get('mother_name'))
+    add('Date Of Birth', loan_data.get('date_of_birth'))
     add('Gender', loan_data.get('gender'))
+    add('Marital Status', loan_data.get('marital_status'))
     add('City', loan_data.get('city'))
     add('State', loan_data.get('state'))
     add('PIN Code', loan_data.get('pin_code'))
     add('Permanent Address', loan_data.get('permanent_address'))
+    add('Permanent Landmark', loan_data.get('permanent_landmark'))
+    add('Permanent City', loan_data.get('permanent_city'))
+    add('Permanent Pin', loan_data.get('permanent_pin'))
     add('Current Address', loan_data.get('current_address'))
+    add('Present Landmark', loan_data.get('present_landmark'))
+    add('Present City', loan_data.get('present_city'))
+    add('Present Pin', loan_data.get('present_pin'))
     add('Loan Type', loan_data.get('loan_type'))
     add('Loan Amount', loan_data.get('loan_amount'))
     add('Tenure (Months)', loan_data.get('tenure_months'))
-    add('Interest Rate', loan_data.get('interest_rate'))
-    add('EMI', loan_data.get('emi'))
+    add('Any Charges or Fee', loan_data.get('charges_applicable'))
     add('Loan Purpose', loan_data.get('loan_purpose'))
+    add('Channel Partner Name', loan_data.get('lead_receive_channel_partner_name'))
+    add('Leader Name', loan_data.get('lead_receive_leader_name'))
+    add('Lead Source', loan_data.get('lead_receive_source'))
+    add('Lead Description', loan_data.get('lead_receive_description'))
     add('Bank Name', loan_data.get('bank_name'))
     add('Banker Name', loan_data.get('banker_name'))
     add('Banker Phone', loan_data.get('banker_phone'))
@@ -6566,6 +6595,27 @@ def employee_assigned_loan_detail(request, loan_id):
                 'experience_years': legacy_details.get('experience (years)', ''),
                 'additional_income': _get_parsed_value(legacy_details, 'additional income', 'extra income'),
                 'extra_income_details': _get_parsed_value(legacy_details, 'extra income details'),
+                'lead_receive_channel_partner_name': _get_parsed_value(
+                    legacy_details,
+                    'lead receive channel partner name',
+                    'channel partner name'
+                ),
+                'lead_receive_leader_name': _get_parsed_value(
+                    legacy_details,
+                    'lead receive leader name',
+                    'leader name'
+                ),
+                'lead_receive_source': _get_parsed_value(
+                    legacy_details,
+                    'lead receive source',
+                    'lead source'
+                ),
+                'lead_receive_description': _get_parsed_value(
+                    legacy_details,
+                    'lead receive description',
+                    'lead description',
+                    'description'
+                ),
                 'cibil_score': legacy_details.get('cibil score', ''),
                 'aadhar_number': legacy_details.get('aadhar number', ''),
                 'pan_number': legacy_details.get('pan number', ''),
@@ -6795,6 +6845,27 @@ def employee_assigned_loan_detail(request, loan_id):
                 'experience_years': parsed_legacy.get('experience (years)', ''),
                 'additional_income': _get_parsed_value(parsed_legacy, 'additional income', 'extra income'),
                 'extra_income_details': _get_parsed_value(parsed_legacy, 'extra income details'),
+                'lead_receive_channel_partner_name': _get_parsed_value(
+                    parsed_legacy,
+                    'lead receive channel partner name',
+                    'channel partner name'
+                ),
+                'lead_receive_leader_name': _get_parsed_value(
+                    parsed_legacy,
+                    'lead receive leader name',
+                    'leader name'
+                ),
+                'lead_receive_source': _get_parsed_value(
+                    parsed_legacy,
+                    'lead receive source',
+                    'lead source'
+                ),
+                'lead_receive_description': _get_parsed_value(
+                    parsed_legacy,
+                    'lead receive description',
+                    'lead description',
+                    'description'
+                ),
                 'cibil_score': parsed_legacy.get('cibil score', ''),
                 'aadhar_number': parsed_legacy.get('aadhar number', ''),
                 'pan_number': parsed_legacy.get('pan number', ''),

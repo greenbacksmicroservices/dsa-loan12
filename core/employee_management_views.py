@@ -10,12 +10,14 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.db.models import Q, Count, Sum
 from django.core.paginator import Paginator
+from collections import defaultdict
 import json
 import re
 
 from .models import User, EmployeeProfile, LoanApplication, Loan, UserOnboardingProfile, UserOnboardingDocument, Agent, AgentAssignment
 from .onboarding_utils import collect_onboarding_payload, collect_onboarding_documents
 from .decorators import admin_required
+from .id_utils import generate_user_sequence_id
 from django.contrib.auth.models import Group
 
 
@@ -217,7 +219,7 @@ def api_get_employees(request):
             
             employee_data = {
                 'id': user.id,
-                'employee_id': user.employee_id or f'EMP{user.id:04d}',
+                'employee_id': user.employee_id or f'EDC-EMP-{user.id:04d}',
                 'name': user.get_full_name() or user.username,
                 'email': user.email,
                 'phone': user.phone or 'N/A',
@@ -363,6 +365,7 @@ def api_add_employee(request):
             first_name=first_name,
             last_name=last_name,
             phone=phone,
+            employee_id=generate_user_sequence_id('employee'),
             role='employee',
             gender=gender,
             address=normalized_address,
@@ -426,6 +429,7 @@ def api_add_employee(request):
             'message': 'Employee added successfully',
             'employee': {
                 'id': user.id,
+                'employee_id': user.employee_id or '',
                 'name': user.get_full_name() or user.username,
                 'email': user.email,
                 'phone': user.phone or '',
@@ -439,6 +443,9 @@ def api_add_employee(request):
                 'district': district or '-',
                 'created_under': created_under,
                 'assigned_channel_partner_ids': channel_partner_ids,
+                'channel_partner_count': len(channel_partner_ids),
+                'total_applications': 0,
+                'approved_applications': 0,
             }
         }, status=201)
         
@@ -560,6 +567,7 @@ def api_get_employee(request, employee_id):
             'draft': 'Draft',
             'disputed': 'Disputed',
         }
+        from .subadmin_views import _serialize_subadmin_loan_details
 
         def get_owner_display(loan_obj):
             owner = loan_obj.created_by
@@ -618,7 +626,9 @@ def api_get_employee(request, employee_id):
             return " | ".join(unique)[:500] if unique else '-'
 
         customers = []
+        channel_partner_loans_counter = defaultdict(int)
         for loan in loans_qs[:250]:
+            serialized = _serialize_subadmin_loan_details(loan) or {}
             owner_role, owner_name = get_owner_display(loan)
             source = 'Submitted' if loan.created_by_id == user.id else 'Assigned'
             assigned_to = '-'
@@ -626,6 +636,8 @@ def api_get_employee(request, employee_id):
                 assigned_to = f"Employee - {loan.assigned_employee.get_full_name() or loan.assigned_employee.username}"
             elif loan.assigned_agent:
                 assigned_to = f"Agent - {loan.assigned_agent.name}"
+            if loan.assigned_agent_id:
+                channel_partner_loans_counter[loan.assigned_agent_id] += 1
 
             customers.append({
                 'loan_id': loan.id,
@@ -636,14 +648,37 @@ def api_get_employee(request, employee_id):
                 'loan_type': loan.get_loan_type_display() if hasattr(loan, 'get_loan_type_display') else (loan.loan_type or '-'),
                 'loan_amount': float(loan.loan_amount or 0),
                 'status': loan.status,
-                'status_display': status_map.get(loan.status, loan.status),
+                'status_display': serialized.get('status_display') or status_map.get(loan.status, loan.status),
                 'source': source,
                 'assigned_to': assigned_to,
                 'under_whom': f"{owner_role} - {owner_name}",
                 'owner_role': owner_role,
                 'owner_name': owner_name,
-                'bank_remark': latest_bank_remark(loan),
-                'created_at': loan.created_at.strftime('%Y-%m-%d %H:%M') if loan.created_at else '',
+                'assigned_by': serialized.get('assigned_by') or '-',
+                'bank_remark': serialized.get('bank_remark') or latest_bank_remark(loan),
+                'created_at': serialized.get('created_at') or (loan.created_at.strftime('%Y-%m-%d %H:%M') if loan.created_at else ''),
+                'updated_at': serialized.get('updated_at') or (loan.updated_at.strftime('%Y-%m-%d %H:%M') if loan.updated_at else ''),
+                'assigned_at': loan.assigned_at.strftime('%Y-%m-%d %H:%M') if loan.assigned_at else '-',
+                'action_taken_at': loan.action_taken_at.strftime('%Y-%m-%d %H:%M') if loan.action_taken_at else '-',
+                'follow_up_triggered_at': loan.follow_up_triggered_at.strftime('%Y-%m-%d %H:%M') if loan.follow_up_triggered_at else '-',
+                'remarks': serialized.get('remarks') or (loan.remarks or '-'),
+                'remarks_lines': serialized.get('remarks_lines') or [],
+                'documents': serialized.get('documents') or [],
+                'status_timeline': serialized.get('status_timeline') or [],
+                'full_application_details': serialized.get('full_application_details') or [],
+                'loan_purpose': serialized.get('loan_purpose') or (loan.loan_purpose or '-'),
+                'tenure_months': serialized.get('tenure_months') or (loan.tenure_months or '-'),
+                'interest_rate': serialized.get('interest_rate') if serialized.get('interest_rate') is not None else (float(loan.interest_rate) if loan.interest_rate is not None else '-'),
+                'emi': serialized.get('emi') if serialized.get('emi') is not None else (float(loan.emi) if loan.emi is not None else '-'),
+                'bank_name': serialized.get('bank_name') or (loan.bank_name or '-'),
+                'bank_account_number': serialized.get('bank_account_number') or (loan.bank_account_number or '-'),
+                'bank_ifsc_code': serialized.get('bank_ifsc_code') or (loan.bank_ifsc_code or '-'),
+                'bank_type': serialized.get('bank_type') or (loan.bank_type or '-'),
+                'sm_name': serialized.get('sm_name') or (loan.sm_name or '-'),
+                'sm_phone_number': serialized.get('sm_phone_number') or (loan.sm_phone_number or '-'),
+                'sm_email': serialized.get('sm_email') or (loan.sm_email or '-'),
+                'assigned_employee_id': loan.assigned_employee_id,
+                'assigned_agent_id': loan.assigned_agent_id,
             })
 
         assigned_loans = loans_assigned_qs.count()
@@ -686,21 +721,29 @@ def api_get_employee(request, employee_id):
             .select_related('agent')
             .order_by('-assigned_at')
         )
-        assigned_channel_partners = [
-            {
+        assigned_channel_partners = []
+        seen_channel_partner_ids = set()
+        for link in assigned_partner_links:
+            if not link.agent_id or link.agent_id in seen_channel_partner_ids:
+                continue
+            seen_channel_partner_ids.add(link.agent_id)
+            agent = link.agent
+            assigned_channel_partners.append({
                 'id': link.agent_id,
-                'name': link.agent.name if link.agent else '-',
-            }
-            for link in assigned_partner_links
-            if link.agent_id
-        ]
+                'name': (agent.name if agent else '-') or '-',
+                'email': (agent.email if agent else '') or 'N/A',
+                'phone': (agent.phone if agent else '') or 'N/A',
+                'status': str((agent.status if agent else 'active') or 'active').title(),
+                'application_count': channel_partner_loans_counter.get(link.agent_id, 0),
+            })
         assigned_channel_partner_ids = [item['id'] for item in assigned_channel_partners]
+        summary['channel_partner_count'] = len(assigned_channel_partners)
 
         return JsonResponse({
             'success': True,
             'employee': {
                 'id': user.id,
-                'employee_id': user.employee_id or f'EMP{user.id:04d}',
+                'employee_id': user.employee_id or f'EDC-EMP-{user.id:04d}',
                 'first_name': user.first_name,
                 'last_name': user.last_name,
                 'email': user.email,

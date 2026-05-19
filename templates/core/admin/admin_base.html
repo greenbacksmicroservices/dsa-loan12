@@ -31,7 +31,7 @@
             position: fixed;
             left: 0;
             top: 0;
-            width: 250px;
+            width: 272px;
             height: 100vh;
             background: linear-gradient(180deg, #0f766e 0%, #115e59 100%);
             color: white;
@@ -42,6 +42,7 @@
             z-index: 1000;
             display: flex;
             flex-direction: column;
+            transition: transform 0.3s ease, width 0.3s ease;
         }
 
         .sidebar::after {
@@ -145,9 +146,55 @@
 
         /* ==================== MAIN CONTENT ==================== */
         .main-content {
-            margin-left: 250px;
+            margin-left: 272px;
             padding: 30px;
             min-height: 100vh;
+            transition: margin-left 0.3s ease;
+        }
+
+        body.sidebar-collapsed .sidebar {
+            width: 94px;
+        }
+
+        body.sidebar-collapsed .main-content {
+            margin-left: 94px;
+        }
+
+        body.sidebar-collapsed .sidebar-logo {
+            padding: 14px 10px;
+            margin-bottom: 12px;
+        }
+
+        body.sidebar-collapsed .sidebar-logo h2,
+        body.sidebar-collapsed .sidebar-logo p,
+        body.sidebar-collapsed .sidebar-badge,
+        body.sidebar-collapsed .sidebar-nav a span,
+        body.sidebar-collapsed .sidebar-footer {
+            display: none;
+        }
+
+        body.sidebar-collapsed .sidebar-nav a {
+            justify-content: center;
+            gap: 0;
+            padding: 12px;
+            margin: 4px 10px;
+            border-left-width: 0;
+            border-radius: 10px;
+        }
+
+        body.sidebar-collapsed .sidebar-nav a:hover {
+            padding-left: 12px;
+        }
+
+        body.sidebar-collapsed .sidebar-nav i {
+            width: auto;
+            font-size: 18px;
+        }
+
+        body.sidebar-collapsed .sidebar-profile {
+            width: 44px !important;
+            height: 44px !important;
+            font-size: 18px !important;
         }
 
         /* ==================== HEADER ==================== */
@@ -186,6 +233,32 @@
             display: flex;
             align-items: center;
             gap: 20px;
+        }
+
+        .sidebar-toggle-btn {
+            border: 1px solid #d1d5db;
+            border-radius: 12px;
+            background: #ffffff;
+            color: #0f172a;
+            width: 42px;
+            height: 42px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .sidebar-toggle-btn:hover {
+            background: #f8fafc;
+            border-color: #94a3b8;
+            transform: translateY(-1px);
+        }
+
+        .sidebar-toggle-btn.is-active {
+            border-color: #64748b;
+            background: #e2e8f0;
         }
 
         .theme-toggle-btn {
@@ -394,6 +467,22 @@
             background: #0b1220;
             color: #e5e7eb;
             border-color: #334155;
+        }
+
+        body.dark-mode .sidebar-toggle-btn {
+            background: #0b1220;
+            color: #e5e7eb;
+            border-color: #334155;
+        }
+
+        body.dark-mode .sidebar-toggle-btn:hover {
+            background: #111827;
+            border-color: #475569;
+        }
+
+        body.dark-mode .sidebar-toggle-btn.is-active {
+            border-color: #64748b;
+            background: #1e293b;
         }
 
         body.dark-mode .notification-btn:hover {
@@ -884,13 +973,13 @@
         /* ==================== RESPONSIVE ==================== */
         @media (max-width: 768px) {
             .sidebar {
-                width: 0;
+                width: 272px;
                 position: absolute;
-                transition: width 0.3s ease;
+                transform: translateX(-100%);
             }
 
             .sidebar.show {
-                width: 280px;
+                transform: translateX(0);
             }
 
             .main-content {
@@ -983,7 +1072,7 @@
     <aside class="sidebar">
         <div class="sidebar-logo">
             <h2>DREAM CAPITAL</h2>
-            <div style="width: 70px; height: 70px; margin: 10px auto; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-size: 28px; box-shadow: 0 4px 8px rgba(0,0,0,0.3); overflow: hidden;">
+            <div class="sidebar-profile" style="width: 70px; height: 70px; margin: 10px auto; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-size: 28px; box-shadow: 0 4px 8px rgba(0,0,0,0.3); overflow: hidden;">
                 {% if user.profile_photo %}
                     <img src="{{ user.profile_photo.url }}" alt="{{ user.get_full_name }}" style="width: 100%; height: 100%; object-fit: cover;">
                 {% else %}
@@ -1020,6 +1109,12 @@
                 </a>
             </li>
             <li>
+                <a href="{% url 'admin_subadmin_management' %}" class="{% if request.resolver_match.url_name == 'admin_subadmin_management' %}active{% endif %}">
+                    <i class="fas fa-crown"></i>
+                    <span>Partners</span>
+                </a>
+            </li>
+            <li>
                 <a href="{% url 'admin_all_employees' %}" class="{% if request.resolver_match.url_name == 'admin_all_employees' %}active{% endif %}">
                     <i class="fas fa-user-tie"></i>
                     <span>All Employees</span>
@@ -1029,12 +1124,6 @@
                 <a href="{% url 'admin_all_agents' %}" class="{% if request.resolver_match.url_name == 'admin_all_agents' %}active{% endif %}">
                     <i class="fas fa-person-hiking"></i>
                     <span>All Channel Partners</span>
-                </a>
-            </li>
-            <li>
-                <a href="{% url 'admin_subadmin_management' %}" class="{% if request.resolver_match.url_name == 'admin_subadmin_management' %}active{% endif %}">
-                    <i class="fas fa-crown"></i>
-                    <span>Partners</span>
                 </a>
             </li>
             <li>
@@ -1057,7 +1146,7 @@
             </li>
         </ul>
 
-        <div style="padding: 16px 20px; border-top: 2px solid rgba(255,255,255,0.1); margin-top: 30px; font-size: 11px; letter-spacing: 0.4px; color: rgba(255,255,255,0.82); text-align: center;">
+        <div class="sidebar-footer" style="padding: 16px 20px; border-top: 2px solid rgba(255,255,255,0.1); margin-top: 30px; font-size: 11px; letter-spacing: 0.4px; color: rgba(255,255,255,0.82); text-align: center;">
            <a href="https://serviceexhibition.com/" target="_blank" rel="noopener noreferrer" style="color: rgba(255,255,255,0.92); text-decoration: none;">&copy; GREENBACKS LEXVERSE PRIVATE LIMITED</a>
         </div>
     </aside>
@@ -1073,6 +1162,9 @@
             </div>
 
             <div class="header-right">
+                <button class="sidebar-toggle-btn" type="button" id="sidebar-toggle-btn" onclick="toggleAdminSidebar()" aria-label="Collapse Sidebar">
+                    <i class="fas fa-bars" id="sidebar-toggle-icon"></i>
+                </button>
                 <button class="theme-toggle-btn" type="button" id="theme-toggle-btn" onclick="toggleThemeMode()">
                     <i class="fas fa-moon"></i>
                     <span id="theme-toggle-label">Dark</span>
@@ -1161,6 +1253,44 @@
                 const next = document.body.classList.contains('dark-mode') ? 'light' : 'dark';
                 localStorage.setItem('panelThemeMode', next);
                 applyThemeMode(next);
+            };
+
+            function isMobileViewport() {
+                return window.matchMedia('(max-width: 768px)').matches;
+            }
+
+            function syncSidebarToggleIcon() {
+                const icon = document.getElementById('sidebar-toggle-icon');
+                const button = document.getElementById('sidebar-toggle-btn');
+                if (!icon) return;
+                icon.className = 'fas fa-bars';
+                if (isMobileViewport()) {
+                    const sidebar = document.querySelector('.sidebar');
+                    const isOpen = sidebar && sidebar.classList.contains('show');
+                    if (button) button.classList.toggle('is-active', !!isOpen);
+                    return;
+                }
+                const collapsed = document.body.classList.contains('sidebar-collapsed');
+                if (button) button.classList.toggle('is-active', !!collapsed);
+            }
+
+            function applyDesktopSidebarState(collapsed) {
+                document.body.classList.toggle('sidebar-collapsed', !!collapsed);
+                syncSidebarToggleIcon();
+            }
+
+            window.toggleAdminSidebar = function () {
+                const sidebar = document.querySelector('.sidebar');
+                if (isMobileViewport()) {
+                    if (sidebar) {
+                        sidebar.classList.toggle('show');
+                    }
+                    syncSidebarToggleIcon();
+                    return;
+                }
+                const nextCollapsed = !document.body.classList.contains('sidebar-collapsed');
+                applyDesktopSidebarState(nextCollapsed);
+                localStorage.setItem('adminSidebarCollapsed', nextCollapsed ? '1' : '0');
             };
 
             function getPanelRoleKey() {
@@ -1301,6 +1431,26 @@
             document.addEventListener('DOMContentLoaded', function () {
                 const savedTheme = localStorage.getItem('panelThemeMode') || 'light';
                 applyThemeMode(savedTheme);
+                const collapsedSaved = localStorage.getItem('adminSidebarCollapsed') === '1';
+                if (!isMobileViewport()) {
+                    applyDesktopSidebarState(collapsedSaved);
+                } else {
+                    applyDesktopSidebarState(false);
+                }
+                syncSidebarToggleIcon();
+
+                window.addEventListener('resize', function () {
+                    if (isMobileViewport()) {
+                        document.body.classList.remove('sidebar-collapsed');
+                        const sidebar = document.querySelector('.sidebar');
+                        if (sidebar) sidebar.classList.remove('show');
+                    } else {
+                        const collapsed = localStorage.getItem('adminSidebarCollapsed') === '1';
+                        applyDesktopSidebarState(collapsed);
+                    }
+                    syncSidebarToggleIcon();
+                });
+
                 bindPanelNotificationInteractions();
                 const clearBtn = document.getElementById('panelNotificationsClearBtn');
                 if (clearBtn) {

@@ -63,6 +63,9 @@ urlpatterns = [
     path('api/admin/join-requests/<int:application_id>/action/', admin_views.api_admin_join_request_action, name='api_admin_join_request_action'),
     path('admin/team-management/', admin_views.team_management, name='team_management'),
     path('admin/subadmin-management/', admin_views.admin_subadmin_management, name='admin_subadmin_management'),
+    path('admin/partner/<int:subadmin_id>/detail/', admin_views.admin_partner_detail, name='admin_partner_detail'),
+    path('admin/employee/<int:employee_id>/full-details/', admin_views.admin_employee_full_details, name='admin_employee_full_details'),
+    path('admin/channel-partner/<int:agent_id>/full-details/', admin_views.admin_channel_partner_full_details, name='admin_channel_partner_full_details'),
     path('api/admin/subadmin/<int:subadmin_id>/full-details/', admin_views.api_admin_subadmin_full_details, name='api_admin_subadmin_full_details'),
     path('admin/profile/', views.admin_profile, name='admin_profile'),
     

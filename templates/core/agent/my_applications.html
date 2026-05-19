@@ -318,6 +318,116 @@ function sanitizeAgentVisibleRemarks(rawText) {
     return cleaned || 'No remarks';
 }
 
+function normalizeDocumentMatchKey(value) {
+    return String(value || '')
+        .toLowerCase()
+        .replace(/\(optional\)/g, '')
+        .replace(/[^a-z0-9]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function getDocumentName(doc) {
+    return doc?.document_type_display || doc?.document_type || doc?.type || doc?.name || '';
+}
+
+function getDocumentUrl(doc) {
+    return doc?.file_url || doc?.download_url || doc?.file || doc?.url || '';
+}
+
+function extractServiceBasedDocumentNames(fullDetails, uploadedDocuments) {
+    const fromFullDetails = Array.isArray(fullDetails)
+        ? fullDetails
+            .filter((item) => /^document\s+\d+$/i.test(String(item?.label || '').trim()))
+            .sort((a, b) => {
+                const aIndex = Number((String(a?.label || '').match(/\d+/) || [0])[0]);
+                const bIndex = Number((String(b?.label || '').match(/\d+/) || [0])[0]);
+                return aIndex - bIndex;
+            })
+            .map((item) => String(item?.value || '').trim())
+            .filter(Boolean)
+        : [];
+
+    if (fromFullDetails.length) {
+        return fromFullDetails;
+    }
+
+    const fallback = Array.isArray(uploadedDocuments)
+        ? uploadedDocuments.map((doc) => String(getDocumentName(doc)).trim()).filter(Boolean)
+        : [];
+    return [...new Set(fallback)];
+}
+
+function findMatchingUploadedDocument(requiredName, uploadedDocuments) {
+    const target = normalizeDocumentMatchKey(requiredName);
+    if (!target) return null;
+
+    const docs = Array.isArray(uploadedDocuments) ? uploadedDocuments : [];
+    let bestMatch = null;
+    let bestScore = 0;
+
+    docs.forEach((doc) => {
+        const source = normalizeDocumentMatchKey(getDocumentName(doc));
+        if (!source) return;
+
+        if (source === target) {
+            bestMatch = doc;
+            bestScore = Number.POSITIVE_INFINITY;
+            return;
+        }
+        if (bestScore === Number.POSITIVE_INFINITY) {
+            return;
+        }
+        if (source.includes(target) || target.includes(source)) {
+            if (bestScore < 1000) {
+                bestMatch = doc;
+                bestScore = 1000;
+            }
+            return;
+        }
+
+        const targetTokens = target.split(' ').filter(Boolean);
+        const sourceTokens = source.split(' ').filter(Boolean);
+        if (!targetTokens.length || !sourceTokens.length) return;
+        const matchedTokens = targetTokens.filter((token) => sourceTokens.includes(token)).length;
+        const ratio = matchedTokens / targetTokens.length;
+        if (ratio >= 0.6 && matchedTokens > bestScore) {
+            bestMatch = doc;
+            bestScore = matchedTokens;
+        }
+    });
+
+    return bestMatch;
+}
+
+function buildServiceDocumentRows(fullDetails, uploadedDocuments) {
+    const requiredDocs = extractServiceBasedDocumentNames(fullDetails, uploadedDocuments);
+    if (!requiredDocs.length) {
+        return '<tr><td colspan="4" class="text-muted">No service-based document list saved.</td></tr>';
+    }
+
+    const docs = Array.isArray(uploadedDocuments) ? uploadedDocuments : [];
+    return requiredDocs.map((docName, index) => {
+        const matchedDoc = findMatchingUploadedDocument(docName, docs);
+        const fileUrl = matchedDoc ? getDocumentUrl(matchedDoc) : '';
+        const uploadedAt = matchedDoc?.uploaded_at || '-';
+        return `
+            <tr>
+                <td class="fw-semibold">Document ${index + 1}</td>
+                <td>${docName || '-'}</td>
+                <td>${uploadedAt}</td>
+                <td>
+                    ${fileUrl
+                        ? `<a class="btn btn-sm btn-outline-primary me-1" target="_blank" href="${fileUrl}">View</a>
+                           <a class="btn btn-sm btn-outline-success" download href="${fileUrl}">Download</a>`
+                        : '<span class="text-warning-emphasis fw-semibold small">View/Download upload ke baad available hoga</span>'
+                    }
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
 function viewLoanDetails(loanId, loanName) {
     const modal = new bootstrap.Modal(document.getElementById('loanDetailsModal'));
     const body = document.getElementById('loan-details-body');
@@ -344,9 +454,11 @@ function viewLoanDetails(loanId, loanName) {
         }[String(loan.status_key || '').toLowerCase()] || 'secondary';
 
         const details = Array.isArray(loan.full_application_details) ? loan.full_application_details : [];
+        const documents = Array.isArray(loan.documents) ? loan.documents : [];
         const detailsHtml = details.length
             ? details.map((item) => `<tr><td class="fw-semibold">${item.label || '-'}</td><td>${item.value || '-'}</td></tr>`).join('')
             : '<tr><td colspan="2" class="text-muted">No additional form details found.</td></tr>';
+        const serviceDocsRows = buildServiceDocumentRows(details, documents);
 
         body.innerHTML = `
             <div class="row">
@@ -408,6 +520,23 @@ function viewLoanDetails(loanId, loanName) {
                                 </tr>
                             </thead>
                             <tbody>${detailsHtml}</tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="col-12 mb-1">
+                    <label class="form-label small text-muted mb-1">Service Required Based Documents</label>
+                    <p class="small text-muted mb-2">Service aur Occupation ke hisaab se suggested documents auto-open honge. Document upload optional hai.</p>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered align-middle">
+                            <thead>
+                                <tr>
+                                    <th style="width: 15%;">Document</th>
+                                    <th style="width: 40%;">Document Name</th>
+                                    <th style="width: 20%;">Uploaded</th>
+                                    <th style="width: 25%;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>${serviceDocsRows}</tbody>
                         </table>
                     </div>
                 </div>
@@ -549,4 +678,3 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 {% endblock %}
-

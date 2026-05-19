@@ -3,13 +3,14 @@
 {% load custom_filters %}
 
 {% block title %}All Channel Partners - Admin Panel{% endblock %}
+{% block page_title %}All Channel Partners{% endblock %}
 
 {% block content %}
 <style>
     .agents-container {
         background: #f8f9fa;
         min-height: calc(100vh - 100px);
-        padding: 30px 0;
+        padding: 20px 0;
     }
     
     .agents-header {
@@ -36,7 +37,7 @@
     .search-bar {
         background: white;
         border-radius: 12px;
-        padding: 20px;
+        padding: 16px;
         box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         margin-bottom: 30px;
     }
@@ -53,14 +54,14 @@
         background: white;
         border-radius: 12px;
         box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        padding: 25px;
+        padding: 18px;
         overflow-x: auto;
     }
     
     .agents-table {
         width: 100%;
         border-collapse: collapse;
-        font-size: 14px;
+        font-size: 13px;
         border: 1px solid #e5e7eb;
     }
     
@@ -70,7 +71,7 @@
     }
     
     .agents-table th {
-        padding: 16px 12px;
+        padding: 12px 10px;
         text-align: left;
         font-weight: 600;
         font-size: 12px;
@@ -80,7 +81,7 @@
     }
     
     .agents-table td {
-        padding: 14px 12px;
+        padding: 10px 10px;
         border: 1px solid #e5e7eb;
         vertical-align: middle;
     }
@@ -397,6 +398,120 @@
         border: 1px solid #e5e7eb;
     }
 
+    .table-controls {
+        display: flex;
+        justify-content: flex-start;
+        align-items: center;
+        margin-bottom: 12px;
+    }
+
+    .entries-control {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        color: #374151;
+        font-weight: 600;
+    }
+
+    .entries-control select {
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        padding: 4px 8px;
+        font-size: 13px;
+        background: #fff;
+    }
+
+    .table-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-top: 14px;
+        flex-wrap: wrap;
+    }
+
+    .table-info {
+        font-size: 13px;
+        color: #4b5563;
+    }
+
+    .table-pagination {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+
+    .page-btn {
+        border: 1px solid #d1d5db;
+        background: #fff;
+        color: #1f2937;
+        border-radius: 6px;
+        padding: 5px 10px;
+        font-size: 12px;
+        cursor: pointer;
+        min-width: 34px;
+    }
+
+    .page-btn:hover {
+        background: #f3f4f6;
+    }
+
+    .page-btn.active {
+        background: #d97706;
+        border-color: #d97706;
+        color: #fff;
+    }
+
+    .page-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .page-dots {
+        font-size: 12px;
+        color: #6b7280;
+        padding: 0 4px;
+    }
+
+    .agent-inline-panel {
+        display: none;
+        margin-top: 16px;
+        border: 1px solid #dbe3ee;
+        border-radius: 12px;
+        background: #ffffff;
+        box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
+    }
+
+    .agent-inline-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        padding: 14px 16px;
+        border-bottom: 1px solid #e5e7eb;
+        background: #f8fafc;
+        border-radius: 12px 12px 0 0;
+    }
+
+    .agent-inline-title {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 700;
+        color: #111827;
+    }
+
+    .agent-inline-subtitle {
+        margin: 3px 0 0 0;
+        font-size: 12px;
+        color: #64748b;
+    }
+
+    .agent-inline-body {
+        padding: 14px;
+    }
+
     @media (max-width: 640px) {
         .form-grid {
             grid-template-columns: 1fr;
@@ -409,8 +524,8 @@
         <!-- Header -->
         <div class="agents-header">
             <div>
-                <h1 class="agents-title">All Agents</h1>
-                <span class="agents-count">Total: {{ agents|length }} Agents</span>
+                <h1 class="agents-title">All Channel Partners</h1>
+                <span class="agents-count">Total: {{ agents|length }} Channel Partners</span>
             </div>
             <button type="button" class="btn btn-primary" onclick="openAddAgentModal()" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 600; border: none;">
                 <i class="fas fa-plus"></i> Add Channel Partner
@@ -430,23 +545,46 @@
         <!-- Agents Table -->
         <div class="agents-table-container">
             {% if agents %}
-            <table class="agents-table">
+            <div class="table-controls">
+                <label class="entries-control">
+                    Show
+                    <select id="agentsPageSize" onchange="changeAgentsPageSize()">
+                        <option value="10" selected>10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                    Entries
+                </label>
+            </div>
+            <table class="agents-table" id="agentsTable">
                 <thead>
                     <tr>
-                        <th style="width: 8%;">Photo</th>
-                        <th style="width: 16%;">Channel Partner Name</th>
-                        <th style="width: 18%;">Email</th>
-                        <th style="width: 12%;">Phone</th>
-                        <th style="width: 12%;">Location</th>
-                        <th style="width: 10%;">Status</th>
-                        <th style="width: 10%;">Total Loans</th>
+                        <th style="width: 11%;">Partner ID</th>
+                        <th style="width: 7%;">Photo</th>
+                        <th style="width: 14%;">Channel Partner Name</th>
+                        <th style="width: 15%;">Email</th>
+                        <th style="width: 10%;">Phone</th>
+                        <th style="width: 11%;">Location</th>
                         <th style="width: 10%;">Created By</th>
-                        <th style="width: 12%;">Action</th>
+                        <th style="width: 7%;">Loan Apps</th>
+                        <th style="width: 7%;">Running</th>
+                        <th style="width: 8%;">Status</th>
+                        <th style="width: 10%;">Action</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="agentsTableBody">
                     {% for agent in agents %}
-                    <tr data-agent-id="{{ agent.id }}" data-search="{{ agent.name|lower }},{{ agent.email|lower }},{{ agent.phone|lower }}">
+                    <tr data-agent-id="{{ agent.id }}" data-search="{{ agent.agent_id|default:''|lower }},{{ agent.name|lower }},{{ agent.email|lower }},{{ agent.phone|lower }}">
+                        <td>
+                            <strong>
+                                {% if agent.agent_id %}
+                                    {{ agent.agent_id }}
+                                {% else %}
+                                    EDC-CP-{{ agent.id|stringformat:"04d" }}
+                                {% endif %}
+                            </strong>
+                        </td>
                         <td>
                             <div class="agent-photo">
                                 {% if agent.profile_photo %}
@@ -465,19 +603,22 @@
                         <td><span style="color: #1f2937;">{{ agent.phone|default:"-" }}</span></td>
                         <td><span style="color: #1f2937;">{{ agent_location_display|get_item:agent.id|default:"-" }}</span></td>
                         <td>
-                            <span class="agent-status-badge {% if agent.status == 'active' %}status-active{% else %}status-blocked{% endif %}">
-                                {% if agent.status == 'active' %}&#10003; Active{% else %}&#10007; Blocked{% endif %}
-                            </span>
-                        </td>
-                        <td>
-                            <span class="count-badge">{{ agent.total_leads|default:"0" }}</span>
-                        </td>
-                        <td>
                             {% if agent.created_by %}
                                 <span class="date-text">{{ agent.created_by.get_full_name|default:agent.created_by.username }}</span>
                             {% else %}
                                 <span class="date-text">Admin</span>
                             {% endif %}
+                        </td>
+                        <td>
+                            <span class="count-badge">{{ agent_total_applications|get_item:agent.id|default:agent.total_leads|default:"0" }}</span>
+                        </td>
+                        <td>
+                            <span class="count-badge" style="background:#ffedd5; color:#9a3412;">{{ agent_running_applications|get_item:agent.id|default:"0" }}</span>
+                        </td>
+                        <td>
+                            <span class="agent-status-badge {% if agent.status == 'active' %}status-active{% else %}status-blocked{% endif %}">
+                                {% if agent.status == 'active' %}&#10003; Active{% else %}&#10007; Blocked{% endif %}
+                            </span>
                         </td>
                         <td>
                             <div class="action-buttons">
@@ -496,6 +637,24 @@
                     {% endfor %}
                 </tbody>
             </table>
+            <div class="table-footer">
+                <div class="table-info" id="agentsTableInfo">Showing 0 to 0 of 0 Entries</div>
+                <div class="table-pagination" id="agentsTablePagination"></div>
+            </div>
+            <div id="agentInlineDetails" class="agent-inline-panel">
+                <div class="agent-inline-header">
+                    <div>
+                        <h3 id="agentInlineTitle" class="agent-inline-title">Channel Partner Full Details</h3>
+                        <p id="agentInlineSubtitle" class="agent-inline-subtitle">Select a channel partner and click View.</p>
+                    </div>
+                    <button type="button" class="btn-action btn-view" onclick="closeViewModal()">
+                        <i class="fas fa-times"></i> Close
+                    </button>
+                </div>
+                <div id="agentInlineBody" class="agent-inline-body">
+                    <p style="margin:0; color:#64748b;">Loading details...</p>
+                </div>
+            </div>
             {% else %}
             <div class="no-agents">
                 <i class="fas fa-inbox"></i>
@@ -623,18 +782,112 @@
 </div>
 
 <script>
-function filterTable() {
-    const input = document.getElementById('searchInput').value.toLowerCase();
-    const rows = document.querySelectorAll('.agents-table tbody tr');
-    
-    rows.forEach(row => {
-        const searchText = row.getAttribute('data-search') || '';
-        if (searchText.includes(input)) {
-            row.style.display = '';
+const agentsTableState = {
+    allRows: [],
+    filteredRows: [],
+    currentPage: 1,
+    pageSize: 10,
+};
+
+function initializeAgentsTableExperience() {
+    const tbody = document.getElementById('agentsTableBody');
+    if (!tbody) return;
+    agentsTableState.allRows = Array.from(tbody.querySelectorAll('tr'));
+    agentsTableState.currentPage = 1;
+    applyAgentsFilters();
+}
+
+function applyAgentsFilters() {
+    const searchValue = (document.getElementById('searchInput')?.value || '').toLowerCase().trim();
+    agentsTableState.filteredRows = agentsTableState.allRows.filter((row) => {
+        const searchText = (row.getAttribute('data-search') || '').toLowerCase();
+        return searchText.includes(searchValue);
+    });
+    renderAgentsTablePage();
+}
+
+function renderAgentsTablePage() {
+    const total = agentsTableState.filteredRows.length;
+    const pageSize = agentsTableState.pageSize;
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    if (agentsTableState.currentPage > totalPages) {
+        agentsTableState.currentPage = totalPages;
+    }
+
+    const startIndex = (agentsTableState.currentPage - 1) * pageSize;
+    const endIndex = Math.min(startIndex + pageSize, total);
+
+    agentsTableState.allRows.forEach((row) => {
+        row.style.display = 'none';
+    });
+    agentsTableState.filteredRows.slice(startIndex, endIndex).forEach((row) => {
+        row.style.display = '';
+    });
+
+    const info = document.getElementById('agentsTableInfo');
+    if (info) {
+        if (!total) {
+            info.textContent = 'Showing 0 to 0 of 0 Entries';
         } else {
-            row.style.display = 'none';
+            info.textContent = `Showing ${startIndex + 1} to ${endIndex} of ${total} Entries`;
+        }
+    }
+    renderAgentsPagination(totalPages);
+}
+
+function getAgentsPaginationItems(totalPages, currentPage) {
+    const items = [];
+    if (totalPages <= 7) {
+        for (let i = 1; i <= totalPages; i += 1) items.push(i);
+        return items;
+    }
+    items.push(1);
+    if (currentPage > 3) items.push('...');
+    const start = Math.max(2, currentPage - 1);
+    const end = Math.min(totalPages - 1, currentPage + 1);
+    for (let i = start; i <= end; i += 1) items.push(i);
+    if (currentPage < totalPages - 2) items.push('...');
+    items.push(totalPages);
+    return items;
+}
+
+function renderAgentsPagination(totalPages) {
+    const wrapper = document.getElementById('agentsTablePagination');
+    if (!wrapper) return;
+    const currentPage = agentsTableState.currentPage;
+    const parts = [];
+    parts.push(`<button class="page-btn" ${currentPage <= 1 ? 'disabled' : ''} onclick="goToAgentsPage(${currentPage - 1})">Previous</button>`);
+
+    getAgentsPaginationItems(totalPages, currentPage).forEach((item) => {
+        if (item === '...') {
+            parts.push('<span class="page-dots">...</span>');
+        } else {
+            parts.push(`<button class="page-btn ${item === currentPage ? 'active' : ''}" onclick="goToAgentsPage(${item})">${item}</button>`);
         }
     });
+
+    parts.push(`<button class="page-btn" ${currentPage >= totalPages ? 'disabled' : ''} onclick="goToAgentsPage(${currentPage + 1})">Next</button>`);
+    wrapper.innerHTML = parts.join('');
+}
+
+function goToAgentsPage(page) {
+    const totalPages = Math.max(1, Math.ceil(agentsTableState.filteredRows.length / agentsTableState.pageSize));
+    if (page < 1 || page > totalPages) return;
+    agentsTableState.currentPage = page;
+    renderAgentsTablePage();
+}
+
+function changeAgentsPageSize() {
+    const select = document.getElementById('agentsPageSize');
+    const nextSize = Number(select?.value || 10);
+    agentsTableState.pageSize = Number.isFinite(nextSize) && nextSize > 0 ? nextSize : 10;
+    agentsTableState.currentPage = 1;
+    renderAgentsTablePage();
+}
+
+function filterTable() {
+    agentsTableState.currentPage = 1;
+    applyAgentsFilters();
 }
 
 function openAddAgentModal() {
@@ -686,22 +939,40 @@ function ensureAgentsTable() {
     if (empty) empty.remove();
 
     container.innerHTML = `
-        <table class="agents-table">
+        <div class="table-controls">
+            <label class="entries-control">
+                Show
+                <select id="agentsPageSize" onchange="changeAgentsPageSize()">
+                    <option value="10" selected>10</option>
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                </select>
+                Entries
+            </label>
+        </div>
+        <table class="agents-table" id="agentsTable">
             <thead>
                 <tr>
-                    <th style="width: 8%;">Photo</th>
-                    <th style="width: 16%;">Channel Partner Name</th>
-                    <th style="width: 18%;">Email</th>
-                    <th style="width: 12%;">Phone</th>
-                    <th style="width: 12%;">Location</th>
-                    <th style="width: 10%;">Status</th>
-                    <th style="width: 10%;">Total Loans</th>
+                    <th style="width: 11%;">Partner ID</th>
+                    <th style="width: 7%;">Photo</th>
+                    <th style="width: 14%;">Channel Partner Name</th>
+                    <th style="width: 15%;">Email</th>
+                    <th style="width: 10%;">Phone</th>
+                    <th style="width: 11%;">Location</th>
                     <th style="width: 10%;">Created By</th>
-                    <th style="width: 12%;">Action</th>
+                    <th style="width: 7%;">Loan Apps</th>
+                    <th style="width: 7%;">Running</th>
+                    <th style="width: 8%;">Status</th>
+                    <th style="width: 10%;">Action</th>
                 </tr>
             </thead>
-            <tbody></tbody>
+            <tbody id="agentsTableBody"></tbody>
         </table>
+        <div class="table-footer">
+            <div class="table-info" id="agentsTableInfo">Showing 0 to 0 of 0 Entries</div>
+            <div class="table-pagination" id="agentsTablePagination"></div>
+        </div>
     `;
     return container.querySelector('.agents-table');
 }
@@ -730,10 +1001,14 @@ function insertAgentRow(agent) {
     const status = agent.status === 'active' ? 'active' : 'blocked';
     const statusLabel = status === 'active' ? '\u2713 Active' : '\u2717 Blocked';
     const photoUrl = agent.photo_url || '';
+    const agentCode = escapeHtml(agent.agent_id || `EDC-CP-${String(agent.id).padStart(4, '0')}`);
     const initials = name ? name.charAt(0).toUpperCase() : '?';
+    const totalApplications = Number(agent.total_applications || agent.total_loans || 0);
+    const runningApplications = Number(agent.running_applications || 0);
 
     const rowHtml = `
-        <tr data-agent-id="${agent.id}" data-search="${rawName.toLowerCase()},${rawEmail.toLowerCase()},${rawPhone}">
+        <tr data-agent-id="${agent.id}" data-search="${agentCode.toLowerCase()},${rawName.toLowerCase()},${rawEmail.toLowerCase()},${rawPhone}">
+            <td><strong>${agentCode}</strong></td>
             <td>
                 <div class="agent-photo">
                     ${photoUrl ? `<img src="${photoUrl}" alt="${name}">` : initials}
@@ -747,13 +1022,14 @@ function insertAgentRow(agent) {
             <td><span style="color: #1f2937;">${email}</span></td>
             <td><span style="color: #1f2937;">${phone}</span></td>
             <td><span style="color: #1f2937;">${location}</span></td>
+            <td><span class="date-text">${createdBy}</span></td>
+            <td><span class="count-badge">${totalApplications}</span></td>
+            <td><span class="count-badge" style="background:#ffedd5; color:#9a3412;">${runningApplications}</span></td>
             <td>
                 <span class="agent-status-badge ${status === 'active' ? 'status-active' : 'status-blocked'}">
                     ${statusLabel}
                 </span>
             </td>
-            <td><span class="count-badge">${agent.total_loans || 0}</span></td>
-            <td><span class="date-text">${createdBy}</span></td>
             <td>
                 <div class="action-buttons">
                     <button onclick="viewAgent('${escapeJsString(agent.id)}', '${escapeJsString(agent.name)}', '${escapeJsString(agent.email)}', '${escapeJsString(agent.phone)}')" class="btn-action btn-view" title="View Channel Partner">
@@ -770,13 +1046,14 @@ function insertAgentRow(agent) {
         </tr>
     `;
     tbody.insertAdjacentHTML('afterbegin', rowHtml);
+    initializeAgentsTableExperience();
 
     const countEl = document.querySelector('.agents-count');
     if (countEl) {
         const match = countEl.textContent.match(/\d+/);
         if (match) {
             const next = parseInt(match[0], 10) + 1;
-            countEl.textContent = `Total: ${next} Agents`;
+            countEl.textContent = `Total: ${next} Channel Partners`;
         }
     }
 }
@@ -839,22 +1116,24 @@ function addAgentDocumentRow() {
 }
 
 function closeViewModal() {
-    const modal = document.getElementById('viewModal');
-    if (modal) modal.remove();
-    document.body.style.overflow = 'auto';
+    const panel = document.getElementById('agentInlineDetails');
+    const body = document.getElementById('agentInlineBody');
+    if (panel) panel.style.display = 'none';
+    if (body) body.innerHTML = '<p style="margin:0; color:#64748b;">Select a channel partner and click View.</p>';
 }
 
 function showAgentLoadingModal(title) {
-    const modalHtml = `
-        <div id="viewModal" style="position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 3000;">
-            <div style="background: white; border-radius: 12px; padding: 24px; max-width: 420px; width: 92%; box-shadow: 0 20px 25px rgba(0,0,0,0.2);">
-                <h3 style="margin: 0 0 10px 0; color: #1f2937; font-size: 18px; font-weight: 700;">${escapeHtml(title)}</h3>
-                <p style="margin: 0; color: #6b7280; font-size: 14px;">Loading full details...</p>
-            </div>
-        </div>
-    `;
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
-    document.body.style.overflow = 'hidden';
+    const panel = document.getElementById('agentInlineDetails');
+    const heading = document.getElementById('agentInlineTitle');
+    const subtitle = document.getElementById('agentInlineSubtitle');
+    const body = document.getElementById('agentInlineBody');
+    if (heading) heading.textContent = 'Channel Partner Full Details';
+    if (subtitle) subtitle.textContent = title || 'Loading channel partner';
+    if (body) body.innerHTML = '<p style="margin:0; color:#64748b;">Loading full details...</p>';
+    if (panel) {
+        panel.style.display = 'block';
+        panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
 }
 
 function renderOnboardingSection(title, rows) {
@@ -976,139 +1255,184 @@ function renderOnboardingHtml(onboarding, documents) {
     `;
 }
 
-function renderAgentViewModal(agent, summary, customers, onboarding, documents) {
-    const safeCustomers = Array.isArray(customers) ? customers : [];
-    const rowsHtml = safeCustomers.length ? safeCustomers.map((item, idx) => `
-        <tr>
-            <td style="padding: 10px; border-bottom: 1px solid #eef2f7;">${idx + 1}</td>
-            <td style="padding: 10px; border-bottom: 1px solid #eef2f7;">#${escapeHtml(item.loan_uid || item.loan_id || '-')}</td>
-            <td style="padding: 10px; border-bottom: 1px solid #eef2f7;">${escapeHtml(item.customer_name || '-')}</td>
-            <td style="padding: 10px; border-bottom: 1px solid #eef2f7;">${escapeHtml(item.mobile || '-')}</td>
-            <td style="padding: 10px; border-bottom: 1px solid #eef2f7;">₹${formatINR(item.loan_amount)}</td>
-            <td style="padding: 10px; border-bottom: 1px solid #eef2f7;">${escapeHtml(item.status_display || item.status || '-')}</td>
-            <td style="padding: 10px; border-bottom: 1px solid #eef2f7;">${escapeHtml(item.source || '-')}</td>
-            <td style="padding: 10px; border-bottom: 1px solid #eef2f7;">${escapeHtml(item.under_whom || '-')}</td>
-            <td style="padding: 10px; border-bottom: 1px solid #eef2f7; max-width: 260px;">${escapeHtml(item.bank_remark || '-')}</td>
-        </tr>
-    `).join('') : `
-        <tr>
-            <td colspan="9" style="padding: 20px; text-align: center; color: #6b7280;">No customer/application data found.</td>
-        </tr>
-    `;
+function normalizeAgentStatusKey(rawStatus) {
+    const value = String(rawStatus || '').trim().toLowerCase();
+    if (value === 'required follow-up' || value === 'banking processing') return 'follow_up';
+    return value;
+}
 
-    const modalHtml = `
-        <div id="viewModal" style="position: fixed; inset: 0; background: rgba(0,0,0,0.55); display: flex; align-items: center; justify-content: center; z-index: 3000; padding: 20px;">
-            <div style="background: white; border-radius: 14px; width: min(1200px, 96vw); max-height: 92vh; overflow: auto; box-shadow: 0 25px 40px rgba(0,0,0,0.25);">
-                <div style="display:flex; justify-content:space-between; align-items:center; padding:18px 22px; border-bottom:1px solid #e5e7eb; position: sticky; top: 0; background: white;">
-                    <div>
-                        <h2 style="margin:0; font-size:20px; color:#111827;">Channel Partner Full Details</h2>
-                        <p style="margin:4px 0 0 0; color:#6b7280; font-size:13px;">${escapeHtml(agent.name || '-')} | ${escapeHtml(agent.email || '-')}</p>
-                    </div>
-                    <button onclick="closeViewModal()" style="background:none; border:none; font-size:28px; color:#6b7280; cursor:pointer;">&times;</button>
-                </div>
-
-                <div style="padding:20px 22px;">
-                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:10px; margin-bottom:16px;">
-                        <div style="background:#fff7ed; border:1px solid #fed7aa; border-radius:8px; padding:10px;">
-                            <div style="font-size:12px; color:#c2410c;">Application Forms</div>
-                            <div style="font-size:20px; font-weight:700; color:#9a3412;">${summary.total_submitted_applications || 0}</div>
-                        </div>
-                        <div style="background:#ecfeff; border:1px solid #a5f3fc; border-radius:8px; padding:10px;">
-                            <div style="font-size:12px; color:#0e7490;">Total Linked Applications</div>
-                            <div style="font-size:20px; font-weight:700; color:#155e75;">${summary.total_applications || 0}</div>
-                        </div>
-                        <div style="background:#ecfdf5; border:1px solid #bbf7d0; border-radius:8px; padding:10px;">
-                            <div style="font-size:12px; color:#047857;">Approved</div>
-                            <div style="font-size:20px; font-weight:700; color:#065f46;">${summary.approved || 0}</div>
-                        </div>
-                        <div style="background:#fef2f2; border:1px solid #fecaca; border-radius:8px; padding:10px;">
-                            <div style="font-size:12px; color:#b91c1c;">Rejected</div>
-                            <div style="font-size:20px; font-weight:700; color:#991b1b;">${summary.rejected || 0}</div>
-                        </div>
-                        <div style="background:#fff7ed; border:1px solid #fed7aa; border-radius:8px; padding:10px;">
-                            <div style="font-size:12px; color:#c2410c;">Banking Processing</div>
-                            <div style="font-size:20px; font-weight:700; color:#9a3412;">${summary.banking_processing || 0}</div>
-                        </div>
-                        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px;">
-                            <div style="font-size:12px; color:#334155;">Total Customers</div>
-                            <div style="font-size:20px; font-weight:700; color:#0f172a;">${summary.total_customers || 0}</div>
-                        </div>
-                    </div>
-
-                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:10px; margin-bottom:18px;">
-                        <div><strong>Phone:</strong> ${escapeHtml(agent.phone || '-')}</div>
-                        <div><strong>Status:</strong> ${escapeHtml(agent.status || '-')}</div>
-                        <div><strong>Assigned Apps:</strong> ${summary.total_assigned_applications || 0}</div>
-                        <div><strong>Address:</strong> ${escapeHtml(agent.address || '-')}</div>
-                    </div>
-
-                    ${renderOnboardingHtml(onboarding, documents)}
-
-                    <div style="border:1px solid #e5e7eb; border-radius:10px; overflow:auto;">
-                        <table style="width:100%; border-collapse:collapse; font-size:12px; min-width:980px;">
-                            <thead style="background:#f8fafc; color:#334155;">
-                                <tr>
-                                    <th style="padding:10px; text-align:left;">#</th>
-                                    <th style="padding:10px; text-align:left;">Loan ID</th>
-                                    <th style="padding:10px; text-align:left;">Customer</th>
-                                    <th style="padding:10px; text-align:left;">Mobile</th>
-                                    <th style="padding:10px; text-align:left;">Amount</th>
-                                    <th style="padding:10px; text-align:left;">Status</th>
-                                    <th style="padding:10px; text-align:left;">Type</th>
-                                    <th style="padding:10px; text-align:left;">Under Whom</th>
-                                    <th style="padding:10px; text-align:left;">Bank Remark</th>
-                                </tr>
-                            </thead>
-                            <tbody>${rowsHtml}</tbody>
-                        </table>
-                    </div>
-                </div>
+function renderAgentLoanDetailCard(item) {
+    if (!item) {
+        return '<div style="padding:14px; color:#64748b;">Select an application and click View for full details.</div>';
+    }
+    const detailRows = Array.isArray(item.full_application_details) ? item.full_application_details : [];
+    const timeline = Array.isArray(item.status_timeline) ? item.status_timeline : [];
+    const detailHtml = detailRows.length
+        ? detailRows.map((row) => `
+            <div style="display:flex; justify-content:space-between; gap:12px; padding:6px 0; border-bottom:1px dashed #e5e7eb;">
+                <div style="color:#64748b; font-size:12px;">${escapeHtml(row.label || '-')}</div>
+                <div style="color:#0f172a; font-size:12px; font-weight:600; text-align:right;">${escapeHtml(row.value || '-')}</div>
+            </div>
+        `).join('')
+        : '<div style="color:#64748b; font-size:12px;">No additional form details available.</div>';
+    const timelineHtml = timeline.length
+        ? timeline.slice(0, 6).map((row) => `
+            <div style="padding:8px; border:1px solid #e5e7eb; border-radius:8px; margin-bottom:8px; background:#fff;">
+                <div style="font-size:12px; font-weight:700; color:#0f172a;">${escapeHtml(row.to_status || '-')}</div>
+                <div style="font-size:11px; color:#475569;">${escapeHtml(row.changed_at || '-')} | ${escapeHtml(row.changed_by || 'System')}</div>
+                <div style="font-size:11px; color:#64748b; margin-top:4px;">${escapeHtml(row.reason || '-')}</div>
+            </div>
+        `).join('')
+        : '<div style="font-size:12px; color:#64748b;">No status timeline available.</div>';
+    return `
+        <div style="padding:14px;">
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:10px; margin-bottom:12px;">
+                <div><strong>Loan ID:</strong> ${escapeHtml(item.loan_uid || item.loan_id || '-')}</div>
+                <div><strong>Status:</strong> ${escapeHtml(item.status_display || item.status || '-')}</div>
+                <div><strong>Created:</strong> ${escapeHtml(item.created_at || '-')}</div>
+                <div><strong>Updated:</strong> ${escapeHtml(item.updated_at || '-')}</div>
+                <div><strong>Action Time:</strong> ${escapeHtml(item.action_taken_at || '-')}</div>
+                <div><strong>Assigned:</strong> ${escapeHtml(item.assigned_at || '-')}</div>
+                <div><strong>Bank:</strong> ${escapeHtml(item.bank_name || '-')}</div>
+                <div><strong>IFSC:</strong> ${escapeHtml(item.bank_ifsc_code || '-')}</div>
+                <div><strong>A/C:</strong> ${escapeHtml(item.bank_account_number || '-')}</div>
+                <div><strong>SM Name:</strong> ${escapeHtml(item.sm_name || '-')}</div>
+            </div>
+            <details open style="border:1px solid #e5e7eb; border-radius:10px; padding:10px; background:#f8fafc; margin-bottom:10px;">
+                <summary style="font-size:12px; font-weight:700; color:#0f172a; cursor:pointer;">Loan Application Form Details</summary>
+                <div style="margin-top:8px;">${detailHtml}</div>
+            </details>
+            <details style="border:1px solid #e5e7eb; border-radius:10px; padding:10px; background:#f8fafc; margin-bottom:10px;">
+                <summary style="font-size:12px; font-weight:700; color:#0f172a; cursor:pointer;">Status + Remark Timeline</summary>
+                <div style="margin-top:8px;">${timelineHtml}</div>
+            </details>
+            <div>
+                <div style="font-size:12px; color:#64748b; margin-bottom:4px;">Remarks</div>
+                <div style="padding:10px; border:1px solid #e5e7eb; border-radius:8px; background:#f8fafc; font-size:12px; color:#0f172a;">${escapeHtml(item.remarks || item.bank_remark || '-')}</div>
             </div>
         </div>
     `;
-
-    closeViewModal();
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
-    document.body.style.overflow = 'hidden';
 }
 
-async function viewAgent(id, name, email, phone) {
-    showAgentLoadingModal(name || 'Agent Details');
-    try {
-        const response = await fetch(`/api/admin/agents/${id}/`, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken')
-            }
-        });
-        const data = await response.json();
-        if (!response.ok || !data.success) {
-            throw new Error(data.error || 'Failed to load agent details');
-        }
-        renderAgentViewModal(
-            data.agent || {},
-            data.summary || {},
-            data.customers || [],
-            data.onboarding || {},
-            data.documents || []
-        );
-    } catch (error) {
-        console.error('View agent error:', error);
-        renderAgentViewModal(
-            {
-                name: name || '-',
-                email: email || '-',
-                phone: phone || '-',
-                status: '-',
-                address: '-',
-            },
-            {},
-            [],
-            {},
-            []
-        );
+function renderAgentViewModal(agent, summary, customers, onboarding, documents) {
+    const safeCustomers = Array.isArray(customers) ? customers : [];
+    const panel = document.getElementById('agentInlineDetails');
+    const panelBody = document.getElementById('agentInlineBody');
+    const titleEl = document.getElementById('agentInlineTitle');
+    const subtitleEl = document.getElementById('agentInlineSubtitle');
+    if (!panel || !panelBody) return;
+    if (titleEl) titleEl.textContent = 'Channel Partner Full Details';
+    if (subtitleEl) subtitleEl.textContent = `${agent.name || '-'} | ${agent.email || '-'}`;
+
+    panelBody.innerHTML = `
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:10px; margin-bottom:14px;">
+            <div><strong>Phone:</strong> ${escapeHtml(agent.phone || '-')}</div>
+            <div><strong>Partner ID:</strong> ${escapeHtml(agent.agent_id || agent.id || '-')}</div>
+            <div><strong>City:</strong> ${escapeHtml(agent.city || '-')}</div>
+            <div><strong>PIN:</strong> ${escapeHtml(agent.pin_code || '-')}</div>
+            <div><strong>District:</strong> ${escapeHtml(agent.district || '-')}</div>
+            <div><strong>Created By:</strong> ${escapeHtml(agent.created_by || 'Admin')}</div>
+            <div><strong>Status:</strong> ${escapeHtml(agent.status || '-')}</div>
+            <div><strong>Assigned Apps:</strong> ${summary.total_assigned_applications || 0}</div>
+        </div>
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap:10px; margin-bottom:14px;">
+            <button type="button" class="agent-stat-btn" data-section="applications" style="text-align:left; border:1px solid #dbeafe; border-radius:10px; background:#eff6ff; padding:10px; cursor:pointer;"><div style="font-size:12px;color:#1d4ed8;">Applications</div><div style="font-size:20px;font-weight:700;color:#1e3a8a;">${summary.total_applications || 0}</div></button>
+            <button type="button" class="agent-stat-btn" data-section="approved" style="text-align:left; border:1px solid #bbf7d0; border-radius:10px; background:#ecfdf5; padding:10px; cursor:pointer;"><div style="font-size:12px;color:#047857;">Approved</div><div style="font-size:20px;font-weight:700;color:#065f46;">${summary.approved || 0}</div></button>
+            <button type="button" class="agent-stat-btn" data-section="rejected" style="text-align:left; border:1px solid #fecaca; border-radius:10px; background:#fef2f2; padding:10px; cursor:pointer;"><div style="font-size:12px;color:#b91c1c;">Rejected</div><div style="font-size:20px;font-weight:700;color:#7f1d1d;">${summary.rejected || 0}</div></button>
+            <button type="button" class="agent-stat-btn" data-section="follow_up" style="text-align:left; border:1px solid #fed7aa; border-radius:10px; background:#fff7ed; padding:10px; cursor:pointer;"><div style="font-size:12px;color:#c2410c;">Banking Processing</div><div style="font-size:20px;font-weight:700;color:#9a3412;">${summary.banking_processing || 0}</div></button>
+            <button type="button" class="agent-stat-btn" data-section="customers" style="text-align:left; border:1px solid #e2e8f0; border-radius:10px; background:#f8fafc; padding:10px; cursor:pointer;"><div style="font-size:12px;color:#334155;">Customers</div><div style="font-size:20px;font-weight:700;color:#0f172a;">${summary.total_customers || 0}</div></button>
+        </div>
+        <div id="agentSectionBody" style="border:1px solid #e5e7eb; border-radius:10px; background:#ffffff; overflow:auto; max-height:430px;"></div>
+        <div id="agentLoanDetailsPanel" style="border:1px solid #e5e7eb; border-radius:10px; margin-top:12px; background:#f8fafc;">
+            ${renderAgentLoanDetailCard(null)}
+        </div>
+    `;
+    panel.style.display = 'block';
+
+    const sectionBody = panelBody.querySelector('#agentSectionBody');
+    const loanDetailsPanel = panelBody.querySelector('#agentLoanDetailsPanel');
+
+    function renderApplications(rows, title) {
+        const safeRows = Array.isArray(rows) ? rows : [];
+        const rowsHtml = safeRows.length ? safeRows.map((item, idx) => `
+            <tr>
+                <td style="padding:8px; border-bottom:1px solid #eef2f7;">${idx + 1}</td>
+                <td style="padding:8px; border-bottom:1px solid #eef2f7;">${escapeHtml(item.loan_uid || item.loan_id || '-')}</td>
+                <td style="padding:8px; border-bottom:1px solid #eef2f7;">${escapeHtml(item.customer_name || '-')}</td>
+                <td style="padding:8px; border-bottom:1px solid #eef2f7;">${escapeHtml(item.mobile || '-')}</td>
+                <td style="padding:8px; border-bottom:1px solid #eef2f7;">&#8377;${formatINR(item.loan_amount)}</td>
+                <td style="padding:8px; border-bottom:1px solid #eef2f7;">${escapeHtml(item.status_display || item.status || '-')}</td>
+                <td style="padding:8px; border-bottom:1px solid #eef2f7;">${escapeHtml(item.source || '-')}</td>
+                <td style="padding:8px; border-bottom:1px solid #eef2f7;">${escapeHtml(item.under_whom || '-')}</td>
+                <td style="padding:8px; border-bottom:1px solid #eef2f7;">
+                    <button type="button" class="btn-action btn-view" data-agent-loan-view="${escapeHtml(item.loan_id)}"><i class="fas fa-eye"></i> View</button>
+                </td>
+            </tr>
+        `).join('') : '<tr><td colspan="9" style="padding:18px; text-align:center; color:#6b7280;">No customer/application data found.</td></tr>';
+
+        sectionBody.innerHTML = `
+            <div style="padding:10px 12px; border-bottom:1px solid #e5e7eb; font-size:13px; font-weight:700; color:#0f172a;">${escapeHtml(title)}</div>
+            <table style="width:100%; border-collapse:collapse; font-size:12px; min-width:940px;">
+                <thead style="background:#f8fafc; color:#334155;">
+                    <tr>
+                        <th style="padding:8px; text-align:left;">#</th>
+                        <th style="padding:8px; text-align:left;">Loan ID</th>
+                        <th style="padding:8px; text-align:left;">Customer</th>
+                        <th style="padding:8px; text-align:left;">Mobile</th>
+                        <th style="padding:8px; text-align:left;">Amount</th>
+                        <th style="padding:8px; text-align:left;">Status</th>
+                        <th style="padding:8px; text-align:left;">Type</th>
+                        <th style="padding:8px; text-align:left;">Under Whom</th>
+                        <th style="padding:8px; text-align:left;">Action</th>
+                    </tr>
+                </thead>
+                <tbody>${rowsHtml}</tbody>
+            </table>
+        `;
     }
+
+    function activateCard(sectionKey) {
+        panelBody.querySelectorAll('.agent-stat-btn').forEach((btn) => {
+            const active = btn.getAttribute('data-section') === sectionKey;
+            btn.style.outline = active ? '2px solid #2563eb' : 'none';
+            btn.style.outlineOffset = active ? '1px' : '0';
+        });
+    }
+
+    function renderSection(sectionKey) {
+        const key = String(sectionKey || '').toLowerCase();
+        if (key === 'approved' || key === 'rejected' || key === 'follow_up') {
+            const filtered = safeCustomers.filter((item) => normalizeAgentStatusKey(item.status) === key);
+            renderApplications(filtered, `${key.replace('_', ' ').toUpperCase()} Applications`);
+            activateCard(key);
+            return;
+        }
+        if (key === 'customers') {
+            renderApplications(safeCustomers, 'Customers Applications (All)');
+            activateCard('customers');
+            return;
+        }
+        renderApplications(safeCustomers, 'All Applications');
+        activateCard('applications');
+    }
+
+    renderSection('applications');
+
+    panelBody.querySelectorAll('.agent-stat-btn').forEach((btn) => {
+        btn.addEventListener('click', () => renderSection(btn.getAttribute('data-section')));
+    });
+
+    panelBody.onclick = (event) => {
+        const viewBtn = event.target.closest('[data-agent-loan-view]');
+        if (!viewBtn) return;
+        const targetId = Number(viewBtn.getAttribute('data-agent-loan-view'));
+        const item = safeCustomers.find((entry) => Number(entry.loan_id) === targetId);
+        loanDetailsPanel.innerHTML = renderAgentLoanDetailCard(item);
+    };
+}
+
+function viewAgent(id) {
+    window.location.href = `/admin/channel-partner/${id}/full-details/`;
 }
 
 // Edit Agent
@@ -1134,9 +1458,10 @@ function deleteAgent(id, name) {
                     const match = countEl.textContent.match(/\d+/);
                     if (match) {
                         const next = Math.max(0, parseInt(match[0], 10) - 1);
-                        countEl.textContent = `Total: ${next} Agents`;
+                        countEl.textContent = `Total: ${next} Channel Partners`;
                     }
                 }
+                initializeAgentsTableExperience();
                 alert(`${name} deleted successfully`);
             } else {
                 alert('Error deleting agent');
@@ -1223,9 +1548,9 @@ if (editAgentForm) {
             const row = document.querySelector(`tr[data-agent-id="${currentEditingAgentId}"]`);
             if (row) {
                 const cells = row.querySelectorAll('td');
-                if (cells[1]) cells[1].querySelector('span').textContent = payload.name || payload.email;
-                if (cells[2]) cells[2].querySelector('span').textContent = payload.email || '-';
-                if (cells[3]) cells[3].querySelector('span').textContent = payload.phone || '-';
+                if (cells[2]) cells[2].querySelector('span').textContent = payload.name || payload.email;
+                if (cells[3]) cells[3].querySelector('span').textContent = payload.email || '-';
+                if (cells[4]) cells[4].querySelector('span').textContent = payload.phone || '-';
                 const badge = row.querySelector('.agent-status-badge');
                 if (badge) {
                     const active = payload.status === 'active';
@@ -1233,10 +1558,12 @@ if (editAgentForm) {
                     badge.classList.toggle('status-blocked', !active);
                     badge.textContent = active ? '✓ Active' : '✗ Blocked';
                 }
-                row.setAttribute('data-search', `${(payload.name || '').toLowerCase()},${(payload.email || '').toLowerCase()},${(payload.phone || '').toLowerCase()}`);
+                const partnerCode = (cells[0]?.textContent || '').trim().toLowerCase();
+                row.setAttribute('data-search', `${partnerCode},${(payload.name || '').toLowerCase()},${(payload.email || '').toLowerCase()},${(payload.phone || '').toLowerCase()}`);
             }
 
             closeEditAgentModal();
+            initializeAgentsTableExperience();
             alert(data.message || 'Agent updated successfully');
         } catch (error) {
             console.error('Update agent error:', error);
@@ -1382,6 +1709,7 @@ document.addEventListener('click', function(event) {
         closeAddAgentModal();
     }
 });
+document.addEventListener('DOMContentLoaded', initializeAgentsTableExperience);
 </script>
 
 {% endblock %}

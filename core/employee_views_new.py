@@ -28,6 +28,7 @@ from datetime import timedelta
 from .models import User, Loan, LoanApplication, Agent, ActivityLog, LoanDocument
 from .followup_utils import auto_move_overdue_to_follow_up
 from .loan_sync import find_related_loan_application
+from .id_utils import generate_agent_sequence_id
 from .updated_document_utils import (
     UPDATED_DOCUMENT_LABEL,
     UPDATED_DOCUMENT_STATUS_KEY,
@@ -1183,8 +1184,10 @@ def employee_add_agent_api(request):
         )
         
         # Create Agent profile
+        generated_agent_id = generate_agent_sequence_id(is_sub_channel_partner=True)
         agent = Agent.objects.create(
             user=user,
+            agent_id=generated_agent_id,
             name=name,
             phone=phone,
             email=email,
@@ -1206,6 +1209,7 @@ def employee_add_agent_api(request):
             'success': True,
             'message': f'Agent {name} created successfully',
             'agent_id': agent.id,
+            'agent_code': generated_agent_id,
         }, status=status.HTTP_201_CREATED)
     
     except Exception as e:

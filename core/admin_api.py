@@ -20,6 +20,7 @@ import re
 from .models import User, Loan, EmployeeProfile, LoanApplication, Agent, UserOnboardingProfile, UserOnboardingDocument
 from .decorators import admin_required
 from .onboarding_utils import collect_onboarding_payload, collect_onboarding_documents
+from .id_utils import generate_agent_sequence_id
 
 
 # ============= PROCESSING REQUESTS / ASSIGN / APPLICATIONS =============
@@ -935,7 +936,7 @@ def api_create_agent(request):
         data = json.loads(request.body)
         
         # Validate required fields
-        required_fields = ['name', 'email', 'phone', 'agent_id', 'username', 'password']
+        required_fields = ['name', 'email', 'phone', 'username', 'password']
         for field in required_fields:
             if not data.get(field):
                 return JsonResponse({
@@ -974,19 +975,19 @@ def api_create_agent(request):
         )
         
         # Create agent profile
-        Agent.objects.create(
+        agent = Agent.objects.create(
             user=agent_user,
-            agent_id=data.get('agent_id', ''),
+            agent_id=generate_agent_sequence_id(is_sub_channel_partner=False),
             phone=data.get('phone', ''),
             city=data.get('city', ''),
             status=data.get('status', 'active'),
-            assigned_loans_count=0
+            name=data.get('name', '')
         )
         
         return JsonResponse({
             'success': True,
             'message': 'Agent created successfully',
-            'agent_id': agent_user.id,
+            'agent_id': agent.agent_id,
             'agent_name': agent_user.get_full_name()
         })
     
@@ -1128,6 +1129,7 @@ def api_add_agent(request):
         # Create Agent profile
         agent = Agent.objects.create(
             user=user,
+            agent_id=generate_agent_sequence_id(is_sub_channel_partner=False),
             name=name,
             email=email,
             phone=phone,
@@ -1182,6 +1184,7 @@ def api_add_agent(request):
             'message': 'Agent added successfully',
             'agent': {
                 'id': agent.id,
+                'agent_id': agent.agent_id or '',
                 'name': agent.name,
                 'email': agent.email or '',
                 'phone': agent.phone or '',
@@ -1192,6 +1195,8 @@ def api_add_agent(request):
                 'district': district or '',
                 'pin_code': pin_code or '',
                 'created_by': creator_name,
+                'total_applications': 0,
+                'running_applications': 0,
             }
         }, status=201)
 
@@ -1235,6 +1240,7 @@ def api_get_agent(request, agent_id):
             'draft': 'Draft',
             'disputed': 'Disputed',
         }
+        from .subadmin_views import _serialize_subadmin_loan_details
 
         def owner_display(loan_obj):
             owner = loan_obj.created_by
@@ -1294,6 +1300,7 @@ def api_get_agent(request, agent_id):
 
         customers = []
         for loan in combined_qs[:250]:
+            serialized = _serialize_subadmin_loan_details(loan) or {}
             role_label, role_name = owner_display(loan)
             source = 'Submitted' if agent_user and loan.created_by_id == agent_user.id else 'Assigned'
             assigned_to = '-'
@@ -1311,14 +1318,37 @@ def api_get_agent(request, agent_id):
                 'loan_type': loan.get_loan_type_display() if hasattr(loan, 'get_loan_type_display') else (loan.loan_type or '-'),
                 'loan_amount': float(loan.loan_amount or 0),
                 'status': loan.status,
-                'status_display': status_map.get(loan.status, loan.status),
+                'status_display': serialized.get('status_display') or status_map.get(loan.status, loan.status),
                 'source': source,
                 'assigned_to': assigned_to,
                 'under_whom': f"{role_label} - {role_name}",
                 'owner_role': role_label,
                 'owner_name': role_name,
-                'bank_remark': latest_bank_remark(loan),
-                'created_at': loan.created_at.strftime('%Y-%m-%d %H:%M') if loan.created_at else '',
+                'assigned_by': serialized.get('assigned_by') or '-',
+                'bank_remark': serialized.get('bank_remark') or latest_bank_remark(loan),
+                'created_at': serialized.get('created_at') or (loan.created_at.strftime('%Y-%m-%d %H:%M') if loan.created_at else ''),
+                'updated_at': serialized.get('updated_at') or (loan.updated_at.strftime('%Y-%m-%d %H:%M') if loan.updated_at else ''),
+                'assigned_at': loan.assigned_at.strftime('%Y-%m-%d %H:%M') if loan.assigned_at else '-',
+                'action_taken_at': loan.action_taken_at.strftime('%Y-%m-%d %H:%M') if loan.action_taken_at else '-',
+                'follow_up_triggered_at': loan.follow_up_triggered_at.strftime('%Y-%m-%d %H:%M') if loan.follow_up_triggered_at else '-',
+                'remarks': serialized.get('remarks') or (loan.remarks or '-'),
+                'remarks_lines': serialized.get('remarks_lines') or [],
+                'documents': serialized.get('documents') or [],
+                'status_timeline': serialized.get('status_timeline') or [],
+                'full_application_details': serialized.get('full_application_details') or [],
+                'loan_purpose': serialized.get('loan_purpose') or (loan.loan_purpose or '-'),
+                'tenure_months': serialized.get('tenure_months') or (loan.tenure_months or '-'),
+                'interest_rate': serialized.get('interest_rate') if serialized.get('interest_rate') is not None else (float(loan.interest_rate) if loan.interest_rate is not None else '-'),
+                'emi': serialized.get('emi') if serialized.get('emi') is not None else (float(loan.emi) if loan.emi is not None else '-'),
+                'bank_name': serialized.get('bank_name') or (loan.bank_name or '-'),
+                'bank_account_number': serialized.get('bank_account_number') or (loan.bank_account_number or '-'),
+                'bank_ifsc_code': serialized.get('bank_ifsc_code') or (loan.bank_ifsc_code or '-'),
+                'bank_type': serialized.get('bank_type') or (loan.bank_type or '-'),
+                'sm_name': serialized.get('sm_name') or (loan.sm_name or '-'),
+                'sm_phone_number': serialized.get('sm_phone_number') or (loan.sm_phone_number or '-'),
+                'sm_email': serialized.get('sm_email') or (loan.sm_email or '-'),
+                'assigned_employee_id': loan.assigned_employee_id,
+                'assigned_agent_id': loan.assigned_agent_id,
             })
 
         summary = {
@@ -1363,6 +1393,7 @@ def api_get_agent(request, agent_id):
             'success': True,
             'agent': {
                 'id': agent.id,
+                'agent_id': agent.agent_id or f'EDC-CP-{agent.id:04d}',
                 'name': agent.name,
                 'email': agent.email or '',
                 'phone': agent.phone or '',

@@ -18,6 +18,7 @@ from .loan_sync import extract_assignment_context, role_label, find_related_loan
 from .onboarding_utils import collect_onboarding_payload, collect_onboarding_documents, collect_onboarding_payload_from_source
 from .followup_utils import auto_move_overdue_to_follow_up
 from .upload_limits import validate_loan_document_batch
+from .id_utils import generate_agent_sequence_id, generate_user_sequence_id
 from .updated_document_utils import (
     UPDATED_DOCUMENT_LABEL,
     UPDATED_DOCUMENT_STATUS_KEY,
@@ -414,6 +415,21 @@ def admin_all_loans(request):
     app_by_mobile = {a.applicant.mobile: a for a in apps if a.applicant and a.applicant.mobile}
     app_by_name = {a.applicant.full_name.lower(): a for a in apps if a.applicant and a.applicant.full_name}
 
+    def _user_name_or_na(user_obj):
+        if not user_obj:
+            return 'N/A'
+        return user_obj.get_full_name() or user_obj.username or user_obj.email or 'N/A'
+
+    def _agent_name_or_na(agent_obj):
+        if not agent_obj:
+            return 'N/A'
+        return (
+            agent_obj.name
+            or (agent_obj.user.get_full_name() if getattr(agent_obj, 'user', None) else '')
+            or (agent_obj.user.username if getattr(agent_obj, 'user', None) else '')
+            or 'N/A'
+        )
+
     enriched_loans = []
     for loan in loans:
         # Fast memory lookup instead of DB query
@@ -446,49 +462,49 @@ def admin_all_loans(request):
         if related_app and not creator and related_app.assigned_by:
             creator = related_app.assigned_by
 
-        creator_name = (creator.get_full_name() or creator.username) if creator else '-'
+        creator_name = _user_name_or_na(creator)
         loan.created_under_display = f"{role_label(creator)} - {creator_name}" if creator else 'System'
         if loan.assigned_employee:
-            loan.assigned_to_display = f"Employee - {loan.assigned_employee.get_full_name() or loan.assigned_employee.username}"
+            loan.assigned_to_display = f"Employee - {_user_name_or_na(loan.assigned_employee)}"
         elif loan.assigned_agent:
-            loan.assigned_to_display = f"Agent - {loan.assigned_agent.name}"
+            loan.assigned_to_display = f"Agent - {_agent_name_or_na(loan.assigned_agent)}"
         else:
-            loan.assigned_to_display = '-'
+            loan.assigned_to_display = 'N/A'
         assignment_context = extract_assignment_context(loan)
-        submitted_by_display = '-'
+        submitted_by_display = 'N/A'
         if loan.assigned_agent:
-            submitted_by_display = (
-                loan.assigned_agent.name
-                or (loan.assigned_agent.user.get_full_name() if loan.assigned_agent.user else '')
-                or '-'
-            )
+            submitted_by_display = _agent_name_or_na(loan.assigned_agent)
+        elif related_app and related_app.assigned_agent:
+            submitted_by_display = _agent_name_or_na(related_app.assigned_agent)
         elif creator and creator.role == 'agent':
-            submitted_by_display = creator.get_full_name() or creator.username or '-'
+            submitted_by_display = _user_name_or_na(creator)
         elif related_app and related_app.assigned_by and related_app.assigned_by.role == 'agent':
-            submitted_by_display = related_app.assigned_by.get_full_name() or related_app.assigned_by.username or '-'
+            submitted_by_display = _user_name_or_na(related_app.assigned_by)
 
-        processed_by_display = (
-            loan.assigned_employee.get_full_name() or loan.assigned_employee.username
-            if loan.assigned_employee else '-'
-        )
-        partner_under_display = '-'
+        processed_by_display = 'N/A'
+        if loan.assigned_employee:
+            processed_by_display = _user_name_or_na(loan.assigned_employee)
+        elif related_app and related_app.assigned_employee:
+            processed_by_display = _user_name_or_na(related_app.assigned_employee)
+        elif creator and creator.role == 'employee':
+            processed_by_display = _user_name_or_na(creator)
+
+        partner_under_display = 'N/A'
         if assignment_context.get('role') == 'subadmin':
-            partner_under_display = assignment_context.get('assigned_by_name') or '-'
+            partner_under_display = assignment_context.get('assigned_by_name') or 'N/A'
         elif loan.assigned_agent and loan.assigned_agent.created_by and loan.assigned_agent.created_by.role == 'subadmin':
-            partner_under_display = (
-                loan.assigned_agent.created_by.get_full_name()
-                or loan.assigned_agent.created_by.username
-                or '-'
-            )
+            partner_under_display = _user_name_or_na(loan.assigned_agent.created_by)
         elif related_app and related_app.assigned_by and related_app.assigned_by.role == 'subadmin':
-            partner_under_display = related_app.assigned_by.get_full_name() or related_app.assigned_by.username or '-'
+            partner_under_display = _user_name_or_na(related_app.assigned_by)
+        elif creator and creator.role == 'subadmin':
+            partner_under_display = _user_name_or_na(creator)
         loan.submitted_by_display = submitted_by_display
         loan.processed_by_display = processed_by_display
         loan.partner_under_display = partner_under_display
         loan.follow_up_pending = follow_up_pending
         loan.status_key_display = effective_status_key or loan.status
         loan.status_display_text = _status_key_to_display_text(effective_status_key, fallback_text=loan.get_status_display())
-        loan.assigned_by_display = assignment_context.get('assigned_by_display', '-')
+        loan.assigned_by_display = assignment_context.get('assigned_by_display') or 'N/A'
         enriched_loans.append(loan)
     
     context = {
@@ -929,20 +945,27 @@ def api_admin_all_loans(request):
 def admin_subadmin_management(request):
     """Admin page to manage SubAdmins"""
     try:
-        from .subadmin_views import _subadmin_managed_agents_qs, _subadmin_managed_employees_qs
+        from .subadmin_views import _subadmin_managed_agents_qs, _subadmin_managed_employees_qs, _subadmin_scoped_loans_qs
 
         subadmins = User.objects.filter(role='subadmin').order_by('-date_joined')
         subadmin_list = []
         for subadmin in subadmins:
             managed_agents_count = _subadmin_managed_agents_qs(subadmin).count()
             managed_employees_count = _subadmin_managed_employees_qs(subadmin).count()
+            loans_qs = _subadmin_scoped_loans_qs(subadmin)
+            total_applications = loans_qs.count()
+            running_applications = loans_qs.exclude(status__in=['approved', 'rejected', 'disbursed']).count()
             entries_count = SubAdminEntry.objects.filter(subadmin=subadmin).count()
             subadmin.total_agents = managed_agents_count
             subadmin.total_employees = managed_employees_count
+            subadmin.total_applications = total_applications
+            subadmin.running_applications = running_applications
             subadmin.total_entries = entries_count
+            subadmin.partner_id = subadmin.employee_id or f'EDC-P-{subadmin.id:04d}'
             subadmin_list.append({
                 'id': subadmin.id,
                 'name': subadmin.get_full_name(),
+                'partner_id': subadmin.partner_id,
                 'email': subadmin.email,
                 'username': subadmin.username,
                 'phone': subadmin.phone or '-',
@@ -950,6 +973,8 @@ def admin_subadmin_management(request):
                 'joined_on': subadmin.date_joined.strftime('%Y-%m-%d') if subadmin.date_joined else '-',
                 'total_agents': managed_agents_count,
                 'total_employees': managed_employees_count,
+                'total_applications': total_applications,
+                'running_applications': running_applications,
                 'total_entries': entries_count,
                 'is_active': subadmin.is_active,
                 'date_joined': subadmin.date_joined
@@ -969,34 +994,71 @@ def admin_subadmin_management(request):
 
 @login_required(login_url='admin_login')
 @admin_required
+def admin_partner_detail(request, subadmin_id):
+    """Dedicated detail page for a Partner."""
+    partner = get_object_or_404(User, id=subadmin_id, role='subadmin')
+    return render(request, 'core/admin/partner_detail.html', {'partner': partner})
+
+
+@login_required(login_url='admin_login')
+@admin_required
+def admin_employee_full_details(request, employee_id):
+    """Dedicated detail page for an Employee."""
+    employee = get_object_or_404(User, id=employee_id, role='employee')
+    return render(request, 'core/admin/employee_full_details.html', {'employee': employee})
+
+
+@login_required(login_url='admin_login')
+@admin_required
+def admin_channel_partner_full_details(request, agent_id):
+    """Dedicated detail page for a Channel Partner."""
+    agent = get_object_or_404(Agent, id=agent_id)
+    return render(request, 'core/admin/channel_partner_detail.html', {'agent': agent})
+
+
+@login_required(login_url='admin_login')
+@admin_required
 @require_GET
 def api_admin_subadmin_full_details(request, subadmin_id):
     """Return full performance + customer detail for a SubAdmin."""
     try:
         subadmin = get_object_or_404(User, id=subadmin_id, role='subadmin')
+        from collections import defaultdict
         from .subadmin_views import (
             _extract_assignment_marker,
             _latest_bank_remark,
             _role_label,
+            _serialize_subadmin_loan_details,
             _subadmin_managed_agents_qs,
             _subadmin_managed_employees_qs,
             _subadmin_scoped_loans_qs,
         )
 
-        managed_agents_qs = _subadmin_managed_agents_qs(subadmin)
-        managed_employees_qs = _subadmin_managed_employees_qs(subadmin)
+        managed_agents_qs = _subadmin_managed_agents_qs(subadmin).select_related('user', 'under_employee', 'created_by')
+        managed_employees_qs = _subadmin_managed_employees_qs(subadmin).order_by('first_name', 'last_name', 'username')
         loans_qs = _subadmin_scoped_loans_qs(subadmin).select_related(
             'assigned_employee', 'assigned_agent', 'created_by'
         ).order_by('-created_at')
         entries_qs = SubAdminEntry.objects.filter(subadmin=subadmin)
 
         customers = []
+        employee_loan_counts = defaultdict(int)
+        agent_loan_counts = defaultdict(int)
+
         for loan in loans_qs[:250]:
+            serialized = _serialize_subadmin_loan_details(loan) or {}
+            status_key = str(serialized.get('status') or loan.status or '').strip().lower()
+
             assigned_to = '-'
             if loan.assigned_employee:
                 assigned_to = f"Employee - {loan.assigned_employee.get_full_name() or loan.assigned_employee.username}"
             elif loan.assigned_agent:
                 assigned_to = f"Agent - {loan.assigned_agent.name}"
+
+            if loan.assigned_employee_id:
+                employee_loan_counts[loan.assigned_employee_id] += 1
+            if loan.assigned_agent_id:
+                agent_loan_counts[loan.assigned_agent_id] += 1
 
             if loan.created_by:
                 owner_name = f"{_role_label(loan.created_by)} - {loan.created_by.get_full_name() or loan.created_by.username}"
@@ -1011,13 +1073,68 @@ def api_admin_subadmin_full_details(request, subadmin_id):
                 'email': loan.email or '-',
                 'loan_type': loan.get_loan_type_display() if hasattr(loan, 'get_loan_type_display') else loan.loan_type,
                 'loan_amount': float(loan.loan_amount or 0),
-                'status': loan.status,
-                'status_display': _ui_status_label(loan.get_status_display()),
+                'status': status_key or loan.status,
+                'status_display': serialized.get('status_display') or _ui_status_label(loan.get_status_display()),
                 'assigned_to': assigned_to,
-                'assigned_by': _extract_assignment_marker(loan),
+                'assigned_by': serialized.get('assigned_by') or _extract_assignment_marker(loan),
                 'owner_name': owner_name,
-                'bank_remark': _latest_bank_remark(loan),
-                'created_at': loan.created_at.strftime('%Y-%m-%d %H:%M') if loan.created_at else '',
+                'bank_remark': serialized.get('bank_remark') or _latest_bank_remark(loan),
+                'created_at': serialized.get('created_at') or (loan.created_at.strftime('%Y-%m-%d %H:%M') if loan.created_at else ''),
+                'updated_at': serialized.get('updated_at') or (loan.updated_at.strftime('%Y-%m-%d %H:%M') if loan.updated_at else ''),
+                'assigned_at': loan.assigned_at.strftime('%Y-%m-%d %H:%M') if loan.assigned_at else '-',
+                'action_taken_at': loan.action_taken_at.strftime('%Y-%m-%d %H:%M') if loan.action_taken_at else '-',
+                'follow_up_triggered_at': loan.follow_up_triggered_at.strftime('%Y-%m-%d %H:%M') if loan.follow_up_triggered_at else '-',
+                'remarks': serialized.get('remarks') or (loan.remarks or '-'),
+                'remarks_lines': serialized.get('remarks_lines') or [],
+                'documents': serialized.get('documents') or [],
+                'status_timeline': serialized.get('status_timeline') or [],
+                'full_application_details': serialized.get('full_application_details') or [],
+                'loan_purpose': serialized.get('loan_purpose') or (loan.loan_purpose or '-'),
+                'tenure_months': serialized.get('tenure_months') or (loan.tenure_months or '-'),
+                'interest_rate': serialized.get('interest_rate') if serialized.get('interest_rate') is not None else (float(loan.interest_rate) if loan.interest_rate is not None else '-'),
+                'emi': serialized.get('emi') if serialized.get('emi') is not None else (float(loan.emi) if loan.emi is not None else '-'),
+                'bank_name': serialized.get('bank_name') or (loan.bank_name or '-'),
+                'bank_account_number': serialized.get('bank_account_number') or (loan.bank_account_number or '-'),
+                'bank_ifsc_code': serialized.get('bank_ifsc_code') or (loan.bank_ifsc_code or '-'),
+                'bank_type': serialized.get('bank_type') or (loan.bank_type or '-'),
+                'sm_name': serialized.get('sm_name') or (loan.sm_name or '-'),
+                'sm_phone_number': serialized.get('sm_phone_number') or (loan.sm_phone_number or '-'),
+                'sm_email': serialized.get('sm_email') or (loan.sm_email or '-'),
+                'assigned_employee_id': loan.assigned_employee_id,
+                'assigned_agent_id': loan.assigned_agent_id,
+            })
+
+        managed_employees = []
+        for employee in managed_employees_qs:
+            linked_agents_qs = Agent.objects.filter(
+                Q(created_by=subadmin),
+                Q(under_employee=employee) | Q(employee_assignments__employee=employee)
+            ).distinct()
+            managed_employees.append({
+                'id': employee.id,
+                'employee_id': employee.employee_id or f'EDC-EMP-{employee.id:04d}',
+                'name': employee.get_full_name() or employee.username or '-',
+                'email': employee.email or 'N/A',
+                'phone': employee.phone or 'N/A',
+                'status': 'Active' if employee.is_active else 'Inactive',
+                'channel_partner_count': linked_agents_qs.count(),
+                'application_count': employee_loan_counts.get(employee.id, 0),
+            })
+
+        managed_agents = []
+        for agent in managed_agents_qs.order_by('name', 'id'):
+            managed_agents.append({
+                'id': agent.id,
+                'agent_id': agent.agent_id or f'EDC-AG-{agent.id:04d}',
+                'name': agent.name or (agent.user.get_full_name() if agent.user else '-') or '-',
+                'email': agent.email or 'N/A',
+                'phone': agent.phone or 'N/A',
+                'status': str(agent.status or 'active').title(),
+                'under_employee': (
+                    agent.under_employee.get_full_name() or agent.under_employee.username
+                    if agent.under_employee else 'N/A'
+                ),
+                'application_count': agent_loan_counts.get(agent.id, 0),
             })
 
         summary = {
@@ -1052,6 +1169,7 @@ def api_admin_subadmin_full_details(request, subadmin_id):
             'success': True,
             'subadmin': {
                 'id': subadmin.id,
+                'partner_id': subadmin.employee_id or f'EDC-P-{subadmin.id:04d}',
                 'name': subadmin.get_full_name() or subadmin.username,
                 'username': subadmin.username,
                 'email': subadmin.email or '-',
@@ -1062,6 +1180,8 @@ def api_admin_subadmin_full_details(request, subadmin_id):
             },
             'summary': summary,
             'customers': customers,
+            'managed_employees': managed_employees,
+            'managed_agents': managed_agents,
             'onboarding': onboarding,
             'documents': documents,
         })
@@ -1145,6 +1265,7 @@ def api_create_subadmin(request):
             }, status=400)
         
         # Create SubAdmin user
+        partner_unique_id = generate_user_sequence_id('subadmin')
         subadmin = User.objects.create_user(
             username=username,
             email=email,
@@ -1154,6 +1275,7 @@ def api_create_subadmin(request):
             role='subadmin',
             phone=phone,
             address=address,
+            employee_id=partner_unique_id,
         )
         
         # Add state if field exists
@@ -1209,6 +1331,7 @@ def api_create_subadmin(request):
             'message': 'Partner created successfully',
             'subadmin': {
                 'id': subadmin.id,
+                'partner_id': subadmin.employee_id or '',
                 'username': subadmin.username,
                 'email': subadmin.email,
                 'name': subadmin.get_full_name() or subadmin.username,
@@ -1443,7 +1566,8 @@ def add_agent(request):
                 role=role,
                 phone=phone,
                 gender=gender or None,
-                address=address
+                address=address,
+                employee_id=generate_user_sequence_id('employee') if role == 'employee' else (generate_user_sequence_id('subadmin') if role == 'subadmin' else None),
             )
             
             # Handle photo upload
@@ -1457,6 +1581,7 @@ def add_agent(request):
             if role == 'agent':
                 agent = Agent.objects.create(
                     user=user,
+                    agent_id=generate_agent_sequence_id(is_sub_channel_partner=False),
                     name=display_name,
                     email=email,
                     phone=phone,

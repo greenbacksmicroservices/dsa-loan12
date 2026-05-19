@@ -39,6 +39,7 @@ from .updated_document_utils import (
     UPDATED_DOCUMENT_STATUS_KEY,
     loan_has_updated_documents,
 )
+from .id_utils import generate_agent_sequence_id, generate_user_sequence_id
 from django.utils import timezone
 from datetime import timedelta
 import json
@@ -1153,7 +1154,6 @@ def subadmin_my_agents(request):
     """
     if request.method == 'POST':
         name = request.POST.get('name', '').strip()
-        agent_id = request.POST.get('agent_id', '').strip()
         email = request.POST.get('email', '').strip()
         phone = request.POST.get('phone', '').strip()
         gender = request.POST.get('gender', '').strip()
@@ -1163,7 +1163,7 @@ def subadmin_my_agents(request):
         profile_photo = request.FILES.get('profile_photo')
 
         # Basic validation
-        if not all([name, agent_id, email, phone, password, under_employee_id]):
+        if not all([name, email, phone, password, under_employee_id]):
             messages.error(request, 'Please fill all required agent fields including Employee.')
             return redirect('subadmin_my_agents')
 
@@ -1182,10 +1182,6 @@ def subadmin_my_agents(request):
 
         if User.objects.filter(email=email).exists():
             messages.error(request, 'Email already exists.')
-            return redirect('subadmin_my_agents')
-
-        if User.objects.filter(username=agent_id).exists() or Agent.objects.filter(agent_id=agent_id).exists():
-            messages.error(request, 'Agent ID already exists.')
             return redirect('subadmin_my_agents')
 
         if User.objects.filter(phone=phone).exists() or Agent.objects.filter(phone=phone).exists():
@@ -1208,11 +1204,20 @@ def subadmin_my_agents(request):
         name_parts = name.split(' ', 1)
         first_name = name_parts[0]
         last_name = name_parts[1] if len(name_parts) > 1 else ''
+        generated_agent_id = generate_agent_sequence_id(is_sub_channel_partner=True)
+        generated_username = generated_agent_id
+        if User.objects.filter(username=generated_username).exists():
+            base_username = email.split('@')[0]
+            generated_username = base_username
+            counter = 1
+            while User.objects.filter(username=generated_username).exists():
+                generated_username = f"{base_username}{counter}"
+                counter += 1
 
         try:
             with transaction.atomic():
                 agent_user = User.objects.create_user(
-                    username=agent_id,
+                    username=generated_username,
                     email=email,
                     password=password,
                     first_name=first_name,
@@ -1230,7 +1235,7 @@ def subadmin_my_agents(request):
 
                 agent = Agent.objects.create(
                     user=agent_user,
-                    agent_id=agent_id,
+                    agent_id=generated_agent_id,
                     name=name,
                     phone=phone,
                     email=email,
@@ -1245,7 +1250,10 @@ def subadmin_my_agents(request):
                     agent.profile_photo = agent_user.profile_photo or profile_photo
                     agent.save()
 
-            messages.success(request, f'Agent {name} created successfully. Login ID: {agent_id}')
+            messages.success(
+                request,
+                f'Agent {name} created successfully. ID: {generated_agent_id}, Username: {generated_username}'
+            )
         except Exception as e:
             logger.error(f"Error creating agent: {str(e)}")
             messages.error(request, f'Error creating agent: {str(e)}')
@@ -1297,7 +1305,7 @@ def subadmin_my_agents(request):
 
         agents_list.append({
             'id': agent.id,
-            'agent_id': agent.agent_id or f'AG{agent.id:04d}',
+            'agent_id': agent.agent_id or f'EDC-SCP-{agent.id:04d}',
             'name': agent.name,
             'email': agent.email or 'N/A',
             'phone': agent.phone,
@@ -1449,7 +1457,7 @@ def subadmin_get_agent(request, agent_id):
             'success': True,
             'agent': {
                 'id': agent.id,
-                'agent_id': agent.agent_id or f'AG{agent.id:04d}',
+                'agent_id': agent.agent_id or f'EDC-SCP-{agent.id:04d}',
                 'name': agent.name,
                 'email': agent.email or '',
                 'phone': agent.phone or '',
@@ -1601,7 +1609,6 @@ def subadmin_my_employees(request):
     """
     if request.method == 'POST':
         name = request.POST.get('name', '').strip()
-        employee_id = request.POST.get('employee_id', '').strip()
         email = request.POST.get('email', '').strip()
         phone = request.POST.get('phone', '').strip()
         gender = request.POST.get('gender', '').strip()
@@ -1611,7 +1618,7 @@ def subadmin_my_employees(request):
         channel_partner_ids = _parse_channel_partner_ids(request.POST.getlist('channel_partner_ids'))
 
         # Basic validation
-        if not all([name, employee_id, email, phone, password]):
+        if not all([name, email, phone, password]):
             messages.error(request, 'Please fill all required employee fields.')
             return redirect('subadmin_my_employees')
 
@@ -1630,10 +1637,6 @@ def subadmin_my_employees(request):
 
         if User.objects.filter(email=email).exists():
             messages.error(request, 'Email already exists.')
-            return redirect('subadmin_my_employees')
-
-        if User.objects.filter(employee_id=employee_id).exists():
-            messages.error(request, 'Employee ID already exists.')
             return redirect('subadmin_my_employees')
 
         if User.objects.filter(phone=phone).exists():
@@ -1656,6 +1659,7 @@ def subadmin_my_employees(request):
         while User.objects.filter(username=username).exists():
             username = f"{base_username}{counter}"
             counter += 1
+        generated_employee_id = generate_user_sequence_id('employee')
 
         try:
             with transaction.atomic():
@@ -1666,7 +1670,7 @@ def subadmin_my_employees(request):
                     first_name=first_name,
                     last_name=last_name,
                     role='employee',
-                    employee_id=employee_id,
+                    employee_id=generated_employee_id,
                     phone=phone,
                     gender=gender_value,
                     address=address,
@@ -1732,7 +1736,7 @@ def subadmin_my_employees(request):
         photo_url = emp.profile_photo.url if emp.profile_photo else ''
         employees_list.append({
             'id': emp.id,
-            'employee_id': emp.employee_id or f'EMP{emp.id:04d}',
+            'employee_id': emp.employee_id or f'EDC-EMP-{emp.id:04d}',
             'name': emp.get_full_name() or emp.username,
             'email': emp.email,
             'phone': emp.phone or 'N/A',
@@ -1892,7 +1896,7 @@ def subadmin_get_employee(request, employee_id):
             'success': True,
             'employee': {
                 'id': user.id,
-                'employee_id': user.employee_id or f'EMP{user.id:04d}',
+                'employee_id': user.employee_id or f'EDC-EMP-{user.id:04d}',
                 'name': user.get_full_name() or user.username,
                 'email': user.email or '',
                 'phone': user.phone or '',

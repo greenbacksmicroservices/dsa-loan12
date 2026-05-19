@@ -501,6 +501,7 @@ def api_loan_details(request, loan_id):
 
             # Section 1
             'full_name': loan.full_name,
+            'loan_uid_manual': loan.user_id or '-',
             'mobile_number': loan.mobile_number,
             'alternate_mobile': get_extra('alternate mobile', 'alternate_mobile', default='-'),
             'email': loan.email or '-',
@@ -531,6 +532,27 @@ def api_loan_details(request, loan_id):
             'years_of_experience': get_extra('experience (years)', 'year of experience', default='-'),
             'additional_income': get_extra('additional income', 'extra income', default='-'),
             'extra_income_details': " | ".join(income_detail_parts) if income_detail_parts else get_extra('extra income details', default='-'),
+            'lead_receive_channel_partner_name': get_extra(
+                'lead receive channel partner name',
+                'channel partner name',
+                default='-'
+            ),
+            'lead_receive_leader_name': get_extra(
+                'lead receive leader name',
+                'leader name',
+                default='-'
+            ),
+            'lead_receive_source': get_extra(
+                'lead receive source',
+                'lead source',
+                default='-'
+            ),
+            'lead_receive_description': get_extra(
+                'lead receive description',
+                'lead description',
+                'description',
+                default='-'
+            ),
 
             # Section 3
             'existing_loans': existing_loans,
@@ -680,6 +702,7 @@ def api_loan_details(request, loan_id):
             })
 
         ordered_rows = [
+            ('Loan ID (Manual)', details.get('loan_uid_manual')),
             ('Applicant Name', details.get('full_name')),
             ('Mobile Number', details.get('mobile_number')),
             ('Alternate Mobile', details.get('alternate_mobile')),
@@ -690,7 +713,13 @@ def api_loan_details(request, loan_id):
             ('Gender', details.get('gender')),
             ('Marital Status', details.get('marital_status')),
             ('Permanent Address', details.get('permanent_address_line1')),
+            ('Permanent Landmark', details.get('permanent_landmark')),
+            ('Permanent City', details.get('permanent_city')),
+            ('Permanent Pin', details.get('permanent_pincode')),
             ('Present Address', details.get('present_address_line1')),
+            ('Present Landmark', details.get('present_landmark')),
+            ('Present City', details.get('present_city')),
+            ('Present Pin', details.get('present_pincode')),
             ('City', details.get('city')),
             ('State', details.get('state')),
             ('PIN Code', details.get('pin_code')),
@@ -704,6 +733,10 @@ def api_loan_details(request, loan_id):
             ('Tenure Months', details.get('tenure_months')),
             ('Loan Purpose', details.get('loan_purpose')),
             ('Charges Applicable', details.get('charges_applicable')),
+            ('Channel Partner Name', details.get('lead_receive_channel_partner_name')),
+            ('Leader Name', details.get('lead_receive_leader_name')),
+            ('Lead Source', details.get('lead_receive_source')),
+            ('Lead Description', details.get('lead_receive_description')),
             ('CIBIL Score', details.get('cibil_score')),
             ('Aadhar Number', details.get('aadhar_number')),
             ('PAN Number', details.get('pan_number')),

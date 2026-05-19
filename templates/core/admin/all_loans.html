@@ -373,9 +373,9 @@
     }
 
     .loan-detail-modal-card {
-        width: min(1280px, 96vw) !important;
-        max-width: 1280px !important;
-        max-height: calc(100vh - 34px);
+        width: min(1120px, 92vw) !important;
+        max-width: 1120px !important;
+        max-height: calc(100vh - 52px);
         overflow-y: auto;
     }
 
@@ -536,9 +536,9 @@
                         <th style="width: 10%;">Type</th>
                         <th style="width: 10%;">Amount</th>
                         <th style="width: 10%;">Status</th>
-                        <th style="width: 14%;">Created Under</th>
+                        <th style="width: 14%;">Created By</th>
                         <th style="width: 16%;">Submitted / Processed</th>
-                        <th style="width: 14%;">Assigned By</th>
+                        <th style="width: 14%;">Assigned TO</th>
                         <th style="width: 8%;">Date</th>
                         <th style="width: 16%;">Action</th>
                     </tr>
@@ -566,11 +566,11 @@
                         </td>
                         <td><span class="date-text">{{ loan.created_under_display|default:"-" }}</span></td>
                         <td style="font-size: 12px;">
-                            <div><strong>Channel Partner:</strong> {{ loan.submitted_by_display|default:"-" }}</div>
-                            <div><strong>Employee:</strong> {{ loan.processed_by_display|default:"-" }}</div>
-                            <div><strong>Partner:</strong> {{ loan.partner_under_display|default:"-" }}</div>
+                            <div><strong>Channel Partner:</strong> {{ loan.submitted_by_display|default:"N/A" }}</div>
+                            <div><strong>Employee:</strong> {{ loan.processed_by_display|default:"N/A" }}</div>
+                            <div><strong>Partner:</strong> {{ loan.partner_under_display|default:"N/A" }}</div>
                         </td>
-                        <td><span class="date-text">{{ loan.assigned_by_display|default:"-" }}</span></td>
+                        <td><span class="date-text">{{ loan.assigned_by_display|default:"N/A" }}</span></td>
                         <td><span class="date-text">{{ loan.created_at|date:"M d, Y" }}</span></td>
                         <td>
                             <div class="action-buttons">
@@ -649,7 +649,7 @@
 
 <!-- Comprehensive Loan Detail Modal -->
 <div style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.7); z-index: 1000; align-items: center; justify-content: center; overflow-y: auto;" id="loanDetailModal" class="modal-overlay">
-    <div style="background: white; border-radius: 12px; padding: 40px; max-width: 1000px; width: 95%; margin: 20px auto; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);" class="loan-detail-modal-card">
+    <div style="background: white; border-radius: 12px; padding: 30px; max-width: 1120px; width: 92%; margin: 20px auto; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);" class="loan-detail-modal-card">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 3px solid #1abc9c; padding-bottom: 20px;" class="loan-detail-modal-header">
             <h2 style="margin: 0; color: #1a202c; font-size: 24px; font-weight: 700;">Loan Applicant Details</h2>
             <div style="display: flex; align-items: center; gap: 10px;">
@@ -685,9 +685,9 @@
             </div>
         </div>
         
-        <!-- SECTION 1: APPLICANT INFORMATION -->
+        <!-- APPLICANT INFORMATION -->
         <div style="margin-bottom: 30px;">
-            <h3 style="color: #1abc9c; font-size: 16px; font-weight: 700; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid #e5e7eb;">SECTION 1: APPLICANT INFORMATION</h3>
+            <h3 style="color: #1abc9c; font-size: 16px; font-weight: 700; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid #e5e7eb;">APPLICANT INFORMATION</h3>
             <p style="margin: 0 0 14px 0; color: #475569; font-size: 13px;">Provide accurate personal information. This will be verified during processing.</p>
             <p style="color: #64748b; font-size: 11px; margin: 0 0 12px 0; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Name & Contact Details</p>
             
@@ -788,9 +788,9 @@
             </div>
         </div>
         
-        <!-- SECTION 2: OCCUPATION & INCOME DETAILS -->
+        <!-- LOAN DETAILS SNAPSHOT -->
         <div style="margin-bottom: 30px;">
-            <h3 style="color: #1abc9c; font-size: 16px; font-weight: 700; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid #e5e7eb;">SECTION 2: OCCUPATION & INCOME DETAILS</h3>
+            <h3 style="color: #1abc9c; font-size: 16px; font-weight: 700; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid #e5e7eb;">LOAN DETAILS SNAPSHOT (OPTIONAL LEGACY)</h3>
             <p style="color: #64748b; font-size: 11px; margin: 0 0 12px 0; text-transform: uppercase; font-weight: 700;">Employment Information</p>
             
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px; margin-bottom: 20px;">
@@ -823,9 +823,9 @@
             </div>
         </div>
         
-        <!-- SECTION 3: LOAN TYPE -->
+        <!-- SERVICE DOCS / OBLIGATION -->
         <div style="margin-bottom: 30px;">
-            <h3 style="color: #1abc9c; font-size: 16px; font-weight: 700; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid #e5e7eb;">SECTION 3: LOAN TYPE</h3>
+            <h3 style="color: #1abc9c; font-size: 16px; font-weight: 700; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid #e5e7eb;">SERVICE REQUIRED / LEGACY OBLIGATION</h3>
             <p style="margin: 0 0 14px 0; color: #475569; font-size: 13px;">Provide details of all existing loan commitments.</p>
             
             <div id="existingLoansContainer">
@@ -833,9 +833,9 @@
             </div>
         </div>
         
-        <!-- SECTION 4: LOAN REQUEST -->
+        <!-- LOAN DETAILS -->
         <div style="margin-bottom: 30px;">
-            <h3 style="color: #1abc9c; font-size: 16px; font-weight: 700; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid #e5e7eb;">SECTION 4: LOAN REQUEST</h3>
+            <h3 style="color: #1abc9c; font-size: 16px; font-weight: 700; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid #e5e7eb;">LOAN DETAILS</h3>
             
             <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 25px;">
                 <div>
@@ -863,9 +863,9 @@
             </div>
         </div>
         
-        <!-- SECTION 5: REFERENCES -->
+        <!-- REFERENCE -->
         <div style="margin-bottom: 30px;">
-            <h3 style="color: #1abc9c; font-size: 16px; font-weight: 700; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid #e5e7eb;">SECTION 5: REFERENCES</h3>
+            <h3 style="color: #1abc9c; font-size: 16px; font-weight: 700; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid #e5e7eb;">REFERENCE</h3>
             <p style="margin: 0 0 14px 0; color: #475569; font-size: 13px;">Provide contact details of two reliable references. They will not be contacted unless necessary.</p>
             
             <div id="referencesContainer">
@@ -873,13 +873,13 @@
             </div>
         </div>
         
-        <!-- SECTION 6: BALANCE TRANSFER (IF ANY) -->
+        <!-- LEAD RECEIVE / ADDITIONAL FIELDS -->
         <div style="margin-bottom: 30px;">
-            <h3 style="color: #1abc9c; font-size: 16px; font-weight: 700; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid #e5e7eb;">SECTION 6: BALANCE TRANSFER (IF ANY)</h3>
-            <p style="margin: 0 0 14px 0; color: #475569; font-size: 13px;">Fill balance transfer details (if applicable).</p>
+            <h3 style="color: #1abc9c; font-size: 16px; font-weight: 700; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid #e5e7eb;">LEAD RECEIVE / ADDITIONAL FIELDS</h3>
+            <p style="margin: 0 0 14px 0; color: #475569; font-size: 13px;">Lead receive, legacy bank fields, and processing metadata.</p>
             
             <div style="background: #fffbf0; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #f97316;">
-                <p style="color: #718096; font-size: 11px; margin: 0 0 8px 0; text-transform: uppercase; font-weight: 700;">Balance Transfer (If Any)</p>
+                <p style="color: #718096; font-size: 11px; margin: 0 0 8px 0; text-transform: uppercase; font-weight: 700;">Additional Legacy Financial Fields</p>
                 
                 <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 25px; margin-top: 15px;">
                     <div>
@@ -898,7 +898,7 @@
             </div>
             
             <div style="background: #f0f9ff; padding: 15px; border-radius: 8px; border-left: 4px solid #0284c7;">
-                <p style="color: #718096; font-size: 11px; margin: 0 0 8px 0; text-transform: uppercase; font-weight: 700;">Bank Disbursement Details</p>
+                <p style="color: #718096; font-size: 11px; margin: 0 0 8px 0; text-transform: uppercase; font-weight: 700;">Lead Receive + Banking Metadata</p>
                 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px; margin-top: 15px;">
                     <div>
@@ -926,12 +926,12 @@
                         <p style="color: #1a202c; font-size: 14px; font-weight: 600; margin: 0;" id="detailLeaderName">-</p>
                     </div>
                     <div>
-                        <p style="color: #718096; font-size: 11px; margin: 0 0 8px 0; text-transform: uppercase; font-weight: 700;">SM Phone Number</p>
-                        <p style="color: #1a202c; font-size: 14px; font-weight: 600; margin: 0;" id="detailSmPhone">-</p>
+                        <p style="color: #718096; font-size: 11px; margin: 0 0 8px 0; text-transform: uppercase; font-weight: 700;">Lead Source</p>
+                        <p style="color: #1a202c; font-size: 14px; font-weight: 600; margin: 0;" id="detailLeadSource">-</p>
                     </div>
                     <div>
-                        <p style="color: #718096; font-size: 11px; margin: 0 0 8px 0; text-transform: uppercase; font-weight: 700;">SM Email</p>
-                        <p style="color: #1a202c; font-size: 14px; font-weight: 600; margin: 0;" id="detailSmEmail">-</p>
+                        <p style="color: #718096; font-size: 11px; margin: 0 0 8px 0; text-transform: uppercase; font-weight: 700;">Lead Description</p>
+                        <p style="color: #1a202c; font-size: 14px; font-weight: 600; margin: 0;" id="detailLeadDescription">-</p>
                     </div>
                     <div>
                         <p style="color: #718096; font-size: 11px; margin: 0 0 8px 0; text-transform: uppercase; font-weight: 700;">SM Sign</p>
@@ -971,9 +971,18 @@
             </div>
         </div>
         
-        <!-- SECTION 7: DOCUMENTS -->
+        <!-- SERVICE REQUIRED BASED DOCUMENTS -->
         <div style="margin-bottom: 30px;">
-            <h3 style="color: #1abc9c; font-size: 16px; font-weight: 700; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid #e5e7eb;">SECTION 7: DOCUMENTS</h3>
+            <h3 style="color: #1abc9c; font-size: 16px; font-weight: 700; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid #e5e7eb;">SERVICE REQUIRED BASED DOCUMENTS</h3>
+            <p style="margin: 0 0 14px 0; color: #475569; font-size: 13px;">Service aur Occupation ke hisaab se suggested documents auto-open honge. Document upload optional hai.</p>
+            <div id="serviceBasedDocumentsContainer">
+                <p style="color: #999; text-align: center; padding: 20px;">No service-based document list saved</p>
+            </div>
+        </div>
+
+        <!-- DOCUMENTS -->
+        <div style="margin-bottom: 30px;">
+            <h3 style="color: #1abc9c; font-size: 16px; font-weight: 700; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid #e5e7eb;">DOCUMENTS</h3>
             <p style="margin: 0 0 14px 0; color: #475569; font-size: 13px;">Each document has two actions: View and Download.</p>
             
             <div id="documentsContainer">
@@ -981,9 +990,9 @@
             </div>
         </div>
 
-        <!-- ALL CAPTURED DETAILS -->
+        <!-- LATEST SAVED FIELDS -->
         <div style="margin-bottom: 30px;">
-            <h3 style="color: #1abc9c; font-size: 16px; font-weight: 700; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid #e5e7eb;">ALL CAPTURED DETAILS</h3>
+            <h3 style="color: #1abc9c; font-size: 16px; font-weight: 700; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid #e5e7eb;">LATEST SAVED FIELDS (REALTIME)</h3>
             <p style="margin: 0 0 14px 0; color: #475569; font-size: 13px;">This section shows every available field saved for this loan.</p>
 
             <div id="fullDetailsContainer">
@@ -2007,7 +2016,7 @@ function populateDetailModal(data) {
         downloadBtn.disabled = false;
         downloadBtn.textContent = 'Download Full Application';
     }
-    setText('detailLoanUid', data.user_id || data.id || '-');
+    setText('detailLoanUid', data.loan_uid_manual || data.user_id || data.id || '-');
     setText('detailStatusText', data.status_display || data.status || '-');
     setText('detailCreatedBy', data.created_by_display || '-');
     setText('detailAssignedEmployee', data.assigned_employee_name || '-');
@@ -2092,10 +2101,10 @@ function populateDetailModal(data) {
         bankTypeEl.textContent = data.bank_type || data.bank_type_key || '-';
     }
     const processingMeta = splitLeaderNameFromProcessingRemarks(data.processing_remarks || '');
-    setText('detailSmName', data.sm_name || '-');
-    setText('detailLeaderName', processingMeta.leaderName || '-');
-    setText('detailSmPhone', data.sm_phone_number || '-');
-    setText('detailSmEmail', data.sm_email || '-');
+    setText('detailSmName', data.lead_receive_channel_partner_name || data.sm_name || '-');
+    setText('detailLeaderName', data.lead_receive_leader_name || processingMeta.leaderName || '-');
+    setText('detailLeadSource', data.lead_receive_source || '-');
+    setText('detailLeadDescription', data.lead_receive_description || '-');
     setText('detailSmSign', data.is_sm_signed ? `☑ Signed (${data.sm_signed_at || '-'})` : '☐ Pending');
     setText('detailRemarks', data.remarks || data.remarks_suggestions || '-');
     const processingRemarksEl = document.getElementById('detailProcessingRemarks');
@@ -2112,6 +2121,11 @@ function populateDetailModal(data) {
     }
     
     // Section 7: Documents
+    const serviceDocsContainer = document.getElementById('serviceBasedDocumentsContainer');
+    if (serviceDocsContainer) {
+        serviceDocsContainer.innerHTML = generateServiceBasedDocumentsHtml(data.full_application_details, data.documents);
+    }
+
     const documentsHtml = generateDocumentsHtml(data.documents);
     document.getElementById('documentsContainer').innerHTML = documentsHtml || '<p style="color: #999; text-align: center; padding: 20px;">No documents attached</p>';
 
@@ -2151,10 +2165,14 @@ function populateDetailModalFallback(name, email, phone, loanType, amount, statu
     if (processingRemarksEl) {
         processingRemarksEl.textContent = '-';
     }
+    const serviceDocsContainer = document.getElementById('serviceBasedDocumentsContainer');
+    if (serviceDocsContainer) {
+        serviceDocsContainer.innerHTML = '<p style="color: #999; text-align: center; padding: 20px;">No service-based document list saved</p>';
+    }
     setText('detailSmName', '-');
     setText('detailLeaderName', '-');
-    setText('detailSmPhone', '-');
-    setText('detailSmEmail', '-');
+    setText('detailLeadSource', '-');
+    setText('detailLeadDescription', '-');
     setText('detailSmSign', '-');
     setText('detailDisbursedAmount', '-');
     setText('detailDisbursedAt', '-');
@@ -2164,6 +2182,124 @@ function populateDetailModalFallback(name, email, phone, loanType, amount, statu
     if (fullDetailsContainer) {
         fullDetailsContainer.innerHTML = '<p style="color: #999; text-align: center; padding: 20px;">No additional details available</p>';
     }
+}
+
+function normalizeDocumentMatchKey(value) {
+    return String(value || '')
+        .toLowerCase()
+        .replace(/\(optional\)/g, '')
+        .replace(/[^a-z0-9]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function getDocumentDisplayName(doc) {
+    return doc?.document_type_display || doc?.document_type || doc?.type || doc?.name || '';
+}
+
+function resolveDocumentUrl(doc) {
+    return doc?.file_url || doc?.download_url || doc?.file || doc?.url || '';
+}
+
+function findMatchingUploadedDocument(requiredName, uploadedDocuments) {
+    const target = normalizeDocumentMatchKey(requiredName);
+    if (!target) return null;
+
+    const docs = Array.isArray(uploadedDocuments) ? uploadedDocuments : [];
+    let bestMatch = null;
+    let bestScore = 0;
+
+    docs.forEach((doc) => {
+        const source = normalizeDocumentMatchKey(getDocumentDisplayName(doc));
+        if (!source) return;
+
+        if (source === target) {
+            bestMatch = doc;
+            bestScore = Number.POSITIVE_INFINITY;
+            return;
+        }
+        if (bestScore === Number.POSITIVE_INFINITY) {
+            return;
+        }
+        if (source.includes(target) || target.includes(source)) {
+            if (bestScore < 1000) {
+                bestMatch = doc;
+                bestScore = 1000;
+            }
+            return;
+        }
+
+        const targetTokens = target.split(' ').filter(Boolean);
+        const sourceTokens = source.split(' ').filter(Boolean);
+        if (!targetTokens.length || !sourceTokens.length) return;
+        const matchedTokens = targetTokens.filter((token) => sourceTokens.includes(token)).length;
+        const ratio = matchedTokens / targetTokens.length;
+        if (ratio >= 0.6 && matchedTokens > bestScore) {
+            bestMatch = doc;
+            bestScore = matchedTokens;
+        }
+    });
+
+    return bestMatch;
+}
+
+function extractServiceBasedDocumentNames(fullDetails, uploadedDocuments) {
+    const fromFullDetails = Array.isArray(fullDetails)
+        ? fullDetails
+            .filter((item) => /^document\s+\d+$/i.test(String(item?.label || '').trim()))
+            .sort((a, b) => {
+                const aIndex = Number((String(a?.label || '').match(/\d+/) || [0])[0]);
+                const bIndex = Number((String(b?.label || '').match(/\d+/) || [0])[0]);
+                return aIndex - bIndex;
+            })
+            .map((item) => String(item?.value || '').trim())
+            .filter(Boolean)
+        : [];
+
+    if (fromFullDetails.length) {
+        return fromFullDetails;
+    }
+
+    const fallback = Array.isArray(uploadedDocuments)
+        ? uploadedDocuments
+            .map((doc) => String(getDocumentDisplayName(doc)).trim())
+            .filter(Boolean)
+        : [];
+
+    return [...new Set(fallback)];
+}
+
+function generateServiceBasedDocumentsHtml(fullDetails, uploadedDocuments) {
+    const requiredDocs = extractServiceBasedDocumentNames(fullDetails, uploadedDocuments);
+    if (!requiredDocs.length) {
+        return '<p style="color: #999; text-align: center; padding: 20px;">No service-based document list saved</p>';
+    }
+
+    const docs = Array.isArray(uploadedDocuments) ? uploadedDocuments : [];
+    return requiredDocs.map((docName, index) => {
+        const matchedDoc = findMatchingUploadedDocument(docName, docs);
+        const fileUrl = matchedDoc ? resolveDocumentUrl(matchedDoc) : '';
+        const uploadedAt = matchedDoc?.uploaded_at || '-';
+
+        return `
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 10px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                    <div>
+                        <p style="margin: 0; color: #64748b; font-size: 11px; text-transform: uppercase; font-weight: 700;">Document ${index + 1}</p>
+                        <p style="margin: 4px 0 0 0; color: #0f172a; font-size: 14px; font-weight: 700;">${escapeHtml(docName || '-')}</p>
+                        <p style="margin: 5px 0 0 0; color: #64748b; font-size: 12px;">Uploaded: ${escapeHtml(uploadedAt)}</p>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end;">
+                        ${fileUrl
+                            ? `<a href="${escapeHtml(fileUrl)}" target="_blank" style="padding: 6px 10px; border-radius: 6px; border: 1px solid #3b82f6; color: #2563eb; font-size: 12px; font-weight: 600; text-decoration: none; background: #eff6ff;">View</a>
+                               <a href="${escapeHtml(fileUrl)}" download style="padding: 6px 10px; border-radius: 6px; border: 1px solid #16a34a; color: #15803d; font-size: 12px; font-weight: 600; text-decoration: none; background: #f0fdf4;">Download</a>`
+                            : `<span style="font-size: 12px; color: #b45309; font-weight: 600;">View/Download upload ke baad available hoga</span>`
+                        }
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
 }
 
 // Generate HTML for existing loans
@@ -3205,7 +3341,6 @@ document.getElementById('loan-details-download-btn')?.addEventListener('click', 
 </script>
 
 {% endblock %}
-
 
 
 

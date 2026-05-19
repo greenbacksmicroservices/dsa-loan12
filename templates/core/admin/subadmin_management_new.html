@@ -3,7 +3,7 @@
 
 {% block title %}Partner Management - Admin{% endblock %}
 
-{% block page_title %}Partner Management - Add / Edit Partners{% endblock %}
+{% block page_title %}Partner Management{% endblock %}
 
 {% block content %}
 <style>
@@ -24,7 +24,7 @@
     .table-section {
         background: white;
         border-radius: 12px;
-        padding: 25px;
+        padding: 18px;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
 
@@ -182,10 +182,10 @@
     }
 
     .table-title {
-        font-size: 18px;
+        font-size: 20px;
         font-weight: 700;
-        color: #1a202c;
-        margin-bottom: 16px;
+        color: #1f2937;
+        margin-bottom: 14px;
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -198,23 +198,39 @@
         gap: 10px;
     }
 
+    .partners-table-wrap {
+        width: 100%;
+        overflow: auto;
+        max-height: 62vh;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        background: #fff;
+    }
+
     .subadmins-table {
         width: 100%;
         border-collapse: collapse;
+        min-width: 1180px;
+        table-layout: auto;
+        border: 1px solid #e5e7eb;
     }
 
     .subadmins-table thead {
-        background: #f7fafc;
-        border-bottom: 2px solid #e2e8f0;
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        color: #fff;
     }
 
     .subadmins-table th {
-        padding: 12px 15px;
+        padding: 12px 10px;
         text-align: left;
         font-weight: 600;
-        color: #2d3748;
+        color: #fff;
         font-size: 12px;
         text-transform: uppercase;
+        white-space: nowrap;
+        position: sticky;
+        top: 0;
+        z-index: 2;
     }
 
     .subadmins-table tbody tr {
@@ -227,9 +243,10 @@
     }
 
     .subadmins-table td {
-        padding: 12px 15px;
+        padding: 10px 10px;
         color: #2d3748;
-        font-size: 14px;
+        font-size: 13px;
+        white-space: nowrap;
     }
 
     .user-cell {
@@ -239,8 +256,8 @@
     }
 
     .user-avatar {
-        width: 40px;
-        height: 40px;
+        width: 34px;
+        height: 34px;
         border-radius: 6px;
         background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
         display: flex;
@@ -248,16 +265,16 @@
         justify-content: center;
         color: white;
         font-weight: 700;
-        font-size: 14px;
+        font-size: 12px;
     }
 
     .action-btns {
         display: flex;
-        gap: 8px;
+        gap: 6px;
     }
 
     .btn-action {
-        padding: 6px 12px;
+        padding: 6px 10px;
         background: #f0f4f8;
         border: 1px solid #cbd5e0;
         border-radius: 4px;
@@ -502,6 +519,130 @@
         background: #cbd5e0;
     }
 
+    .table-controls {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 12px;
+        flex-wrap: wrap;
+    }
+
+    .entries-control {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        color: #374151;
+        font-weight: 600;
+    }
+
+    .entries-control select {
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        padding: 4px 8px;
+        font-size: 13px;
+        background: #fff;
+    }
+
+    .table-search-input {
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        padding: 8px 12px;
+        font-size: 13px;
+        min-width: 260px;
+    }
+
+    .table-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-top: 14px;
+        flex-wrap: wrap;
+    }
+
+    .table-info {
+        font-size: 13px;
+        color: #4b5563;
+    }
+
+    .table-pagination {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+
+    .page-btn {
+        border: 1px solid #d1d5db;
+        background: #fff;
+        color: #1f2937;
+        border-radius: 6px;
+        padding: 5px 10px;
+        font-size: 12px;
+        cursor: pointer;
+        min-width: 34px;
+    }
+
+    .page-btn:hover {
+        background: #f3f4f6;
+    }
+
+    .page-btn.active {
+        background: #2563eb;
+        border-color: #2563eb;
+        color: #fff;
+    }
+
+    .page-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .page-dots {
+        font-size: 12px;
+        color: #6b7280;
+        padding: 0 4px;
+    }
+
+    .partner-inline-panel {
+        display: none;
+        margin-top: 16px;
+        border: 1px solid #dbe3ee;
+        border-radius: 12px;
+        background: #ffffff;
+        box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
+    }
+
+    .partner-inline-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 14px 16px;
+        border-bottom: 1px solid #e5e7eb;
+        background: #f8fafc;
+        border-radius: 12px 12px 0 0;
+    }
+
+    .partner-inline-title {
+        margin: 0;
+        font-size: 18px;
+        color: #111827;
+        font-weight: 700;
+    }
+
+    .partner-inline-subtitle {
+        margin: 3px 0 0 0;
+        color: #64748b;
+        font-size: 12px;
+    }
+
+    .partner-inline-body {
+        padding: 14px;
+    }
+
 </style>
 
 <div class="subadmin-container">
@@ -517,60 +658,113 @@
         </div>
         
         {% if subadmins %}
-        <table class="subadmins-table">
-            <thead>
-                <tr>
-                    <th>User</th>
-                    <th>Email</th>
-                    <th>Phone</th>
-                    <th>Joined</th>
-                    <th>Agents</th>
-                    <th>Employees</th>
-                    <th>Entries</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for subadmin in subadmins %}
-                <tr data-subadmin-id="{{ subadmin.id }}">
-                    <td>
-                        <div class="user-cell">
-                            <div class="user-avatar">{{ subadmin.first_name|first|upper }}</div>
-                            <div>
-                                <strong>{{ subadmin.get_full_name }}</strong>
-                                <br><small style="color: #718096;">@{{ subadmin.username }}</small>
+        <div class="table-controls">
+            <label class="entries-control">
+                Show
+                <select id="partnersPageSize" onchange="changePartnersPageSize()">
+                    <option value="10" selected>10</option>
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                </select>
+                Entries
+            </label>
+            <input
+                type="text"
+                id="partnersSearchInput"
+                class="table-search-input"
+                placeholder="Filter by partner ID, name, username, email, phone..."
+                oninput="filterPartnersTable()"
+            >
+        </div>
+        <div class="partners-table-wrap">
+            <table class="subadmins-table" id="partnersTable">
+                <thead>
+                    <tr>
+                        <th>Partner ID</th>
+                        <th>User</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Joined</th>
+                        <th>Agents</th>
+                        <th>Employees</th>
+                        <th>Loan Apps</th>
+                        <th>Running</th>
+                        <th>Entries</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="partnersTableBody">
+                    {% for subadmin in subadmins %}
+                    <tr data-subadmin-id="{{ subadmin.id }}" data-search="{{ subadmin.employee_id|default:''|lower }},{{ subadmin.get_full_name|lower }},{{ subadmin.username|lower }},{{ subadmin.email|lower }},{{ subadmin.phone|default:''|lower }}">
+                        <td>
+                            <strong>
+                                {% if subadmin.employee_id %}
+                                    {{ subadmin.employee_id }}
+                                {% else %}
+                                    EDC-P-{{ subadmin.id|stringformat:"04d" }}
+                                {% endif %}
+                            </strong>
+                        </td>
+                        <td>
+                            <div class="user-cell">
+                                <div class="user-avatar">{{ subadmin.first_name|first|upper }}</div>
+                                <div>
+                                    <strong>{{ subadmin.get_full_name }}</strong>
+                                    <br><small style="color: #718096;">@{{ subadmin.username }}</small>
+                                </div>
                             </div>
-                        </div>
-                    </td>
-                    <td>{{ subadmin.email }}</td>
-                    <td>{{ subadmin.phone|default:"-" }}</td>
-                    <td>{{ subadmin.date_joined|date:"Y-m-d" }}</td>
-                    <td>{{ subadmin.total_agents|default:0 }}</td>
-                    <td>{{ subadmin.total_employees|default:0 }}</td>
-                    <td>{{ subadmin.total_entries|default:0 }}</td>
-                    <td>
-                        <span class="badge {% if subadmin.is_active %}badge-active{% else %}badge-inactive{% endif %}">
-                            {% if subadmin.is_active %}Active{% else %}Inactive{% endif %}
-                        </span>
-                    </td>
-                    <td>
-                        <div class="action-btns">
-                            <button class="btn-action" title="View" onclick="viewSubadmin({{ subadmin.id }})">
-                                <i class="fas fa-eye"></i> View
-                            </button>
-                            <button class="btn-action" title="Edit" onclick="editSubadmin({{ subadmin.id }})">
-                                <i class="fas fa-edit"></i> Edit
-                            </button>
-                            <button class="btn-action btn-delete" title="Delete" onclick="deleteSubadmin({{ subadmin.id }}, '{{ subadmin.get_full_name|escapejs }}')">
-                                <i class="fas fa-trash"></i> Delete
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                        </td>
+                        <td>{{ subadmin.email }}</td>
+                        <td>{{ subadmin.phone|default:"-" }}</td>
+                        <td>{{ subadmin.date_joined|date:"Y-m-d" }}</td>
+                        <td>{{ subadmin.total_agents|default:0 }}</td>
+                        <td>{{ subadmin.total_employees|default:0 }}</td>
+                        <td>{{ subadmin.total_applications|default:0 }}</td>
+                        <td>{{ subadmin.running_applications|default:0 }}</td>
+                        <td>{{ subadmin.total_entries|default:0 }}</td>
+                        <td>
+                            <span class="badge {% if subadmin.is_active %}badge-active{% else %}badge-inactive{% endif %}">
+                                {% if subadmin.is_active %}Active{% else %}Inactive{% endif %}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="action-btns">
+                                <button class="btn-action" title="View" onclick="viewSubadmin({{ subadmin.id }})">
+                                    <i class="fas fa-eye"></i> View
+                                </button>
+                                <button class="btn-action" title="Edit" onclick="editSubadmin({{ subadmin.id }})">
+                                    <i class="fas fa-edit"></i> Edit
+                                </button>
+                                <button class="btn-action btn-delete" title="Delete" onclick="deleteSubadmin({{ subadmin.id }}, '{{ subadmin.get_full_name|escapejs }}')">
+                                    <i class="fas fa-trash"></i> Delete
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="table-footer">
+            <div class="table-info" id="partnersTableInfo">Showing 0 to 0 of 0 Entries</div>
+            <div class="table-pagination" id="partnersTablePagination"></div>
+        </div>
+        <div id="partnerInlineDetails" class="partner-inline-panel">
+            <div class="partner-inline-header">
+                <div>
+                    <h3 id="partnerInlineTitle" class="partner-inline-title">Partner Details</h3>
+                    <p id="partnerInlineSubtitle" class="partner-inline-subtitle">Select a partner row and click View.</p>
+                </div>
+                <button type="button" class="btn-action" onclick="closePartnerInlineDetails()">
+                    <i class="fas fa-times"></i> Close
+                </button>
+            </div>
+            <div id="partnerInlineBody" class="partner-inline-body">
+                <p style="margin:0; color:#64748b;">Loading full details...</p>
+            </div>
+        </div>
         {% else %}
         <div class="empty-state">
             <i class="fas fa-user-slash"></i>
@@ -704,8 +898,8 @@
                 </div>
                 <div class="form-grid">
                     <div class="form-group">
-                        <label>Employee ID</label>
-                        <input type="text" name="employee_id" placeholder="e.g., SA001">
+                        <label>Partner ID (Auto Generated)</label>
+                        <input type="text" name="employee_id" placeholder="Auto-generated as EDC-P-0000" readonly>
                     </div>
                     <div class="form-group">
                         <label>Photo</label>
@@ -747,22 +941,6 @@
             </button>
             <div id="subadminFormMessage" style="display:none; margin-top: 12px; padding: 10px 12px; border-radius: 6px; font-size: 13px; font-weight: 600;"></div>
         </form>
-    </div>
-</div>
-
-<!-- View Partner Modal -->
-<div class="modal-overlay" id="viewModal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <span>Partner Details</span>
-            <button class="modal-close" onclick="closeModal('viewModal')">&times;</button>
-        </div>
-        <div class="modal-body" id="viewModalBody">
-            <p style="margin: 0; color: #6b7280;">Loading full details...</p>
-        </div>
-        <div class="modal-footer">
-            <button class="btn-modal btn-modal-secondary" onclick="closeModal('viewModal')">Close</button>
-        </div>
     </div>
 </div>
 
@@ -852,6 +1030,114 @@
 </div>
 
 <script>
+    const partnersTableState = {
+        allRows: [],
+        filteredRows: [],
+        currentPage: 1,
+        pageSize: 10,
+    };
+
+    function initializePartnersTableExperience() {
+        const tbody = document.getElementById('partnersTableBody');
+        if (!tbody) return;
+        partnersTableState.allRows = Array.from(tbody.querySelectorAll('tr'));
+        partnersTableState.currentPage = 1;
+        applyPartnersFilters();
+    }
+
+    function applyPartnersFilters() {
+        const searchValue = (document.getElementById('partnersSearchInput')?.value || '').toLowerCase().trim();
+        partnersTableState.filteredRows = partnersTableState.allRows.filter((row) => {
+            const searchText = (row.getAttribute('data-search') || '').toLowerCase();
+            return searchText.includes(searchValue);
+        });
+        renderPartnersTablePage();
+    }
+
+    function renderPartnersTablePage() {
+        const total = partnersTableState.filteredRows.length;
+        const pageSize = partnersTableState.pageSize;
+        const totalPages = Math.max(1, Math.ceil(total / pageSize));
+        if (partnersTableState.currentPage > totalPages) {
+            partnersTableState.currentPage = totalPages;
+        }
+
+        const startIndex = (partnersTableState.currentPage - 1) * pageSize;
+        const endIndex = Math.min(startIndex + pageSize, total);
+
+        partnersTableState.allRows.forEach((row) => {
+            row.style.display = 'none';
+        });
+        partnersTableState.filteredRows.slice(startIndex, endIndex).forEach((row) => {
+            row.style.display = '';
+        });
+
+        const info = document.getElementById('partnersTableInfo');
+        if (info) {
+            if (!total) {
+                info.textContent = 'Showing 0 to 0 of 0 Entries';
+            } else {
+                info.textContent = `Showing ${startIndex + 1} to ${endIndex} of ${total} Entries`;
+            }
+        }
+        renderPartnersPagination(totalPages);
+    }
+
+    function getPartnersPaginationItems(totalPages, currentPage) {
+        const items = [];
+        if (totalPages <= 7) {
+            for (let i = 1; i <= totalPages; i += 1) items.push(i);
+            return items;
+        }
+        items.push(1);
+        if (currentPage > 3) items.push('...');
+        const start = Math.max(2, currentPage - 1);
+        const end = Math.min(totalPages - 1, currentPage + 1);
+        for (let i = start; i <= end; i += 1) items.push(i);
+        if (currentPage < totalPages - 2) items.push('...');
+        items.push(totalPages);
+        return items;
+    }
+
+    function renderPartnersPagination(totalPages) {
+        const wrapper = document.getElementById('partnersTablePagination');
+        if (!wrapper) return;
+        const currentPage = partnersTableState.currentPage;
+        const parts = [];
+        parts.push(`<button class="page-btn" ${currentPage <= 1 ? 'disabled' : ''} onclick="goToPartnersPage(${currentPage - 1})">Previous</button>`);
+
+        getPartnersPaginationItems(totalPages, currentPage).forEach((item) => {
+            if (item === '...') {
+                parts.push('<span class="page-dots">...</span>');
+            } else {
+                parts.push(`<button class="page-btn ${item === currentPage ? 'active' : ''}" onclick="goToPartnersPage(${item})">${item}</button>`);
+            }
+        });
+
+        parts.push(`<button class="page-btn" ${currentPage >= totalPages ? 'disabled' : ''} onclick="goToPartnersPage(${currentPage + 1})">Next</button>`);
+        wrapper.innerHTML = parts.join('');
+    }
+
+    function goToPartnersPage(page) {
+        const totalPages = Math.max(1, Math.ceil(partnersTableState.filteredRows.length / partnersTableState.pageSize));
+        if (page < 1 || page > totalPages) return;
+        partnersTableState.currentPage = page;
+        renderPartnersTablePage();
+    }
+
+    function changePartnersPageSize() {
+        const select = document.getElementById('partnersPageSize');
+        const nextSize = Number(select?.value || 10);
+        partnersTableState.pageSize = Number.isFinite(nextSize) && nextSize > 0 ? nextSize : 10;
+        partnersTableState.currentPage = 1;
+        renderPartnersTablePage();
+    }
+
+    function filterPartnersTable() {
+        partnersTableState.currentPage = 1;
+        applyPartnersFilters();
+    }
+
     function toggleSubadminForm() {
         const section = document.getElementById('subadminFormSection');
         const button = document.getElementById('toggleSubadminBtn');
@@ -992,6 +1278,13 @@
         document.getElementById(id).classList.remove('active');
     }
 
+    function closePartnerInlineDetails() {
+        const panel = document.getElementById('partnerInlineDetails');
+        const body = document.getElementById('partnerInlineBody');
+        if (panel) panel.style.display = 'none';
+        if (body) body.innerHTML = '<p style="margin:0; color:#64748b;">Select a partner row and click View.</p>';
+    }
+
     function escapeHtml(value) {
         return String(value || '')
             .replace(/&/g, '&amp;')
@@ -1007,121 +1300,63 @@
         return amount.toLocaleString('en-IN', { maximumFractionDigits: 0 });
     }
 
-    function renderOnboardingSection(title, rows) {
-        if (!rows || !rows.length) return '';
-        const rowsHtml = rows.map(([label, value]) => `
-            <div style="display:flex; justify-content:space-between; gap:12px; padding:6px 0; border-bottom:1px dashed #e5e7eb;">
-                <div style="color:#6b7280; font-size:12px; min-width:140px;">${escapeHtml(label)}</div>
-                <div style="color:#111827; font-weight:600; text-align:right;">${escapeHtml(value || '-')}</div>
-            </div>
-        `).join('');
-        return `
-            <details style="border:1px solid #e5e7eb; border-radius:10px; padding:12px; background:#f9fafb; margin-bottom:10px;">
-                <summary style="font-weight:700; color:#111827; cursor:pointer;">${escapeHtml(title)}</summary>
-                <div style="margin-top:10px;">${rowsHtml}</div>
-            </details>
-        `;
+    function normalizePartnerStatusKey(rawStatus) {
+        const value = String(rawStatus || '').trim().toLowerCase();
+        if (value === 'required follow-up' || value === 'banking processing') return 'follow_up';
+        return value;
     }
 
-    function renderOnboardingHtml(onboarding, documents) {
-        const data = onboarding || {};
-        const s1 = data.section1 || {};
-        const s2 = data.section2 || {};
-        const s3 = data.section3 || {};
-        const s4 = data.section4 || {};
-        const s5 = data.section5 || {};
-        const s6 = data.section6 || {};
-        const perm = s1.permanent_address || {};
-        const pres = s1.present_address || {};
-
-        const refs = Array.isArray(s5.references) ? s5.references : [];
-        const refsHtml = refs.length
-            ? refs.map((ref, idx) => `
-                <div style="padding:8px; border:1px solid #e5e7eb; border-radius:8px; margin-bottom:8px; background:#fff;">
-                    <div style="font-weight:700; font-size:12px; color:#4b5563;">Reference ${idx + 1}</div>
-                    <div style="font-size:12px; color:#111827; margin-top:4px;">
-                        <div><strong>Name:</strong> ${escapeHtml(ref.name || '-')}</div>
-                        <div><strong>Phone:</strong> ${escapeHtml(ref.phone || '-')}</div>
-                        <div><strong>Email:</strong> ${escapeHtml(ref.email || '-')}</div>
-                        <div><strong>Relation:</strong> ${escapeHtml(ref.relation || '-')}</div>
-                    </div>
-                </div>
-            `).join('')
-            : '<div style="color:#6b7280; font-size:12px;">No references added.</div>';
-
-        const docs = Array.isArray(documents) ? documents : [];
-        const docsHtml = docs.length
-            ? docs.map(doc => `
+    function renderPartnerLoanDetailCard(item) {
+        if (!item) {
+            return '<div style="padding:14px; color:#64748b;">Select an application and click View for full details.</div>';
+        }
+        const detailRows = Array.isArray(item.full_application_details) ? item.full_application_details : [];
+        const timeline = Array.isArray(item.status_timeline) ? item.status_timeline : [];
+        const detailHtml = detailRows.length
+            ? detailRows.map(row => `
                 <div style="display:flex; justify-content:space-between; gap:12px; padding:6px 0; border-bottom:1px dashed #e5e7eb;">
-                    <div style="font-size:12px; color:#4b5563;">${escapeHtml(doc.type || 'other')}</div>
-                    <div style="font-size:12px;">
-                        ${doc.url ? `<a href="${escapeHtml(doc.url)}" target="_blank" style="color:#2563eb; text-decoration:none;">View</a>` : '<span style="color:#9ca3af;">No file</span>'}
-                    </div>
+                    <div style="color:#64748b; font-size:12px;">${escapeHtml(row.label || '-')}</div>
+                    <div style="color:#0f172a; font-size:12px; font-weight:600; text-align:right;">${escapeHtml(row.value || '-')}</div>
                 </div>
             `).join('')
-            : '<div style="color:#6b7280; font-size:12px;">No documents uploaded.</div>';
+            : '<div style="color:#64748b; font-size:12px;">No additional form details available.</div>';
+
+        const timelineHtml = timeline.length
+            ? timeline.slice(0, 6).map(row => `
+                <div style="padding:8px; border:1px solid #e5e7eb; border-radius:8px; margin-bottom:8px; background:#fff;">
+                    <div style="font-size:12px; font-weight:700; color:#0f172a;">${escapeHtml(row.to_status || '-')}</div>
+                    <div style="font-size:11px; color:#475569;">${escapeHtml(row.changed_at || '-')} | ${escapeHtml(row.changed_by || 'System')}</div>
+                    <div style="font-size:11px; color:#64748b; margin-top:4px;">${escapeHtml(row.reason || '-')}</div>
+                </div>
+            `).join('')
+            : '<div style="font-size:12px; color:#64748b;">No status timeline available.</div>';
 
         return `
-            <div style="margin: 18px 0;">
-                <h3 style="margin:0 0 8px 0; font-size:16px; color:#111827;">Onboarding Details</h3>
-                ${renderOnboardingSection('SECTION 1: Applicant Information', [
-                    ['Name', s1.full_name],
-                    ['Mobile', s1.mobile],
-                    ['Alternate Mobile', s1.alternate_mobile],
-                    ['Email', s1.email],
-                    ["Father's Name", s1.father_name],
-                    ["Mother's Name", s1.mother_name],
-                    ['Date of Birth', s1.date_of_birth],
-                    ['Gender', s1.gender],
-                    ['Marital Status', s1.marital_status],
-                ['Permanent Address', perm.address],
-                ['Permanent Landmark', perm.landmark],
-                ['Permanent State', perm.state],
-                ['Permanent City', perm.city],
-                ['Permanent PIN', perm.pin_code],
-                ['Present Same as Permanent', pres.same_as_permanent ? 'Yes' : 'No'],
-                ['Present Address', pres.address],
-                ['Present Landmark', pres.landmark],
-                ['Present State', pres.state],
-                ['Present City', pres.city],
-                ['Present PIN', pres.pin_code],
-            ])}
-                ${renderOnboardingSection('SECTION 2: Occupation & Income Details', [
-                    ['Occupation', s2.occupation],
-                    ['Date of Joining', s2.date_of_joining],
-                    ['Years of Experience', s2.years_experience],
-                    ['Additional Income', s2.additional_income],
-                    ['Extra Income Details', s2.extra_income_details],
-                ])}
-                ${renderOnboardingSection('SECTION 3: Loan Type', [
-                    ['Loan Type Details', s3.existing_loan_details],
-                ])}
-                ${renderOnboardingSection('SECTION 4: Loan Request', [
-                    ['Service Required', s4.service_required],
-                    ['Loan Amount Required', s4.loan_amount_required],
-                    ['Loan Tenure (Months)', s4.loan_tenure_months],
-                    ['Charges / Fee', s4.charges_or_fee],
-                    ['Loan Purpose', s4.loan_purpose],
-                ])}
-                <details style="border:1px solid #e5e7eb; border-radius:10px; padding:12px; background:#f9fafb; margin-bottom:10px;">
-                    <summary style="font-weight:700; color:#111827; cursor:pointer;">SECTION 5: References</summary>
-                    <div style="margin-top:10px;">${refsHtml}</div>
+            <div style="padding:14px;">
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:10px; margin-bottom:12px;">
+                    <div><strong>Loan ID:</strong> ${escapeHtml(item.loan_uid || item.loan_id || '-')}</div>
+                    <div><strong>Status:</strong> ${escapeHtml(item.status_display || item.status || '-')}</div>
+                    <div><strong>Created:</strong> ${escapeHtml(item.created_at || '-')}</div>
+                    <div><strong>Updated:</strong> ${escapeHtml(item.updated_at || '-')}</div>
+                    <div><strong>Action Time:</strong> ${escapeHtml(item.action_taken_at || '-')}</div>
+                    <div><strong>Assigned:</strong> ${escapeHtml(item.assigned_at || '-')}</div>
+                    <div><strong>Bank:</strong> ${escapeHtml(item.bank_name || '-')}</div>
+                    <div><strong>IFSC:</strong> ${escapeHtml(item.bank_ifsc_code || '-')}</div>
+                    <div><strong>A/C:</strong> ${escapeHtml(item.bank_account_number || '-')}</div>
+                    <div><strong>SM Name:</strong> ${escapeHtml(item.sm_name || '-')}</div>
+                </div>
+                <details open style="border:1px solid #e5e7eb; border-radius:10px; padding:10px; background:#f8fafc; margin-bottom:10px;">
+                    <summary style="font-size:12px; font-weight:700; color:#0f172a; cursor:pointer;">Loan Application Form Details</summary>
+                    <div style="margin-top:8px;">${detailHtml}</div>
                 </details>
-                ${renderOnboardingSection('SECTION 6: Balance Transfer (If Any)', [
-                    ['CIBIL Score', s6.cibil_score],
-                    ['Aadhar Number', s6.aadhar_number],
-                    ['PAN Number', s6.pan_number],
-                    ['Bank Name', s6.bank_name],
-                    ['Account Number', s6.account_number],
-                    ['IFSC Code', s6.ifsc_code],
-                    ['Bank Type', s6.bank_type],
-                    ['Remarks', s6.remarks],
-                    ['Declaration', s6.declaration ? 'Yes' : 'No'],
-                ])}
-                <details style="border:1px solid #e5e7eb; border-radius:10px; padding:12px; background:#f9fafb; margin-bottom:10px;">
-                    <summary style="font-weight:700; color:#111827; cursor:pointer;">SECTION 7: Documents</summary>
-                    <div style="margin-top:10px;">${docsHtml}</div>
+                <details style="border:1px solid #e5e7eb; border-radius:10px; padding:10px; background:#f8fafc; margin-bottom:10px;">
+                    <summary style="font-size:12px; font-weight:700; color:#0f172a; cursor:pointer;">Status + Remark Timeline</summary>
+                    <div style="margin-top:8px;">${timelineHtml}</div>
                 </details>
+                <div>
+                    <div style="font-size:12px; color:#64748b; margin-bottom:4px;">Remarks</div>
+                    <div style="padding:10px; border:1px solid #e5e7eb; border-radius:8px; background:#f8fafc; font-size:12px; color:#0f172a;">${escapeHtml(item.remarks || item.bank_remark || '-')}</div>
+                </div>
             </div>
         `;
     }
@@ -1130,39 +1365,20 @@
         const subadmin = data.subadmin || {};
         const summary = data.summary || {};
         const customers = Array.isArray(data.customers) ? data.customers : [];
-        const rowsHtml = customers.length ? customers.map((item, idx) => `
-            <tr>
-                <td style="padding: 8px; border-bottom: 1px solid #eef2f7;">${idx + 1}</td>
-                <td style="padding: 8px; border-bottom: 1px solid #eef2f7;">${escapeHtml(item.loan_uid || item.loan_id || '-')}</td>
-                <td style="padding: 8px; border-bottom: 1px solid #eef2f7;">${escapeHtml(item.customer_name || '-')}</td>
-                <td style="padding: 8px; border-bottom: 1px solid #eef2f7;">${escapeHtml(item.mobile || '-')}</td>
-                <td style="padding: 8px; border-bottom: 1px solid #eef2f7;">&#8377;${formatINR(item.loan_amount)}</td>
-                <td style="padding: 8px; border-bottom: 1px solid #eef2f7;">${escapeHtml(item.status_display || item.status || '-')}</td>
-                <td style="padding: 8px; border-bottom: 1px solid #eef2f7;">${escapeHtml(item.assigned_to || '-')}</td>
-                <td style="padding: 8px; border-bottom: 1px solid #eef2f7;">${escapeHtml(item.assigned_by || '-')}</td>
-                <td style="padding: 8px; border-bottom: 1px solid #eef2f7;">${escapeHtml(item.owner_name || '-')}</td>
-                <td style="padding: 8px; border-bottom: 1px solid #eef2f7; max-width: 260px;">${escapeHtml(item.bank_remark || '-')}</td>
-            </tr>
-        `).join('') : `
-            <tr>
-                <td colspan="10" style="padding: 20px; text-align: center; color: #6b7280;">No customer data available.</td>
-            </tr>
-        `;
-
-        const body = document.getElementById('viewModalBody');
+        const managedEmployees = Array.isArray(data.managed_employees) ? data.managed_employees : [];
+        const managedAgents = Array.isArray(data.managed_agents) ? data.managed_agents : [];
+        const panel = document.getElementById('partnerInlineDetails');
+        const body = document.getElementById('partnerInlineBody');
         if (!body) return;
-        body.innerHTML = `
-            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap:10px; margin-bottom:15px;">
-                <div style="background:#eff6ff; border:1px solid #dbeafe; border-radius:8px; padding:10px;"><div style="font-size:12px;color:#1d4ed8;">Applications</div><div style="font-size:20px;font-weight:700;">${summary.total_applications || 0}</div></div>
-                <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px;"><div style="font-size:12px;color:#334155;">Employees</div><div style="font-size:20px;font-weight:700;">${summary.managed_employees || 0}</div></div>
-                <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:10px;"><div style="font-size:12px;color:#15803d;">Agents</div><div style="font-size:20px;font-weight:700;">${summary.managed_agents || 0}</div></div>
-                <div style="background:#ecfdf5; border:1px solid #bbf7d0; border-radius:8px; padding:10px;"><div style="font-size:12px;color:#047857;">Approved</div><div style="font-size:20px;font-weight:700;">${summary.approved || 0}</div></div>
-                <div style="background:#fef2f2; border:1px solid #fecaca; border-radius:8px; padding:10px;"><div style="font-size:12px;color:#b91c1c;">Rejected</div><div style="font-size:20px;font-weight:700;">${summary.rejected || 0}</div></div>
-                <div style="background:#fff7ed; border:1px solid #fed7aa; border-radius:8px; padding:10px;"><div style="font-size:12px;color:#c2410c;">Banking Processing</div><div style="font-size:20px;font-weight:700;">${summary.banking_processing || 0}</div></div>
-                <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px;"><div style="font-size:12px;color:#334155;">Customers</div><div style="font-size:20px;font-weight:700;">${summary.total_customers || 0}</div></div>
-            </div>
+        const titleEl = document.getElementById('partnerInlineTitle');
+        const subtitleEl = document.getElementById('partnerInlineSubtitle');
+        if (titleEl) titleEl.textContent = 'Partner Details';
+        if (subtitleEl) subtitleEl.textContent = `${subadmin.name || 'N/A'} | ${subadmin.email || 'N/A'}`;
+        if (panel) panel.style.display = 'block';
 
-            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:10px; margin-bottom:15px;">
+        body.innerHTML = `
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:10px; margin-bottom:14px;">
+                <div><strong>Partner ID:</strong> ${escapeHtml(subadmin.partner_id || '-')}</div>
                 <div><strong>Name:</strong> ${escapeHtml(subadmin.name || '-')}</div>
                 <div><strong>Username:</strong> ${escapeHtml(subadmin.username || '-')}</div>
                 <div><strong>Email:</strong> ${escapeHtml(subadmin.email || '-')}</div>
@@ -1171,9 +1387,47 @@
                 <div><strong>Status:</strong> ${escapeHtml(subadmin.status || '-')}</div>
             </div>
 
-            ${renderOnboardingHtml(data.onboarding || {}, data.documents || [])}
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap:10px; margin-bottom:14px;">
+                <button type="button" class="partner-stat-btn" data-section="applications" style="text-align:left; border:1px solid #dbeafe; border-radius:10px; background:#eff6ff; padding:10px; cursor:pointer;"><div style="font-size:12px;color:#1d4ed8;">Applications</div><div style="font-size:20px;font-weight:700;color:#1e3a8a;">${summary.total_applications || 0}</div></button>
+                <button type="button" class="partner-stat-btn" data-section="employees" style="text-align:left; border:1px solid #e2e8f0; border-radius:10px; background:#f8fafc; padding:10px; cursor:pointer;"><div style="font-size:12px;color:#334155;">Employees</div><div style="font-size:20px;font-weight:700;color:#0f172a;">${summary.managed_employees || 0}</div></button>
+                <button type="button" class="partner-stat-btn" data-section="agents" style="text-align:left; border:1px solid #bbf7d0; border-radius:10px; background:#f0fdf4; padding:10px; cursor:pointer;"><div style="font-size:12px;color:#15803d;">Agents</div><div style="font-size:20px;font-weight:700;color:#166534;">${summary.managed_agents || 0}</div></button>
+                <button type="button" class="partner-stat-btn" data-section="approved" style="text-align:left; border:1px solid #bbf7d0; border-radius:10px; background:#ecfdf5; padding:10px; cursor:pointer;"><div style="font-size:12px;color:#047857;">Approved</div><div style="font-size:20px;font-weight:700;color:#065f46;">${summary.approved || 0}</div></button>
+                <button type="button" class="partner-stat-btn" data-section="rejected" style="text-align:left; border:1px solid #fecaca; border-radius:10px; background:#fef2f2; padding:10px; cursor:pointer;"><div style="font-size:12px;color:#b91c1c;">Rejected</div><div style="font-size:20px;font-weight:700;color:#7f1d1d;">${summary.rejected || 0}</div></button>
+                <button type="button" class="partner-stat-btn" data-section="follow_up" style="text-align:left; border:1px solid #fed7aa; border-radius:10px; background:#fff7ed; padding:10px; cursor:pointer;"><div style="font-size:12px;color:#c2410c;">Banking Processing</div><div style="font-size:20px;font-weight:700;color:#9a3412;">${summary.banking_processing || 0}</div></button>
+                <button type="button" class="partner-stat-btn" data-section="customers" style="text-align:left; border:1px solid #e2e8f0; border-radius:10px; background:#f8fafc; padding:10px; cursor:pointer;"><div style="font-size:12px;color:#334155;">Customers</div><div style="font-size:20px;font-weight:700;color:#0f172a;">${summary.total_customers || 0}</div></button>
+            </div>
 
-            <div style="border:1px solid #e5e7eb; border-radius:8px; overflow:auto;">
+            <div id="partnerSectionBody" style="border:1px solid #e5e7eb; border-radius:10px; background:#ffffff; overflow:auto; max-height:430px;"></div>
+            <div id="partnerLoanDetailsPanel" style="border:1px solid #e5e7eb; border-radius:10px; margin-top:12px; background:#f8fafc;">
+                ${renderPartnerLoanDetailCard(null)}
+            </div>
+        `;
+
+        const sectionBody = document.getElementById('partnerSectionBody');
+        const loanDetailsPanel = document.getElementById('partnerLoanDetailsPanel');
+
+        function renderApplications(rows, caption) {
+            const safeRows = Array.isArray(rows) ? rows : [];
+            const rowsHtml = safeRows.length ? safeRows.map((item, idx) => `
+                <tr>
+                    <td style="padding:8px; border-bottom:1px solid #eef2f7;">${idx + 1}</td>
+                    <td style="padding:8px; border-bottom:1px solid #eef2f7;">${escapeHtml(item.loan_uid || item.loan_id || '-')}</td>
+                    <td style="padding:8px; border-bottom:1px solid #eef2f7;">${escapeHtml(item.customer_name || '-')}</td>
+                    <td style="padding:8px; border-bottom:1px solid #eef2f7;">${escapeHtml(item.mobile || '-')}</td>
+                    <td style="padding:8px; border-bottom:1px solid #eef2f7;">&#8377;${formatINR(item.loan_amount)}</td>
+                    <td style="padding:8px; border-bottom:1px solid #eef2f7;">${escapeHtml(item.status_display || item.status || '-')}</td>
+                    <td style="padding:8px; border-bottom:1px solid #eef2f7;">${escapeHtml(item.assigned_to || '-')}</td>
+                    <td style="padding:8px; border-bottom:1px solid #eef2f7;">${escapeHtml(item.owner_name || '-')}</td>
+                    <td style="padding:8px; border-bottom:1px solid #eef2f7;">
+                        <button type="button" class="btn-action" data-partner-loan-view="${escapeHtml(item.loan_id)}"><i class="fas fa-eye"></i> View</button>
+                    </td>
+                </tr>
+            `).join('') : `
+                <tr><td colspan="9" style="padding:18px; text-align:center; color:#6b7280;">No application records found.</td></tr>
+            `;
+
+            sectionBody.innerHTML = `
+                <div style="padding:10px 12px; border-bottom:1px solid #e5e7eb; font-size:13px; font-weight:700; color:#0f172a;">${escapeHtml(caption)}</div>
                 <table style="width:100%; border-collapse:collapse; font-size:12px; min-width:960px;">
                     <thead style="background:#f8fafc; color:#334155;">
                         <tr>
@@ -1184,47 +1438,159 @@
                             <th style="padding:8px; text-align:left;">Amount</th>
                             <th style="padding:8px; text-align:left;">Status</th>
                             <th style="padding:8px; text-align:left;">Assigned To</th>
-                            <th style="padding:8px; text-align:left;">Assigned By</th>
                             <th style="padding:8px; text-align:left;">Owner</th>
-                            <th style="padding:8px; text-align:left;">Bank Remark</th>
+                            <th style="padding:8px; text-align:left;">Action</th>
                         </tr>
                     </thead>
                     <tbody>${rowsHtml}</tbody>
                 </table>
-            </div>
-        `;
+            `;
+        }
+
+        function renderEmployees() {
+            const rowsHtml = managedEmployees.length ? managedEmployees.map((item, idx) => `
+                <tr>
+                    <td style="padding:8px; border-bottom:1px solid #eef2f7;">${idx + 1}</td>
+                    <td style="padding:8px; border-bottom:1px solid #eef2f7;">${escapeHtml(item.employee_id || '-')}</td>
+                    <td style="padding:8px; border-bottom:1px solid #eef2f7;">${escapeHtml(item.name || '-')}</td>
+                    <td style="padding:8px; border-bottom:1px solid #eef2f7;">${escapeHtml(item.email || '-')}</td>
+                    <td style="padding:8px; border-bottom:1px solid #eef2f7;">${escapeHtml(item.phone || '-')}</td>
+                    <td style="padding:8px; border-bottom:1px solid #eef2f7;">${escapeHtml(item.channel_partner_count || 0)}</td>
+                    <td style="padding:8px; border-bottom:1px solid #eef2f7;">${escapeHtml(item.application_count || 0)}</td>
+                    <td style="padding:8px; border-bottom:1px solid #eef2f7;">
+                        <button type="button" class="btn-action" data-partner-employee-apps="${escapeHtml(item.id)}"><i class="fas fa-list"></i> Applications</button>
+                    </td>
+                </tr>
+            `).join('') : '<tr><td colspan="8" style="padding:18px; text-align:center; color:#6b7280;">No employees linked.</td></tr>';
+
+            sectionBody.innerHTML = `
+                <div style="padding:10px 12px; border-bottom:1px solid #e5e7eb; font-size:13px; font-weight:700; color:#0f172a;">Employees Under This Partner</div>
+                <table style="width:100%; border-collapse:collapse; font-size:12px; min-width:860px;">
+                    <thead style="background:#f8fafc; color:#334155;">
+                        <tr>
+                            <th style="padding:8px; text-align:left;">#</th>
+                            <th style="padding:8px; text-align:left;">Employee ID</th>
+                            <th style="padding:8px; text-align:left;">Name</th>
+                            <th style="padding:8px; text-align:left;">Email</th>
+                            <th style="padding:8px; text-align:left;">Phone</th>
+                            <th style="padding:8px; text-align:left;">Channel Partners</th>
+                            <th style="padding:8px; text-align:left;">Applications</th>
+                            <th style="padding:8px; text-align:left;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rowsHtml}</tbody>
+                </table>
+            `;
+        }
+
+        function renderAgents() {
+            const rowsHtml = managedAgents.length ? managedAgents.map((item, idx) => `
+                <tr>
+                    <td style="padding:8px; border-bottom:1px solid #eef2f7;">${idx + 1}</td>
+                    <td style="padding:8px; border-bottom:1px solid #eef2f7;">${escapeHtml(item.agent_id || '-')}</td>
+                    <td style="padding:8px; border-bottom:1px solid #eef2f7;">${escapeHtml(item.name || '-')}</td>
+                    <td style="padding:8px; border-bottom:1px solid #eef2f7;">${escapeHtml(item.email || '-')}</td>
+                    <td style="padding:8px; border-bottom:1px solid #eef2f7;">${escapeHtml(item.phone || '-')}</td>
+                    <td style="padding:8px; border-bottom:1px solid #eef2f7;">${escapeHtml(item.under_employee || '-')}</td>
+                    <td style="padding:8px; border-bottom:1px solid #eef2f7;">${escapeHtml(item.application_count || 0)}</td>
+                    <td style="padding:8px; border-bottom:1px solid #eef2f7;">
+                        <button type="button" class="btn-action" data-partner-agent-apps="${escapeHtml(item.id)}"><i class="fas fa-list"></i> Applications</button>
+                    </td>
+                </tr>
+            `).join('') : '<tr><td colspan="8" style="padding:18px; text-align:center; color:#6b7280;">No agents linked.</td></tr>';
+
+            sectionBody.innerHTML = `
+                <div style="padding:10px 12px; border-bottom:1px solid #e5e7eb; font-size:13px; font-weight:700; color:#0f172a;">Agents / Channel Partners Under This Partner</div>
+                <table style="width:100%; border-collapse:collapse; font-size:12px; min-width:900px;">
+                    <thead style="background:#f8fafc; color:#334155;">
+                        <tr>
+                            <th style="padding:8px; text-align:left;">#</th>
+                            <th style="padding:8px; text-align:left;">Agent ID</th>
+                            <th style="padding:8px; text-align:left;">Name</th>
+                            <th style="padding:8px; text-align:left;">Email</th>
+                            <th style="padding:8px; text-align:left;">Phone</th>
+                            <th style="padding:8px; text-align:left;">Under Employee</th>
+                            <th style="padding:8px; text-align:left;">Applications</th>
+                            <th style="padding:8px; text-align:left;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rowsHtml}</tbody>
+                </table>
+            `;
+        }
+
+        function activateStat(sectionKey) {
+            const buttons = body.querySelectorAll('.partner-stat-btn');
+            buttons.forEach((btn) => {
+                const active = btn.getAttribute('data-section') === sectionKey;
+                btn.style.outline = active ? '2px solid #2563eb' : 'none';
+                btn.style.outlineOffset = active ? '1px' : '0';
+            });
+        }
+
+        function renderSection(sectionKey) {
+            const key = String(sectionKey || '').toLowerCase();
+            if (key === 'employees') {
+                renderEmployees();
+                activateStat('employees');
+                return;
+            }
+            if (key === 'agents') {
+                renderAgents();
+                activateStat('agents');
+                return;
+            }
+            if (key === 'approved' || key === 'rejected' || key === 'follow_up') {
+                const filtered = customers.filter((item) => normalizePartnerStatusKey(item.status) === key);
+                renderApplications(filtered, `${key.replace('_', ' ').toUpperCase()} Applications`);
+                activateStat(key);
+                return;
+            }
+            if (key === 'customers') {
+                renderApplications(customers, 'Customers Applications (All)');
+                activateStat('customers');
+                return;
+            }
+            renderApplications(customers, 'All Applications');
+            activateStat('applications');
+        }
+
+        renderSection('applications');
+
+        body.querySelectorAll('.partner-stat-btn').forEach((btn) => {
+            btn.addEventListener('click', () => renderSection(btn.getAttribute('data-section')));
+        });
+
+        body.onclick = (event) => {
+            const loanBtn = event.target.closest('[data-partner-loan-view]');
+            if (loanBtn) {
+                const targetId = Number(loanBtn.getAttribute('data-partner-loan-view'));
+                const item = customers.find((entry) => Number(entry.loan_id) === targetId);
+                loanDetailsPanel.innerHTML = renderPartnerLoanDetailCard(item);
+                return;
+            }
+
+            const employeeAppsBtn = event.target.closest('[data-partner-employee-apps]');
+            if (employeeAppsBtn) {
+                const employeeId = Number(employeeAppsBtn.getAttribute('data-partner-employee-apps'));
+                const rows = customers.filter((item) => Number(item.assigned_employee_id) === employeeId);
+                const employeeName = managedEmployees.find((item) => Number(item.id) === employeeId)?.name || 'Employee';
+                renderApplications(rows, `Applications Under Employee: ${employeeName}`);
+                return;
+            }
+
+            const agentAppsBtn = event.target.closest('[data-partner-agent-apps]');
+            if (agentAppsBtn) {
+                const agentId = Number(agentAppsBtn.getAttribute('data-partner-agent-apps'));
+                const rows = customers.filter((item) => Number(item.assigned_agent_id) === agentId);
+                const agentName = managedAgents.find((item) => Number(item.id) === agentId)?.name || 'Agent';
+                renderApplications(rows, `Applications Under Agent: ${agentName}`);
+            }
+        };
     }
 
-    async function viewSubadmin(id) {
-        const body = document.getElementById('viewModalBody');
-        if (body) {
-            body.innerHTML = '<p style="margin: 0; color: #6b7280;">Loading full details...</p>';
-        }
-        viewModal('viewModal');
-        try {
-            const response = await fetch(`/api/admin/subadmin/${id}/full-details/`, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '',
-                }
-            });
-            const raw = await response.text();
-            let data = {};
-            try {
-                data = raw ? JSON.parse(raw) : {};
-            } catch {
-                throw new Error('Invalid response from server.');
-            }
-            if (!response.ok || !data.success) {
-                throw new Error(data.error || 'Failed to load subadmin details');
-            }
-            renderSubadminDetails(data);
-        } catch (error) {
-            if (body) {
-                body.innerHTML = `<p style="color:#b91c1c; margin: 0;">${escapeHtml(error.message || 'Unable to load details')}</p>`;
-            }
-        }
+    function viewSubadmin(id) {
+        window.location.href = `/admin/partner/${id}/detail/`;
     }
 
     let currentDeleteId = null;
@@ -1435,6 +1801,8 @@
         if (event.target === editModal) closeModal('editModal');
         if (event.target === deleteModal) closeModal('deleteModal');
     });
+
+    document.addEventListener('DOMContentLoaded', initializePartnersTableExperience);
 </script>
 
 {% endblock %}

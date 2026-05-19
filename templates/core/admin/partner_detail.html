@@ -1,0 +1,582 @@
+{% extends 'core/admin/admin_base.html' %}
+{% load static %}
+
+{% block title %}Partner Details - {{ partner.get_full_name|default:partner.username }}{% endblock %}
+{% block page_title %}Partner Details{% endblock %}
+
+{% block content %}
+<style>
+    .detail-shell {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        padding: 18px;
+    }
+
+    .detail-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: 14px;
+    }
+
+    .detail-meta h2 {
+        margin: 0;
+        font-size: 22px;
+        color: #0f172a;
+        font-weight: 700;
+    }
+
+    .detail-meta p {
+        margin: 4px 0 0 0;
+        color: #64748b;
+        font-size: 13px;
+    }
+
+    .back-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        background: #ffffff;
+        color: #0f172a;
+        font-weight: 600;
+        font-size: 13px;
+        padding: 8px 12px;
+        text-decoration: none;
+    }
+
+    .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+        gap: 10px;
+        margin-bottom: 14px;
+    }
+
+    .summary-item {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 10px;
+        font-size: 13px;
+        color: #334155;
+    }
+
+    .summary-item strong {
+        color: #0f172a;
+    }
+
+    .stat-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 10px;
+    }
+
+    .stat-btn {
+        text-align: left;
+        border-radius: 10px;
+        padding: 10px;
+        cursor: pointer;
+        border: 1px solid #dbeafe;
+        background: #eff6ff;
+    }
+
+    .stat-label {
+        font-size: 12px;
+        color: #1d4ed8;
+    }
+
+    .stat-value {
+        font-size: 22px;
+        font-weight: 700;
+        color: #1e3a8a;
+    }
+
+    .popup-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.6);
+        z-index: 2200;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    }
+
+    .popup-card {
+        width: min(1200px, 96vw);
+        max-height: 88vh;
+        background: #ffffff;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 20px 50px rgba(15, 23, 42, 0.28);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .popup-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        padding: 14px 16px;
+        border-bottom: 1px solid #e2e8f0;
+        background: #f8fafc;
+    }
+
+    .popup-title {
+        margin: 0;
+        font-size: 17px;
+        color: #0f172a;
+        font-weight: 700;
+    }
+
+    .popup-body {
+        padding: 14px;
+        overflow: auto;
+    }
+
+    .close-popup-btn {
+        border: 1px solid #cbd5e1;
+        background: #ffffff;
+        border-radius: 8px;
+        color: #0f172a;
+        font-size: 12px;
+        font-weight: 600;
+        padding: 6px 10px;
+        cursor: pointer;
+    }
+
+    .popup-table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 920px;
+        font-size: 12px;
+    }
+
+    .popup-table thead th {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background: #f8fafc;
+        color: #334155;
+        border-bottom: 1px solid #e2e8f0;
+        text-align: left;
+        padding: 8px;
+    }
+
+    .popup-table tbody td {
+        border-bottom: 1px solid #eef2f7;
+        padding: 8px;
+        color: #0f172a;
+    }
+
+    .mini-btn {
+        border: 1px solid #bfdbfe;
+        background: #eff6ff;
+        color: #1d4ed8;
+        border-radius: 6px;
+        padding: 4px 8px;
+        font-size: 11px;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .status-chip {
+        display: inline-block;
+        border-radius: 999px;
+        padding: 3px 8px;
+        font-size: 11px;
+        font-weight: 700;
+        color: #0f172a;
+        background: #e2e8f0;
+    }
+</style>
+
+<div class="detail-shell">
+    <div class="detail-head">
+        <div class="detail-meta">
+            <h2 id="partnerName">{{ partner.get_full_name|default:partner.username }}</h2>
+            <p id="partnerMeta">Loading partner details...</p>
+        </div>
+        <a class="back-btn" href="{% url 'admin_subadmin_management' %}"><i class="fas fa-arrow-left"></i> Back To Partners</a>
+    </div>
+
+    <div id="partnerSummaryGrid" class="summary-grid"></div>
+    <div id="partnerStatGrid" class="stat-grid"></div>
+</div>
+
+<div class="popup-overlay" id="sectionPopup">
+    <div class="popup-card">
+        <div class="popup-head">
+            <h3 class="popup-title" id="sectionPopupTitle">Details</h3>
+            <button type="button" class="close-popup-btn" onclick="closePopup('sectionPopup')">Close</button>
+        </div>
+        <div class="popup-body" id="sectionPopupBody"></div>
+    </div>
+</div>
+
+<div class="popup-overlay" id="loanPopup">
+    <div class="popup-card" style="width:min(980px, 96vw);">
+        <div class="popup-head">
+            <h3 class="popup-title">Application Full Details</h3>
+            <button type="button" class="close-popup-btn" onclick="closePopup('loanPopup')">Close</button>
+        </div>
+        <div class="popup-body" id="loanPopupBody"></div>
+    </div>
+</div>
+
+<script>
+const partnerId = Number('{{ partner.id }}');
+let partnerData = {
+    subadmin: {},
+    summary: {},
+    customers: [],
+    managed_employees: [],
+    managed_agents: []
+};
+
+function escapeHtml(value) {
+    return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function formatINR(value) {
+    const amount = Number(value || 0);
+    if (Number.isNaN(amount)) return '0';
+    return amount.toLocaleString('en-IN', { maximumFractionDigits: 0 });
+}
+
+function statusKey(raw) {
+    const value = String(raw || '').trim().toLowerCase();
+    if (value === 'required follow-up' || value === 'banking processing') return 'follow_up';
+    return value;
+}
+
+function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return '';
+}
+
+function syncBodyScrollLock() {
+    const hasOpenPopup = Array.from(document.querySelectorAll('.popup-overlay'))
+        .some((popup) => popup.style.display === 'flex');
+    document.body.style.overflow = hasOpenPopup ? 'hidden' : 'auto';
+}
+
+function openPopup(id) {
+    const popup = document.getElementById(id);
+    if (!popup) return;
+    popup.style.display = 'flex';
+    syncBodyScrollLock();
+}
+
+function closePopup(id) {
+    const popup = document.getElementById(id);
+    if (!popup) return;
+    popup.style.display = 'none';
+    syncBodyScrollLock();
+}
+
+function renderLoanDetailCard(item) {
+    if (!item) {
+        return '<div style="padding:14px; color:#64748b;">Details not available.</div>';
+    }
+    const detailRows = Array.isArray(item.full_application_details) ? item.full_application_details : [];
+    const timeline = Array.isArray(item.status_timeline) ? item.status_timeline : [];
+    const detailHtml = detailRows.length
+        ? detailRows.map((row) => `
+            <div style="display:flex; justify-content:space-between; gap:12px; padding:6px 0; border-bottom:1px dashed #e5e7eb;">
+                <div style="color:#64748b; font-size:12px;">${escapeHtml(row.label || '-')}</div>
+                <div style="color:#0f172a; font-size:12px; font-weight:600; text-align:right;">${escapeHtml(row.value || '-')}</div>
+            </div>
+        `).join('')
+        : '<div style="color:#64748b; font-size:12px;">No additional form details available.</div>';
+
+    const timelineHtml = timeline.length
+        ? timeline.slice(0, 6).map((row) => `
+            <div style="padding:8px; border:1px solid #e5e7eb; border-radius:8px; margin-bottom:8px; background:#fff;">
+                <div style="font-size:12px; font-weight:700; color:#0f172a;">${escapeHtml(row.to_status || '-')}</div>
+                <div style="font-size:11px; color:#475569;">${escapeHtml(row.changed_at || '-')} | ${escapeHtml(row.changed_by || 'System')}</div>
+                <div style="font-size:11px; color:#64748b; margin-top:4px;">${escapeHtml(row.reason || '-')}</div>
+            </div>
+        `).join('')
+        : '<div style="font-size:12px; color:#64748b;">No status timeline available.</div>';
+
+    return `
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:10px; margin-bottom:12px;">
+            <div><strong>Loan ID:</strong> ${escapeHtml(item.loan_uid || item.loan_id || '-')}</div>
+            <div><strong>Status:</strong> ${escapeHtml(item.status_display || item.status || '-')}</div>
+            <div><strong>Created:</strong> ${escapeHtml(item.created_at || '-')}</div>
+            <div><strong>Updated:</strong> ${escapeHtml(item.updated_at || '-')}</div>
+            <div><strong>Action Time:</strong> ${escapeHtml(item.action_taken_at || '-')}</div>
+            <div><strong>Assigned:</strong> ${escapeHtml(item.assigned_at || '-')}</div>
+            <div><strong>Bank:</strong> ${escapeHtml(item.bank_name || '-')}</div>
+            <div><strong>IFSC:</strong> ${escapeHtml(item.bank_ifsc_code || '-')}</div>
+            <div><strong>A/C:</strong> ${escapeHtml(item.bank_account_number || '-')}</div>
+            <div><strong>SM Name:</strong> ${escapeHtml(item.sm_name || '-')}</div>
+        </div>
+        <details open style="border:1px solid #e5e7eb; border-radius:10px; padding:10px; background:#f8fafc; margin-bottom:10px;">
+            <summary style="font-size:12px; font-weight:700; color:#0f172a; cursor:pointer;">Loan Application Form Details</summary>
+            <div style="margin-top:8px;">${detailHtml}</div>
+        </details>
+        <details style="border:1px solid #e5e7eb; border-radius:10px; padding:10px; background:#f8fafc; margin-bottom:10px;">
+            <summary style="font-size:12px; font-weight:700; color:#0f172a; cursor:pointer;">Status + Remark Timeline</summary>
+            <div style="margin-top:8px;">${timelineHtml}</div>
+        </details>
+        <div>
+            <div style="font-size:12px; color:#64748b; margin-bottom:4px;">Remarks</div>
+            <div style="padding:10px; border:1px solid #e5e7eb; border-radius:8px; background:#f8fafc; font-size:12px; color:#0f172a;">${escapeHtml(item.remarks || item.bank_remark || '-')}</div>
+        </div>
+    `;
+}
+
+function openLoanPopupById(loanId) {
+    const item = (partnerData.customers || []).find((entry) => Number(entry.loan_id) === Number(loanId));
+    document.getElementById('loanPopupBody').innerHTML = renderLoanDetailCard(item || null);
+    openPopup('loanPopup');
+}
+
+function renderApplicationsTable(rows, title) {
+    const safeRows = Array.isArray(rows) ? rows : [];
+    const bodyHtml = safeRows.length ? safeRows.map((item, idx) => `
+        <tr>
+            <td>${idx + 1}</td>
+            <td>${escapeHtml(item.loan_uid || item.loan_id || '-')}</td>
+            <td>${escapeHtml(item.customer_name || '-')}</td>
+            <td>${escapeHtml(item.mobile || '-')}</td>
+            <td>&#8377;${formatINR(item.loan_amount)}</td>
+            <td><span class="status-chip">${escapeHtml(item.status_display || item.status || '-')}</span></td>
+            <td>${escapeHtml(item.assigned_to || '-')}</td>
+            <td>${escapeHtml(item.owner_name || '-')}</td>
+            <td><button class="mini-btn" data-loan-view="${escapeHtml(item.loan_id)}"><i class="fas fa-eye"></i> View</button></td>
+        </tr>
+    `).join('') : '<tr><td colspan="9" style="text-align:center; color:#64748b;">No application records found.</td></tr>';
+
+    document.getElementById('sectionPopupTitle').textContent = title;
+    document.getElementById('sectionPopupBody').innerHTML = `
+        <table class="popup-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Loan ID</th>
+                    <th>Customer</th>
+                    <th>Mobile</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th>Assigned To</th>
+                    <th>Owner</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>${bodyHtml}</tbody>
+        </table>
+    `;
+    openPopup('sectionPopup');
+}
+
+function renderEmployeesTable() {
+    const rows = Array.isArray(partnerData.managed_employees) ? partnerData.managed_employees : [];
+    const bodyHtml = rows.length ? rows.map((item, idx) => `
+        <tr>
+            <td>${idx + 1}</td>
+            <td>${escapeHtml(item.employee_id || '-')}</td>
+            <td>${escapeHtml(item.name || '-')}</td>
+            <td>${escapeHtml(item.email || '-')}</td>
+            <td>${escapeHtml(item.phone || '-')}</td>
+            <td>${escapeHtml(item.channel_partner_count || 0)}</td>
+            <td>${escapeHtml(item.application_count || 0)}</td>
+            <td><button class="mini-btn" data-employee-apps="${escapeHtml(item.id)}"><i class="fas fa-list"></i> Applications</button></td>
+        </tr>
+    `).join('') : '<tr><td colspan="8" style="text-align:center; color:#64748b;">No employees linked.</td></tr>';
+
+    document.getElementById('sectionPopupTitle').textContent = 'Employees Under This Partner';
+    document.getElementById('sectionPopupBody').innerHTML = `
+        <table class="popup-table" style="min-width:860px;">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Employee ID</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Channel Partners</th>
+                    <th>Applications</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>${bodyHtml}</tbody>
+        </table>
+    `;
+    openPopup('sectionPopup');
+}
+
+function renderAgentsTable() {
+    const rows = Array.isArray(partnerData.managed_agents) ? partnerData.managed_agents : [];
+    const bodyHtml = rows.length ? rows.map((item, idx) => `
+        <tr>
+            <td>${idx + 1}</td>
+            <td>${escapeHtml(item.agent_id || '-')}</td>
+            <td>${escapeHtml(item.name || '-')}</td>
+            <td>${escapeHtml(item.email || '-')}</td>
+            <td>${escapeHtml(item.phone || '-')}</td>
+            <td>${escapeHtml(item.under_employee || '-')}</td>
+            <td>${escapeHtml(item.application_count || 0)}</td>
+            <td><button class="mini-btn" data-agent-apps="${escapeHtml(item.id)}"><i class="fas fa-list"></i> Applications</button></td>
+        </tr>
+    `).join('') : '<tr><td colspan="8" style="text-align:center; color:#64748b;">No channel partners linked.</td></tr>';
+
+    document.getElementById('sectionPopupTitle').textContent = 'Agents / Channel Partners Under This Partner';
+    document.getElementById('sectionPopupBody').innerHTML = `
+        <table class="popup-table" style="min-width:900px;">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Agent ID</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Under Employee</th>
+                    <th>Applications</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>${bodyHtml}</tbody>
+        </table>
+    `;
+    openPopup('sectionPopup');
+}
+
+function openPartnerSection(sectionKey) {
+    const customers = Array.isArray(partnerData.customers) ? partnerData.customers : [];
+    const key = String(sectionKey || '').toLowerCase();
+
+    if (key === 'employees') {
+        renderEmployeesTable();
+        return;
+    }
+    if (key === 'agents') {
+        renderAgentsTable();
+        return;
+    }
+    if (key === 'approved' || key === 'rejected' || key === 'follow_up') {
+        const filtered = customers.filter((item) => statusKey(item.status) === key);
+        renderApplicationsTable(filtered, `${key.replace('_', ' ').toUpperCase()} Applications`);
+        return;
+    }
+    if (key === 'customers') {
+        renderApplicationsTable(customers, 'Customers Applications (All)');
+        return;
+    }
+    renderApplicationsTable(customers, 'All Applications');
+}
+
+function renderPartnerCards() {
+    const summary = partnerData.summary || {};
+    const cards = [
+        { key: 'applications', label: 'Applications', value: summary.total_applications || 0, border: '#dbeafe', bg: '#eff6ff', color: '#1d4ed8', valueColor: '#1e3a8a' },
+        { key: 'employees', label: 'Employees', value: summary.managed_employees || 0, border: '#e2e8f0', bg: '#f8fafc', color: '#334155', valueColor: '#0f172a' },
+        { key: 'agents', label: 'Agents', value: summary.managed_agents || 0, border: '#bbf7d0', bg: '#f0fdf4', color: '#15803d', valueColor: '#166534' },
+        { key: 'approved', label: 'Approved', value: summary.approved || 0, border: '#bbf7d0', bg: '#ecfdf5', color: '#047857', valueColor: '#065f46' },
+        { key: 'rejected', label: 'Rejected', value: summary.rejected || 0, border: '#fecaca', bg: '#fef2f2', color: '#b91c1c', valueColor: '#7f1d1d' },
+        { key: 'follow_up', label: 'Banking Processing', value: summary.banking_processing || 0, border: '#fed7aa', bg: '#fff7ed', color: '#c2410c', valueColor: '#9a3412' },
+        { key: 'customers', label: 'Customers', value: summary.total_customers || 0, border: '#e2e8f0', bg: '#f8fafc', color: '#334155', valueColor: '#0f172a' }
+    ];
+
+    document.getElementById('partnerStatGrid').innerHTML = cards.map((item) => `
+        <button type="button" class="stat-btn" data-partner-stat="${item.key}" style="border-color:${item.border}; background:${item.bg};">
+            <div class="stat-label" style="color:${item.color};">${item.label}</div>
+            <div class="stat-value" style="color:${item.valueColor};">${item.value}</div>
+        </button>
+    `).join('');
+}
+
+function renderPartnerSummary() {
+    const partner = partnerData.subadmin || {};
+    document.getElementById('partnerName').textContent = partner.name || '{{ partner.get_full_name|default:partner.username }}';
+    document.getElementById('partnerMeta').textContent = `${partner.email || '-'} | ${partner.phone || '-'} | Status: ${partner.status || '-'}`;
+    document.getElementById('partnerSummaryGrid').innerHTML = `
+        <div class="summary-item"><strong>Partner ID:</strong> ${escapeHtml(partner.partner_id || '-')}</div>
+        <div class="summary-item"><strong>Username:</strong> ${escapeHtml(partner.username || '-')}</div>
+        <div class="summary-item"><strong>Joined:</strong> ${escapeHtml(partner.joined_on || '-')}</div>
+        <div class="summary-item"><strong>Address:</strong> ${escapeHtml(partner.address || '-')}</div>
+    `;
+}
+
+async function loadPartnerDetails() {
+    try {
+        const response = await fetch(`/api/admin/subadmin/${partnerId}/full-details/`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+            throw new Error(data.error || 'Failed to load partner details');
+        }
+        partnerData = data;
+        renderPartnerSummary();
+        renderPartnerCards();
+    } catch (error) {
+        document.getElementById('partnerMeta').textContent = error.message || 'Unable to load partner details.';
+        document.getElementById('partnerSummaryGrid').innerHTML = '';
+        document.getElementById('partnerStatGrid').innerHTML = '';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    loadPartnerDetails();
+
+    document.getElementById('partnerStatGrid').addEventListener('click', function (event) {
+        const button = event.target.closest('[data-partner-stat]');
+        if (!button) return;
+        openPartnerSection(button.getAttribute('data-partner-stat'));
+    });
+
+    document.getElementById('sectionPopupBody').addEventListener('click', function (event) {
+        const loanBtn = event.target.closest('[data-loan-view]');
+        if (loanBtn) {
+            openLoanPopupById(loanBtn.getAttribute('data-loan-view'));
+            return;
+        }
+
+        const employeeAppsBtn = event.target.closest('[data-employee-apps]');
+        if (employeeAppsBtn) {
+            const employeeId = Number(employeeAppsBtn.getAttribute('data-employee-apps'));
+            const rows = (partnerData.customers || []).filter((item) => Number(item.assigned_employee_id) === employeeId);
+            const employeeName = (partnerData.managed_employees || []).find((row) => Number(row.id) === employeeId)?.name || 'Employee';
+            renderApplicationsTable(rows, `Applications Under Employee: ${employeeName}`);
+            return;
+        }
+
+        const agentAppsBtn = event.target.closest('[data-agent-apps]');
+        if (agentAppsBtn) {
+            const agentId = Number(agentAppsBtn.getAttribute('data-agent-apps'));
+            const rows = (partnerData.customers || []).filter((item) => Number(item.assigned_agent_id) === agentId);
+            const agentName = (partnerData.managed_agents || []).find((row) => Number(row.id) === agentId)?.name || 'Agent';
+            renderApplicationsTable(rows, `Applications Under Agent: ${agentName}`);
+        }
+    });
+
+    ['sectionPopup', 'loanPopup'].forEach((id) => {
+        const popup = document.getElementById(id);
+        popup?.addEventListener('click', function (event) {
+            if (event.target === popup) {
+                closePopup(id);
+            }
+        });
+    });
+});
+</script>
+{% endblock %}
