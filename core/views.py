@@ -10,6 +10,7 @@ from django.utils import timezone
 from datetime import datetime, timedelta
 import logging
 import re
+from urllib.parse import urlencode
 from rest_framework import viewsets, status
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
@@ -45,6 +46,7 @@ from .updated_document_utils import (
     application_has_updated_documents,
     loan_has_updated_documents,
 )
+from .id_utils import display_manual_loan_id, normalize_manual_loan_id
 
 logger = logging.getLogger(__name__)
 
@@ -118,64 +120,21 @@ def login_view(request):
 
 def admin_login_view(request):
     """
-    Custom Admin/SubAdmin Login View
-    Allows both ADMIN and SUBADMIN role users to login
+    Legacy admin login endpoint.
+    The project now uses a single shared login page at /login/.
     """
     if request.user.is_authenticated:
-        if request.user.role == 'admin':
-            return redirect(_post_login_url(request.user))
-        elif request.user.role == 'subadmin':
-            return redirect(_post_login_url(request.user))
-    
+        return redirect(_post_login_url(request.user))
+
     if request.method == 'POST':
-        username_or_email = request.POST.get('email', '').strip()
-        password = request.POST.get('password', '')
-        remember_me = request.POST.get('remember_me', False)
-        
-        if not username_or_email or not password:
-            messages.error(request, 'Please enter username/email and password')
-            return redirect('admin_login')
-        
-        # Try to authenticate with username or email
-        user = None
-        if '@' in username_or_email:
-            # Try email
-            try:
-                user_obj = User.objects.get(email=username_or_email)
-                user = authenticate(request, username=user_obj.username, password=password)
-            except User.DoesNotExist:
-                pass
-        else:
-            # Try username
-            user = authenticate(request, username=username_or_email, password=password)
-        
-        if user is not None and user.is_active:
-            # Check if user is ADMIN or SUBADMIN
-            if user.role in ['admin', 'subadmin']:
-                login(request, user)
-                
-                # Set session expiry based on remember me
-                if remember_me:
-                    request.session.set_expiry(1209600)  # 2 weeks
-                else:
-                    request.session.set_expiry(0)  # Browser session
-                
-                # Log activity
-                ActivityLog.objects.create(
-                    action='loan_added',  # Using existing action type
-                    description=f"{user.role.capitalize()} '{user.username}' logged in",
-                    user=user
-                )
-                
-                messages.success(request, f'Welcome, {user.username}!')
-                
-                return redirect(f"/welcome/?next={_post_login_url(user)}")
-            else:
-                messages.error(request, 'Unauthorized access. Admin/Partner privileges required.')
-        else:
-            messages.error(request, 'Invalid email/username or password.')
-    
-    return render(request, 'core/admin_login.html')
+        # Preserve compatibility for any stale form/action still posting here.
+        return login_view(request)
+
+    login_url = '/login/'
+    next_url = request.GET.get('next')
+    if next_url:
+        login_url = f"{login_url}?{urlencode({'next': next_url})}"
+    return redirect(login_url)
 
 
 @login_required
@@ -183,7 +142,7 @@ def admin_logout_view(request):
     """Admin Logout View"""
     logout(request)
     messages.info(request, 'You have been logged out successfully.')
-    return redirect('admin_login')
+    return redirect('login')
 
 
 @login_required
@@ -575,17 +534,18 @@ def admin_subadmin_management(request):
     return render(request, 'core/admin/subadmin_management.html', context)
 
 
-@login_required
-def admin_all_employees(request):
-    """View all employees"""
-    if request.user.role != 'admin':
-        return redirect('dashboard')
-    
+def _build_admin_employees_context(request, page_mode='list'):
+    """Shared context for employee list / add / my pages."""
+    from .admin_panel_helpers import filter_employees_for_admin
+
     employees = User.objects.filter(role='employee', is_active=True).select_related(
         'employee_profile',
         'onboarding_profile',
     ).order_by('-date_joined')
-    
+
+    if page_mode == 'mine':
+        employees = filter_employees_for_admin(employees, request.user, scope='mine')
+
     # Count data for each employee
     employee_loans_count = {}
     employee_approved_count = {}
@@ -680,7 +640,14 @@ def admin_all_employees(request):
         else:
             employee_creator_display[employee_id] = 'Admin - System'
     
-    context = {
+    titles = {
+        'add': 'Add Employee',
+        'list': 'All Employees',
+        'mine': 'My Employees',
+    }
+    return {
+        'page_mode': page_mode,
+        'page_title': titles.get(page_mode, 'All Employees'),
         'employees': employees,
         'employee_loans_count': employee_loans_count,
         'employee_approved_count': employee_approved_count,
@@ -688,26 +655,63 @@ def admin_all_employees(request):
         'employee_creator_display': employee_creator_display,
         'employee_location_display': employee_location_display,
         'channel_partner_options': Agent.objects.filter(status='active').order_by('name'),
+        'subadmin_options': User.objects.filter(
+            role='subadmin',
+            is_active=True,
+        ).order_by('first_name', 'last_name', 'username'),
     }
-    
+
+
+@login_required
+def admin_all_employees(request):
+    """View all employees (legacy URL)."""
+    if request.user.role != 'admin':
+        return redirect('dashboard')
+    return admin_employees_list(request)
+
+
+@login_required
+def admin_employees_list(request):
+    if request.user.role != 'admin':
+        return redirect('dashboard')
+    context = _build_admin_employees_context(request, page_mode='list')
     return render(request, 'core/admin/employees_list.html', context)
 
 
 @login_required
-def admin_all_agents(request):
-    """View all agents"""
+def admin_employees_add(request):
     if request.user.role != 'admin':
         return redirect('dashboard')
-    
+    context = _build_admin_employees_context(request, page_mode='add')
+    return render(request, 'core/admin/employees_list.html', context)
+
+
+@login_required
+def admin_my_employees(request):
+    if request.user.role != 'admin':
+        return redirect('dashboard')
+    context = _build_admin_employees_context(request, page_mode='mine')
+    return render(request, 'core/admin/employees_list.html', context)
+
+
+def _build_admin_agents_context(request, page_mode='list'):
+    """Shared context for channel partner list / add / my pages."""
+    from .admin_panel_helpers import filter_agents_for_admin
+
     agents = Agent.objects.filter(status='active').select_related(
         'created_by',
+        'under_employee',
         'user',
         'user__onboarding_profile',
     ).order_by('-created_at')
 
+    if page_mode == 'mine':
+        agents = filter_agents_for_admin(agents, request.user, scope='mine')
+
     agent_location_display = {}
     agent_total_applications = {}
     agent_running_applications = {}
+    agent_created_under_display = {}
     for agent in agents:
         combined_q = Q(assigned_agent=agent)
         if getattr(agent, 'user_id', None):
@@ -761,14 +765,77 @@ def admin_all_agents(request):
         if pin:
             location_parts.append(f"PIN {pin}")
         agent_location_display[agent.id] = " | ".join(location_parts) if location_parts else '-'
+
+        if getattr(agent, 'under_employee', None):
+            employee_name = agent.under_employee.get_full_name() or agent.under_employee.username or 'Employee'
+            agent_created_under_display[agent.id] = f"Employee - {employee_name}"
+        elif getattr(agent, 'created_by', None):
+            owner = agent.created_by
+            owner_name = owner.get_full_name() or owner.username or 'User'
+            owner_role = {
+                'admin': 'Admin',
+                'subadmin': 'Partner',
+                'employee': 'Employee',
+                'agent': 'Channel Partner',
+                'dsa': 'DSA',
+            }.get(owner.role, owner.role.title() if owner.role else 'User')
+            agent_created_under_display[agent.id] = f"{owner_role} - {owner_name}"
+        else:
+            agent_created_under_display[agent.id] = 'Admin - System'
     
-    context = {
+    titles = {
+        'add': 'Add Channel Partner',
+        'list': 'All Channel Partners',
+        'mine': 'My Channel Partners',
+    }
+    return {
+        'page_mode': page_mode,
+        'page_title': titles.get(page_mode, 'All Channel Partners'),
         'agents': agents,
         'agent_location_display': agent_location_display,
+        'agent_created_under_display': agent_created_under_display,
         'agent_total_applications': agent_total_applications,
         'agent_running_applications': agent_running_applications,
+        'employee_options': User.objects.filter(
+            role='employee',
+            is_active=True,
+        ).order_by('first_name', 'last_name', 'username'),
+        'subadmin_options': User.objects.filter(
+            role='subadmin',
+            is_active=True,
+        ).order_by('first_name', 'last_name', 'username'),
     }
-    
+
+
+@login_required
+def admin_all_agents(request):
+    """View all agents (legacy URL)."""
+    if request.user.role != 'admin':
+        return redirect('dashboard')
+    return admin_agents_list(request)
+
+
+@login_required
+def admin_agents_list(request):
+    if request.user.role != 'admin':
+        return redirect('dashboard')
+    context = _build_admin_agents_context(request, page_mode='list')
+    return render(request, 'core/admin/agents_list.html', context)
+
+
+@login_required
+def admin_agents_add(request):
+    if request.user.role != 'admin':
+        return redirect('dashboard')
+    context = _build_admin_agents_context(request, page_mode='add')
+    return render(request, 'core/admin/agents_list.html', context)
+
+
+@login_required
+def admin_my_agents(request):
+    if request.user.role != 'admin':
+        return redirect('dashboard')
+    context = _build_admin_agents_context(request, page_mode='mine')
     return render(request, 'core/admin/agents_list.html', context)
 
 
@@ -1012,8 +1079,100 @@ def admin_reports(request):
 
         download_people.sort(key=lambda person: (person['name'].lower(), person['role']))
 
+        from .admin_panel_helpers import (
+            build_partner_report_rows,
+            build_employee_report_rows,
+            build_agent_report_rows,
+        )
+
+        partners_qs = User.objects.filter(role='subadmin').order_by('-date_joined')
+        employees_qs = User.objects.filter(role='employee').select_related(
+            'onboarding_profile', 'employee_profile'
+        ).order_by('-date_joined')
+        agents_qs = Agent.objects.select_related('created_by', 'user').order_by('-created_at')
+
+        emp_creator = {}
+        emp_location = {}
+        for emp in employees_qs:
+            onboarding = {}
+            if hasattr(emp, 'onboarding_profile') and emp.onboarding_profile:
+                onboarding = emp.onboarding_profile.data or {}
+            meta = onboarding.get('_meta') if isinstance(onboarding, dict) else None
+            if isinstance(meta, dict):
+                role = str(meta.get('created_by_role') or '').strip()
+                name = str(meta.get('created_by_name') or '').strip()
+                if role and name:
+                    emp_creator[emp.id] = f"{role} - {name}"
+            if emp.id not in emp_creator:
+                emp_creator[emp.id] = 'Admin - System'
+
+        agent_location = {}
+        for ag in agents_qs:
+            city = str(getattr(ag, 'city', '') or '').strip()
+            pin = str(getattr(ag, 'pin_code', '') or '').strip()
+            parts = [p for p in [city, f"PIN {pin}" if pin else ''] if p]
+            agent_location[ag.id] = ' | '.join(parts) if parts else '-'
+
+        partner_application_map = {}
+        employee_application_map = {}
+        agent_application_map = {}
+        agent_user_map = {
+            agent.user_id: agent.id
+            for agent in agents_qs
+            if getattr(agent, 'user_id', None)
+        }
+
+        report_loans = list(
+            Loan.objects.select_related(
+                'created_by',
+                'assigned_employee',
+                'assigned_agent',
+            ).prefetch_related('documents').order_by('-created_at')
+        )
+
+        for partner in partners_qs:
+            partner_application_map[partner.id] = []
+        for employee in employees_qs:
+            employee_application_map[employee.id] = []
+        for agent in agents_qs:
+            agent_application_map[agent.id] = []
+
+        seen_agent_loan_ids = {agent.id: set() for agent in agents_qs}
+        for loan in report_loans:
+            creator = getattr(loan, 'created_by', None)
+            if creator and creator.role == 'subadmin' and creator.id in partner_application_map:
+                partner_application_map[creator.id].append(loan)
+            if creator and creator.role == 'employee' and creator.id in employee_application_map:
+                employee_application_map[creator.id].append(loan)
+
+            agent_target_id = None
+            if creator and creator.role == 'agent':
+                agent_target_id = agent_user_map.get(creator.id)
+            if not agent_target_id and loan.assigned_agent_id in agent_application_map:
+                agent_target_id = loan.assigned_agent_id
+            if agent_target_id and agent_target_id in agent_application_map:
+                if loan.id not in seen_agent_loan_ids[agent_target_id]:
+                    agent_application_map[agent_target_id].append(loan)
+                    seen_agent_loan_ids[agent_target_id].add(loan.id)
+
+        partner_rows = build_partner_report_rows(partners_qs, partner_application_map)
+        employee_rows = build_employee_report_rows(
+            employees_qs,
+            emp_creator,
+            emp_location,
+            employee_application_map,
+        )
+        agent_rows = build_agent_report_rows(
+            agents_qs,
+            agent_location,
+            agent_application_map,
+        )
+
         context = {
             'page_title': 'Reports & Analytics',
+            'report_partner_rows': partner_rows,
+            'report_employee_rows': employee_rows,
+            'report_agent_rows': agent_rows,
             'total_applications': total_applications,
             'new_count': new_count,
             'processing_count': processing_count,
@@ -1045,7 +1204,10 @@ def admin_reports(request):
         logger.error(f"Error loading reports: {str(e)}")
         context = {
             'page_title': 'Reports & Analytics',
-            'error': str(e)
+            'error': str(e),
+            'report_partner_rows': [],
+            'report_employee_rows': [],
+            'report_agent_rows': [],
         }
         return render(request, 'core/admin/admin_reports.html', context)
 
@@ -1968,7 +2130,7 @@ def registration_wizard(request, step=1, role=None):
             {
                 "show_success_message": True,
                 "success_message_text": success_message_text,
-                "success_redirect_url": "/admin-login/",
+                "success_redirect_url": "/login/",
                 "step": step,
                 "role": normalized_role,
                 "role_display": role_labels.get(normalized_role, normalized_role.title()),
@@ -2357,7 +2519,7 @@ def registration_wizard(request, step=1, role=None):
         "step_labels": ["Details", "Resume", "Review"] if is_employee else ["Details", "Bank", "Documents", "Review"],
         "show_success_message": False,
         "success_message_text": success_message_text,
-        "success_redirect_url": "/admin-login/",
+        "success_redirect_url": "/login/",
     }
 
     return render(request, "core/registration_wizard.html", context)
@@ -2368,7 +2530,7 @@ def new_entries(request):
     from django.contrib.auth.decorators import login_required
     
     if not request.user.is_authenticated or request.user.role != 'admin':
-        return redirect('admin_login')
+        return redirect('login')
     
     # Get applications from LoanApplication model (old entries)
     old_applications = LoanApplication.objects.filter(status='New Entry').select_related('applicant')
@@ -2394,7 +2556,7 @@ def new_entry_detail(request, applicant_id):
     from django.contrib.auth.decorators import login_required
     
     if not request.user.is_authenticated or request.user.role != 'admin':
-        return redirect('admin_login')
+        return redirect('login')
     
     applicant = Applicant.objects.get(id=applicant_id)
     loan_app = applicant.loan_application
@@ -2418,7 +2580,7 @@ def new_entry_detail(request, applicant_id):
 def application_detail(request, applicant_id):
     """Comprehensive view for loan application details"""
     if not request.user.is_authenticated or request.user.role != 'admin':
-        return redirect('admin_login')
+        return redirect('login')
     
     try:
         # Try to get from Loan model first (new entries)
@@ -2473,7 +2635,7 @@ def application_detail(request, applicant_id):
 def assign_application(request, applicant_id):
     """Assign application to agent or employee - Show assignment page"""
     if not request.user.is_authenticated or request.user.role != 'admin':
-        return redirect('admin_login')
+        return redirect('login')
     
     # GET: Show assignment page
     if request.method == 'GET':
@@ -2514,7 +2676,7 @@ def assign_application(request, applicant_id):
             messages.error(request, f'Error assigning application: {str(e)}')
             return redirect('new_entries')
     
-    return redirect('admin_login')
+    return redirect('login')
 
 
 # Employee/Agent Workflow Views
@@ -2597,7 +2759,7 @@ def view_application(request, applicant_id):
                 return redirect('my_applications')
         
         else:
-            return redirect('admin_login')
+            return redirect('login')
     
     except Applicant.DoesNotExist:
         messages.error(request, 'Application not found.')
@@ -2691,7 +2853,7 @@ def view_waiting_detail(request, applicant_id):
                 return redirect('my_applications')
         elif request.user.role != 'admin':
             messages.error(request, 'Access denied.')
-            return redirect('admin_login')
+            return redirect('login')
         
         # Only allow viewing WAITING FOR PROCESSING status
         if loan_app.status != 'Waiting for Processing':
@@ -3220,7 +3382,7 @@ def change_application_status(request, applicant_id):
 def follow_up_details(request, applicant_id):
     """View details of a follow-up application (admin only)"""
     if request.user.role != 'admin':
-        return redirect('admin_login')
+        return redirect('login')
     
     try:
         applicant = Applicant.objects.get(id=applicant_id)
@@ -6520,6 +6682,9 @@ def employee_assigned_loan_detail(request, loan_id):
                 'id': loan.id,
                 'applicant_id': applicant.id,
                 'loan_reference': f'APP-{loan.id:06d}',
+                'user_id': normalize_manual_loan_id(related_legacy.user_id if related_legacy else ''),
+                'manual_loan_id_display': display_manual_loan_id(related_legacy) if related_legacy else 'Pending Manual ID',
+                'manual_loan_id_editable': loan.status != 'Rejected',
                 'applicant_name': applicant.full_name,
                 'username': applicant.username or '',
                 'mobile': applicant.mobile,
@@ -6727,6 +6892,9 @@ def employee_assigned_loan_detail(request, loan_id):
                 'id': legacy.id,
                 'applicant_id': legacy.id,
                 'loan_reference': f'LOAN-{legacy.id:06d}',
+                'user_id': normalize_manual_loan_id(legacy.user_id),
+                'manual_loan_id_display': display_manual_loan_id(legacy),
+                'manual_loan_id_editable': legacy.status != 'rejected',
                 'applicant_name': legacy.full_name,
                 'username': legacy.username or '',
                 'mobile': legacy.mobile_number,
@@ -7018,6 +7186,16 @@ def employee_update_follow_up_details(request, loan_id):
                 legacy_obj.interest_rate = parsed_interest
                 changed = True
 
+        if 'manual_loan_id' in payload:
+            manual_loan_id = normalize_manual_loan_id(payload.get('manual_loan_id'))
+            if not manual_loan_id:
+                raise ValueError('Manual Loan ID is required.')
+            if Loan.objects.exclude(id=legacy_obj.id).filter(user_id__iexact=manual_loan_id).exists():
+                raise ValueError('Manual Loan ID already exists.')
+            if normalize_manual_loan_id(legacy_obj.user_id) != manual_loan_id:
+                legacy_obj.user_id = manual_loan_id
+                changed = True
+
         if changed:
             legacy_obj.save()
         return changed
@@ -7073,6 +7251,9 @@ def employee_update_follow_up_details(request, loan_id):
             'follow_up_pending': True,
         }, status=status.HTTP_200_OK)
 
+    except ValueError as e:
+        return Response({'success': False, 'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
     except LoanApplication.DoesNotExist:
         try:
             legacy = Loan.objects.select_related('assigned_employee', 'assigned_agent').get(id=loan_id)
@@ -7124,6 +7305,8 @@ def employee_update_follow_up_details(request, loan_id):
                 'status_display': FOLLOW_UP_PENDING_LABEL,
                 'follow_up_pending': True,
             }, status=status.HTTP_200_OK)
+        except ValueError as e:
+            return Response({'success': False, 'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except Loan.DoesNotExist:
             return Response({'success': False, 'error': 'Loan not found'}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
@@ -7288,6 +7471,7 @@ def employee_collect_for_banking(request, loan_id):
         banking_details, validation_error = _validate_banking_processing_fields(payload)
         if validation_error:
             return Response({'success': False, 'error': validation_error}, status=status.HTTP_400_BAD_REQUEST)
+        manual_loan_id = normalize_manual_loan_id(payload.get('manual_loan_id'))
 
         payload_for_note = {**payload, **banking_details}
         loan_app = LoanApplication.objects.filter(id=loan_id).first()
@@ -7315,6 +7499,17 @@ def employee_collect_for_banking(request, loan_id):
                 and _is_authorized_processor(request.user, legacy)
                 and legacy.status in ['new_entry', 'waiting', 'follow_up']
             )
+
+        def _apply_manual_loan_id(target_loan):
+            if not target_loan:
+                return
+            if not manual_loan_id:
+                raise ValueError('Manual Loan ID is required before moving this case to Banking Processing.')
+            if Loan.objects.exclude(id=target_loan.id).filter(user_id__iexact=manual_loan_id).exists():
+                raise ValueError('Manual Loan ID already exists.')
+            if normalize_manual_loan_id(target_loan.user_id) != manual_loan_id:
+                target_loan.user_id = manual_loan_id
+                target_loan.save(update_fields=['user_id', 'updated_at'])
 
         def _process_application():
             previous_status = loan_app.status
@@ -7368,6 +7563,7 @@ def employee_collect_for_banking(request, loan_id):
             _append_related_loan_remark(loan_app, banking_note, status_override='follow_up')
             related_loan = find_related_loan(loan_app)
             if related_loan:
+                _apply_manual_loan_id(related_loan)
                 related_fields = []
                 if processing_bank_name and related_loan.bank_name != processing_bank_name:
                     related_loan.bank_name = processing_bank_name
@@ -7389,6 +7585,7 @@ def employee_collect_for_banking(request, loan_id):
             }, status=status.HTTP_200_OK)
 
         def _process_legacy():
+            _apply_manual_loan_id(legacy)
             legacy.status = 'follow_up'
             if not legacy.assigned_at:
                 legacy.assigned_at = timezone.now()
@@ -7499,6 +7696,8 @@ def employee_collect_for_banking(request, loan_id):
             return Response({'success': False, 'error': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
 
         return Response({'success': False, 'error': 'Loan not found'}, status=status.HTTP_404_NOT_FOUND)
+    except ValueError as e:
+        return Response({'success': False, 'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
     except Exception as e:
         return Response({'success': False, 'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -8463,6 +8662,8 @@ def employee_disburse_loan(request, loan_id):
         preferred_source = _normalize_entity_source(payload)
         loan_app = LoanApplication.objects.filter(id=loan_id).first()
         legacy = Loan.objects.filter(id=loan_id).first()
+        manual_loan_id_provided = 'manual_loan_id' in payload
+        manual_loan_id = normalize_manual_loan_id(payload.get('manual_loan_id'))
 
         disbursement_amount_raw = payload.get('disbursement_amount')
         disbursement_date_raw = payload.get('disbursement_date')
@@ -8489,6 +8690,17 @@ def employee_disburse_loan(request, loan_id):
                 and _is_authorized_processor(request.user, legacy)
                 and legacy.status == 'approved'
             )
+
+        def _apply_manual_loan_id(target_loan):
+            if not target_loan or not manual_loan_id_provided:
+                return
+            if not manual_loan_id:
+                raise ValueError('Manual Loan ID is required.')
+            if Loan.objects.exclude(id=target_loan.id).filter(user_id__iexact=manual_loan_id).exists():
+                raise ValueError('Manual Loan ID already exists.')
+            if normalize_manual_loan_id(target_loan.user_id) != manual_loan_id:
+                target_loan.user_id = manual_loan_id
+                target_loan.save(update_fields=['user_id', 'updated_at'])
 
         def _process_application():
             applicant = loan_app.applicant
@@ -8568,6 +8780,9 @@ def employee_disburse_loan(request, loan_id):
             )
 
             _append_related_loan_remark(loan_app, disburse_reason, status_override='disbursed')
+            related_loan = find_related_loan(loan_app)
+            if related_loan:
+                _apply_manual_loan_id(related_loan)
 
             return Response({
                 'success': True,
@@ -8579,6 +8794,7 @@ def employee_disburse_loan(request, loan_id):
             }, status=status.HTTP_200_OK)
 
         def _process_legacy():
+            _apply_manual_loan_id(legacy)
             disbursement_amount = disbursement_amount_raw
             if not disbursement_amount:
                 disbursement_amount = float(legacy.loan_amount or 0)
@@ -8700,5 +8916,7 @@ def employee_disburse_loan(request, loan_id):
             return Response({'success': False, 'error': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
 
         return Response({'success': False, 'error': 'Loan not found'}, status=status.HTTP_404_NOT_FOUND)
+    except ValueError as e:
+        return Response({'success': False, 'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
     except Exception as e:
         return Response({'success': False, 'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

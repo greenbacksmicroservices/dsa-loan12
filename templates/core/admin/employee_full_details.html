@@ -194,6 +194,151 @@
         color: #0f172a;
         background: #e2e8f0;
     }
+
+    .status-control-box {
+        margin-top: 14px;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 14px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .status-control-box select {
+        min-width: 180px;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        padding: 9px 10px;
+    }
+
+    .status-save-btn {
+        border: none;
+        background: #2563eb;
+        color: #fff;
+        border-radius: 8px;
+        padding: 9px 14px;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .detail-sections {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+        margin-top: 14px;
+    }
+
+    .detail-panel {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 16px;
+    }
+
+    .detail-panel h3 {
+        margin: 0 0 6px;
+        color: #0f172a;
+        font-size: 17px;
+        font-weight: 700;
+    }
+
+    .detail-panel p {
+        margin: 0 0 14px;
+        color: #64748b;
+        font-size: 12px;
+    }
+
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 10px;
+    }
+
+    .info-item {
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 10px;
+        background: #f8fafc;
+    }
+
+    .info-item label {
+        display: block;
+        margin-bottom: 6px;
+        color: #64748b;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+    }
+
+    .info-item strong {
+        color: #0f172a;
+        font-size: 13px;
+        font-weight: 700;
+    }
+
+    .stacked-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .stacked-card {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 12px;
+        background: #f8fafc;
+    }
+
+    .stacked-card h4 {
+        margin: 0 0 4px;
+        color: #0f172a;
+        font-size: 13px;
+        font-weight: 700;
+    }
+
+    .stacked-card span {
+        display: block;
+        color: #64748b;
+        font-size: 12px;
+    }
+
+    .doc-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border: 1px solid #bfdbfe;
+        background: #eff6ff;
+        color: #1d4ed8;
+        border-radius: 8px;
+        padding: 7px 10px;
+        font-size: 12px;
+        font-weight: 700;
+        text-decoration: none;
+    }
+
+    .empty-box {
+        padding: 14px;
+        border: 1px dashed #cbd5e1;
+        border-radius: 10px;
+        background: #f8fafc;
+        color: #64748b;
+        font-size: 13px;
+    }
+
+    @media (max-width: 980px) {
+        .detail-sections {
+            grid-template-columns: 1fr;
+        }
+    }
 </style>
 
 <div class="detail-shell">
@@ -202,11 +347,37 @@
             <h2 id="employeeName">{{ employee.get_full_name|default:employee.username }}</h2>
             <p id="employeeMeta">Loading employee details...</p>
         </div>
-        <a class="back-btn" href="{% url 'admin_all_employees' %}"><i class="fas fa-arrow-left"></i> Back To Employees</a>
+        <a class="back-btn" href="{% url 'admin_employees_list' %}"><i class="fas fa-arrow-left"></i> Back To Employees</a>
     </div>
 
     <div id="employeeSummaryGrid" class="summary-grid"></div>
     <div id="employeeStatGrid" class="stat-grid"></div>
+    <div class="status-control-box">
+        <div>
+            <div style="font-size:12px; color:#64748b; margin-bottom:4px;">Employee Status</div>
+            <div style="font-size:14px; font-weight:700; color:#0f172a;">Change this employee account status in real time.</div>
+        </div>
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <select id="employeeStatusSelect">
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+            </select>
+            <button type="button" class="status-save-btn" onclick="saveEmployeeStatus()">Save Status</button>
+        </div>
+    </div>
+
+    <div class="detail-sections">
+        <div class="detail-panel">
+            <h3>Employee Details</h3>
+            <p>Add Employee page me jo profile aur onboarding details save hui thi, woh yahan live dikhengi.</p>
+            <div id="employeeDetailsPanel" class="info-grid"></div>
+        </div>
+        <div class="detail-panel">
+            <h3>Uploaded Documents</h3>
+            <p>Employee create karte time upload kiye gaye documents aur timestamps.</p>
+            <div id="employeeDocumentsPanel" class="stacked-list"></div>
+        </div>
+    </div>
 </div>
 
 <div class="popup-overlay" id="sectionPopup">
@@ -235,7 +406,9 @@ let employeeData = {
     employee: {},
     summary: {},
     customers: [],
-    assigned_channel_partners: []
+    assigned_channel_partners: [],
+    onboarding: {},
+    documents: []
 };
 
 function escapeHtml(value) {
@@ -292,6 +465,7 @@ function renderLoanDetailCard(item) {
     }
     const detailRows = Array.isArray(item.full_application_details) ? item.full_application_details : [];
     const timeline = Array.isArray(item.status_timeline) ? item.status_timeline : [];
+    const documents = Array.isArray(item.documents) ? item.documents : [];
     const detailHtml = detailRows.length
         ? detailRows.map((row) => `
             <div style="display:flex; justify-content:space-between; gap:12px; padding:6px 0; border-bottom:1px dashed #e5e7eb;">
@@ -310,6 +484,18 @@ function renderLoanDetailCard(item) {
             </div>
         `).join('')
         : '<div style="font-size:12px; color:#64748b;">No status timeline available.</div>';
+
+    const documentHtml = documents.length
+        ? documents.map((doc) => `
+            <div style="display:flex; justify-content:space-between; gap:12px; padding:8px 0; border-bottom:1px dashed #e5e7eb;">
+                <div>
+                    <div style="font-size:12px; font-weight:700; color:#0f172a;">${escapeHtml(doc.label || doc.name || doc.document_type || doc.type || 'Document')}</div>
+                    <div style="font-size:11px; color:#64748b;">${escapeHtml(doc.uploaded_at || '-')}</div>
+                </div>
+                ${doc.url ? `<span style="display:flex; gap:6px; flex-wrap:wrap;"><a href="${escapeHtml(doc.url)}" target="_blank" rel="noopener" class="mini-btn">View</a><a href="${escapeHtml(doc.url)}" download class="mini-btn">Download</a></span>` : '<span style="font-size:11px; color:#94a3b8;">No file</span>'}
+            </div>
+        `).join('')
+        : '<div style="font-size:12px; color:#64748b;">No application documents available.</div>';
 
     return `
         <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:10px; margin-bottom:12px;">
@@ -331,6 +517,10 @@ function renderLoanDetailCard(item) {
         <details style="border:1px solid #e5e7eb; border-radius:10px; padding:10px; background:#f8fafc; margin-bottom:10px;">
             <summary style="font-size:12px; font-weight:700; color:#0f172a; cursor:pointer;">Status + Remark Timeline</summary>
             <div style="margin-top:8px;">${timelineHtml}</div>
+        </details>
+        <details style="border:1px solid #e5e7eb; border-radius:10px; padding:10px; background:#f8fafc; margin-bottom:10px;">
+            <summary style="font-size:12px; font-weight:700; color:#0f172a; cursor:pointer;">Documents</summary>
+            <div style="margin-top:8px;">${documentHtml}</div>
         </details>
         <div>
             <div style="font-size:12px; color:#64748b; margin-bottom:4px;">Remarks</div>
@@ -390,6 +580,7 @@ function renderChannelPartnersTable() {
     const bodyHtml = rows.length ? rows.map((item, idx) => `
         <tr>
             <td>${idx + 1}</td>
+            <td>${item.photo_url ? `<img src="${escapeHtml(item.photo_url)}" alt="${escapeHtml(item.name || 'Channel Partner')}" style="width:34px;height:34px;border-radius:50%;object-fit:cover;border:1px solid #e2e8f0;">` : `<span style="width:34px;height:34px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:#f0fdf4;color:#15803d;font-weight:800;">${escapeHtml(String(item.name || '?').charAt(0).toUpperCase())}</span>`}</td>
             <td>${escapeHtml(item.name || '-')}</td>
             <td>${escapeHtml(item.email || '-')}</td>
             <td>${escapeHtml(item.phone || '-')}</td>
@@ -397,7 +588,7 @@ function renderChannelPartnersTable() {
             <td>${escapeHtml(item.application_count || 0)}</td>
             <td><button class="mini-btn" data-agent-apps="${escapeHtml(item.id)}"><i class="fas fa-list"></i> Applications</button></td>
         </tr>
-    `).join('') : '<tr><td colspan="7" style="text-align:center; color:#64748b;">No channel partners assigned.</td></tr>';
+    `).join('') : '<tr><td colspan="8" style="text-align:center; color:#64748b;">No channel partners assigned.</td></tr>';
 
     document.getElementById('sectionPopupTitle').textContent = 'Channel Partners Under This Employee';
     document.getElementById('sectionPopupBody').innerHTML = `
@@ -405,6 +596,7 @@ function renderChannelPartnersTable() {
             <thead>
                 <tr>
                     <th>#</th>
+                    <th>Photo</th>
                     <th>Name</th>
                     <th>Email</th>
                     <th>Phone</th>
@@ -443,7 +635,7 @@ function renderEmployeeCards() {
     const summary = employeeData.summary || {};
     const cards = [
         { key: 'applications', label: 'Applications', value: summary.total_applications || 0, border: '#dbeafe', bg: '#eff6ff', color: '#1d4ed8', valueColor: '#1e3a8a' },
-        { key: 'channel_partners', label: 'Agents / CP', value: summary.channel_partner_count || 0, border: '#bbf7d0', bg: '#f0fdf4', color: '#15803d', valueColor: '#166534' },
+        { key: 'channel_partners', label: 'Channel Partners', value: summary.channel_partner_count || 0, border: '#bbf7d0', bg: '#f0fdf4', color: '#15803d', valueColor: '#166534' },
         { key: 'approved', label: 'Approved', value: summary.approved || 0, border: '#bbf7d0', bg: '#ecfdf5', color: '#047857', valueColor: '#065f46' },
         { key: 'rejected', label: 'Rejected', value: summary.rejected || 0, border: '#fecaca', bg: '#fef2f2', color: '#b91c1c', valueColor: '#7f1d1d' },
         { key: 'follow_up', label: 'Banking Processing', value: summary.banking_processing || 0, border: '#fed7aa', bg: '#fff7ed', color: '#c2410c', valueColor: '#9a3412' },
@@ -463,14 +655,151 @@ function renderEmployeeSummary() {
     const fullName = `${employee.first_name || ''} ${employee.last_name || ''}`.trim() || '{{ employee.get_full_name|default:employee.username }}';
     document.getElementById('employeeName').textContent = fullName;
     document.getElementById('employeeMeta').textContent = `${employee.email || '-'} | ${employee.phone || '-'} | Status: ${employee.status || '-'}`;
+    document.getElementById('employeeStatusSelect').value = String(employee.status || '').toLowerCase() === 'inactive' ? 'inactive' : 'active';
     document.getElementById('employeeSummaryGrid').innerHTML = `
         <div class="summary-item"><strong>Employee ID:</strong> ${escapeHtml(employee.employee_id || '-')}</div>
         <div class="summary-item"><strong>City:</strong> ${escapeHtml(employee.city || '-')}</div>
         <div class="summary-item"><strong>District:</strong> ${escapeHtml(employee.district || '-')}</div>
+        <div class="summary-item"><strong>State:</strong> ${escapeHtml(employee.state || '-')}</div>
         <div class="summary-item"><strong>PIN:</strong> ${escapeHtml(employee.pin_code || '-')}</div>
+        <div class="summary-item"><strong>Aadhaar:</strong> ${escapeHtml(employee.aadhar_number || '-')}</div>
         <div class="summary-item"><strong>Created Under:</strong> ${escapeHtml(employee.created_under || '-')}</div>
         <div class="summary-item"><strong>Assigned Applications:</strong> ${escapeHtml((employeeData.summary || {}).total_assigned_applications || 0)}</div>
     `;
+}
+
+function joinAddress(parts) {
+    return parts.filter((value) => value && value !== '-' && String(value).trim()).join(', ') || '-';
+}
+
+function buildInfoGrid(items) {
+    const validItems = (items || []).filter((item) => {
+        const value = String(item.value ?? '').trim();
+        return value && value !== '-';
+    });
+    if (!validItems.length) {
+        return '<div class="empty-box">No saved employee onboarding details found yet.</div>';
+    }
+    return validItems.map((item) => `
+        <div class="info-item">
+            <label>${escapeHtml(item.label)}</label>
+            <strong>${escapeHtml(item.value)}</strong>
+        </div>
+    `).join('');
+}
+
+function renderEmployeeDetailsPanels() {
+    const employee = employeeData.employee || {};
+    const onboarding = employeeData.onboarding || {};
+    const section1 = onboarding.section1 || {};
+    const section2 = onboarding.section2 || {};
+    const section6 = onboarding.section6 || {};
+    const perm = section1.permanent_address || {};
+    const present = section1.present_address || {};
+    const references = Array.isArray((onboarding.section5 || {}).references) ? (onboarding.section5 || {}).references : [];
+
+    const personalItems = [
+        { label: 'Full Name', value: `${employee.first_name || ''} ${employee.last_name || ''}`.trim() || section1.full_name || '-' },
+        { label: 'Email', value: employee.email || section1.email || '-' },
+        { label: 'Phone', value: employee.phone || section1.mobile || '-' },
+        { label: 'Alternate Mobile', value: section1.alternate_mobile || '-' },
+        { label: 'Date of Birth', value: section1.date_of_birth || '-' },
+        { label: 'Gender', value: employee.gender || section1.gender || '-' },
+        { label: 'Occupation', value: section2.occupation || '-' },
+        { label: 'Experience', value: section2.years_experience || '-' },
+        { label: 'Aadhaar', value: employee.aadhar_number || section6.aadhar_number || '-' },
+        { label: 'PAN', value: section6.pan_number || '-' },
+        { label: 'Bank Name', value: section6.bank_name || '-' },
+        { label: 'Account Number', value: section6.account_number || '-' },
+        { label: 'IFSC Code', value: section6.ifsc_code || '-' },
+    ];
+
+    const addressItems = [
+        { label: 'Permanent Address', value: joinAddress([perm.address, perm.landmark, perm.city, perm.district, perm.state, perm.pin_code]) },
+        { label: 'Present Address', value: joinAddress([present.address, present.landmark, present.city, present.district, present.state, present.pin_code]) },
+        { label: 'Created Under', value: employee.created_under || '-' },
+        { label: 'Role', value: employee.role || '-' },
+    ];
+
+    const referencesHtml = references.length
+        ? references.map((reference, index) => `
+            <div class="stacked-card">
+                <div>
+                    <h4>Reference ${index + 1}</h4>
+                    <span>${escapeHtml(reference.name || '-')}</span>
+                    <span>${escapeHtml(reference.relation || 'Relation not added')}</span>
+                </div>
+                <div style="text-align:right;">
+                    <span>${escapeHtml(reference.phone || '-')}</span>
+                    <span>${escapeHtml(reference.email || '-')}</span>
+                </div>
+            </div>
+        `).join('')
+        : '<div class="empty-box">No reference records saved for this employee.</div>';
+
+    document.getElementById('employeeDetailsPanel').innerHTML = `
+        ${buildInfoGrid(personalItems)}
+        <div style="grid-column:1/-1; display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px;">${buildInfoGrid(addressItems)}</div>
+        <div style="grid-column:1/-1;">
+            <div style="margin-top:4px; font-size:12px; color:#64748b; font-weight:700; text-transform:uppercase; letter-spacing:0.06em;">References</div>
+            <div class="stacked-list" style="margin-top:8px;">${referencesHtml}</div>
+        </div>
+    `;
+}
+
+function renderEmployeeDocuments() {
+    const documents = Array.isArray(employeeData.documents) ? employeeData.documents : [];
+    const container = document.getElementById('employeeDocumentsPanel');
+    if (!container) return;
+
+    if (!documents.length) {
+        container.innerHTML = '<div class="empty-box">No employee documents uploaded yet.</div>';
+        return;
+    }
+
+    container.innerHTML = documents.map((doc) => `
+        <div class="stacked-card">
+            <div>
+                <h4>${escapeHtml(String(doc.label || doc.name || doc.type || 'other').replace(/_/g, ' '))}</h4>
+                <span>Uploaded: ${escapeHtml(doc.uploaded_at || '-')}</span>
+            </div>
+            <div>
+                ${doc.url ? `<div style="display:flex; gap:8px; flex-wrap:wrap;"><a href="${escapeHtml(doc.url)}" target="_blank" rel="noopener" class="doc-link"><i class="fas fa-eye"></i> View</a><a href="${escapeHtml(doc.url)}" download class="doc-link"><i class="fas fa-download"></i> Download</a></div>` : '<span style="font-size:12px; color:#94a3b8;">No file</span>'}
+            </div>
+        </div>
+    `).join('');
+}
+
+async function saveEmployeeStatus() {
+    const employee = employeeData.employee || {};
+    const nextStatus = document.getElementById('employeeStatusSelect').value;
+    const fullName = `${employee.first_name || ''} ${employee.last_name || ''}`.trim();
+    const payload = {
+        full_name: fullName,
+        email: employee.email || '',
+        phone: employee.phone || '',
+        address: employee.address || '',
+        gender: employee.gender || 'Other',
+        role: employee.role || 'loan_processor',
+        notes: employee.notes || '',
+        status: nextStatus,
+        channel_partner_ids: employee.assigned_channel_partner_ids || [],
+    };
+    const response = await fetch(`/api/employees/${employeeId}/update/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken'),
+        },
+        body: JSON.stringify(payload),
+    });
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+        alert(data.error || 'Failed to update employee status.');
+        return;
+    }
+    employeeData.employee.status = nextStatus;
+    renderEmployeeSummary();
 }
 
 async function loadEmployeeDetails() {
@@ -489,15 +818,20 @@ async function loadEmployeeDetails() {
         employeeData = data;
         renderEmployeeSummary();
         renderEmployeeCards();
+        renderEmployeeDetailsPanels();
+        renderEmployeeDocuments();
     } catch (error) {
         document.getElementById('employeeMeta').textContent = error.message || 'Unable to load employee details.';
         document.getElementById('employeeSummaryGrid').innerHTML = '';
         document.getElementById('employeeStatGrid').innerHTML = '';
+        document.getElementById('employeeDetailsPanel').innerHTML = '';
+        document.getElementById('employeeDocumentsPanel').innerHTML = '';
     }
 }
 
 document.addEventListener('DOMContentLoaded', function () {
     loadEmployeeDetails();
+    window.setInterval(loadEmployeeDetails, 30000);
 
     document.getElementById('employeeStatGrid').addEventListener('click', function (event) {
         const button = event.target.closest('[data-employee-stat]');

@@ -603,12 +603,18 @@ def employee_dashboard_stats(request):
         
         return Response({
             'success': True,
-            'total_assigned': loans.count(),
-            'processing': loans.filter(status='Waiting for Processing').count(),
+            'new_entry': loans.filter(status='New Entry').count(),
+            'waiting': loans.filter(status='Waiting for Processing').count(),
+            'updated_document': 0,  # Placeholder for derived status
+            'banking_processing': loans.filter(status='Required Follow-up').count(),
+            'follow_up_pending': 0,  # Placeholder for derived status
             'approved': loans.filter(status='Approved').count(),
             'rejected': loans.filter(status='Rejected').count(),
-            'follow_up': loans.filter(status='Required Follow-up').count(),
             'disbursed': loans.filter(status='Disbursed').count(),
+            # Keep backward compatibility
+            'total_assigned': loans.count(),
+            'processing': loans.filter(status='Waiting for Processing').count(),
+            'follow_up': loans.filter(status='Required Follow-up').count(),
         }, status=status.HTTP_200_OK)
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

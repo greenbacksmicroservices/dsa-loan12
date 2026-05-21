@@ -15,15 +15,21 @@ import logging
 from .models import LoanApplication, Applicant, ApplicantDocument, LoanAssignment, LoanStatusHistory, User, Agent, Loan, LoanDocument, ActivityLog, SubAdminEntry, UserOnboardingProfile, UserOnboardingDocument, EmployeeProfile
 from .decorators import admin_required
 from .loan_sync import extract_assignment_context, role_label, find_related_loan, find_related_loan_application
-from .onboarding_utils import collect_onboarding_payload, collect_onboarding_documents, collect_onboarding_payload_from_source
+from .onboarding_utils import (
+    collect_onboarding_payload,
+    collect_onboarding_documents,
+    collect_onboarding_payload_from_source,
+    collect_user_document_payload,
+)
 from .followup_utils import auto_move_overdue_to_follow_up
 from .upload_limits import validate_loan_document_batch
-from .id_utils import generate_agent_sequence_id, generate_user_sequence_id
+from .id_utils import generate_agent_sequence_id, generate_user_sequence_id, normalize_manual_loan_id, display_manual_loan_id
 from .updated_document_utils import (
     UPDATED_DOCUMENT_LABEL,
     UPDATED_DOCUMENT_STATUS_KEY,
     loan_has_updated_documents,
 )
+from .account_notifications import send_account_credentials_email
 
 logger = logging.getLogger(__name__)
 
@@ -467,7 +473,7 @@ def admin_all_loans(request):
         if loan.assigned_employee:
             loan.assigned_to_display = f"Employee - {_user_name_or_na(loan.assigned_employee)}"
         elif loan.assigned_agent:
-            loan.assigned_to_display = f"Agent - {_agent_name_or_na(loan.assigned_agent)}"
+            loan.assigned_to_display = f"Channel Partner - {_agent_name_or_na(loan.assigned_agent)}"
         else:
             loan.assigned_to_display = 'N/A'
         assignment_context = extract_assignment_context(loan)
@@ -940,56 +946,84 @@ def api_admin_all_loans(request):
         }, status=400)
 
 
+def _build_subadmin_management_context(request, page_mode='list'):
+    """Shared context for partner add/list pages."""
+    from .subadmin_views import _subadmin_managed_agents_qs, _subadmin_managed_employees_qs, _subadmin_scoped_loans_qs
+
+    subadmins = User.objects.filter(role='subadmin').order_by('-date_joined')
+    subadmin_list = []
+    for subadmin in subadmins:
+        managed_agents_count = _subadmin_managed_agents_qs(subadmin).count()
+        managed_employees_count = _subadmin_managed_employees_qs(subadmin).count()
+        loans_qs = _subadmin_scoped_loans_qs(subadmin)
+        total_applications = loans_qs.count()
+        running_applications = loans_qs.exclude(status__in=['approved', 'rejected', 'disbursed']).count()
+        entries_count = SubAdminEntry.objects.filter(subadmin=subadmin).count()
+        subadmin.total_agents = managed_agents_count
+        subadmin.total_employees = managed_employees_count
+        subadmin.total_applications = total_applications
+        subadmin.running_applications = running_applications
+        subadmin.total_entries = entries_count
+        subadmin.partner_id = subadmin.employee_id or f'EDC-P-{subadmin.id:04d}'
+        subadmin_list.append({
+            'id': subadmin.id,
+            'name': subadmin.get_full_name(),
+            'partner_id': subadmin.partner_id,
+            'email': subadmin.email,
+            'username': subadmin.username,
+            'phone': subadmin.phone or '-',
+            'address': subadmin.address or '-',
+            'joined_on': subadmin.date_joined.strftime('%Y-%m-%d') if subadmin.date_joined else '-',
+            'total_agents': managed_agents_count,
+            'total_employees': managed_employees_count,
+            'total_applications': total_applications,
+            'running_applications': running_applications,
+            'total_entries': entries_count,
+            'is_active': subadmin.is_active,
+            'date_joined': subadmin.date_joined,
+            'photo_url': subadmin.profile_photo.url if subadmin.profile_photo else '',
+        })
+
+    titles = {
+        'add': 'Add Partner',
+        'list': 'All Partners',
+    }
+    employee_options = User.objects.filter(role='employee', is_active=True).order_by('first_name', 'last_name', 'username')
+    return {
+        'page_title': titles.get(page_mode, 'Partner Management'),
+        'page_mode': page_mode,
+        'subadmins': subadmins,
+        'subadmin_count': subadmins.count(),
+        'subadmin_rows': subadmin_list,
+        'employee_options': employee_options,
+    }
+
+
 @login_required(login_url='admin_login')
 @admin_required
 def admin_subadmin_management(request):
-    """Admin page to manage SubAdmins"""
-    try:
-        from .subadmin_views import _subadmin_managed_agents_qs, _subadmin_managed_employees_qs, _subadmin_scoped_loans_qs
+    """Legacy URL — all partners list."""
+    return admin_partners_list(request)
 
-        subadmins = User.objects.filter(role='subadmin').order_by('-date_joined')
-        subadmin_list = []
-        for subadmin in subadmins:
-            managed_agents_count = _subadmin_managed_agents_qs(subadmin).count()
-            managed_employees_count = _subadmin_managed_employees_qs(subadmin).count()
-            loans_qs = _subadmin_scoped_loans_qs(subadmin)
-            total_applications = loans_qs.count()
-            running_applications = loans_qs.exclude(status__in=['approved', 'rejected', 'disbursed']).count()
-            entries_count = SubAdminEntry.objects.filter(subadmin=subadmin).count()
-            subadmin.total_agents = managed_agents_count
-            subadmin.total_employees = managed_employees_count
-            subadmin.total_applications = total_applications
-            subadmin.running_applications = running_applications
-            subadmin.total_entries = entries_count
-            subadmin.partner_id = subadmin.employee_id or f'EDC-P-{subadmin.id:04d}'
-            subadmin_list.append({
-                'id': subadmin.id,
-                'name': subadmin.get_full_name(),
-                'partner_id': subadmin.partner_id,
-                'email': subadmin.email,
-                'username': subadmin.username,
-                'phone': subadmin.phone or '-',
-                'address': subadmin.address or '-',
-                'joined_on': subadmin.date_joined.strftime('%Y-%m-%d') if subadmin.date_joined else '-',
-                'total_agents': managed_agents_count,
-                'total_employees': managed_employees_count,
-                'total_applications': total_applications,
-                'running_applications': running_applications,
-                'total_entries': entries_count,
-                'is_active': subadmin.is_active,
-                'date_joined': subadmin.date_joined
-            })
-        
-        context = {
-            'page_title': 'Partner Management',
-            'subadmins': subadmins,
-            'subadmin_count': subadmins.count(),
-            'subadmin_rows': subadmin_list,
-        }
+
+@login_required(login_url='admin_login')
+@admin_required
+def admin_partners_add(request):
+    """Render add partner page directly."""
+    context = _build_subadmin_management_context(request, page_mode='add')
+    return render(request, 'core/admin/subadmin_management_new.html', context)
+
+
+@login_required(login_url='admin_login')
+@admin_required
+def admin_partners_list(request):
+    """All partners table."""
+    try:
+        context = _build_subadmin_management_context(request, page_mode='list')
         return render(request, 'core/admin/subadmin_management_new.html', context)
     except Exception as e:
-        logger.error(f"Error loading subadmin management: {str(e)}")
-        return render(request, 'core/admin/subadmin_management_new.html', {'error': str(e)})
+        logger.error(f"Error loading partners list: {str(e)}")
+        return render(request, 'core/admin/subadmin_management_new.html', {'error': str(e), 'page_mode': 'list'})
 
 
 @login_required(login_url='admin_login')
@@ -1053,7 +1087,7 @@ def api_admin_subadmin_full_details(request, subadmin_id):
             if loan.assigned_employee:
                 assigned_to = f"Employee - {loan.assigned_employee.get_full_name() or loan.assigned_employee.username}"
             elif loan.assigned_agent:
-                assigned_to = f"Agent - {loan.assigned_agent.name}"
+                assigned_to = f"Channel Partner - {loan.assigned_agent.name}"
 
             if loan.assigned_employee_id:
                 employee_loan_counts[loan.assigned_employee_id] += 1
@@ -1067,7 +1101,7 @@ def api_admin_subadmin_full_details(request, subadmin_id):
 
             customers.append({
                 'loan_id': loan.id,
-                'loan_uid': loan.user_id or f'LOAN-{loan.id:06d}',
+                'loan_uid': loan.user_id or 'Pending Manual ID',
                 'customer_name': loan.full_name or '-',
                 'mobile': loan.mobile_number or '-',
                 'email': loan.email or '-',
@@ -1116,6 +1150,7 @@ def api_admin_subadmin_full_details(request, subadmin_id):
                 'name': employee.get_full_name() or employee.username or '-',
                 'email': employee.email or 'N/A',
                 'phone': employee.phone or 'N/A',
+                'photo_url': employee.profile_photo.url if employee.profile_photo else '',
                 'status': 'Active' if employee.is_active else 'Inactive',
                 'channel_partner_count': linked_agents_qs.count(),
                 'application_count': employee_loan_counts.get(employee.id, 0),
@@ -1129,6 +1164,9 @@ def api_admin_subadmin_full_details(request, subadmin_id):
                 'name': agent.name or (agent.user.get_full_name() if agent.user else '-') or '-',
                 'email': agent.email or 'N/A',
                 'phone': agent.phone or 'N/A',
+                'photo_url': agent.profile_photo.url if agent.profile_photo else (
+                    agent.user.profile_photo.url if agent.user and agent.user.profile_photo else ''
+                ),
                 'status': str(agent.status or 'active').title(),
                 'under_employee': (
                     agent.under_employee.get_full_name() or agent.under_employee.username
@@ -1152,18 +1190,13 @@ def api_admin_subadmin_full_details(request, subadmin_id):
         }
 
         onboarding = {}
-        documents = []
         if hasattr(subadmin, 'onboarding_profile') and subadmin.onboarding_profile:
             onboarding = subadmin.onboarding_profile.data or {}
-        if hasattr(subadmin, 'onboarding_documents'):
-            documents = [
-                {
-                    'type': doc.document_type or 'other',
-                    'url': doc.file.url if doc.file else '',
-                    'uploaded_at': doc.uploaded_at.strftime('%Y-%m-%d %H:%M') if doc.uploaded_at else '',
-                }
-                for doc in subadmin.onboarding_documents.all()
-            ]
+        documents = collect_user_document_payload(subadmin)
+
+        section1 = onboarding.get('section1') if isinstance(onboarding, dict) else {}
+        perm = (section1 or {}).get('permanent_address') or {}
+        section6 = onboarding.get('section6') if isinstance(onboarding, dict) else {}
 
         return JsonResponse({
             'success': True,
@@ -1175,8 +1208,14 @@ def api_admin_subadmin_full_details(request, subadmin_id):
                 'email': subadmin.email or '-',
                 'phone': subadmin.phone or '-',
                 'address': subadmin.address or '-',
+                'photo_url': subadmin.profile_photo.url if subadmin.profile_photo else '',
                 'joined_on': subadmin.date_joined.strftime('%Y-%m-%d') if subadmin.date_joined else '-',
                 'status': 'Active' if subadmin.is_active else 'Inactive',
+                'city': str(perm.get('city') or '').strip(),
+                'district': str(perm.get('district') or '').strip(),
+                'state': str(perm.get('state') or '').strip(),
+                'pin_code': str(perm.get('pin_code') or '').strip(),
+                'aadhar_number': str((section6 or {}).get('aadhar_number') or '').strip(),
             },
             'summary': summary,
             'customers': customers,
@@ -1227,10 +1266,28 @@ def api_create_subadmin(request):
         last_name = (data.get('last_name') or '').strip()
         phone = (data.get('phone') or '').strip()
         address = (data.get('address') or '').strip()
-        pin = (data.get('pin') or '').strip()
-        state = (data.get('state') or '').strip()
+        city = (data.get('city') or '').strip() or (data.get('onb_perm_city') or '').strip()
+        district = (data.get('district') or '').strip() or (data.get('onb_perm_district') or '').strip()
+        pin = (data.get('pin') or '').strip() or (data.get('pin_code') or '').strip() or (data.get('onb_perm_pin') or '').strip()
+        state = (data.get('state') or '').strip() or (data.get('onb_perm_state') or '').strip()
+        gender = (data.get('gender') or '').strip()
+        dob = (data.get('onb_dob') or data.get('date_of_birth') or '').strip()
         photo_base64 = data.get('photo', '') if isinstance(data, dict) else ''
         photo_file = request.FILES.get('photo') if not is_json else None
+        if not is_json:
+            employee_ids_raw = request.POST.getlist('employee_ids')
+        else:
+            raw_ids = data.get('employee_ids') if isinstance(data, dict) else []
+            employee_ids_raw = raw_ids if isinstance(raw_ids, list) else []
+        employee_ids = []
+        for value in employee_ids_raw or []:
+            try:
+                parsed = int(str(value).strip())
+            except (TypeError, ValueError):
+                continue
+            if parsed > 0:
+                employee_ids.append(parsed)
+        employee_ids = sorted(set(employee_ids))
 
         if not name:
             name = f"{first_name} {last_name}".strip()
@@ -1238,10 +1295,23 @@ def api_create_subadmin(request):
             username = email.split('@')[0]
         
         # Validation
-        if not all([username, email, password, name, phone]):
+        if not all([username, email, password, name, phone, city, district, pin]):
             return JsonResponse({
                 'success': False,
-                'error': 'Name, Email, Username, Phone, and Password are required'
+                'error': 'Name, Email, Username, Phone, City, District, PIN Code, and Password are required'
+            }, status=400)
+
+        phone_digits = phone.replace('+', '')
+        if not phone_digits.isdigit() or len(phone_digits) < 10 or len(phone_digits) > 15:
+            return JsonResponse({
+                'success': False,
+                'error': 'Phone number must be 10-15 digits'
+            }, status=400)
+
+        if not pin.isdigit() or len(pin) != 6:
+            return JsonResponse({
+                'success': False,
+                'error': 'PIN code must be 6 digits'
             }, status=400)
         
         # Check if username exists
@@ -1276,7 +1346,10 @@ def api_create_subadmin(request):
             phone=phone,
             address=address,
             employee_id=partner_unique_id,
+            gender=gender or None,
         )
+        if dob:
+            subadmin.date_of_birth = dob
         
         # Add state if field exists
         if hasattr(subadmin, 'state'):
@@ -1303,6 +1376,15 @@ def api_create_subadmin(request):
         
         subadmin.save()
 
+        email_sent, email_detail = send_account_credentials_email(
+            request=request,
+            email=subadmin.email,
+            full_name=subadmin.get_full_name() or subadmin.username,
+            username=subadmin.username,
+            password=password,
+            role=subadmin.role,
+        )
+
         onboarding_payload = collect_onboarding_payload_from_source(data) if is_json else collect_onboarding_payload(request)
         if onboarding_payload:
             profile, _ = UserOnboardingProfile.objects.get_or_create(
@@ -1325,18 +1407,37 @@ def api_create_subadmin(request):
                     document_type=doc_type or 'other',
                     file=doc_file,
                 )
+
+        assigned_employee_count = 0
+        if employee_ids:
+            from .subadmin_views import _mark_employee_under_subadmin
+            for emp_id in employee_ids:
+                employee = User.objects.filter(id=emp_id, role='employee').first()
+                if employee:
+                    _mark_employee_under_subadmin(employee, subadmin)
+                    assigned_employee_count += 1
         
         return JsonResponse({
             'success': True,
             'message': 'Partner created successfully',
+            'email_sent': email_sent,
+            'email_message': email_detail,
             'subadmin': {
                 'id': subadmin.id,
-                'partner_id': subadmin.employee_id or '',
+                'partner_id': subadmin.employee_id or f'EDC-P-{subadmin.id:04d}',
                 'username': subadmin.username,
                 'email': subadmin.email,
                 'name': subadmin.get_full_name() or subadmin.username,
                 'phone': getattr(subadmin, 'phone', ''),
                 'address': getattr(subadmin, 'address', ''),
+                'is_active': subadmin.is_active,
+                'date_joined': subadmin.date_joined.strftime('%Y-%m-%d') if subadmin.date_joined else '',
+                'photo_url': subadmin.profile_photo.url if subadmin.profile_photo else '',
+                'total_agents': 0,
+                'total_employees': assigned_employee_count,
+                'total_applications': 0,
+                'running_applications': 0,
+                'total_entries': 0,
             }
         })
     
@@ -1354,9 +1455,9 @@ def api_create_subadmin(request):
 def api_get_subadmins(request):
     """Get all SubAdmins"""
     try:
-        subadmins = User.objects.filter(role='subadmin').values(
-            'id', 'username', 'email', 'first_name', 'last_name', 
-            'phone', 'address', 'created_at'
+        subadmins = User.objects.filter(role='subadmin', is_active=True).values(
+            'id', 'username', 'email', 'first_name', 'last_name',
+            'phone', 'address', 'created_at', 'employee_id'
         )
         
         subadmin_list = []
@@ -1366,6 +1467,7 @@ def api_get_subadmins(request):
                 'username': sub['username'],
                 'email': sub['email'],
                 'name': f"{sub['first_name']} {sub['last_name']}".strip() or sub['username'],
+                'partner_id': sub['employee_id'] or f"EDC-P-{sub['id']:04d}",
                 'phone': sub['phone'] or '-',
                 'address': sub['address'] or '-',
                 'created': sub['created_at'].strftime('%Y-%m-%d') if sub['created_at'] else '-',
@@ -1390,10 +1492,14 @@ def api_get_subadmins(request):
 @require_http_methods(['POST'])
 def api_update_subadmin(request, subadmin_id):
     """Update a subadmin account."""
-    try:
-        data = json.loads(request.body or '{}')
-    except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'error': 'Invalid JSON payload'}, status=400)
+    is_json = bool(request.content_type and 'application/json' in request.content_type)
+    if is_json:
+        try:
+            data = json.loads(request.body or '{}')
+        except json.JSONDecodeError:
+            return JsonResponse({'success': False, 'error': 'Invalid JSON payload'}, status=400)
+    else:
+        data = request.POST
 
     subadmin = get_object_or_404(User, id=subadmin_id, role='subadmin')
 
@@ -1428,6 +1534,12 @@ def api_update_subadmin(request, subadmin_id):
     if data.get('password'):
         subadmin.set_password(str(data.get('password')))
 
+    profile_photo = request.FILES.get('profile_photo') or request.FILES.get('photo')
+    if profile_photo:
+        if profile_photo.size > 5 * 1024 * 1024:
+            return JsonResponse({'success': False, 'error': 'Profile photo must be less than 5MB'}, status=400)
+        subadmin.profile_photo = profile_photo
+
     subadmin.save()
 
     return JsonResponse({
@@ -1440,6 +1552,7 @@ def api_update_subadmin(request, subadmin_id):
             'email': subadmin.email,
             'phone': subadmin.phone or '',
             'address': subadmin.address or '',
+            'photo_url': subadmin.profile_photo.url if subadmin.profile_photo else '',
             'status': 'Active' if subadmin.is_active else 'Inactive',
         }
     })
@@ -1639,13 +1752,25 @@ def add_agent(request):
                     document_type=doc_type or 'other',
                     file=doc_file,
                 )
+
+            email_sent, email_detail = send_account_credentials_email(
+                request=request,
+                email=user.email,
+                full_name=display_name,
+                username=user.username,
+                password=password,
+                role=user.role,
+            )
             
-            messages.success(request, success_msg)
+            if email_sent:
+                messages.success(request, f'{success_msg} Credentials email sent successfully.')
+            else:
+                messages.success(request, f'{success_msg} Credentials email could not be sent: {email_detail}')
             if role == 'agent':
-                return redirect('admin_all_agents')
+                return redirect('admin_agents_list')
             if role == 'subadmin':
-                return redirect('admin_subadmin_management')
-            return redirect('admin_all_employees')
+                return redirect('admin_partners_list')
+            return redirect('admin_employees_list')
         
         except Exception as e:
             logger.error(f"Error creating agent: {str(e)}")
@@ -1705,7 +1830,7 @@ def admin_add_loan(request):
             applicant_name = (request.POST.get('name') or request.POST.get('applicant_name') or '').strip()
             applicant_email = (request.POST.get('email_id') or request.POST.get('applicant_email') or '').strip()
             applicant_mobile = (request.POST.get('mobile_no') or request.POST.get('applicant_mobile') or '').strip()
-            loan_uid = (request.POST.get('loan_uid') or '').strip()
+            loan_uid = normalize_manual_loan_id(request.POST.get('loan_uid'))
             raw_loan_type = (request.POST.get('service_required') or request.POST.get('loan_type') or '').strip()
             raw_amount = (request.POST.get('loan_amount_required') or request.POST.get('loan_amount') or '').strip()
             raw_tenure = (request.POST.get('loan_tenure') or request.POST.get('tenure_months') or '').strip()
@@ -1987,14 +2112,19 @@ def admin_add_loan(request):
                     is_required=False,
                 )
 
+            manual_label = display_manual_loan_id(loan)
+
             ActivityLog.objects.create(
                 action='loan_added',
-                description=f"Loan application created for '{loan.full_name}' (Loan ID {loan.id})",
+                description=f"Loan application created for '{loan.full_name}' (Manual Loan ID {manual_label})",
                 user=request.user,
                 related_loan=loan,
             )
 
-            messages.success(request, f'Loan application submitted successfully! ID: {loan.id}')
+            if loan.user_id:
+                messages.success(request, f'Loan application submitted successfully. Manual Loan ID: {loan.user_id}')
+            else:
+                messages.success(request, 'Loan application submitted successfully. Assign the Manual Loan ID during processing.')
             if request.user.role == 'admin':
                 return redirect('admin_all_loans')
             if request.user.role == 'subadmin':
@@ -2020,6 +2150,7 @@ def admin_add_loan(request):
     context = {
         'page_title': 'Add New Loan Application',
         'recent_loans': recent_loans,
+        'base_template': 'subadmin/base_subadmin.html' if request.user.role == 'subadmin' else 'core/base.html',
     }
     template_map = {
         'admin': 'core/admin/add_loan.html',
@@ -2331,6 +2462,16 @@ def api_admin_join_request_action(request, application_id):
         if created_new_user:
             response['temporary_password'] = temp_password
             response['password_note'] = 'Temporary password generated. Please change after first login.'
+            email_sent, email_detail = send_account_credentials_email(
+                request=request,
+                email=user.email,
+                full_name=user.get_full_name() or user.username,
+                username=user.username,
+                password=temp_password,
+                role=user.role,
+            )
+            response['email_sent'] = email_sent
+            response['email_message'] = email_detail
         return JsonResponse(response)
     except Exception as exc:
         logger.error(f"Error performing join request action {action} on {application_id}: {str(exc)}")

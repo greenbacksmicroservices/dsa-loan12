@@ -2,280 +2,351 @@
 {% load static %}
 {% load custom_filters %}
 
-{% block title %}All Employees - Admin Panel{% endblock %}
-{% block page_title %}All Employees{% endblock %}
+{% block title %}{{ page_title|default:"Employee Management" }} - Admin Panel{% endblock %}
+{% block page_title %}{{ page_title|default:"Employee Management" }}{% endblock %}
 
 {% block content %}
 <style>
     .employees-container {
-        background: #f8f9fa;
-        min-height: calc(100vh - 100px);
-        padding: 20px 0;
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 20px;
+        margin-bottom: 30px;
     }
-    
+
     .employees-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 30px;
+        gap: 16px;
         padding: 20px 0;
     }
-    
+
+    .employees-title-wrap {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
     .employees-title {
+        margin: 0;
         font-size: 28px;
         font-weight: 700;
         color: #1f2937;
     }
-    
+
     .employees-count {
         font-size: 14px;
         color: #6b7280;
         font-weight: 600;
-        margin-left: 15px;
-    }
-    
-    .search-bar {
-        background: white;
-        border-radius: 12px;
-        padding: 16px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        margin-bottom: 30px;
-    }
-    
-    .search-bar input {
-        border-radius: 8px;
-        border: 1px solid #e0e0e0;
-        padding: 12px 15px;
-        font-size: 14px;
-        width: 100%;
-    }
-    
-    .employees-table-container {
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        padding: 14px;
-        overflow-x: auto;
-    }
-    
-    .employees-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 12px;
-    }
-    
-    .employees-table thead {
-        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-        color: white;
-    }
-    
-    .employees-table th {
-        padding: 9px 8px;
-        text-align: left;
-        font-weight: 600;
-        font-size: 11px;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        white-space: nowrap;
-    }
-    
-    .employees-table td {
-        padding: 8px 8px;
-        border-bottom: 1px solid #e5e7eb;
-        vertical-align: middle;
-        white-space: nowrap;
-    }
-    
-    .employees-table tbody tr:hover {
-        background: #f9fafb;
-        transition: all 0.2s ease;
-    }
-    
-    .employee-photo {
-        width: 38px;
-        height: 38px;
-        border-radius: 8px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-weight: 700;
-        font-size: 13px;
-        border: 2px solid #e5e7eb;
-    }
-    
-    .employee-photo img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        border-radius: 6px;
-    }
-    
-    .employee-cell {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        font-weight: 600;
-        color: #1f2937;
-    }
-    
-    .employee-status-badge {
-        display: inline-block;
-        padding: 6px 12px;
-        border-radius: 20px;
-        font-size: 11px;
-        font-weight: 600;
-    }
-    
-    .status-active {
-        background: #dcfce7;
-        color: #15803d;
-    }
-    
-    .status-inactive {
-        background: #fee2e2;
-        color: #991b1b;
-    }
-    
-    .count-badge {
-        background: #e0e7ff;
-        color: #4338ca;
-        padding: 4px 10px;
-        border-radius: 12px;
-        font-weight: 600;
-        font-size: 12px;
-    }
-    
-    .date-text {
-        color: #666;
-        font-size: 13px;
-    }
-    
-    .no-employees {
-        text-align: center;
-        padding: 60px 20px;
-        color: #9ca3af;
-    }
-    
-    .no-employees i {
-        font-size: 48px;
-        color: #d1d5db;
-        margin-bottom: 15px;
-        display: block;
-    }
-    
-    @media (max-width: 1024px) {
-        .employees-table { font-size: 12px; }
-        .employees-table th { padding: 12px 8px; }
-        .employees-table td { padding: 10px 8px; }
     }
 
-    .action-buttons {
+    .header-actions {
         display: flex;
-        gap: 6px;
+        align-items: center;
+        gap: 10px;
         flex-wrap: wrap;
     }
 
-    .btn-action {
-        padding: 5px 8px;
-        font-size: 10px;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        font-weight: 600;
-        transition: all 0.2s;
+    .btn-header-link,
+    .btn-add-primary {
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        padding: 10px 16px;
         text-decoration: none;
+        font-size: 13px;
+        font-weight: 700;
         display: inline-flex;
         align-items: center;
-        gap: 4px;
+        gap: 8px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .btn-header-link {
+        background: #ffffff;
+        color: #334155;
+    }
+
+    .btn-header-link:hover,
+    .btn-header-link.active {
+        border-color: #93c5fd;
+        background: #eff6ff;
+        color: #1d4ed8;
+    }
+
+    .btn-add-primary {
+        border: none;
+        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+        color: #ffffff;
+        box-shadow: 0 10px 24px rgba(37, 99, 235, 0.18);
+    }
+
+    .btn-add-primary:hover {
+        transform: translateY(-1px);
+    }
+
+    .table-section {
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 18px;
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+    }
+
+    .table-section h2 {
+        margin: 0 0 18px;
+        color: #1f2937;
+        font-size: 22px;
+        font-weight: 700;
+    }
+
+    .table-subtext {
+        margin: -6px 0 18px;
+        color: #64748b;
+        font-size: 13px;
+    }
+
+    .table-controls {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 12px;
+        flex-wrap: wrap;
+    }
+
+    .entries-control {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        color: #475569;
+        font-weight: 600;
+    }
+
+    .entries-control select {
+        min-width: 80px;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        padding: 8px 10px;
+        background: #ffffff;
+    }
+
+    .employees-table-wrap {
+        width: 100%;
+        overflow: auto;
+        max-height: 68vh;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        background: #ffffff;
+    }
+
+    .employees-table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 1320px;
+        table-layout: auto;
+        border: 1px solid #e5e7eb;
+    }
+
+    .employees-table thead {
+        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+        color: #ffffff;
+    }
+
+    .employees-table th {
+        padding: 8px 6px;
+        text-align: left;
+        font-weight: 700;
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
         white-space: nowrap;
     }
 
-    .btn-action i {
+    .employees-table td {
+        padding: 6px 8px;
+        border: 1px solid #e5e7eb;
+        vertical-align: middle;
+        font-size: 12px;
+        color: #1f2937;
+        background: #ffffff;
+    }
+
+    .employees-table tbody tr:hover td {
+        background: #f8fafc;
+    }
+
+    .user-cell {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 200px;
+    }
+
+    .user-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, #3b82f6 0%, #0ea5e9 100%);
+        color: #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        overflow: hidden;
+        box-shadow: 0 8px 18px rgba(37, 99, 235, 0.18);
+        flex: 0 0 42px;
+    }
+
+    .user-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .user-cell strong {
+        color: #0f172a;
+    }
+
+    .muted-line {
+        color: #64748b;
+        font-size: 12px;
+    }
+
+    .count-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 34px;
+        padding: 5px 10px;
+        border-radius: 999px;
+        background: #eff6ff;
+        color: #1d4ed8;
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 6px 12px;
+        border-radius: 999px;
         font-size: 11px;
+        font-weight: 700;
+    }
+
+    .status-badge.active {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .status-badge.inactive {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .action-btns {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .btn-action {
+        border: none;
+        border-radius: 6px;
+        padding: 7px 12px;
+        font-size: 11px;
+        font-weight: 700;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+    }
+
+    .btn-action:hover {
+        transform: translateY(-1px);
     }
 
     .btn-view {
-        background: #3b82f6;
-        color: white;
-    }
-
-    .btn-view:hover {
         background: #2563eb;
+        color: #ffffff;
     }
 
     .btn-edit {
         background: #0891b2;
-        color: white;
-    }
-
-    .btn-edit:hover {
-        background: #0e7490;
+        color: #ffffff;
     }
 
     .btn-delete {
         background: #ef4444;
-        color: white;
+        color: #ffffff;
     }
 
-    .btn-delete:hover {
-        background: #dc2626;
-    }
-
-    .modal-overlay {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.6);
-        z-index: 2000;
+    .table-footer {
+        display: flex;
+        justify-content: space-between;
         align-items: center;
-        justify-content: center;
-        padding: 20px;
+        gap: 12px;
+        margin-top: 12px;
+        flex-wrap: wrap;
     }
 
-    .modal-card {
-        background: white;
-        border-radius: 12px;
-        width: 100%;
-        max-width: 980px;
-        box-shadow: 0 20px 45px rgba(0, 0, 0, 0.2);
-        overflow: hidden;
+    .table-info {
+        color: #64748b;
+        font-size: 13px;
+        font-weight: 600;
     }
 
-    .modal-header {
+    .table-pagination {
         display: flex;
         align-items: center;
-        justify-content: space-between;
-        padding: 20px 24px;
-        border-bottom: 1px solid #e5e7eb;
+        gap: 8px;
+        flex-wrap: wrap;
     }
 
-    .modal-title {
-        margin: 0;
-        font-size: 20px;
+    .page-btn {
+        min-width: 34px;
+        height: 34px;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        background: #ffffff;
+        color: #334155;
+        font-size: 12px;
         font-weight: 700;
-        color: #1f2937;
+        cursor: pointer;
     }
 
-    .modal-body {
-        padding: 24px;
+    .page-btn.active {
+        border-color: #2563eb;
+        background: #2563eb;
+        color: #ffffff;
     }
 
-    .modal-body.scroll {
-        max-height: 70vh;
-        overflow-y: auto;
+    .empty-state {
+        text-align: center;
+        padding: 56px 20px;
+        color: #64748b;
+    }
+
+    .empty-state i {
+        display: block;
+        font-size: 44px;
+        color: #cbd5e1;
+        margin-bottom: 12px;
     }
 
     .section-card {
         border: 1px solid #e5e7eb;
         border-radius: 12px;
-        padding: 16px;
+        padding: 18px;
         background: #f9fafb;
-        margin-bottom: 16px;
+        margin-bottom: 18px;
     }
 
     .section-title {
@@ -291,667 +362,696 @@
     .section-subtext {
         font-size: 12px;
         color: #6b7280;
-        margin-bottom: 12px;
-    }
-
-    .inline-checkbox {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 13px;
-        color: #374151;
-    }
-
-    .document-row {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 12px;
-        margin-bottom: 10px;
-        align-items: end;
-    }
-
-    .btn-add-row {
-        background: #eef2ff;
-        color: #4338ca;
-        border: 1px dashed #c7d2fe;
-        padding: 8px 12px;
-        border-radius: 8px;
-        font-size: 12px;
-        font-weight: 700;
-        cursor: pointer;
+        margin-bottom: 14px;
     }
 
     .form-grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 16px;
+        gap: 14px;
     }
 
-    .form-grid.full {
-        grid-template-columns: 1fr;
+    .form-group {
+        display: flex;
+        flex-direction: column;
     }
 
     .form-group label {
+        margin-bottom: 8px;
         font-size: 13px;
-        font-weight: 600;
-        color: #374151;
-        margin-bottom: 6px;
-        display: block;
+        font-weight: 700;
+        color: #334155;
     }
 
     .form-group input,
     .form-group select,
     .form-group textarea {
         width: 100%;
+        border: 1px solid #cbd5e1;
+        border-radius: 10px;
         padding: 10px 12px;
-        border: 1px solid #d1d5db;
-        border-radius: 8px;
         font-size: 14px;
+        color: #0f172a;
+        background: #ffffff;
+        outline: none;
+        box-sizing: border-box;
     }
 
     .form-group textarea {
-        resize: vertical;
         min-height: 90px;
+        resize: vertical;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+        border-color: #60a5fa;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+    }
+
+    .inline-help {
+        margin-top: 6px;
+        color: #64748b;
+        font-size: 12px;
+    }
+
+    .document-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr auto;
+        gap: 12px;
+        margin-bottom: 12px;
+        align-items: end;
+    }
+
+    .btn-add-row {
+        background: none;
+        border: 1px dashed #93c5fd;
+        color: #1d4ed8;
+        padding: 10px 12px;
+        width: 100%;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    .btn-submit,
+    .btn-cancel {
+        border: none;
+        border-radius: 8px;
+        padding: 10px 22px;
+        font-size: 13px;
+        font-weight: 700;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+    }
+
+    .btn-submit {
+        background: #2563eb;
+        color: #ffffff;
+    }
+
+    .btn-cancel {
+        background: #f8fafc;
+        color: #475569;
+        border: 1px solid #cbd5e1;
+    }
+
+    .form-message {
+        display: none;
+        margin-top: 10px;
+        padding: 10px 12px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 700;
+    }
+
+    .form-message.success {
+        display: block;
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .form-message.error {
+        display: block;
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.58);
+        z-index: 2200;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    }
+
+    .modal-overlay.open {
+        display: flex;
+    }
+
+    .modal-card {
+        width: min(860px, 100%);
+        max-height: calc(100vh - 40px);
+        overflow: auto;
+        background: #ffffff;
+        border-radius: 16px;
+        box-shadow: 0 24px 56px rgba(15, 23, 42, 0.22);
+        border: 1px solid #e2e8f0;
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        padding: 20px 22px;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .modal-title {
+        margin: 0;
+        color: #0f172a;
+        font-size: 20px;
+        font-weight: 800;
+    }
+
+    .modal-subtitle {
+        margin: 6px 0 0;
+        color: #64748b;
+        font-size: 13px;
+    }
+
+    .modal-close {
+        width: 38px;
+        height: 38px;
+        border: none;
+        border-radius: 10px;
+        background: #f8fafc;
+        color: #475569;
+        font-size: 20px;
+        cursor: pointer;
+    }
+
+    .modal-body {
+        padding: 22px;
     }
 
     .modal-actions {
         display: flex;
         justify-content: flex-end;
-        gap: 12px;
-        padding: 18px 24px;
-        border-top: 1px solid #e5e7eb;
-        background: #f9fafb;
-    }
-
-    .btn-secondary {
-        background: #e5e7eb;
-        color: #1f2937;
-        border: none;
-        border-radius: 6px;
-        padding: 10px 18px;
-        font-weight: 600;
-        cursor: pointer;
-    }
-
-    .btn-primary-solid {
-        background: #3b82f6;
-        color: white;
-        border: none;
-        border-radius: 6px;
-        padding: 10px 18px;
-        font-weight: 600;
-        cursor: pointer;
-    }
-
-    .photo-preview {
-        margin-top: 10px;
-        display: none;
-        align-items: center;
-        gap: 12px;
-    }
-
-    .photo-preview img {
-        width: 48px;
-        height: 48px;
-        border-radius: 8px;
-        object-fit: cover;
-        border: 1px solid #e5e7eb;
-    }
-
-    .table-controls {
-        display: flex;
-        justify-content: flex-start;
-        align-items: center;
-        margin-bottom: 12px;
-    }
-
-    .entries-control {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 13px;
-        color: #374151;
-        font-weight: 600;
-    }
-
-    .entries-control select {
-        border: 1px solid #d1d5db;
-        border-radius: 6px;
-        padding: 4px 8px;
-        font-size: 13px;
-        background: #fff;
-    }
-
-    .table-footer {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 12px;
-        margin-top: 14px;
-        flex-wrap: wrap;
-    }
-
-    .table-info {
-        font-size: 13px;
-        color: #4b5563;
-    }
-
-    .table-pagination {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        flex-wrap: wrap;
-    }
-
-    .page-btn {
-        border: 1px solid #d1d5db;
-        background: #fff;
-        color: #1f2937;
-        border-radius: 6px;
-        padding: 5px 10px;
-        font-size: 12px;
-        cursor: pointer;
-        min-width: 34px;
-    }
-
-    .page-btn:hover {
-        background: #f3f4f6;
-    }
-
-    .page-btn.active {
-        background: #2563eb;
-        border-color: #2563eb;
-        color: #fff;
-    }
-
-    .page-btn:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
-
-    .page-dots {
-        font-size: 12px;
-        color: #6b7280;
-        padding: 0 4px;
-    }
-
-    .employee-inline-panel {
-        display: none;
-        margin-top: 16px;
-        border: 1px solid #dbe3ee;
-        border-radius: 12px;
-        background: #ffffff;
-        box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
-    }
-
-    .employee-inline-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
         gap: 10px;
-        padding: 14px 16px;
-        border-bottom: 1px solid #e5e7eb;
+        padding: 18px 22px 22px;
+        border-top: 1px solid #e2e8f0;
         background: #f8fafc;
-        border-radius: 12px 12px 0 0;
     }
 
-    .employee-inline-title {
-        margin: 0;
-        font-size: 18px;
-        font-weight: 700;
-        color: #111827;
-    }
+    @media (max-width: 960px) {
+        .employees-header,
+        .table-controls,
+        .table-footer {
+            flex-direction: column;
+            align-items: stretch;
+        }
 
-    .employee-inline-subtitle {
-        margin: 3px 0 0 0;
-        font-size: 12px;
-        color: #64748b;
-    }
+        .header-actions {
+            justify-content: flex-start;
+        }
 
-    .employee-inline-body {
-        padding: 14px;
-    }
-
-    @media (max-width: 640px) {
         .form-grid {
             grid-template-columns: 1fr;
         }
+
+        .document-row {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .multi-id-dropdown {
+        position: relative;
+        width: 100%;
+    }
+
+    .multi-id-trigger {
+        width: 100%;
+        min-height: 44px;
+        border: 1px solid #cbd5e1;
+        border-radius: 10px;
+        background: #f8fafc;
+        color: #0f172a;
+        padding: 11px 13px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        cursor: pointer;
+        font-weight: 700;
+    }
+
+    .multi-id-dropdown.open .multi-id-trigger {
+        border-color: #2563eb;
+        background: #fff;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    }
+
+    .multi-id-menu {
+        display: none;
+        position: absolute;
+        z-index: 70;
+        left: 0;
+        right: 0;
+        top: calc(100% + 8px);
+        max-height: 280px;
+        overflow-y: auto;
+        background: #ffffff;
+        border: 1px solid #cbd5e1;
+        border-radius: 12px;
+        box-shadow: 0 18px 44px rgba(15, 23, 42, 0.18);
+        padding: 8px;
+    }
+
+    .multi-id-dropdown.open .multi-id-menu {
+        display: block;
+    }
+
+    .multi-id-option {
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+        padding: 10px;
+        border-radius: 10px;
+        cursor: pointer;
+    }
+
+    .multi-id-option:hover {
+        background: #f1f5f9;
+    }
+
+    .multi-id-option input {
+        margin-top: 3px;
+    }
+
+    .multi-id-option strong {
+        display: block;
+        color: #0f172a;
+        font-size: 13px;
+    }
+
+    .multi-id-option small {
+        display: block;
+        color: #64748b;
+        font-size: 11px;
+        margin-top: 2px;
     }
 </style>
 
 <div class="employees-container">
-    <div class="container-fluid">
-        <!-- Header -->
-        <div class="employees-header">
-            <div>
-                <h1 class="employees-title">All Employees</h1>
-                <span class="employees-count">Total: {{ employees|length }} Employees</span>
-            </div>
-            <button type="button" class="btn btn-primary" onclick="openAddEmployeeModal()" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 600; border: none;">
-                <i class="fas fa-plus"></i> Add Employee
-            </button>
+    {% if messages %}
+        <div>
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags|default:'info' }} mb-0" role="alert">{{ message }}</div>
+            {% endfor %}
         </div>
-        
-        <!-- Search Bar -->
-        <div class="search-bar">
-            <form method="GET" class="row g-3">
-                <div class="col-md-12">
-                    <input type="text" name="q" placeholder="Search by name, email, or phone..." 
-                           value="{{ search_query }}" class="form-control w-100" id="searchInput" onkeyup="filterTable()">
-                </div>
-            </form>
-        </div>
-        
-        <!-- Employees Table -->
-        <div class="employees-table-container">
+    {% endif %}
+
+    {% if page_mode != 'add' %}
+        <div class="table-section">
+            {% include 'core/admin/includes/admin_table_filters.html' with filter_id='employeesFilters' filter_type='employees' filter_label='Employees' search_placeholder='Employee ID, name, email, phone...' table_selector='#employeesTable' %}
+
             {% if employees %}
-            <div class="table-controls">
-                <label class="entries-control">
-                    Show
-                    <select id="employeesPageSize" onchange="changeEmployeesPageSize()">
-                        <option value="10" selected>10</option>
-                        <option value="25">25</option>
-                        <option value="50">50</option>
-                        <option value="100">100</option>
-                    </select>
-                    Entries
-                </label>
-            </div>
-            <table class="employees-table" id="employeesTable">
-                <thead>
-                    <tr>
-                        <th style="width: 10%;">Employee ID</th>
-                        <th style="width: 7%;">Photo</th>
-                        <th style="width: 12%;">Name</th>
-                        <th style="width: 14%;">Email</th>
-                        <th style="width: 9%;">Phone</th>
-                        <th style="width: 12%;">Location</th>
-                        <th style="width: 11%;">Created Under</th>
-                        <th style="width: 7%;">Ch. Partners</th>
-                        <th style="width: 7%;">Loan Apps</th>
-                        <th style="width: 7%;">Approved</th>
-                        <th style="width: 7%;">Status</th>
-                        <th style="width: 8%;">Joined</th>
-                        <th style="width: 9%;">Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="employeesTableBody">
-                    {% for employee in employees %}
-                    <tr data-employee-id="{{ employee.id }}" data-search="{{ employee.employee_id|default:''|lower }},{{ employee.get_full_name|lower }},{{ employee.email|lower }},{{ employee.phone|lower }}">
-                        <td>
-                            <strong>
-                                {% if employee.employee_id %}
-                                    {{ employee.employee_id }}
-                                {% else %}
-                                    EDC-EMP-{{ employee.id|stringformat:"04d" }}
-                                {% endif %}
-                            </strong>
-                        </td>
-                        <td>
-                            <div class="employee-photo">
-                                {% if employee.profile_photo %}
-                                    <img src="{{ employee.profile_photo.url }}" alt="{{ employee.get_full_name }}">
-                                {% else %}
-                                    {{ employee.get_full_name|first|upper }}
-                                {% endif %}
-                            </div>
-                        </td>
-                        <td>
-                            <div class="employee-cell">
-                                <span>{{ employee.get_full_name }}</span>
-                            </div>
-                        </td>
-                        <td><span style="color: #1f2937;">{{ employee.email|default:"-" }}</span></td>
-                        <td><span style="color: #1f2937;">{{ employee.phone|default:"-" }}</span></td>
-                        <td><span class="date-text">{{ employee_location_display|get_item:employee.id|default:"-" }}</span></td>
-                        <td><span class="date-text">{{ employee_creator_display|get_item:employee.id|default:"Admin - System" }}</span></td>
-                        <td>
-                            <span class="count-badge">{{ employee_channel_partner_count|get_item:employee.id|default:"0" }}</span>
-                        </td>
-                        <td>
-                            <span class="count-badge">{{ employee_loans_count|get_item:employee.id|default:"0" }}</span>
-                        </td>
-                        <td>
-                            <span class="count-badge" style="background: #dbeafe; color: #0c4a6e;">{{ employee_approved_count|get_item:employee.id|default:"0" }}</span>
-                        </td>
-                        <td>
-                            <span class="employee-status-badge {% if employee.is_active %}status-active{% else %}status-inactive{% endif %}">
-                                {% if employee.is_active %}Active{% else %}Inactive{% endif %}
-                            </span>
-                        </td>
-                        <td><span class="date-text">{{ employee.date_joined|date:"M d, Y" }}</span></td>
-                        <td>
-                            <div class="action-buttons">
-                                <button onclick="viewEmployee('{{ employee.id }}', '{{ employee.get_full_name|escapejs }}', '{{ employee.email|default:''|escapejs }}', '{{ employee.phone|default:''|escapejs }}')" class="btn-action btn-view" title="View Employee">
-                                    <i class="fas fa-eye"></i> View
-                                </button>
-                                <button onclick="editEmployee('{{ employee.id }}')" class="btn-action btn-edit" title="Edit Employee">
-                                    <i class="fas fa-edit"></i> Edit
-                                </button>
-                                <button onclick="deleteEmployee('{{ employee.id }}', '{{ employee.get_full_name|escapejs }}')" class="btn-action btn-delete" title="Delete Employee">
-                                    <i class="fas fa-trash"></i> Delete
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            <div class="table-footer">
-                <div class="table-info" id="employeesTableInfo">Showing 0 to 0 of 0 Entries</div>
-                <div class="table-pagination" id="employeesTablePagination"></div>
-            </div>
-            <div id="employeeInlineDetails" class="employee-inline-panel">
-                <div class="employee-inline-header">
-                    <div>
-                        <h3 id="employeeInlineTitle" class="employee-inline-title">Employee Full Details</h3>
-                        <p id="employeeInlineSubtitle" class="employee-inline-subtitle">Select an employee and click View.</p>
-                    </div>
-                    <button type="button" class="btn-action btn-view" onclick="closeViewModal()">
-                        <i class="fas fa-times"></i> Close
-                    </button>
+                <div class="table-controls">
+                    <label class="entries-control">
+                        Show
+                        <select id="employeesPageSize" onchange="changeEmployeesPageSize()">
+                            <option value="10" selected>10</option>
+                            <option value="25">25</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                        Entries
+                    </label>
                 </div>
-                <div id="employeeInlineBody" class="employee-inline-body">
-                    <p style="margin:0; color:#64748b;">Loading details...</p>
+
+                <div class="employees-table-wrap">
+                    <table class="employees-table" id="employeesTable">
+                        <thead>
+                            <tr>
+                                <th>Employee ID</th>
+                                <th>User</th>
+                                <th>Email</th>
+                                <th>Phone</th>
+                                <th>Location</th>
+                                <th>Created Under</th>
+                                <th>Channel Partners</th>
+                                <th>Loan Apps</th>
+                                <th>Approved</th>
+                                <th>Joined</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="employeesTableBody">
+                            {% for employee in employees %}
+                                <tr
+                                    data-employee-id="{{ employee.id }}"
+                                    data-search="{{ employee.employee_id|default:''|lower }},{{ employee.get_full_name|default:employee.username|lower }},{{ employee.username|lower }},{{ employee.email|default:''|lower }},{{ employee.phone|default:''|lower }},{{ employee_location_display|get_item:employee.id|default:''|lower }},{{ employee_creator_display|get_item:employee.id|default:''|lower }}"
+                                    data-status="{% if employee.is_active %}active{% else %}inactive{% endif %}"
+                                    data-joined="{{ employee.date_joined|date:'Y-m-d' }}"
+                                >
+                                    <td>
+                                        <strong>{{ employee.employee_id|default:"EDC-EMP-" }}{% if not employee.employee_id %}{{ employee.id|stringformat:"04d" }}{% endif %}</strong>
+                                    </td>
+                                    <td>
+                                        <div class="user-cell">
+                                            <div class="user-avatar">
+                                                {% if employee.profile_photo %}
+                                                    <img src="{{ employee.profile_photo.url }}" alt="{{ employee.get_full_name|default:employee.username }}">
+                                                {% else %}
+                                                    {{ employee.get_full_name|default:employee.username|first|upper }}
+                                                {% endif %}
+                                            </div>
+                                            <div>
+                                                <strong>{{ employee.get_full_name|default:employee.username }}</strong>
+                                                <div class="muted-line">@{{ employee.username }}</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>{{ employee.email|default:"-" }}</td>
+                                    <td>{{ employee.phone|default:"-" }}</td>
+                                    <td>{{ employee_location_display|get_item:employee.id|default:"-" }}</td>
+                                    <td>{{ employee_creator_display|get_item:employee.id|default:"Admin - System" }}</td>
+                                    <td><span class="count-badge">{{ employee_channel_partner_count|get_item:employee.id|default:"0" }}</span></td>
+                                    <td><span class="count-badge">{{ employee_loans_count|get_item:employee.id|default:"0" }}</span></td>
+                                    <td><span class="count-badge">{{ employee_approved_count|get_item:employee.id|default:"0" }}</span></td>
+                                    <td>{{ employee.date_joined|date:"Y-m-d" }}</td>
+                                    <td>
+                                        <span class="status-badge {% if employee.is_active %}active{% else %}inactive{% endif %}">
+                                            {% if employee.is_active %}Active{% else %}Inactive{% endif %}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="action-btns">
+                                            <a href="{% url 'admin_employee_full_details' employee.id %}" class="btn-action btn-view">
+                                                <i class="fas fa-eye"></i> View
+                                            </a>
+                                            <button type="button" class="btn-action btn-edit" onclick="openEditEmployeeModal({{ employee.id }})">
+                                                <i class="fas fa-edit"></i> Edit
+                                            </button>
+                                            <button type="button" class="btn-action btn-delete" onclick="deleteEmployee({{ employee.id }}, '{{ employee.get_full_name|default:employee.username|escapejs }}')">
+                                                <i class="fas fa-trash"></i> Delete
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
-            </div>
+
+                <div class="table-footer">
+                    <div class="table-info" id="employeesTableInfo">Showing 0 to 0 of 0 Entries</div>
+                    <div class="table-pagination" id="employeesTablePagination"></div>
+                </div>
             {% else %}
-            <div class="no-employees">
-                <i class="fas fa-inbox"></i>
-                <p>No employees found</p>
-            </div>
+                <div class="empty-state">
+                    <i class="fas fa-user-slash"></i>
+                    <h3>No Employees Found</h3>
+                    <p>This scope does not have any employee records yet.</p>
+                </div>
             {% endif %}
         </div>
-    </div>
-</div>
+    {% else %}
+        <div class="table-section">
+            <h2><i class="fas fa-user-plus"></i> Add New Employee</h2>
+            <p class="table-subtext">Partner and channel partner pages ki tarah employee creation ko bhi page flow me shift kiya gaya hai. Jo details aur documents yahan add honge, woh employee detail page me visible rahenge.</p>
 
-<!-- Add Employee Modal -->
-<div id="addEmployeeModal" class="modal-overlay">
-    <div class="modal-card">
-        <div class="modal-header">
-            <h2 class="modal-title">Add New Employee</h2>
-            <button type="button" onclick="closeAddEmployeeModal()" style="background: none; border: none; font-size: 26px; cursor: pointer; color: #6b7280;">&times;</button>
-        </div>
-        <form id="addEmployeeForm" enctype="multipart/form-data">
-            {% csrf_token %}
-            <div class="modal-body scroll">
+            <form id="addEmployeeFormInline" enctype="multipart/form-data">
+                {% csrf_token %}
+
                 <div class="section-card">
                     <div class="section-title">APPLICANT INFORMATION</div>
+                    <p class="section-subtext">Basic employee profile, contact details, and identity information.</p>
                     <div class="form-grid">
                         <div class="form-group">
-                            <label>Name *</label>
-                            <input type="text" name="full_name" id="employeeName" required placeholder="Employee full name">
+                            <label>Full Name *</label>
+                            <input type="text" name="full_name" required placeholder="Employee full name">
                         </div>
                         <div class="form-group">
                             <label>Email ID *</label>
-                            <input type="email" name="email" id="employeeEmail" required placeholder="example@gmail.com">
+                            <input type="email" name="email" required placeholder="example@gmail.com">
                         </div>
                         <div class="form-group">
                             <label>Phone Number *</label>
-                            <input type="tel" name="phone" id="employeePhone" required placeholder="10-15 digits">
+                            <input type="tel" name="phone" required placeholder="10-15 digits" pattern="[0-9]{10,15}">
                         </div>
                         <div class="form-group">
-                            <label>Gender *</label>
-                            <select name="gender" id="employeeGender" required>
+                            <label>Alternate Mobile</label>
+                            <input type="tel" name="onb_alt_mobile" placeholder="Alternate contact number" pattern="[0-9]{10,15}">
+                        </div>
+                        <div class="form-group">
+                            <label>Gender</label>
+                            <select name="gender">
+                                <option value="Other" selected>Other</option>
                                 <option value="Male">Male</option>
                                 <option value="Female">Female</option>
-                                <option value="Other" selected>Other</option>
                             </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Date of Birth</label>
+                            <input type="date" name="onb_dob">
                         </div>
                         <div class="form-group">
                             <label>City *</label>
-                            <input type="text" name="city" id="employeeCity" required placeholder="City">
+                            <input type="text" name="city" required placeholder="City">
                         </div>
                         <div class="form-group">
                             <label>District *</label>
-                            <input type="text" name="district" id="employeeDistrict" required placeholder="District">
+                            <input type="text" name="district" required placeholder="District">
+                        </div>
+                        <div class="form-group">
+                            <label>State</label>
+                            <input type="text" name="state" placeholder="State">
                         </div>
                         <div class="form-group">
                             <label>PIN Code *</label>
-                            <input type="text" name="pin_code" id="employeePinCode" required placeholder="6-digit PIN code" pattern="[0-9]{6}" maxlength="6">
+                            <input type="text" name="pin_code" required placeholder="6 digit PIN code" pattern="[0-9]{6}" maxlength="6">
                         </div>
-                        <div class="form-group">
-                            <label>Password *</label>
-                            <input type="password" name="password" id="employeePassword" required placeholder="Create login password">
-                        </div>
-                        <div class="form-group" style="grid-column: 1 / -1;">
-                            <label>Channel Partners Under Employee (Optional)</label>
-                            <select name="channel_partner_ids" id="employeeChannelPartners" multiple size="5">
-                                {% for partner in channel_partner_options %}
-                                    <option value="{{ partner.id }}">{{ partner.name|default:partner.user.get_full_name|default:partner.user.username }}</option>
-                                {% endfor %}
-                            </select>
-                            <small style="color:#64748b;">Hold Ctrl (Windows) / Cmd (Mac) to select multiple Channel Partners.</small>
+                        <div class="form-group" style="grid-column:1/-1;">
+                            <label>Address</label>
+                            <textarea name="address" placeholder="Residential address"></textarea>
                         </div>
                     </div>
                 </div>
-            </div>
-            <div class="modal-actions">
-                <button type="button" class="btn-secondary" onclick="closeAddEmployeeModal()">Cancel</button>
-                <button type="submit" class="btn-primary-solid" id="saveEmployeeBtn">Save Employee</button>
-            </div>
-        </form>
-    </div>
+
+                <div class="section-card">
+                    <div class="section-title">LOGIN DETAILS & ASSIGNMENT</div>
+                    <p class="section-subtext">Page se hi login create karein aur partner / channel partner assignment finish karein.</p>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Username</label>
+                            <input type="text" name="username" placeholder="Optional username">
+                            <span class="inline-help">Blank chhodne par email se auto-generate hoga.</span>
+                        </div>
+                        <div class="form-group">
+                            <label>Password *</label>
+                            <input type="password" name="password" required placeholder="Minimum 6 characters" minlength="6">
+                        </div>
+                        <div class="form-group">
+                            <label>Employee ID</label>
+                            <input type="text" value="Auto-generated after save" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label>Profile Photo</label>
+                            <input type="file" name="profile_photo" accept="image/*">
+                        </div>
+                        <div class="form-group">
+                            <label>Assign Under Partner</label>
+                            <select name="assigned_subadmin_id">
+                                <option value="">-- Direct under Admin --</option>
+                                {% for subadmin in subadmin_options %}
+                                    <option value="{{ subadmin.id }}">{{ subadmin.employee_id|default:"EDC-P" }}{% if not subadmin.employee_id %}-{{ subadmin.id|stringformat:"04d" }}{% endif %} - {{ subadmin.get_full_name|default:subadmin.username }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group" style="grid-column:1/-1;">
+                            <label>Assign Channel Partners</label>
+                            <div class="multi-id-dropdown" data-multi-id-dropdown data-placeholder="Select channel partners by ID + name">
+                                <button type="button" class="multi-id-trigger">
+                                    <span data-multi-id-label>Select channel partners by ID + name</span>
+                                    <i class="fas fa-chevron-down"></i>
+                                </button>
+                                <div class="multi-id-menu">
+                                {% for channel_partner in channel_partner_options %}
+                                    <label class="multi-id-option">
+                                        <input type="checkbox" name="channel_partner_ids" value="{{ channel_partner.id }}">
+                                        <span>
+                                            <strong>{{ channel_partner.agent_id|default:"EDC-CP" }}{% if not channel_partner.agent_id %}-{{ channel_partner.id|stringformat:"04d" }}{% endif %} - {{ channel_partner.name }}</strong>
+                                            <small>{{ channel_partner.email|default:"No email" }}{% if channel_partner.phone %} | {{ channel_partner.phone }}{% endif %}</small>
+                                        </span>
+                                    </label>
+                                {% endfor %}
+                                </div>
+                            </div>
+                            <span class="inline-help">Dropdown click karke multiple channel partners tick karein.</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section-card">
+                    <div class="section-title">DOCUMENTS</div>
+                    <p class="section-subtext">Uploaded documents employee detail page ke documents block mein live dikhenge.</p>
+                    <div id="employeeDocumentRowsInline">
+                        <div class="document-row">
+                            <div class="form-group">
+                                <label>Document Type</label>
+                                <select name="document_type">
+                                    <option value="pan_card">PAN Card</option>
+                                    <option value="aadhaar_card">Aadhaar Card</option>
+                                    <option value="photo">Applicant Photo</option>
+                                    <option value="address_proof">Address Proof</option>
+                                    <option value="salary_slip">Salary Slip</option>
+                                    <option value="bank_statement">Bank Statement</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Upload File</label>
+                                <input type="file" name="document_file">
+                            </div>
+                            <button type="button" class="btn-action btn-delete" style="justify-content:center;" onclick="removeEmployeeDocumentRow(this)">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-add-row" onclick="addEmployeeDocumentRowInline()">+ Add Another Document</button>
+                </div>
+
+                <div id="employeeFormMessageInline" class="form-message"></div>
+
+                <div style="margin-top: 20px; display:flex; justify-content:flex-end; gap:10px; flex-wrap:wrap;">
+                    <a href="{% url 'admin_employees_list' %}" class="btn-cancel">Cancel</a>
+                    <button type="submit" class="btn-submit" id="saveEmployeeBtnInline">
+                        <i class="fas fa-save"></i> Create Employee
+                    </button>
+                </div>
+            </form>
+        </div>
+    {% endif %}
 </div>
 
-<!-- Edit Employee Modal -->
-<div id="editEmployeeModal" class="modal-overlay">
+<div id="editEmployeeModal" class="modal-overlay" onclick="handleEditModalBackdrop(event)">
     <div class="modal-card">
         <div class="modal-header">
-            <h2 class="modal-title">Edit Employee</h2>
-            <button type="button" onclick="closeEditEmployeeModal()" style="background: none; border: none; font-size: 26px; cursor: pointer; color: #6b7280;">&times;</button>
+            <div>
+                <h3 class="modal-title">Edit Employee</h3>
+                <p class="modal-subtitle">Employee profile, status, aur channel partner links ko update karein.</p>
+            </div>
+            <button type="button" class="modal-close" onclick="closeEditEmployeeModal()">&times;</button>
         </div>
         <form id="editEmployeeForm">
             {% csrf_token %}
             <div class="modal-body">
+                <input type="hidden" id="editEmployeeId">
                 <div class="form-grid">
                     <div class="form-group">
-                        <label>Name *</label>
-                        <input type="text" name="full_name" id="editEmployeeName" required placeholder="Employee full name">
+                        <label>Full Name *</label>
+                        <input id="editFullName" type="text" required>
                     </div>
                     <div class="form-group">
                         <label>Email *</label>
-                        <input type="email" name="email" id="editEmployeeEmail" required placeholder="example@gmail.com">
+                        <input id="editEmail" type="email" required>
                     </div>
                     <div class="form-group">
                         <label>Phone *</label>
-                        <input type="tel" name="phone" id="editEmployeePhone" required placeholder="10-15 digits">
+                        <input id="editPhone" type="tel" required>
                     </div>
                     <div class="form-group">
                         <label>Gender</label>
-                        <select name="gender" id="editEmployeeGender">
+                        <select id="editGender">
                             <option value="Male">Male</option>
                             <option value="Female">Female</option>
                             <option value="Other">Other</option>
                         </select>
                     </div>
-                </div>
-                <div class="form-grid full" style="margin-top: 16px;">
-                    <div class="form-group">
-                        <label>Address</label>
-                        <textarea name="address" id="editEmployeeAddress" placeholder="Address"></textarea>
-                    </div>
-                </div>
-                <div class="form-grid full" style="margin-top: 16px;">
-                    <div class="form-group">
-                        <label>Channel Partners Under Employee</label>
-                        <select id="editEmployeeChannelPartners" name="channel_partner_ids" multiple size="5">
-                            {% for partner in channel_partner_options %}
-                                <option value="{{ partner.id }}">{{ partner.name|default:partner.user.get_full_name|default:partner.user.username }}</option>
-                            {% endfor %}
-                        </select>
-                        <small style="color:#64748b;">Multiple select supported.</small>
-                    </div>
-                </div>
-                <div class="form-grid" style="margin-top: 16px;">
                     <div class="form-group">
                         <label>Status</label>
-                        <select name="status" id="editEmployeeStatus">
+                        <select id="editStatus">
                             <option value="active">Active</option>
                             <option value="inactive">Inactive</option>
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>New Password (optional)</label>
-                        <input type="password" id="editEmployeePassword" placeholder="Leave blank to keep current">
+                        <label>New Password</label>
+                        <input id="editPassword" type="password" minlength="6">
+                        <span class="inline-help">Optional</span>
+                    </div>
+                    <div class="form-group">
+                        <label>Profile Photo</label>
+                        <input id="editProfilePhoto" type="file" accept="image/*">
+                        <span class="inline-help">Optional</span>
+                    </div>
+                    <div class="form-group" style="grid-column:1/-1;">
+                        <label>Address</label>
+                        <textarea id="editAddress"></textarea>
+                    </div>
+                    <div class="form-group" style="grid-column:1/-1;">
+                        <label>Notes</label>
+                        <textarea id="editNotes"></textarea>
+                    </div>
+                    <div class="form-group" style="grid-column:1/-1;">
+                        <label>Assign Channel Partners</label>
+                        <select id="editChannelPartners" multiple size="6">
+                            {% for channel_partner in channel_partner_options %}
+                                <option value="{{ channel_partner.id }}">{{ channel_partner.agent_id|default:"EDC-CP" }}{% if not channel_partner.agent_id %}-{{ channel_partner.id|stringformat:"04d" }}{% endif %} - {{ channel_partner.name }}</option>
+                            {% endfor %}
+                        </select>
                     </div>
                 </div>
             </div>
             <div class="modal-actions">
-                <button type="button" class="btn-secondary" onclick="closeEditEmployeeModal()">Cancel</button>
-                <button type="submit" class="btn-primary-solid" id="updateEmployeeBtn">Update Employee</button>
+                <button type="button" class="btn-cancel" onclick="closeEditEmployeeModal()">Cancel</button>
+                <button type="submit" class="btn-submit" id="updateEmployeeBtn">Update Employee</button>
             </div>
         </form>
     </div>
 </div>
 
 <script>
-const employeesTableState = {
-    allRows: [],
-    filteredRows: [],
-    currentPage: 1,
-    pageSize: 10,
-};
+    const pageMode = '{{ page_mode|escapejs }}';
+    const employeesListUrl = "{% url 'admin_employees_list' %}";
+    const addEmployeesUrl = "{% url 'admin_employees_add' %}";
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
 
-function initializeEmployeesTableExperience() {
-    const tbody = document.getElementById('employeesTableBody');
-    if (!tbody) return;
-    employeesTableState.allRows = Array.from(tbody.querySelectorAll('tr'));
-    employeesTableState.currentPage = 1;
-    applyEmployeesFilters();
-}
+    const employeesTableState = {
+        allRows: [],
+        filteredRows: [],
+        currentPage: 1,
+        pageSize: 10,
+    };
 
-function applyEmployeesFilters() {
-    const searchValue = (document.getElementById('searchInput')?.value || '').toLowerCase().trim();
-    employeesTableState.filteredRows = employeesTableState.allRows.filter((row) => {
-        const searchText = (row.getAttribute('data-search') || '').toLowerCase();
-        return searchText.includes(searchValue);
-    });
-    renderEmployeesTablePage();
-}
-
-function renderEmployeesTablePage() {
-    const total = employeesTableState.filteredRows.length;
-    const pageSize = employeesTableState.pageSize;
-    const totalPages = Math.max(1, Math.ceil(total / pageSize));
-    if (employeesTableState.currentPage > totalPages) {
-        employeesTableState.currentPage = totalPages;
+    function escapeHtml(value) {
+        return String(value || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
     }
 
-    const startIndex = (employeesTableState.currentPage - 1) * pageSize;
-    const endIndex = Math.min(startIndex + pageSize, total);
-
-    employeesTableState.allRows.forEach((row) => {
-        row.style.display = 'none';
-    });
-    employeesTableState.filteredRows.slice(startIndex, endIndex).forEach((row) => {
-        row.style.display = '';
-    });
-
-    const info = document.getElementById('employeesTableInfo');
-    if (info) {
-        if (!total) {
-            info.textContent = 'Showing 0 to 0 of 0 Entries';
-        } else {
-            info.textContent = `Showing ${startIndex + 1} to ${endIndex} of ${total} Entries`;
+    function handleEditModalBackdrop(event) {
+        if (event.target.id === 'editEmployeeModal') {
+            closeEditEmployeeModal();
         }
     }
-    renderEmployeesPagination(totalPages);
-}
 
-function getEmployeesPaginationItems(totalPages, currentPage) {
-    const items = [];
-    if (totalPages <= 7) {
-        for (let i = 1; i <= totalPages; i += 1) items.push(i);
-        return items;
-    }
-    items.push(1);
-    if (currentPage > 3) items.push('...');
-    const start = Math.max(2, currentPage - 1);
-    const end = Math.min(totalPages - 1, currentPage + 1);
-    for (let i = start; i <= end; i += 1) items.push(i);
-    if (currentPage < totalPages - 2) items.push('...');
-    items.push(totalPages);
-    return items;
-}
-
-function renderEmployeesPagination(totalPages) {
-    const wrapper = document.getElementById('employeesTablePagination');
-    if (!wrapper) return;
-
-    const currentPage = employeesTableState.currentPage;
-    const parts = [];
-    parts.push(`<button class="page-btn" ${currentPage <= 1 ? 'disabled' : ''} onclick="goToEmployeesPage(${currentPage - 1})">Previous</button>`);
-
-    getEmployeesPaginationItems(totalPages, currentPage).forEach((item) => {
-        if (item === '...') {
-            parts.push('<span class="page-dots">...</span>');
-        } else {
-            parts.push(`<button class="page-btn ${item === currentPage ? 'active' : ''}" onclick="goToEmployeesPage(${item})">${item}</button>`);
-        }
-    });
-
-    parts.push(`<button class="page-btn" ${currentPage >= totalPages ? 'disabled' : ''} onclick="goToEmployeesPage(${currentPage + 1})">Next</button>`);
-    wrapper.innerHTML = parts.join('');
-}
-
-function goToEmployeesPage(page) {
-    const totalPages = Math.max(1, Math.ceil(employeesTableState.filteredRows.length / employeesTableState.pageSize));
-    if (page < 1 || page > totalPages) return;
-    employeesTableState.currentPage = page;
-    renderEmployeesTablePage();
-}
-
-function changeEmployeesPageSize() {
-    const select = document.getElementById('employeesPageSize');
-    const nextSize = Number(select?.value || 10);
-    employeesTableState.pageSize = Number.isFinite(nextSize) && nextSize > 0 ? nextSize : 10;
-    employeesTableState.currentPage = 1;
-    renderEmployeesTablePage();
-}
-
-function filterTable() {
-    employeesTableState.currentPage = 1;
-    applyEmployeesFilters();
-}
-
-function openAddEmployeeModal() {
-    const modal = document.getElementById('addEmployeeModal');
-    if (modal) {
-        modal.style.display = 'flex';
+    function openEditEmployeeModalContainer() {
+        const modal = document.getElementById('editEmployeeModal');
+        if (!modal) return;
+        modal.classList.add('open');
         document.body.style.overflow = 'hidden';
     }
-}
 
-function closeAddEmployeeModal() {
-    const modal = document.getElementById('addEmployeeModal');
-    const form = document.getElementById('addEmployeeForm');
-    if (modal) {
-        modal.style.display = 'none';
-        document.body.style.overflow = 'auto';
+    function closeEditEmployeeModal() {
+        const modal = document.getElementById('editEmployeeModal');
+        if (!modal) return;
+        modal.classList.remove('open');
+        document.body.style.overflow = '';
+        document.getElementById('editEmployeeForm')?.reset();
     }
-    if (form) {
-        form.reset();
-    }
-    const preview = document.getElementById('employeePhotoPreview');
-    if (preview) preview.style.display = 'none';
-    resetEmployeeDocumentRows();
-}
 
-function escapeHtml(value) {
-    return String(value || '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-}
+    function addEmployeeDocumentRowInline() {
+        const container = document.getElementById('employeeDocumentRowsInline');
+        if (!container) return;
 
-function resetEmployeeDocumentRows() {
-    const container = document.getElementById('employeeDocumentRows');
-    if (!container) return;
-    container.innerHTML = `
-        <div class="document-row">
+        const row = document.createElement('div');
+        row.className = 'document-row';
+        row.innerHTML = `
             <div class="form-group">
                 <label>Document Type</label>
                 <select name="document_type">
@@ -968,752 +1068,376 @@ function resetEmployeeDocumentRows() {
                 <label>Upload File</label>
                 <input type="file" name="document_file">
             </div>
-        </div>
-    `;
-}
+            <button type="button" class="btn-action btn-delete" style="justify-content:center;" onclick="removeEmployeeDocumentRow(this)">
+                <i class="fas fa-trash"></i>
+            </button>
+        `;
+        container.appendChild(row);
+    }
 
-function addEmployeeDocumentRow() {
-    const container = document.getElementById('employeeDocumentRows');
-    if (!container) return;
-    const row = document.createElement('div');
-    row.className = 'document-row';
-    row.innerHTML = `
-        <div class="form-group">
-            <label>Document Type</label>
-            <select name="document_type">
-                <option value="pan_card">PAN Card</option>
-                <option value="aadhaar_card">Aadhaar Card</option>
-                <option value="photo">Applicant Photo</option>
-                <option value="address_proof">Address Proof</option>
-                <option value="salary_slip">Salary Slip</option>
-                <option value="bank_statement">Bank Statement</option>
-                <option value="other">Other</option>
-            </select>
-        </div>
-        <div class="form-group">
-            <label>Upload File</label>
-            <input type="file" name="document_file">
-        </div>
-    `;
-    container.appendChild(row);
-}
-
-function escapeJsString(value) {
-    return String(value || '')
-        .replace(/\\/g, '\\\\')
-        .replace(/'/g, "\\'")
-        .replace(/\n/g, '\\n');
-}
-
-function ensureEmployeesTable() {
-    const container = document.querySelector('.employees-table-container');
-    if (!container) return null;
-    let table = container.querySelector('.employees-table');
-    if (table) return table;
-
-    const empty = container.querySelector('.no-employees');
-    if (empty) empty.remove();
-
-    container.innerHTML = `
-        <div class="table-controls">
-            <label class="entries-control">
-                Show
-                <select id="employeesPageSize" onchange="changeEmployeesPageSize()">
-                    <option value="10" selected>10</option>
-                    <option value="25">25</option>
-                    <option value="50">50</option>
-                    <option value="100">100</option>
-                </select>
-                Entries
-            </label>
-        </div>
-        <table class="employees-table" id="employeesTable">
-            <thead>
-                <tr>
-                    <th style="width: 10%;">Employee ID</th>
-                    <th style="width: 7%;">Photo</th>
-                    <th style="width: 12%;">Name</th>
-                    <th style="width: 14%;">Email</th>
-                    <th style="width: 9%;">Phone</th>
-                    <th style="width: 12%;">Location</th>
-                    <th style="width: 11%;">Created Under</th>
-                    <th style="width: 7%;">Ch. Partners</th>
-                    <th style="width: 7%;">Loan Apps</th>
-                    <th style="width: 7%;">Approved</th>
-                    <th style="width: 7%;">Status</th>
-                    <th style="width: 8%;">Joined</th>
-                    <th style="width: 9%;">Actions</th>
-                </tr>
-            </thead>
-            <tbody id="employeesTableBody"></tbody>
-        </table>
-        <div class="table-footer">
-            <div class="table-info" id="employeesTableInfo">Showing 0 to 0 of 0 Entries</div>
-            <div class="table-pagination" id="employeesTablePagination"></div>
-        </div>
-    `;
-    return container.querySelector('.employees-table');
-}
-
-function insertEmployeeRow(employee) {
-    const table = ensureEmployeesTable();
-    if (!table) return;
-    const tbody = table.querySelector('tbody');
-    if (!tbody) return;
-
-    const rawName = employee.name || '';
-    const rawEmail = employee.email || '';
-    const rawPhone = employee.phone || '';
-    const name = escapeHtml(rawName);
-    const email = escapeHtml(rawEmail || '-');
-    const phone = escapeHtml(rawPhone || '-');
-    const city = String(employee.city || '').trim();
-    const pinCode = String(employee.pin_code || '').trim();
-    const district = String(employee.district || '').trim();
-    const locationParts = [];
-    if (city) locationParts.push(city);
-    if (district) locationParts.push(`District ${district}`);
-    if (pinCode && pinCode !== '-') locationParts.push(`PIN ${pinCode}`);
-    const location = escapeHtml(locationParts.length ? locationParts.join(' | ') : '-');
-    const createdUnder = escapeHtml(employee.created_under || 'Admin - System');
-    const normalizedStatus = String(employee.status || '').toLowerCase();
-    const status = (normalizedStatus === 'active' || employee.is_active === true) ? 'active' : 'inactive';
-    const statusLabel = status === 'active' ? 'Active' : 'Inactive';
-    const createdAt = escapeHtml(employee.created_at || '-');
-    const photoUrl = employee.photo_url || '';
-    const employeeCode = escapeHtml(employee.employee_id || `EDC-EMP-${String(employee.id).padStart(4, '0')}`);
-    const initials = name ? name.charAt(0).toUpperCase() : '?';
-    const channelPartnerCount = Number(employee.channel_partner_count || 0);
-    const totalApplications = Number(employee.total_applications || 0);
-    const approvedApplications = Number(employee.approved_applications || 0);
-
-    const rowHtml = `
-        <tr data-employee-id="${employee.id}" data-search="${employeeCode.toLowerCase()},${rawName.toLowerCase()},${rawEmail.toLowerCase()},${rawPhone}">
-            <td><strong>${employeeCode}</strong></td>
-            <td>
-                <div class="employee-photo">
-                    ${photoUrl ? `<img src="${photoUrl}" alt="${name}">` : initials}
-                </div>
-            </td>
-            <td>
-                <div class="employee-cell">
-                    <span>${name}</span>
-                </div>
-            </td>
-            <td><span style="color: #1f2937;">${email}</span></td>
-            <td><span style="color: #1f2937;">${phone}</span></td>
-            <td><span class="date-text">${location}</span></td>
-            <td><span class="date-text">${createdUnder}</span></td>
-            <td><span class="count-badge">${channelPartnerCount}</span></td>
-            <td><span class="count-badge">${totalApplications}</span></td>
-            <td><span class="count-badge" style="background: #dbeafe; color: #0c4a6e;">${approvedApplications}</span></td>
-            <td>
-                <span class="employee-status-badge ${status === 'active' ? 'status-active' : 'status-inactive'}">
-                    ${statusLabel}
-                </span>
-            </td>
-            <td><span class="date-text">${createdAt}</span></td>
-            <td>
-                <div class="action-buttons">
-                    <button onclick="viewEmployee('${escapeJsString(employee.id)}', '${escapeJsString(employee.name)}', '${escapeJsString(employee.email)}', '${escapeJsString(employee.phone)}')" class="btn-action btn-view" title="View Employee">
-                        <i class="fas fa-eye"></i> View
-                    </button>
-                    <button onclick="editEmployee('${escapeJsString(employee.id)}')" class="btn-action btn-edit" title="Edit Employee">
-                        <i class="fas fa-edit"></i> Edit
-                    </button>
-                    <button onclick="deleteEmployee('${escapeJsString(employee.id)}', '${escapeJsString(employee.name)}')" class="btn-action btn-delete" title="Delete Employee">
-                        <i class="fas fa-trash"></i> Delete
-                    </button>
-                </div>
-            </td>
-        </tr>
-    `;
-    tbody.insertAdjacentHTML('afterbegin', rowHtml);
-    initializeEmployeesTableExperience();
-
-    const countEl = document.querySelector('.employees-count');
-    if (countEl) {
-        const match = countEl.textContent.match(/\d+/);
-        if (match) {
-            const next = parseInt(match[0], 10) + 1;
-            countEl.textContent = `Total: ${next} Employees`;
+    function removeEmployeeDocumentRow(button) {
+        const container = document.getElementById('employeeDocumentRowsInline');
+        const rows = container ? container.querySelectorAll('.document-row') : [];
+        if (rows.length <= 1) {
+            const fileInput = rows[0]?.querySelector('input[type="file"]');
+            const selectInput = rows[0]?.querySelector('select[name="document_type"]');
+            if (fileInput) fileInput.value = '';
+            if (selectInput) selectInput.selectedIndex = 0;
+            return;
         }
-    }
-}
-
-function formatINR(value) {
-    const amount = Number(value || 0);
-    if (Number.isNaN(amount)) return '0';
-    return amount.toLocaleString('en-IN', { maximumFractionDigits: 0 });
-}
-
-function closeViewModal() {
-    const panel = document.getElementById('employeeInlineDetails');
-    const body = document.getElementById('employeeInlineBody');
-    if (panel) panel.style.display = 'none';
-    if (body) body.innerHTML = '<p style="margin:0; color:#64748b;">Select an employee and click View.</p>';
-}
-
-function showEmployeeLoadingModal(title) {
-    const panel = document.getElementById('employeeInlineDetails');
-    const heading = document.getElementById('employeeInlineTitle');
-    const subtitle = document.getElementById('employeeInlineSubtitle');
-    const body = document.getElementById('employeeInlineBody');
-    if (heading) heading.textContent = 'Employee Full Details';
-    if (subtitle) subtitle.textContent = title || 'Loading employee';
-    if (body) body.innerHTML = '<p style="margin:0; color:#64748b;">Loading full details...</p>';
-    if (panel) {
-        panel.style.display = 'block';
-        panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-}
-
-function normalizeEmployeeStatusKey(rawStatus) {
-    const value = String(rawStatus || '').trim().toLowerCase();
-    if (value === 'required follow-up' || value === 'banking processing') return 'follow_up';
-    return value;
-}
-
-function renderEmployeeLoanDetailCard(item) {
-    if (!item) {
-        return '<div style="padding:14px; color:#64748b;">Select an application and click View for full details.</div>';
-    }
-    const detailRows = Array.isArray(item.full_application_details) ? item.full_application_details : [];
-    const timeline = Array.isArray(item.status_timeline) ? item.status_timeline : [];
-    const detailHtml = detailRows.length
-        ? detailRows.map((row) => `
-            <div style="display:flex; justify-content:space-between; gap:12px; padding:6px 0; border-bottom:1px dashed #e5e7eb;">
-                <div style="color:#64748b; font-size:12px;">${escapeHtml(row.label || '-')}</div>
-                <div style="color:#0f172a; font-size:12px; font-weight:600; text-align:right;">${escapeHtml(row.value || '-')}</div>
-            </div>
-        `).join('')
-        : '<div style="color:#64748b; font-size:12px;">No additional form details available.</div>';
-    const timelineHtml = timeline.length
-        ? timeline.slice(0, 6).map((row) => `
-            <div style="padding:8px; border:1px solid #e5e7eb; border-radius:8px; margin-bottom:8px; background:#fff;">
-                <div style="font-size:12px; font-weight:700; color:#0f172a;">${escapeHtml(row.to_status || '-')}</div>
-                <div style="font-size:11px; color:#475569;">${escapeHtml(row.changed_at || '-')} | ${escapeHtml(row.changed_by || 'System')}</div>
-                <div style="font-size:11px; color:#64748b; margin-top:4px;">${escapeHtml(row.reason || '-')}</div>
-            </div>
-        `).join('')
-        : '<div style="font-size:12px; color:#64748b;">No status timeline available.</div>';
-    return `
-        <div style="padding:14px;">
-            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:10px; margin-bottom:12px;">
-                <div><strong>Loan ID:</strong> ${escapeHtml(item.loan_uid || item.loan_id || '-')}</div>
-                <div><strong>Status:</strong> ${escapeHtml(item.status_display || item.status || '-')}</div>
-                <div><strong>Created:</strong> ${escapeHtml(item.created_at || '-')}</div>
-                <div><strong>Updated:</strong> ${escapeHtml(item.updated_at || '-')}</div>
-                <div><strong>Action Time:</strong> ${escapeHtml(item.action_taken_at || '-')}</div>
-                <div><strong>Assigned:</strong> ${escapeHtml(item.assigned_at || '-')}</div>
-                <div><strong>Bank:</strong> ${escapeHtml(item.bank_name || '-')}</div>
-                <div><strong>IFSC:</strong> ${escapeHtml(item.bank_ifsc_code || '-')}</div>
-                <div><strong>A/C:</strong> ${escapeHtml(item.bank_account_number || '-')}</div>
-                <div><strong>SM Name:</strong> ${escapeHtml(item.sm_name || '-')}</div>
-            </div>
-            <details open style="border:1px solid #e5e7eb; border-radius:10px; padding:10px; background:#f8fafc; margin-bottom:10px;">
-                <summary style="font-size:12px; font-weight:700; color:#0f172a; cursor:pointer;">Loan Application Form Details</summary>
-                <div style="margin-top:8px;">${detailHtml}</div>
-            </details>
-            <details style="border:1px solid #e5e7eb; border-radius:10px; padding:10px; background:#f8fafc; margin-bottom:10px;">
-                <summary style="font-size:12px; font-weight:700; color:#0f172a; cursor:pointer;">Status + Remark Timeline</summary>
-                <div style="margin-top:8px;">${timelineHtml}</div>
-            </details>
-            <div>
-                <div style="font-size:12px; color:#64748b; margin-bottom:4px;">Remarks</div>
-                <div style="padding:10px; border:1px solid #e5e7eb; border-radius:8px; background:#f8fafc; font-size:12px; color:#0f172a;">${escapeHtml(item.remarks || item.bank_remark || '-')}</div>
-            </div>
-        </div>
-    `;
-}
-
-function renderEmployeeViewModal(employee, summary, customers, onboarding, documents) {
-    const safeCustomers = Array.isArray(customers) ? customers : [];
-    const channelPartners = Array.isArray(employee.assigned_channel_partners) ? employee.assigned_channel_partners : [];
-    const fullName = `${employee.first_name || ''} ${employee.last_name || ''}`.trim() || employee.name || '-';
-    const panel = document.getElementById('employeeInlineDetails');
-    const panelBody = document.getElementById('employeeInlineBody');
-    const titleEl = document.getElementById('employeeInlineTitle');
-    const subtitleEl = document.getElementById('employeeInlineSubtitle');
-    if (!panel || !panelBody) return;
-    if (titleEl) titleEl.textContent = 'Employee Full Details';
-    if (subtitleEl) subtitleEl.textContent = `${escapeHtml(fullName)} | ${escapeHtml(employee.email || '-')}`;
-
-    panelBody.innerHTML = `
-        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:10px; margin-bottom:14px;">
-            <div><strong>Phone:</strong> ${escapeHtml(employee.phone || '-')}</div>
-            <div><strong>Employee ID:</strong> ${escapeHtml(employee.employee_id || '-')}</div>
-            <div><strong>City:</strong> ${escapeHtml(employee.city || '-')}</div>
-            <div><strong>PIN:</strong> ${escapeHtml(employee.pin_code || '-')}</div>
-            <div><strong>District:</strong> ${escapeHtml(employee.district || '-')}</div>
-            <div><strong>Created Under:</strong> ${escapeHtml(employee.created_under || 'Admin - System')}</div>
-            <div><strong>Status:</strong> ${escapeHtml(employee.status || '-')}</div>
-            <div><strong>Assigned Apps:</strong> ${summary.total_assigned_applications || 0}</div>
-        </div>
-        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap:10px; margin-bottom:14px;">
-            <button type="button" class="employee-stat-btn" data-section="applications" style="text-align:left; border:1px solid #dbeafe; border-radius:10px; background:#eff6ff; padding:10px; cursor:pointer;"><div style="font-size:12px;color:#1d4ed8;">Applications</div><div style="font-size:20px;font-weight:700;color:#1e3a8a;">${summary.total_applications || 0}</div></button>
-            <button type="button" class="employee-stat-btn" data-section="channel_partners" style="text-align:left; border:1px solid #bbf7d0; border-radius:10px; background:#f0fdf4; padding:10px; cursor:pointer;"><div style="font-size:12px;color:#15803d;">Agents / CP</div><div style="font-size:20px;font-weight:700;color:#166534;">${summary.channel_partner_count || channelPartners.length || 0}</div></button>
-            <button type="button" class="employee-stat-btn" data-section="approved" style="text-align:left; border:1px solid #bbf7d0; border-radius:10px; background:#ecfdf5; padding:10px; cursor:pointer;"><div style="font-size:12px;color:#047857;">Approved</div><div style="font-size:20px;font-weight:700;color:#065f46;">${summary.approved || 0}</div></button>
-            <button type="button" class="employee-stat-btn" data-section="rejected" style="text-align:left; border:1px solid #fecaca; border-radius:10px; background:#fef2f2; padding:10px; cursor:pointer;"><div style="font-size:12px;color:#b91c1c;">Rejected</div><div style="font-size:20px;font-weight:700;color:#7f1d1d;">${summary.rejected || 0}</div></button>
-            <button type="button" class="employee-stat-btn" data-section="follow_up" style="text-align:left; border:1px solid #fed7aa; border-radius:10px; background:#fff7ed; padding:10px; cursor:pointer;"><div style="font-size:12px;color:#c2410c;">Banking Processing</div><div style="font-size:20px;font-weight:700;color:#9a3412;">${summary.banking_processing || 0}</div></button>
-            <button type="button" class="employee-stat-btn" data-section="customers" style="text-align:left; border:1px solid #e2e8f0; border-radius:10px; background:#f8fafc; padding:10px; cursor:pointer;"><div style="font-size:12px;color:#334155;">Customers</div><div style="font-size:20px;font-weight:700;color:#0f172a;">${summary.total_customers || 0}</div></button>
-        </div>
-        <div id="employeeSectionBody" style="border:1px solid #e5e7eb; border-radius:10px; background:#ffffff; overflow:auto; max-height:430px;"></div>
-        <div id="employeeLoanDetailsPanel" style="border:1px solid #e5e7eb; border-radius:10px; margin-top:12px; background:#f8fafc;">
-            ${renderEmployeeLoanDetailCard(null)}
-        </div>
-    `;
-    panel.style.display = 'block';
-
-    const sectionBody = panelBody.querySelector('#employeeSectionBody');
-    const loanDetailsPanel = panelBody.querySelector('#employeeLoanDetailsPanel');
-
-    function renderApplications(rows, title) {
-        const safeRows = Array.isArray(rows) ? rows : [];
-        const rowsHtml = safeRows.length ? safeRows.map((item, idx) => `
-            <tr>
-                <td style="padding:8px; border-bottom:1px solid #eef2f7;">${idx + 1}</td>
-                <td style="padding:8px; border-bottom:1px solid #eef2f7;">${escapeHtml(item.loan_uid || item.loan_id || '-')}</td>
-                <td style="padding:8px; border-bottom:1px solid #eef2f7;">${escapeHtml(item.customer_name || '-')}</td>
-                <td style="padding:8px; border-bottom:1px solid #eef2f7;">${escapeHtml(item.mobile || '-')}</td>
-                <td style="padding:8px; border-bottom:1px solid #eef2f7;">&#8377;${formatINR(item.loan_amount)}</td>
-                <td style="padding:8px; border-bottom:1px solid #eef2f7;">${escapeHtml(item.status_display || item.status || '-')}</td>
-                <td style="padding:8px; border-bottom:1px solid #eef2f7;">${escapeHtml(item.source || '-')}</td>
-                <td style="padding:8px; border-bottom:1px solid #eef2f7;">${escapeHtml(item.under_whom || '-')}</td>
-                <td style="padding:8px; border-bottom:1px solid #eef2f7;">
-                    <button type="button" class="btn-action btn-view" data-employee-loan-view="${escapeHtml(item.loan_id)}"><i class="fas fa-eye"></i> View</button>
-                </td>
-            </tr>
-        `).join('') : '<tr><td colspan="9" style="padding:18px; text-align:center; color:#6b7280;">No application records found.</td></tr>';
-
-        sectionBody.innerHTML = `
-            <div style="padding:10px 12px; border-bottom:1px solid #e5e7eb; font-size:13px; font-weight:700; color:#0f172a;">${escapeHtml(title)}</div>
-            <table style="width:100%; border-collapse:collapse; font-size:12px; min-width:940px;">
-                <thead style="background:#f8fafc; color:#334155;">
-                    <tr>
-                        <th style="padding:8px; text-align:left;">#</th>
-                        <th style="padding:8px; text-align:left;">Loan ID</th>
-                        <th style="padding:8px; text-align:left;">Customer</th>
-                        <th style="padding:8px; text-align:left;">Mobile</th>
-                        <th style="padding:8px; text-align:left;">Amount</th>
-                        <th style="padding:8px; text-align:left;">Status</th>
-                        <th style="padding:8px; text-align:left;">Type</th>
-                        <th style="padding:8px; text-align:left;">Under Whom</th>
-                        <th style="padding:8px; text-align:left;">Action</th>
-                    </tr>
-                </thead>
-                <tbody>${rowsHtml}</tbody>
-            </table>
-        `;
+        button.closest('.document-row')?.remove();
     }
 
-    function renderChannelPartners() {
-        const rowsHtml = channelPartners.length ? channelPartners.map((item, idx) => `
-            <tr>
-                <td style="padding:8px; border-bottom:1px solid #eef2f7;">${idx + 1}</td>
-                <td style="padding:8px; border-bottom:1px solid #eef2f7;">${escapeHtml(item.name || '-')}</td>
-                <td style="padding:8px; border-bottom:1px solid #eef2f7;">${escapeHtml(item.email || '-')}</td>
-                <td style="padding:8px; border-bottom:1px solid #eef2f7;">${escapeHtml(item.phone || '-')}</td>
-                <td style="padding:8px; border-bottom:1px solid #eef2f7;">${escapeHtml(item.status || '-')}</td>
-                <td style="padding:8px; border-bottom:1px solid #eef2f7;">${escapeHtml(item.application_count || 0)}</td>
-                <td style="padding:8px; border-bottom:1px solid #eef2f7;">
-                    <button type="button" class="btn-action btn-view" data-employee-agent-apps="${escapeHtml(item.id)}"><i class="fas fa-list"></i> Applications</button>
-                </td>
-            </tr>
-        `).join('') : '<tr><td colspan="7" style="padding:18px; text-align:center; color:#6b7280;">No channel partners assigned.</td></tr>';
+    function initEmployeesTable() {
+        const tbody = document.getElementById('employeesTableBody');
+        if (!tbody) return;
 
-        sectionBody.innerHTML = `
-            <div style="padding:10px 12px; border-bottom:1px solid #e5e7eb; font-size:13px; font-weight:700; color:#0f172a;">Channel Partners Under This Employee</div>
-            <table style="width:100%; border-collapse:collapse; font-size:12px; min-width:820px;">
-                <thead style="background:#f8fafc; color:#334155;">
-                    <tr>
-                        <th style="padding:8px; text-align:left;">#</th>
-                        <th style="padding:8px; text-align:left;">Name</th>
-                        <th style="padding:8px; text-align:left;">Email</th>
-                        <th style="padding:8px; text-align:left;">Phone</th>
-                        <th style="padding:8px; text-align:left;">Status</th>
-                        <th style="padding:8px; text-align:left;">Applications</th>
-                        <th style="padding:8px; text-align:left;">Action</th>
-                    </tr>
-                </thead>
-                <tbody>${rowsHtml}</tbody>
-            </table>
-        `;
-    }
+        employeesTableState.allRows = Array.from(tbody.querySelectorAll('tr'));
+        employeesTableState.filteredRows = [...employeesTableState.allRows];
+        employeesTableState.currentPage = 1;
 
-    function activateEmployeeCard(sectionKey) {
-        panelBody.querySelectorAll('.employee-stat-btn').forEach((btn) => {
-            const active = btn.getAttribute('data-section') === sectionKey;
-            btn.style.outline = active ? '2px solid #2563eb' : 'none';
-            btn.style.outlineOffset = active ? '1px' : '0';
+        const filterBar = document.getElementById('employeesFilters');
+        filterBar?.querySelector('.admin-filter-apply')?.addEventListener('click', applyEmployeesFilters);
+        filterBar?.querySelector('.admin-filter-reset')?.addEventListener('click', resetEmployeesFilters);
+        filterBar?.querySelector('.admin-filter-search')?.addEventListener('input', () => {
+            employeesTableState.currentPage = 1;
+            applyEmployeesFilters();
         });
+
+        renderEmployeesTable();
     }
 
-    function renderSection(sectionKey) {
-        const key = String(sectionKey || '').toLowerCase();
-        if (key === 'channel_partners') {
-            renderChannelPartners();
-            activateEmployeeCard('channel_partners');
-            return;
-        }
-        if (key === 'approved' || key === 'rejected' || key === 'follow_up') {
-            const filtered = safeCustomers.filter((item) => normalizeEmployeeStatusKey(item.status) === key);
-            renderApplications(filtered, `${key.replace('_', ' ').toUpperCase()} Applications`);
-            activateEmployeeCard(key);
-            return;
-        }
-        if (key === 'customers') {
-            renderApplications(safeCustomers, 'Customers Applications (All)');
-            activateEmployeeCard('customers');
-            return;
-        }
-        renderApplications(safeCustomers, 'All Applications');
-        activateEmployeeCard('applications');
+    function applyEmployeesFilters() {
+        const filterBar = document.getElementById('employeesFilters');
+        if (!filterBar) return;
+
+        const search = (filterBar.querySelector('.admin-filter-search')?.value || '').trim().toLowerCase();
+        const status = (filterBar.querySelector('.admin-filter-status')?.value || '').trim().toLowerCase();
+        const dateFrom = filterBar.querySelector('.admin-filter-date-from')?.value || '';
+        const dateTo = filterBar.querySelector('.admin-filter-date-to')?.value || '';
+
+        employeesTableState.filteredRows = employeesTableState.allRows.filter((row) => {
+            const haystack = (row.getAttribute('data-search') || '').toLowerCase();
+            const rowStatus = (row.getAttribute('data-status') || '').toLowerCase();
+            const joined = row.getAttribute('data-joined') || '';
+
+            if (search && !haystack.includes(search)) return false;
+            if (status && rowStatus !== status) return false;
+            if (dateFrom && joined && joined < dateFrom) return false;
+            if (dateTo && joined && joined > dateTo) return false;
+            return true;
+        });
+
+        employeesTableState.currentPage = 1;
+        renderEmployeesTable();
     }
 
-    renderSection('applications');
+    function resetEmployeesFilters() {
+        const filterBar = document.getElementById('employeesFilters');
+        if (!filterBar) return;
+        filterBar.querySelectorAll('input, select').forEach((field) => {
+            field.value = '';
+        });
+        const pageSizeSelect = document.getElementById('employeesPageSize');
+        if (pageSizeSelect) {
+            pageSizeSelect.value = String(employeesTableState.pageSize);
+        }
+        employeesTableState.filteredRows = [...employeesTableState.allRows];
+        employeesTableState.currentPage = 1;
+        renderEmployeesTable();
+    }
 
-    panelBody.querySelectorAll('.employee-stat-btn').forEach((btn) => {
-        btn.addEventListener('click', () => renderSection(btn.getAttribute('data-section')));
-    });
+    function renderEmployeesTable() {
+        const info = document.getElementById('employeesTableInfo');
+        const pagination = document.getElementById('employeesTablePagination');
+        const allRows = employeesTableState.allRows;
+        const filteredRows = employeesTableState.filteredRows;
+        const pageSize = employeesTableState.pageSize;
+        const total = filteredRows.length;
+        const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
-    panelBody.onclick = (event) => {
-        const viewBtn = event.target.closest('[data-employee-loan-view]');
-        if (viewBtn) {
-            const targetId = Number(viewBtn.getAttribute('data-employee-loan-view'));
-            const item = safeCustomers.find((entry) => Number(entry.loan_id) === targetId);
-            loanDetailsPanel.innerHTML = renderEmployeeLoanDetailCard(item);
-            return;
+        if (employeesTableState.currentPage > totalPages) {
+            employeesTableState.currentPage = totalPages;
         }
 
-        const agentAppsBtn = event.target.closest('[data-employee-agent-apps]');
-        if (agentAppsBtn) {
-            const agentId = Number(agentAppsBtn.getAttribute('data-employee-agent-apps'));
-            const rows = safeCustomers.filter((item) => Number(item.assigned_agent_id) === agentId);
-            const partnerName = channelPartners.find((row) => Number(row.id) === agentId)?.name || 'Channel Partner';
-            renderApplications(rows, `Applications Under Channel Partner: ${partnerName}`);
-        }
-    };
-}
+        const startIndex = total ? (employeesTableState.currentPage - 1) * pageSize : 0;
+        const endIndex = Math.min(startIndex + pageSize, total);
 
-function viewEmployee(id) {
-    window.location.href = `/admin/employee/${id}/full-details/`;
-}
+        allRows.forEach((row) => {
+            row.style.display = 'none';
+        });
+        filteredRows.slice(startIndex, endIndex).forEach((row) => {
+            row.style.display = '';
+        });
 
-// Edit Employee
-function editEmployee(id) {
-    openEditEmployeeModal(id);
-}
-
-// Delete Employee
-function deleteEmployee(id, name) {
-    if (confirm(`Are you sure you want to delete ${name}? This action cannot be undone.`)) {
-        fetch(`/api/employees/${id}/delete/`, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': getCookie('csrftoken'),
-            }
-        })
-        .then(response => {
-            if (response.ok) {
-                const row = document.querySelector(`tr[data-employee-id="${id}"]`);
-                if (row) row.remove();
-                const countEl = document.querySelector('.employees-count');
-                if (countEl) {
-                    const match = countEl.textContent.match(/\d+/);
-                    if (match) {
-                        const next = Math.max(0, parseInt(match[0], 10) - 1);
-                        countEl.textContent = `Total: ${next} Employees`;
-                    }
-                }
-                initializeEmployeesTableExperience();
-                alert(`${name} deleted successfully`);
+        if (info) {
+            if (!total) {
+                info.textContent = 'Showing 0 to 0 of 0 Entries';
             } else {
-                alert('Error deleting employee');
+                info.textContent = `Showing ${startIndex + 1} to ${endIndex} of ${total} Entries`;
             }
-        })
-        .catch(error => alert('Error: ' + error));
-    }
-}
-
-let currentEditingEmployeeId = null;
-
-function openEditEmployeeModal(employeeId) {
-    currentEditingEmployeeId = employeeId;
-    const modal = document.getElementById('editEmployeeModal');
-    if (!modal) return;
-
-    fetch(`/api/employees/${employeeId}/`, {
-        method: 'GET',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCookie('csrftoken')
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (!data.success) {
-            throw new Error(data.error || 'Failed to load employee');
-        }
-        const employee = data.employee || {};
-        document.getElementById('editEmployeeName').value = employee.first_name && employee.last_name
-            ? `${employee.first_name} ${employee.last_name}`.trim()
-            : (employee.name || '');
-        document.getElementById('editEmployeeEmail').value = employee.email || '';
-        document.getElementById('editEmployeePhone').value = employee.phone || '';
-        document.getElementById('editEmployeeAddress').value = employee.address || '';
-        document.getElementById('editEmployeeGender').value = employee.gender || 'Other';
-        document.getElementById('editEmployeeStatus').value = employee.status || (employee.is_active ? 'active' : 'inactive');
-        document.getElementById('editEmployeePassword').value = '';
-        const assignedPartnerIds = new Set((employee.assigned_channel_partner_ids || []).map((id) => String(id)));
-        const editPartnerSelect = document.getElementById('editEmployeeChannelPartners');
-        if (editPartnerSelect) {
-            Array.from(editPartnerSelect.options).forEach((option) => {
-                option.selected = assignedPartnerIds.has(String(option.value));
-            });
         }
 
-        modal.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
-    })
-    .catch(error => {
-        console.error('Error loading employee:', error);
-        alert(error.message || 'Error loading employee');
-    });
-}
+        if (!pagination) return;
+        pagination.innerHTML = '';
 
-function closeEditEmployeeModal() {
-    const modal = document.getElementById('editEmployeeModal');
-    if (modal) {
-        modal.style.display = 'none';
-        document.body.style.overflow = 'auto';
-    }
-    const editPartnerSelect = document.getElementById('editEmployeeChannelPartners');
-    if (editPartnerSelect) {
-        Array.from(editPartnerSelect.options).forEach((option) => {
-            option.selected = false;
-        });
-    }
-    currentEditingEmployeeId = null;
-}
-
-const editEmployeeForm = document.getElementById('editEmployeeForm');
-if (editEmployeeForm) {
-    editEmployeeForm.addEventListener('submit', async (event) => {
-        event.preventDefault();
-        if (!currentEditingEmployeeId) return;
-
-        const payload = {
-            full_name: document.getElementById('editEmployeeName').value.trim(),
-            email: document.getElementById('editEmployeeEmail').value.trim(),
-            phone: document.getElementById('editEmployeePhone').value.trim(),
-            address: document.getElementById('editEmployeeAddress').value.trim(),
-            gender: document.getElementById('editEmployeeGender').value,
-            status: document.getElementById('editEmployeeStatus').value
+        const createPageButton = (label, page, active = false, disabled = false) => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = `page-btn${active ? ' active' : ''}`;
+            button.textContent = label;
+            button.disabled = disabled;
+            if (!disabled) {
+                button.addEventListener('click', () => setEmployeesPage(page));
+            }
+            return button;
         };
-        const editPartnerSelect = document.getElementById('editEmployeeChannelPartners');
-        payload.channel_partner_ids = editPartnerSelect
-            ? Array.from(editPartnerSelect.selectedOptions).map((option) => option.value)
-            : [];
-        const password = document.getElementById('editEmployeePassword').value.trim();
-        if (password) payload.password = password;
 
-        try {
-            const response = await fetch(`/api/employees/${currentEditingEmployeeId}/update/`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCookie('csrftoken')
-                },
-                body: JSON.stringify(payload)
-            });
-            const data = await response.json();
-            if (!response.ok || !data.success) {
-                throw new Error(data.error || 'Failed to update employee');
+        pagination.appendChild(createPageButton('Prev', Math.max(1, employeesTableState.currentPage - 1), false, employeesTableState.currentPage === 1));
+
+        for (let page = 1; page <= totalPages; page += 1) {
+            if (page === 1 || page === totalPages || Math.abs(page - employeesTableState.currentPage) <= 1) {
+                pagination.appendChild(createPageButton(String(page), page, page === employeesTableState.currentPage));
             }
-
-            const row = document.querySelector(`tr[data-employee-id="${currentEditingEmployeeId}"]`);
-            if (row) {
-                const cells = row.querySelectorAll('td');
-                if (cells[2]) cells[2].querySelector('span').textContent = payload.full_name || payload.email;
-                if (cells[3]) cells[3].querySelector('span').textContent = payload.email || '-';
-                if (cells[4]) cells[4].querySelector('span').textContent = payload.phone || '-';
-                const badge = row.querySelector('.employee-status-badge');
-                if (badge) {
-                    const active = payload.status === 'active';
-                    badge.classList.toggle('status-active', active);
-                    badge.classList.toggle('status-inactive', !active);
-                    badge.textContent = active ? 'Active' : 'Inactive';
-                }
-                const employeeCode = (cells[0]?.textContent || '').trim().toLowerCase();
-                row.setAttribute('data-search', `${employeeCode},${(payload.full_name || '').toLowerCase()},${(payload.email || '').toLowerCase()},${(payload.phone || '').toLowerCase()}`);
-            }
-
-            closeEditEmployeeModal();
-            initializeEmployeesTableExperience();
-            alert(data.message || 'Employee updated successfully');
-        } catch (error) {
-            console.error('Update employee error:', error);
-            alert(error.message || 'Error updating employee');
         }
-    });
-}
 
-const addEmployeeForm = document.getElementById('addEmployeeForm');
-if (addEmployeeForm) {
-    addEmployeeForm.addEventListener('submit', async (event) => {
-        event.preventDefault();
-        const submitBtn = document.getElementById('saveEmployeeBtn');
-        if (submitBtn) submitBtn.disabled = true;
+        pagination.appendChild(createPageButton('Next', Math.min(totalPages, employeesTableState.currentPage + 1), false, employeesTableState.currentPage === totalPages));
+    }
 
+    function setEmployeesPage(page) {
+        const totalPages = Math.max(1, Math.ceil(employeesTableState.filteredRows.length / employeesTableState.pageSize));
+        employeesTableState.currentPage = Math.min(Math.max(page, 1), totalPages);
+        renderEmployeesTable();
+    }
+
+    function changeEmployeesPageSize() {
+        const select = document.getElementById('employeesPageSize');
+        const nextSize = Number(select?.value || 10);
+        employeesTableState.pageSize = Number.isFinite(nextSize) && nextSize > 0 ? nextSize : 10;
+        employeesTableState.currentPage = 1;
+        renderEmployeesTable();
+    }
+
+    async function openEditEmployeeModal(employeeId) {
         try {
-            const formData = new FormData(addEmployeeForm);
-
-            const name = formData.get('full_name')?.trim();
-            const email = formData.get('email')?.trim();
-            const phone = formData.get('phone')?.trim();
-            const password = formData.get('password')?.trim();
-            const city = formData.get('city')?.trim();
-            const district = formData.get('district')?.trim();
-            const pinCode = formData.get('pin_code')?.trim();
-
-            if (!name || !email || !phone || !city || !district || !pinCode || !password) {
-                alert('Please fill all required fields');
-                return;
-            }
-
-            if (password.length < 6) {
-                alert('Password must be at least 6 characters');
-                return;
-            }
-
-            if (!/^\d{10,15}$/.test(phone)) {
-                alert('Phone number must be 10-15 digits');
-                return;
-            }
-
-            if (!/^\d{6}$/.test(pinCode)) {
-                alert('PIN code must be 6 digits');
-                return;
-            }
-
-            const response = await fetch('/api/employees/add/', {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': getCookie('csrftoken')
-                },
-                body: formData
-            });
-
+            const response = await fetch(`/api/employees/${employeeId}/`);
             const result = await response.json();
             if (!response.ok || !result.success) {
-                throw new Error(result.error || 'Failed to add employee');
+                throw new Error(result.error || 'Failed to load employee details');
             }
 
-            insertEmployeeRow(result.employee || result);
-            closeAddEmployeeModal();
-            alert(result.message || 'Employee added successfully');
+            const employee = result.employee || {};
+            document.getElementById('editEmployeeId').value = employee.id || employeeId;
+            document.getElementById('editFullName').value = [employee.first_name, employee.last_name].filter(Boolean).join(' ').trim() || '';
+            document.getElementById('editEmail').value = employee.email || '';
+            document.getElementById('editPhone').value = employee.phone || '';
+            document.getElementById('editGender').value = employee.gender || 'Other';
+            document.getElementById('editStatus').value = employee.status || 'active';
+            document.getElementById('editAddress').value = employee.address || '';
+            document.getElementById('editNotes').value = employee.notes || '';
+            document.getElementById('editPassword').value = '';
+            const photoInput = document.getElementById('editProfilePhoto');
+            if (photoInput) photoInput.value = '';
+
+            const selectedPartners = new Set((employee.assigned_channel_partner_ids || []).map((value) => String(value)));
+            Array.from(document.getElementById('editChannelPartners').options).forEach((option) => {
+                option.selected = selectedPartners.has(option.value);
+            });
+
+            openEditEmployeeModalContainer();
         } catch (error) {
-            console.error('Add employee error:', error);
-            alert(error.message || 'Error adding employee');
-        } finally {
-            if (submitBtn) submitBtn.disabled = false;
+            alert(error.message || 'Unable to open edit form.');
         }
-    });
-}
+    }
 
-const employeePhotoInput = document.getElementById('employeePhoto');
-if (employeePhotoInput) {
-    employeePhotoInput.addEventListener('change', (event) => {
-        const file = event.target.files[0];
-        const preview = document.getElementById('employeePhotoPreview');
-        const img = document.getElementById('employeePhotoImg');
-        if (file && preview && img) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                img.src = e.target.result;
-                preview.style.display = 'flex';
-            };
-            reader.readAsDataURL(file);
+    async function deleteEmployee(employeeId, employeeName) {
+        if (!window.confirm(`Delete ${employeeName}? This will mark the employee inactive.`)) {
+            return;
         }
-    });
-}
 
-const employeePresentSame = document.getElementById('employeePresentSame');
-if (employeePresentSame) {
-    employeePresentSame.addEventListener('change', (event) => {
-        const checked = event.target.checked;
-        const permAddress = document.getElementById('employeeAddress')?.value || '';
-        const permLandmark = document.getElementById('employeePermLandmark')?.value || '';
-        const permState = document.getElementById('employeePermState')?.value || '';
-        const permCity = document.getElementById('employeePermCity')?.value || '';
-        const permDistrict = document.getElementById('employeePermDistrict')?.value || '';
-        const permPin = document.getElementById('employeePermPin')?.value || '';
-
-        const presentAddress = document.getElementById('employeePresentAddress');
-        const presentLandmark = document.getElementById('employeePresentLandmark');
-        const presentState = document.getElementById('employeePresentState');
-        const presentCity = document.getElementById('employeePresentCity');
-        const presentDistrict = document.getElementById('employeePresentDistrict');
-        const presentPin = document.getElementById('employeePresentPin');
-
-        if (checked) {
-            if (presentAddress) presentAddress.value = permAddress;
-            if (presentLandmark) presentLandmark.value = permLandmark;
-            if (presentState) presentState.value = permState;
-            if (presentCity) presentCity.value = permCity;
-            if (presentDistrict) presentDistrict.value = permDistrict;
-            if (presentPin) presentPin.value = permPin;
-        }
-        [presentAddress, presentLandmark, presentState, presentCity, presentDistrict, presentPin].forEach((field) => {
-            if (!field) return;
-            field.readOnly = checked;
-            field.style.background = checked ? '#f3f4f6' : '';
-        });
-    });
-}
-
-function generateTempPassword() {
-    const base = Math.random().toString(36).slice(-8);
-    const timestamp = Date.now().toString(36).slice(-4);
-    return `${base}${timestamp}A1`;
-}
-
-function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
+        try {
+            const response = await fetch(`/api/employees/${employeeId}/delete/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                },
+            });
+            const result = await response.json();
+            if (!response.ok || !result.success) {
+                throw new Error(result.error || 'Failed to delete employee');
             }
+            window.location.reload();
+        } catch (error) {
+            alert(error.message || 'Unable to delete employee.');
         }
     }
-    return cookieValue;
-}
 
-document.addEventListener('click', function(event) {
-    if (event.target.id === 'addEmployeeModal') {
-        closeAddEmployeeModal();
+    function setInlineFormMessage(message, isError = false) {
+        const box = document.getElementById('employeeFormMessageInline');
+        if (!box) return;
+        if (!message) {
+            box.textContent = '';
+            box.className = 'form-message';
+            return;
+        }
+        box.textContent = message;
+        box.className = `form-message ${isError ? 'error' : 'success'}`;
     }
-    if (event.target.id === 'editEmployeeModal') {
-        closeEditEmployeeModal();
-    }
-});
 
-document.addEventListener('DOMContentLoaded', initializeEmployeesTableExperience);
+    document.getElementById('addEmployeeFormInline')?.addEventListener('submit', async (event) => {
+        event.preventDefault();
+
+        const form = event.currentTarget;
+        const button = document.getElementById('saveEmployeeBtnInline');
+        const originalHtml = button.innerHTML;
+        const rawFormData = new FormData(form);
+        const formData = new FormData();
+
+        rawFormData.forEach((value, key) => {
+            if (key === 'document_type' || key === 'document_file') {
+                return;
+            }
+            formData.append(key, value);
+        });
+
+        document.querySelectorAll('#employeeDocumentRowsInline .document-row').forEach((row) => {
+            const typeField = row.querySelector('select[name="document_type"]');
+            const fileField = row.querySelector('input[name="document_file"]');
+            const file = fileField?.files?.[0];
+            if (!file) return;
+            formData.append('document_type', typeField?.value || 'other');
+            formData.append('document_file', file);
+        });
+
+        setInlineFormMessage('', false);
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+
+        try {
+            const response = await fetch('/api/employees/add/', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                },
+            });
+            const result = await response.json();
+            if (!response.ok || !result.success) {
+                throw new Error(result.error || 'Failed to create employee');
+            }
+            setInlineFormMessage(result.message || 'Employee created successfully.');
+            setTimeout(() => {
+                window.location.href = employeesListUrl;
+            }, 800);
+        } catch (error) {
+            setInlineFormMessage(error.message || 'Unable to create employee.', true);
+            button.disabled = false;
+            button.innerHTML = originalHtml;
+        }
+    });
+
+    document.getElementById('editEmployeeForm')?.addEventListener('submit', async (event) => {
+        event.preventDefault();
+
+        const employeeId = document.getElementById('editEmployeeId').value;
+        const button = document.getElementById('updateEmployeeBtn');
+        const originalHtml = button.innerHTML;
+
+        const payload = {
+            full_name: document.getElementById('editFullName').value.trim(),
+            email: document.getElementById('editEmail').value.trim(),
+            phone: document.getElementById('editPhone').value.trim(),
+            gender: document.getElementById('editGender').value,
+            status: document.getElementById('editStatus').value,
+            address: document.getElementById('editAddress').value.trim(),
+            notes: document.getElementById('editNotes').value.trim(),
+            channel_partner_ids: Array.from(document.getElementById('editChannelPartners').selectedOptions).map((option) => option.value),
+        };
+
+        const password = document.getElementById('editPassword').value.trim();
+        if (password) {
+            payload.password = password;
+        }
+
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
+
+        try {
+            const formData = new FormData();
+            Object.entries(payload).forEach(([key, value]) => {
+                if (Array.isArray(value)) {
+                    value.forEach((entry) => formData.append(key, entry));
+                } else {
+                    formData.append(key, value);
+                }
+            });
+            const photoFile = document.getElementById('editProfilePhoto')?.files?.[0];
+            if (photoFile) {
+                formData.append('profile_photo', photoFile);
+            }
+            const response = await fetch(`/api/employees/${employeeId}/update/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                },
+                body: formData,
+            });
+            const result = await response.json();
+            if (!response.ok || !result.success) {
+                throw new Error(result.error || 'Failed to update employee');
+            }
+            window.location.reload();
+        } catch (error) {
+            alert(error.message || 'Unable to update employee.');
+            button.disabled = false;
+            button.innerHTML = originalHtml;
+        }
+    });
+
+    function updateMultiIdDropdownLabel(dropdown) {
+        if (!dropdown) return;
+        const label = dropdown.querySelector('[data-multi-id-label]');
+        const checked = Array.from(dropdown.querySelectorAll('input[type="checkbox"]:checked'));
+        const placeholder = dropdown.getAttribute('data-placeholder') || 'Select records';
+        if (!label) return;
+        if (!checked.length) {
+            label.textContent = placeholder;
+        } else if (checked.length === 1) {
+            label.textContent = checked[0].closest('.multi-id-option')?.querySelector('strong')?.textContent || '1 selected';
+        } else {
+            label.textContent = `${checked.length} selected`;
+        }
+    }
+
+    function initMultiIdDropdowns(root = document) {
+        root.querySelectorAll('[data-multi-id-dropdown]').forEach((dropdown) => {
+            if (dropdown.dataset.ready === '1') return;
+            dropdown.dataset.ready = '1';
+            dropdown.querySelector('.multi-id-trigger')?.addEventListener('click', (event) => {
+                event.stopPropagation();
+                document.querySelectorAll('[data-multi-id-dropdown].open').forEach((item) => {
+                    if (item !== dropdown) item.classList.remove('open');
+                });
+                dropdown.classList.toggle('open');
+            });
+            dropdown.querySelectorAll('input[type="checkbox"]').forEach((input) => {
+                input.addEventListener('change', () => updateMultiIdDropdownLabel(dropdown));
+            });
+            updateMultiIdDropdownLabel(dropdown);
+        });
+    }
+
+    document.addEventListener('click', () => {
+        document.querySelectorAll('[data-multi-id-dropdown].open').forEach((dropdown) => dropdown.classList.remove('open'));
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+        initMultiIdDropdowns();
+        initEmployeesTable();
+
+        if (pageMode === 'add') {
+            history.replaceState(null, '', addEmployeesUrl);
+        }
+    });
 </script>
-
-
-
 {% endblock %}
-
-{% block extra_css %}
-<style>
-    [x-cloak] { display: none !important; }
-</style>
-{% endblock %}
-
-

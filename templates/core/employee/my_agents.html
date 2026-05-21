@@ -1,595 +1,1303 @@
 {% extends 'core/base.html' %}
 {% load static %}
 
-{% block title %}My Agents - DSA Loan Management System{% endblock %}
+{% block title %}My Channel Partners{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <div class="d-flex flex-wrap align-items-center justify-content-between mb-3">
+<div class="employee-partners-page container-fluid py-3 py-lg-4">
+    <div class="partners-hero">
         <div>
-            <h2 class="h5 fw-bold mb-1">My Agents</h2>
-            <p class="text-muted mb-0" style="font-size: 13px;">Manage and view all your agents</p>
+            <p class="section-kicker mb-2">Employee Panel</p>
+            <h1 class="h3 fw-bold mb-2">My Channel Partners</h1>
+            <p class="text-muted mb-0">Live visibility of every channel partner, their documents, and every linked application under your employee scope.</p>
         </div>
-        <button class="btn btn-outline-primary btn-sm" id="add-agent-btn">
-            <i class="bi bi-plus-circle"></i> Add New Channel Partner
-        </button>
+        <div class="hero-actions">
+            <div class="live-indicator">
+                <span class="live-dot"></span>
+                <span>Realtime sync</span>
+                <small id="partners-last-updated">--</small>
+            </div>
+            <button type="button" class="btn btn-primary hero-btn" id="toggle-partner-form">
+                <i class="bi bi-plus-circle"></i>
+                <span>Add Channel Partner</span>
+            </button>
+        </div>
     </div>
-</div>
 
-<div class="container-fluid">
-    <!-- Agents Table -->
-    <div class="row">
-        <div class="col-12">
-            <div class="card border-0 shadow-sm" style="border-radius: 16px; overflow: hidden;">
+    <div id="partner-page-alert" class="mb-3"></div>
 
-                <div class="card-body" style="padding: 0;">
-                    <div id="agents-container" style="padding: 24px;">
-                        <div class="text-center py-4">
-                            <div class="spinner-border spinner-border-sm text-primary" role="status">
-                                <span class="visually-hidden">Loading...</span>
-                            </div>
-                            <p class="text-muted mt-2">Loading agents...</p>
-                        </div>
-                    </div>
+    <section class="partner-stat-grid" aria-label="Channel partner summary">
+        <article class="partner-stat-card stat-total">
+            <p class="stat-label mb-0">Total Channel Partners</p>
+            <h2 class="stat-value mb-0" id="stat-total-agents">0</h2>
+            <p class="stat-meta mb-0">Employee scope ki total live directory</p>
+        </article>
+        <article class="partner-stat-card stat-active">
+            <p class="stat-label mb-0">Active</p>
+            <h2 class="stat-value mb-0" id="stat-active-agents">0</h2>
+            <p class="stat-meta mb-0">Realtime active channel partner accounts</p>
+        </article>
+        <article class="partner-stat-card stat-blocked">
+            <p class="stat-label mb-0">Blocked</p>
+            <h2 class="stat-value mb-0" id="stat-blocked-agents">0</h2>
+            <p class="stat-meta mb-0">Currently blocked or paused accounts</p>
+        </article>
+        <article class="partner-stat-card stat-loans">
+            <p class="stat-label mb-0">Total Applications</p>
+            <h2 class="stat-value mb-0" id="stat-total-applications">0</h2>
+            <p class="stat-meta mb-0">Linked applications synced from live data</p>
+        </article>
+    </section>
+
+
+
+    <section class="partner-form-card d-none" id="partner-form-card">
+        <div class="form-card-head">
+            <div>
+                <h2 class="h5 fw-bold mb-1">Add New Channel Partner</h2>
+                <p class="text-muted mb-0">Create a new channel partner account directly under this employee panel.</p>
+            </div>
+            <span class="form-tip">Channel Partner ID is generated automatically after save.</span>
+        </div>
+        <form id="partner-create-form" class="row g-3" enctype="multipart/form-data">
+            <div class="col-md-6">
+                <label class="form-label">Full Name</label>
+                <input type="text" class="form-control" name="name" required>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Generated Channel Partner ID</label>
+                <input type="text" class="form-control bg-light" value="Auto generated after save" readonly>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Email</label>
+                <input type="email" class="form-control" name="email" required>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Phone</label>
+                <input type="text" class="form-control" name="phone" required>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Gender</label>
+                <select class="form-select" name="gender">
+                    <option value="">Select</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">State</label>
+                <input type="text" class="form-control" name="state">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">City</label>
+                <input type="text" class="form-control" name="city">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">PIN Code</label>
+                <input type="text" class="form-control" name="pin_code">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Password</label>
+                <input type="password" class="form-control" name="password" required>
+            </div>
+            <div class="col-12">
+                <label class="form-label">Address</label>
+                <textarea class="form-control" name="address" rows="3"></textarea>
+            </div>
+            <div class="col-12">
+                <label class="form-label">Profile Photo</label>
+                <input type="file" class="form-control" name="photo" accept="image/*">
+            </div>
+            <div class="col-12 d-flex flex-wrap gap-2">
+                <button type="submit" class="btn btn-primary px-4">
+                    <i class="bi bi-person-plus"></i>
+                    <span>Create Channel Partner</span>
+                </button>
+                <button type="button" class="btn btn-outline-secondary" id="cancel-partner-form">Hide Form</button>
+            </div>
+        </form>
+    </section>
+
+    <section class="partner-table-shell">
+        <div class="table-head">
+            <div>
+                <h2 class="h5 fw-bold mb-1">Channel Partner Directory</h2>
+                <p class="text-muted mb-0">Detailed, realtime employee-side view matching the partner panel structure.</p>
+            </div>
+            <div class="table-head-actions">
+                <div class="search-wrap">
+                    <i class="bi bi-search"></i>
+                    <input type="search" id="partner-search" placeholder="Search by name, email, phone, state, or ID">
                 </div>
+                <select id="partner-status-filter" class="form-select">
+                    <option value="">All Statuses</option>
+                    <option value="active">Active</option>
+                    <option value="blocked">Blocked</option>
+                </select>
+                <button type="button" class="btn btn-outline-primary" id="refresh-partners-btn">
+                    <i class="bi bi-arrow-clockwise"></i>
+                    <span>Refresh</span>
+                </button>
             </div>
         </div>
-    </div>
+
+        <div class="table-responsive">
+            <table class="table table-grid align-middle mb-0" id="employee-channel-partners-table">
+                <thead>
+                    <tr>
+                        <th>Channel Partner ID</th>
+                        <th>Photo</th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>State</th>
+                        <th>Total Apps</th>
+                        <th>Approved</th>
+                        <th>Documents</th>
+                        <th>Status</th>
+                        <th>Joined</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="channel-partners-body">
+                    <tr>
+                        <td colspan="12" class="text-center text-muted py-5">Loading channel partners...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
 </div>
 
-<!-- Add Agent Modal -->
-<div class="modal fade" id="addAgentModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content border-0" style="border-radius: 12px;">
-            <div class="modal-header border-0" style="background: linear-gradient(135deg, #667eea 0%, #2c1199 100%); color: white; padding: 24px;">
-                <h5 class="modal-title" style="font-weight: 600;">
-                    <i class="bi bi-person-plus" style="margin-right: 8px;"></i>Add New Channel Partner
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+<div class="modal fade" id="partnerDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-xl">
+        <div class="modal-content partner-modal-content">
+            <div class="modal-header border-0 pb-0">
+                <div>
+                    <p class="section-kicker mb-1">Channel Partner Details</p>
+                    <h2 class="modal-title h4 mb-0" id="partner-modal-title">Channel Partner</h2>
+                    <p class="text-muted mb-0" id="partner-modal-subtitle"></p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body" style="padding: 24px; max-height: 70vh; overflow-y: auto;">
-                <form id="addAgentForm">
-                    {% csrf_token %}
-                    
-                    <!-- Profile Photo Section -->
-                    <div class="mb-3 text-center">
-                        <label for="agentPhoto" class="form-label" style="font-weight: 600; display: block; margin-bottom: 12px;">Profile Photo</label>
-                        <div id="photoPreview" class="mx-auto mb-3" style="width: 100px; height: 100px; border-radius: 50%; background: #e5e7eb; display: flex; align-items: center; justify-content: center; overflow: hidden;">
-                            <i class="bi bi-person-circle" style="font-size: 40px; color: #9ca3af;"></i>
+            <div class="modal-body pt-3">
+                <div id="partner-modal-loading" class="text-center text-muted py-5">
+                    <div class="spinner-border text-primary mb-3" role="status"></div>
+                    <div>Loading channel partner details...</div>
+                </div>
+
+                <div id="partner-modal-body" class="d-none">
+                    <div class="modal-hero">
+                        <div class="modal-hero-left">
+                            <div class="modal-avatar" id="partner-modal-avatar"></div>
+                            <div>
+                                <h3 class="h5 fw-bold mb-1" id="partner-modal-name"></h3>
+                                <div class="modal-meta-line" id="partner-modal-meta"></div>
+                                <div class="modal-meta-line" id="partner-modal-created-under"></div>
+                            </div>
                         </div>
-                        <input type="file" class="form-control" id="agentPhoto" name="photo" accept="image/*" style="border-radius: 8px; border: 1px solid #e9ecef; padding: 10px 14px;">
-                        <small class="text-muted">Optional - Max 5MB</small>
-                    </div>
-                    
-                    <hr class="my-3">
-                    
-                    <!-- Row 1: Name and Phone -->
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="agentName" class="form-label" style="font-weight: 600;">Full Name *</label>
-                            <input type="text" class="form-control" id="agentName" name="name" placeholder="Enter agent name" required style="border-radius: 8px; border: 1px solid #e9ecef; padding: 10px 14px;">
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="agentPhone" class="form-label" style="font-weight: 600;">Phone Number *</label>
-                            <input type="tel" class="form-control" id="agentPhone" name="phone" placeholder="Enter phone number" required style="border-radius: 8px; border: 1px solid #e9ecef; padding: 10px 14px;">
+                        <div class="modal-status-wrap">
+                            <span class="status-chip" id="partner-modal-status-chip">Active</span>
                         </div>
                     </div>
-                    
-                    <!-- Row 2: Email and Gender -->
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="agentEmail" class="form-label" style="font-weight: 600;">Email *</label>
-                            <input type="email" class="form-control" id="agentEmail" name="email" placeholder="Enter email address" required style="border-radius: 8px; border: 1px solid #e9ecef; padding: 10px 14px;">
+
+                    <form id="partner-edit-form" class="row g-3 mt-1" enctype="multipart/form-data">
+                        <input type="hidden" id="partner-edit-id">
+                        <div class="col-md-6">
+                            <label class="form-label">Full Name</label>
+                            <input type="text" class="form-control" id="partner-edit-name" name="name">
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="agentGender" class="form-label" style="font-weight: 600;">Gender</label>
-                            <select class="form-select" id="agentGender" name="gender" style="border-radius: 8px; border: 1px solid #e9ecef; padding: 10px 14px;">
-                                <option value="">Select Gender</option>
+                        <div class="col-md-6">
+                            <label class="form-label">Channel Partner ID</label>
+                            <input type="text" class="form-control bg-light" id="partner-edit-code" readonly>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-control" id="partner-edit-email" name="email">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Phone</label>
+                            <input type="text" class="form-control" id="partner-edit-phone" name="phone">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Gender</label>
+                            <select class="form-select" id="partner-edit-gender" name="gender">
                                 <option value="Male">Male</option>
                                 <option value="Female">Female</option>
                                 <option value="Other">Other</option>
                             </select>
                         </div>
-                    </div>
-                    
-                    <!-- Row 3: Address and Pin -->
-                    <div class="row">
-                        <div class="col-md-8 mb-3">
-                            <label for="agentAddress" class="form-label" style="font-weight: 600;">Address</label>
-                            <textarea class="form-control" id="agentAddress" name="address" placeholder="Enter address" rows="2" style="border-radius: 8px; border: 1px solid #e9ecef; padding: 10px 14px;"></textarea>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label for="agentPin" class="form-label" style="font-weight: 600;">PIN Code</label>
-                            <input type="text" class="form-control" id="agentPin" name="pin_code" placeholder="PIN" style="border-radius: 8px; border: 1px solid #e9ecef; padding: 10px 14px;">
-                        </div>
-                    </div>
-                    
-                    <!-- Row 4: State and Status -->
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="agentState" class="form-label" style="font-weight: 600;">State</label>
-                            <input type="text" class="form-control" id="agentState" name="state" placeholder="Enter state" style="border-radius: 8px; border: 1px solid #e9ecef; padding: 10px 14px;">
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="agentStatus" class="form-label" style="font-weight: 600;">Status *</label>
-                            <select class="form-select" id="agentStatus" name="status" required style="border-radius: 8px; border: 1px solid #e9ecef; padding: 10px 14px;">
+                        <div class="col-md-4">
+                            <label class="form-label">Status</label>
+                            <select class="form-select" id="partner-edit-status" name="status">
                                 <option value="active">Active</option>
                                 <option value="blocked">Blocked</option>
                             </select>
                         </div>
-                    </div>
-                    
-                    <hr class="my-3">
-                    
-                    <!-- Row 5: Password -->
-                    <div class="mb-3">
-                        <label for="agentPassword" class="form-label" style="font-weight: 600;">Password *</label>
-                        <input type="password" class="form-control" id="agentPassword" name="password" placeholder="Enter password" required style="border-radius: 8px; border: 1px solid #e9ecef; padding: 10px 14px;">
-                        <small class="text-muted">Password for agent login</small>
-                    </div>
-                    
-                    <!-- Buttons -->
-                    <div style="display: flex; gap: 12px; margin-top: 24px;">
-                        <button type="submit" class="btn btn-primary" style="flex: 1; border-radius: 8px; font-weight: 600; padding: 10px;">
-                            <i class="bi bi-check-circle" style="margin-right: 6px;"></i>Create Channel Partner
-                        </button>
-                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" style="flex: 1; border-radius: 8px; font-weight: 600; padding: 10px;">Cancel</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
+                        <div class="col-md-4">
+                            <label class="form-label">PIN Code</label>
+                            <input type="text" class="form-control" id="partner-edit-pin-code" name="pin_code">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">State</label>
+                            <input type="text" class="form-control" id="partner-edit-state" name="state">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">City</label>
+                            <input type="text" class="form-control" id="partner-edit-city" name="city">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Address</label>
+                            <textarea class="form-control" id="partner-edit-address" name="address" rows="2"></textarea>
+                        </div>
+                        <div class="col-12" id="partner-edit-photo-wrap">
+                            <label class="form-label">Profile Photo</label>
+                            <input type="file" class="form-control" id="partner-edit-photo" name="photo" accept="image/*">
+                        </div>
+                    </form>
 
-<!-- View Agent Modal -->
-<div class="modal fade" id="viewAgentModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Channel Partner Details</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <p><strong>Name:</strong> <span id="viewAgentName">-</span></p>
-                <p><strong>Email:</strong> <span id="viewAgentEmail">-</span></p>
-                <p><strong>Phone:</strong> <span id="viewAgentPhone">-</span></p>
-                <p><strong>City:</strong> <span id="viewAgentCity">-</span></p>
-                <p><strong>State:</strong> <span id="viewAgentState">-</span></p>
-                <p><strong>Status:</strong> <span id="viewAgentStatus">-</span></p>
-                <p><strong>Total Loans:</strong> <span id="viewAgentLoans">0</span></p>
-            </div>
-        </div>
-    </div>
-</div>
+                    <div class="summary-grid">
+                        <div class="summary-card">
+                            <span>Submitted</span>
+                            <strong id="summary-submitted">0</strong>
+                        </div>
+                        <div class="summary-card">
+                            <span>Assigned</span>
+                            <strong id="summary-assigned">0</strong>
+                        </div>
+                        <div class="summary-card">
+                            <span>Approved</span>
+                            <strong id="summary-approved">0</strong>
+                        </div>
+                        <div class="summary-card">
+                            <span>Rejected</span>
+                            <strong id="summary-rejected">0</strong>
+                        </div>
+                        <div class="summary-card">
+                            <span>Document Pending</span>
+                            <strong id="summary-waiting">0</strong>
+                        </div>
+                        <div class="summary-card">
+                            <span>Pending Document Cleared</span>
+                            <strong id="summary-updated">0</strong>
+                        </div>
+                        <div class="summary-card">
+                            <span>Banking Processing</span>
+                            <strong id="summary-banking">0</strong>
+                        </div>
+                        <div class="summary-card">
+                            <span>Follow Up</span>
+                            <strong id="summary-follow-up">0</strong>
+                        </div>
+                        <div class="summary-card">
+                            <span>Disbursed</span>
+                            <strong id="summary-disbursed">0</strong>
+                        </div>
+                        <div class="summary-card">
+                            <span>Total Customers</span>
+                            <strong id="summary-total-customers">0</strong>
+                        </div>
+                    </div>
 
-<!-- Edit Agent Modal -->
-<div class="modal fade" id="editAgentModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Edit Channel Partner</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <label class="form-label">Name</label>
-                        <input type="text" class="form-control" id="editAgentName">
+                    <div class="detail-section">
+                        <div class="detail-section-head">
+                            <h3 class="h6 fw-bold mb-0">Uploaded Documents</h3>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-grid align-middle mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Document</th>
+                                        <th>Source</th>
+                                        <th>Uploaded</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="partner-documents-body">
+                                    <tr>
+                                        <td colspan="4" class="text-center text-muted py-4">No documents uploaded.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Email</label>
-                        <input type="email" class="form-control" id="editAgentEmail">
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Phone</label>
-                        <input type="text" class="form-control" id="editAgentPhone">
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label">City</label>
-                        <input type="text" class="form-control" id="editAgentCity">
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label">State</label>
-                        <input type="text" class="form-control" id="editAgentState">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Status</label>
-                        <select class="form-select" id="editAgentStatus">
-                            <option value="active">Active</option>
-                            <option value="blocked">Blocked</option>
-                        </select>
+
+                    <div class="detail-section">
+                        <div class="detail-section-head">
+                            <h3 class="h6 fw-bold mb-0">Customer and Application Details</h3>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-grid align-middle mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Loan ID</th>
+                                        <th>Customer</th>
+                                        <th>Mobile</th>
+                                        <th>Email</th>
+                                        <th>Type</th>
+                                        <th>Amount</th>
+                                        <th>Status</th>
+                                        <th>Source</th>
+                                        <th>Assigned To</th>
+                                        <th>Assigned By</th>
+                                        <th>Created</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="partner-customers-body">
+                                    <tr>
+                                        <td colspan="12" class="text-center text-muted py-4">No customer records found.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button class="btn btn-primary" type="button" onclick="submitEditAgent()">Save Changes</button>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary d-none" id="partner-modal-save-btn">
+                    <i class="bi bi-floppy"></i>
+                    <span>Save Changes</span>
+                </button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Delete Agent Modal -->
-<div class="modal fade" id="deleteAgentModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Delete Channel Partner</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <p>Are you sure you want to remove this agent?</p>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button class="btn btn-danger" type="button" onclick="submitDeleteAgent()">Delete</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-{% endblock %}
-
-{% block extra_css %}
 <style>
-    .table {
-        margin: 0;
-        font-size: 14px;
+    .employee-partners-page {
+        max-width: 1600px;
     }
 
-    .table thead th {
-        background: #f8f9fa;
-        border-bottom: 1px solid #e9ecef;
-        font-weight: 600;
-        color: #495057;
-        padding: 14px 12px;
+    .partners-hero,
+    .partner-form-card,
+    .partner-table-shell,
+    .partner-modal-content,
+    .detail-section {
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 20px;
+        box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+    }
+
+    .partners-hero {
+        padding: 24px 26px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 18px;
+        margin-bottom: 22px;
+        background:
+            radial-gradient(circle at top left, rgba(99, 102, 241, 0.12), transparent 34%),
+            radial-gradient(circle at bottom right, rgba(14, 165, 233, 0.12), transparent 30%),
+            #ffffff;
+    }
+
+    .section-kicker {
         font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.16em;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
+        color: #4f46e5;
     }
 
-    .table tbody tr {
-        border-bottom: 1px solid #e9ecef;
-        transition: all 0.2s ease;
+    .hero-actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
     }
 
-    .table tbody tr:hover {
-        background: #f8f9fa;
+    .live-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 14px;
+        border: 1px solid #dbeafe;
+        border-radius: 999px;
+        background: #eff6ff;
+        color: #1e3a8a;
+        font-size: 12px;
+        font-weight: 700;
     }
 
-    .table tbody td {
-        padding: 14px 12px;
-        vertical-align: middle;
+    .live-dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 999px;
+        background: #10b981;
+        box-shadow: 0 0 0 6px rgba(16, 185, 129, 0.18);
     }
 
-    .badge {
-        font-weight: 600;
-        padding: 6px 12px;
-        font-size: 11px;
-        letter-spacing: 0.5px;
+    .hero-btn {
+        border-radius: 12px;
+        padding-inline: 16px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
     }
 
-    .agent-name {
-        font-weight: 600;
-        color: #1f2937;
+    .partner-stat-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 16px;
+        margin-bottom: 22px;
     }
 
-    .empty-state {
-        text-align: center;
-        padding: 60px 20px;
+    .partner-stat-card {
+        color: #ffffff;
+        border-radius: 20px;
+        padding: 20px 22px;
+        min-height: 156px;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 18px 32px rgba(15, 23, 42, 0.18);
     }
 
-    .empty-icon {
-        font-size: 48px;
-        color: #d1d5db;
-        margin-bottom: 12px;
+    .partner-stat-card::after {
+        content: "";
+        position: absolute;
+        width: 108px;
+        height: 108px;
+        top: -20px;
+        right: -24px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.16);
     }
 
-    .empty-text {
-        color: #6b7280;
+    .stat-total { background: linear-gradient(135deg, #2563eb, #4f46e5); }
+    .stat-active { background: linear-gradient(135deg, #10b981, #0f766e); }
+    .stat-blocked { background: linear-gradient(135deg, #ef4444, #be123c); }
+    .stat-loans { background: linear-gradient(135deg, #7c3aed, #0ea5e9); }
+
+    .stat-label,
+    .stat-value,
+    .stat-meta {
+        position: relative;
+        z-index: 1;
+    }
+
+    .stat-label {
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        opacity: 0.88;
+    }
+
+    .stat-value {
+        font-size: 2.4rem;
+        font-weight: 800;
+        margin: 10px 0 6px;
+    }
+
+    .stat-meta {
+        font-size: 12px;
+        opacity: 0.9;
+    }
+
+    .partner-form-card {
+        padding: 24px 26px;
+        margin-bottom: 22px;
+    }
+
+    .form-card-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        align-items: flex-start;
+        margin-bottom: 18px;
+    }
+
+    .form-tip {
+        font-size: 12px;
+        font-weight: 700;
+        color: #475569;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 999px;
+        padding: 8px 12px;
+    }
+
+    .partner-table-shell {
+        overflow: hidden;
+    }
+
+    .table-head {
+        padding: 22px 26px 18px;
+        display: flex;
+        justify-content: space-between;
+        gap: 18px;
+        align-items: flex-start;
+        border-bottom: 1px solid #eef2f7;
+    }
+
+    .table-head-actions {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+
+    .search-wrap {
+        position: relative;
+        min-width: min(360px, 100%);
+    }
+
+    .search-wrap i {
+        position: absolute;
+        left: 13px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #64748b;
         font-size: 14px;
     }
 
-    .form-control:focus, .form-select:focus {
-        border-color: #667eea;
-        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.15);
+    .search-wrap input {
+        width: 100%;
+        min-height: 42px;
+        border: 1px solid #cbd5e1;
+        border-radius: 12px;
+        padding: 9px 14px 9px 38px;
+        font-size: 14px;
     }
 
-    @media (max-width: 768px) {
-        .table {
-            font-size: 12px;
+    .doc-link-list,
+    .table-actions {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+
+    .doc-mini-link,
+    .table-action-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 700;
+        text-decoration: none;
+        border: 1px solid transparent;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .doc-mini-link:hover,
+    .table-action-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
+    }
+
+    .doc-mini-link.view-link,
+    .table-action-btn.view-link {
+        background: #eff6ff;
+        color: #1d4ed8;
+        border-color: #bfdbfe;
+    }
+
+    .doc-mini-link.download-link {
+        background: #ecfdf5;
+        color: #047857;
+        border-color: #a7f3d0;
+    }
+
+    .table-action-btn.edit-link {
+        background: #fefce8;
+        color: #a16207;
+        border-color: #fde68a;
+    }
+
+    .table-action-btn.delete-link {
+        background: #fff1f2;
+        color: #be123c;
+        border-color: #fecdd3;
+    }
+
+    .empty-copy {
+        color: #b45309;
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    .status-chip {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 7px 12px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.02em;
+    }
+
+    .status-active {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .status-blocked {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .partner-photo,
+    .partner-photo-fallback,
+    .modal-avatar,
+    .modal-avatar-fallback {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        overflow: hidden;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #c7d2fe 0%, #dbeafe 100%);
+        color: #312e81;
+        font-size: 14px;
+        font-weight: 800;
+        border: 2px solid rgba(79, 70, 229, 0.12);
+    }
+
+    .partner-photo img,
+    .modal-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .partner-modal-content {
+        border-radius: 24px;
+    }
+
+    .modal-hero {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        align-items: center;
+        padding: 18px 20px;
+        border: 1px solid #e2e8f0;
+        border-radius: 18px;
+        background:
+            radial-gradient(circle at top left, rgba(99, 102, 241, 0.12), transparent 38%),
+            #f8fafc;
+        margin-bottom: 18px;
+    }
+
+    .modal-hero-left {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        min-width: 0;
+    }
+
+    .modal-avatar,
+    .modal-avatar-fallback {
+        width: 68px;
+        height: 68px;
+        font-size: 24px;
+    }
+
+    .modal-meta-line {
+        color: #475569;
+        font-size: 13px;
+        margin-top: 4px;
+        word-break: break-word;
+    }
+
+    .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 12px;
+        margin: 18px 0;
+    }
+
+    .summary-card {
+        padding: 14px 16px;
+        border-radius: 16px;
+        border: 1px solid #e2e8f0;
+        background: #f8fafc;
+    }
+
+    .summary-card span {
+        display: block;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #64748b;
+    }
+
+    .summary-card strong {
+        display: block;
+        margin-top: 8px;
+        font-size: 1.8rem;
+        color: #0f172a;
+        line-height: 1;
+    }
+
+    .detail-section {
+        overflow: hidden;
+        margin-top: 18px;
+    }
+
+    .detail-section-head {
+        padding: 16px 18px;
+        border-bottom: 1px solid #eef2f7;
+        background: #f8fafc;
+    }
+
+    body.dark-mode .partners-hero,
+    body.dark-mode .partner-form-card,
+    body.dark-mode .partner-table-shell,
+    body.dark-mode .partner-modal-content,
+    body.dark-mode .detail-section,
+    body.dark-mode .summary-card {
+        background: #0f172a !important;
+        border-color: #334155 !important;
+        color: #e5e7eb !important;
+    }
+
+    body.dark-mode .table-head,
+    body.dark-mode .detail-section-head,
+    body.dark-mode .modal-hero {
+        background: #111827 !important;
+        border-color: #334155 !important;
+    }
+
+    body.dark-mode .summary-card strong,
+    body.dark-mode .partners-hero h1,
+    body.dark-mode .table-head h2,
+    body.dark-mode .modal-title,
+    body.dark-mode #partner-modal-name {
+        color: #f8fafc !important;
+    }
+
+    body.dark-mode .section-kicker,
+    body.dark-mode .live-indicator,
+    body.dark-mode .form-tip,
+    body.dark-mode .modal-meta-line,
+    body.dark-mode .empty-copy {
+        color: #cbd5e1 !important;
+    }
+
+    body.dark-mode .live-indicator,
+    body.dark-mode .form-tip,
+    body.dark-mode .search-wrap input {
+        background: #0b1220 !important;
+        border-color: #334155 !important;
+    }
+
+    @media (max-width: 992px) {
+        .partners-hero,
+        .table-head,
+        .form-card-head,
+        .modal-hero {
+            flex-direction: column;
+            align-items: flex-start;
         }
 
-        .table th, .table td {
-            padding: 10px 8px;
+        .hero-actions,
+        .table-head-actions {
+            width: 100%;
+            justify-content: flex-start;
+        }
+
+        .search-wrap {
+            min-width: 100%;
         }
     }
 </style>
-{% endblock %}
 
-{% block extra_js %}
 <script>
-    function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
+const partnerTableBody = document.getElementById('channel-partners-body');
+const partnerSearchInput = document.getElementById('partner-search');
+const partnerStatusFilter = document.getElementById('partner-status-filter');
+const partnerAlert = document.getElementById('partner-page-alert');
+const partnerFormCard = document.getElementById('partner-form-card');
+const partnerCreateForm = document.getElementById('partner-create-form');
+const partnerModalElement = document.getElementById('partnerDetailModal');
+const partnerModal = new bootstrap.Modal(partnerModalElement);
+
+let partnerListRefreshTimer = null;
+let currentModalPartnerId = null;
+let currentModalMode = 'view';
+let currentModalCanManage = false;
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i += 1) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === `${name}=`) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
             }
         }
-        return cookieValue;
+    }
+    return cookieValue;
+}
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function setLastUpdated() {
+    const stamp = document.getElementById('partners-last-updated');
+    if (stamp) {
+        stamp.textContent = new Date().toLocaleTimeString('en-IN');
+    }
+}
+
+function showPageAlert(type, message) {
+    if (!partnerAlert) {
+        return;
+    }
+    const map = {
+        success: 'alert-success',
+        danger: 'alert-danger',
+        warning: 'alert-warning',
+        info: 'alert-info',
+    };
+    partnerAlert.innerHTML = `
+        <div class="alert ${map[type] || 'alert-info'} alert-dismissible fade show" role="alert">
+            ${escapeHtml(message)}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    `;
+}
+
+function togglePartnerForm(show) {
+    const shouldShow = typeof show === 'boolean' ? show : partnerFormCard.classList.contains('d-none');
+    partnerFormCard.classList.toggle('d-none', !shouldShow);
+    const toggleBtn = document.getElementById('toggle-partner-form');
+    if (toggleBtn) {
+        toggleBtn.innerHTML = shouldShow
+            ? '<i class="bi bi-dash-circle"></i><span>Hide Form</span>'
+            : '<i class="bi bi-plus-circle"></i><span>Add Channel Partner</span>';
+    }
+    if (shouldShow) {
+        partnerFormCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
+
+function renderTopStats(stats) {
+    const statMap = {
+        'stat-total-agents': stats.total_agents || 0,
+        'stat-active-agents': stats.active_agents || 0,
+        'stat-blocked-agents': stats.blocked_agents || 0,
+        'stat-total-applications': stats.total_applications || 0,
+    };
+    Object.entries(statMap).forEach(([id, value]) => {
+        const node = document.getElementById(id);
+        if (node) {
+            node.textContent = Number(value || 0).toLocaleString('en-IN');
+        }
+    });
+}
+
+function renderDocumentLinks(agent) {
+    const docs = [];
+    if (agent.pan_card_url) {
+        docs.push(`<a href="${escapeHtml(agent.pan_card_url)}" target="_blank" class="doc-mini-link view-link">PAN</a>`);
+    }
+    if (agent.aadhar_card_url) {
+        docs.push(`<a href="${escapeHtml(agent.aadhar_card_url)}" target="_blank" class="doc-mini-link view-link">Aadhaar</a>`);
+    }
+    if (agent.bank_details_url) {
+        docs.push(`<a href="${escapeHtml(agent.bank_details_url)}" target="_blank" class="doc-mini-link view-link">Bank</a>`);
+    }
+    if (!docs.length) {
+        return '<span class="empty-copy">Available after upload</span>';
+    }
+    return `<div class="doc-link-list">${docs.join('')}</div>`;
+}
+
+function renderPartnerPhoto(agent) {
+    if (agent.photo_url) {
+        return `<span class="partner-photo"><img src="${escapeHtml(agent.photo_url)}" alt="${escapeHtml(agent.name || 'Channel Partner')}"></span>`;
+    }
+    return `<span class="partner-photo-fallback">${escapeHtml((agent.name || 'C').charAt(0).toUpperCase())}</span>`;
+}
+
+function renderStatusChip(statusValue) {
+    const normalized = String(statusValue || '').toLowerCase();
+    const label = normalized === 'blocked' ? 'Blocked' : 'Active';
+    const cls = normalized === 'blocked' ? 'status-chip status-blocked' : 'status-chip status-active';
+    return `<span class="${cls}">${label}</span>`;
+}
+
+function renderActionButtons(agent) {
+    const actions = [
+        `<button type="button" class="table-action-btn view-link" onclick="openPartnerModal(${agent.id}, 'view')">View</button>`,
+    ];
+    if (agent.can_manage) {
+        actions.push(`<button type="button" class="table-action-btn edit-link" onclick="openPartnerModal(${agent.id}, 'edit')">Edit</button>`);
+        actions.push(`<button type="button" class="table-action-btn delete-link" onclick="blockChannelPartner(${agent.id}, '${escapeHtml(agent.name || 'Channel Partner')}')">Block</button>`);
+    }
+    return `<div class="table-actions">${actions.join('')}</div>`;
+}
+
+function renderPartnerRows(agents) {
+    if (!Array.isArray(agents) || !agents.length) {
+        partnerTableBody.innerHTML = `
+            <tr>
+                <td colspan="12" class="text-center text-muted py-5">No channel partners found for the current employee scope.</td>
+            </tr>
+        `;
+        return;
     }
 
-    async function loadAgents() {
-        try {
-        const response = await fetch('/api/employee/agents/', {
-            headers: {
-                'X-CSRFToken': getCookie('csrftoken')
-            },
-            credentials: 'same-origin'
+    partnerTableBody.innerHTML = agents.map((agent) => `
+        <tr>
+            <td class="fw-semibold text-nowrap">${escapeHtml(agent.agent_id || '-')}</td>
+            <td>${renderPartnerPhoto(agent)}</td>
+            <td>
+                <div class="fw-semibold text-dark">${escapeHtml(agent.name || '-')}</div>
+                <small class="text-muted">${escapeHtml(agent.created_by_label || '-')}</small>
+            </td>
+            <td>${agent.email ? `<a href="mailto:${escapeHtml(agent.email)}">${escapeHtml(agent.email)}</a>` : '<span class="text-muted">Not available</span>'}</td>
+            <td>${agent.phone ? `<a href="tel:${escapeHtml(agent.phone)}">${escapeHtml(agent.phone)}</a>` : '<span class="text-muted">Not available</span>'}</td>
+            <td>${escapeHtml(agent.state || agent.city || '-')}</td>
+            <td class="fw-semibold">${Number(agent.total_loans || 0).toLocaleString('en-IN')}</td>
+            <td class="fw-semibold text-success">${Number(agent.approved_count || 0).toLocaleString('en-IN')}</td>
+            <td>${renderDocumentLinks(agent)}</td>
+            <td>${renderStatusChip(agent.status)}</td>
+            <td class="text-nowrap">${escapeHtml(agent.created_at || '-')}</td>
+            <td>${renderActionButtons(agent)}</td>
+        </tr>
+    `).join('');
+}
+
+async function loadChannelPartners(showErrors = false) {
+    try {
+        const params = new URLSearchParams();
+        if (partnerSearchInput.value.trim()) {
+            params.set('q', partnerSearchInput.value.trim());
+        }
+        if (partnerStatusFilter.value) {
+            params.set('status', partnerStatusFilter.value);
+        }
+
+        const response = await fetch(`/api/employee/my-agents/?${params.toString()}`, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            credentials: 'same-origin',
         });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+            throw new Error(data.error || 'Unable to load channel partners');
+        }
 
-            if (!response.ok) throw new Error('Failed to load agents');
+        renderTopStats(data.stats || {});
+        renderPartnerRows(data.agents || []);
+        setLastUpdated();
 
-            const data = await response.json();
-            const agents = data.agents || [];
-            const container = document.getElementById('agents-container');
-            AGENTS_CACHE = agents;
-
-            if (agents.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-icon"><i class="bi bi-people"></i></div>
-                        <div class="empty-text">No agents linked to you yet</div>
-                        <div style="margin-top: 20px;">
-                            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addAgentModal" style="border-radius: 8px;">
-                                <i class="bi bi-plus-circle"></i> Add First Channel Partner
-                            </button>
-                        </div>
-                    </div>
-                `;
-                return;
-            }
-
-            container.innerHTML = `
-                <div class="table-responsive">
-                    <table class="table table-grid">
-                        <thead>
-                            <tr>
-                                <th style="width: 60px;">Photo</th>
-                                <th>Channel Partner Name</th>
-                                <th>Email</th>
-                                <th>Phone</th>
-                                <th>City</th>
-                                <th>Status</th>
-                                <th>Total Loans</th>
-                                <th>Created By</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${agents.map(agent => {
-                                const initial = (agent.name || 'A').charAt(0).toUpperCase();
-                                const photoCell = agent.photo_url
-                                    ? `<div class="table-avatar"><img src="${agent.photo_url}" alt="${agent.name || 'Agent'}"></div>`
-                                    : `<div class="table-avatar-fallback">${initial}</div>`;
-
-                                return `
-                                    <tr>
-                                        <td>${photoCell}</td>
-                                        <td><span class="agent-name">${agent.name || 'N/A'}</span></td>
-                                        <td>${agent.email || 'N/A'}</td>
-                                        <td>${agent.phone || 'N/A'}</td>
-                                        <td>${agent.city || 'N/A'}</td>
-                                        <td><span class="badge ${agent.status === 'active' ? 'bg-success' : 'bg-secondary'}">${agent.status || 'N/A'}</span></td>
-                                        <td><strong>${agent.total_loans || 0}</strong></td>
-                                        <td>${agent.created_by || 'N/A'}</td>
-                                        <td>
-                                            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                                                <button class="btn btn-sm btn-success" onclick="openViewAgent(${agent.id})">View</button>
-                                                <button class="btn btn-sm btn-warning" onclick="openEditAgent(${agent.id})">Edit</button>
-                                                <button class="btn btn-sm btn-danger" onclick="confirmDeleteAgent(${agent.id})">Delete</button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                `;
-                            }).join('')}
-                        </tbody>
-                    </table>
-                </div>
-            `;
-        } catch (error) {
-            console.error('Error loading agents:', error);
-            document.getElementById('agents-container').innerHTML = `
-                <div class="alert alert-danger m-0">Failed to load agents. Please try again.</div>
-            `;
+        if (currentModalPartnerId && currentModalMode === 'view') {
+            await loadPartnerDetail(currentModalPartnerId, currentModalMode, false);
+        }
+    } catch (error) {
+        partnerTableBody.innerHTML = `
+            <tr>
+                <td colspan="12" class="text-center text-danger py-5">${escapeHtml(error.message || 'Unable to load data')}</td>
+            </tr>
+        `;
+        if (showErrors) {
+            showPageAlert('danger', error.message || 'Unable to load channel partners');
         }
     }
+}
 
-    async function submitAddAgent(e) {
-        e.preventDefault();
-        const form = e.target;
-        
-        // Get form values
-        const name = document.getElementById('agentName').value.trim();
-        const phone = document.getElementById('agentPhone').value.trim();
-        const email = document.getElementById('agentEmail').value.trim();
-        const password = document.getElementById('agentPassword').value.trim();
-        const status = document.getElementById('agentStatus').value;
-        const gender = document.getElementById('agentGender').value;
-        const address = document.getElementById('agentAddress').value.trim();
-        const pin_code = document.getElementById('agentPin').value.trim();
-        const state = document.getElementById('agentState').value.trim();
-        const photo = document.getElementById('agentPhoto').files[0];
-        
-        // Validation
-        if (!name || !phone || !email || !password) {
-            alert('Please fill all required fields: Name, Phone, Email, Password');
+function updateModalEditability(canManage, mode) {
+    currentModalCanManage = !!canManage;
+    currentModalMode = mode;
+    const editable = canManage && mode === 'edit';
+    const fields = [
+        'partner-edit-name',
+        'partner-edit-email',
+        'partner-edit-phone',
+        'partner-edit-gender',
+        'partner-edit-status',
+        'partner-edit-pin-code',
+        'partner-edit-state',
+        'partner-edit-city',
+        'partner-edit-address',
+        'partner-edit-photo',
+    ];
+    fields.forEach((fieldId) => {
+        const field = document.getElementById(fieldId);
+        if (field) {
+            field.disabled = !editable;
+        }
+    });
+    document.getElementById('partner-edit-photo-wrap').classList.toggle('d-none', !editable);
+    document.getElementById('partner-modal-save-btn').classList.toggle('d-none', !editable);
+}
+
+function fillSummary(summary) {
+    document.getElementById('summary-submitted').textContent = Number(summary.total_submitted_applications || 0).toLocaleString('en-IN');
+    document.getElementById('summary-assigned').textContent = Number(summary.total_assigned_applications || 0).toLocaleString('en-IN');
+    document.getElementById('summary-approved').textContent = Number(summary.approved || 0).toLocaleString('en-IN');
+    document.getElementById('summary-rejected').textContent = Number(summary.rejected || 0).toLocaleString('en-IN');
+    document.getElementById('summary-waiting').textContent = Number(summary.waiting || 0).toLocaleString('en-IN');
+    document.getElementById('summary-updated').textContent = Number(summary.updated_document || 0).toLocaleString('en-IN');
+    document.getElementById('summary-banking').textContent = Number(summary.banking_processing || 0).toLocaleString('en-IN');
+    document.getElementById('summary-follow-up').textContent = Number(summary.follow_up_pending || 0).toLocaleString('en-IN');
+    document.getElementById('summary-disbursed').textContent = Number(summary.disbursed || 0).toLocaleString('en-IN');
+    document.getElementById('summary-total-customers').textContent = Number(summary.total_customers || 0).toLocaleString('en-IN');
+}
+
+function fillDocumentTable(documents) {
+    const tbody = document.getElementById('partner-documents-body');
+    if (!Array.isArray(documents) || !documents.length) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">No documents uploaded.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = documents.map((doc) => `
+        <tr>
+            <td class="fw-semibold">${escapeHtml(doc.label || doc.type || 'Document')}</td>
+            <td>${escapeHtml(doc.source || '-')}</td>
+            <td>${escapeHtml(doc.uploaded_at || '-')}</td>
+            <td>
+                <div class="doc-link-list">
+                    <a href="${escapeHtml(doc.url)}" target="_blank" class="doc-mini-link view-link">View</a>
+                    <a href="${escapeHtml(doc.url)}" download class="doc-mini-link download-link">Download</a>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function fillCustomerTable(customers) {
+    const tbody = document.getElementById('partner-customers-body');
+    if (!Array.isArray(customers) || !customers.length) {
+        tbody.innerHTML = '<tr><td colspan="12" class="text-center text-muted py-4">No customer records found.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = customers.map((item) => `
+        <tr>
+            <td class="fw-semibold text-nowrap">${escapeHtml(item.loan_uid || '-')}</td>
+            <td>${escapeHtml(item.customer_name || '-')}</td>
+            <td>${escapeHtml(item.mobile || '-')}</td>
+            <td>${escapeHtml(item.email || '-')}</td>
+            <td>${escapeHtml(item.loan_type || '-')}</td>
+            <td class="fw-semibold text-nowrap">Rs. ${Number(item.loan_amount || 0).toLocaleString('en-IN')}</td>
+            <td>${escapeHtml(item.status_display || '-')}</td>
+            <td>${escapeHtml(item.source || '-')}</td>
+            <td>${escapeHtml(item.assigned_to || '-')}</td>
+            <td>${escapeHtml(item.assigned_by || '-')}</td>
+            <td class="text-nowrap">${escapeHtml(item.created_at || '-')}</td>
+            <td><a href="${escapeHtml(item.detail_url || '#')}" class="table-action-btn view-link">View</a></td>
+        </tr>
+    `).join('');
+}
+
+async function loadPartnerDetail(agentId, mode = 'view', showModal = true) {
+    currentModalPartnerId = agentId;
+    currentModalMode = mode;
+    if (showModal) {
+        partnerModal.show();
+    }
+    document.getElementById('partner-modal-loading').classList.remove('d-none');
+    document.getElementById('partner-modal-body').classList.add('d-none');
+
+    try {
+        const response = await fetch(`/api/employee/agents/${agentId}/detail/`, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            credentials: 'same-origin',
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+            throw new Error(data.error || 'Unable to load channel partner details');
+        }
+
+        const agent = data.agent || {};
+        const summary = data.summary || {};
+        const customers = data.customers || [];
+
+        document.getElementById('partner-modal-title').textContent = agent.name || 'Channel Partner';
+        document.getElementById('partner-modal-subtitle').textContent = agent.agent_id || '';
+        document.getElementById('partner-modal-name').textContent = agent.name || '-';
+        document.getElementById('partner-modal-meta').textContent = `${agent.email || 'No email'} | ${agent.phone || 'No phone'} | ${agent.under_employee || 'Not assigned'}`;
+        document.getElementById('partner-modal-created-under').textContent = `Created under: ${agent.created_under || '-'}`;
+        document.getElementById('partner-modal-status-chip').outerHTML = renderStatusChip(agent.status);
+        const statusWrap = document.querySelector('.modal-status-wrap');
+        statusWrap.innerHTML = renderStatusChip(agent.status);
+
+        const avatar = document.getElementById('partner-modal-avatar');
+        avatar.innerHTML = agent.photo_url
+            ? `<img src="${escapeHtml(agent.photo_url)}" alt="${escapeHtml(agent.name || 'Channel Partner')}">`
+            : escapeHtml((agent.name || 'C').charAt(0).toUpperCase());
+
+        document.getElementById('partner-edit-id').value = agent.id || '';
+        document.getElementById('partner-edit-name').value = agent.name || '';
+        document.getElementById('partner-edit-code').value = agent.agent_id || '';
+        document.getElementById('partner-edit-email').value = agent.email || '';
+        document.getElementById('partner-edit-phone').value = agent.phone || '';
+        document.getElementById('partner-edit-gender').value = agent.gender || 'Other';
+        document.getElementById('partner-edit-status').value = agent.status || 'active';
+        document.getElementById('partner-edit-pin-code').value = agent.pin_code || '';
+        document.getElementById('partner-edit-state').value = agent.state || '';
+        document.getElementById('partner-edit-city').value = agent.city || '';
+        document.getElementById('partner-edit-address').value = agent.address || '';
+        document.getElementById('partner-edit-photo').value = '';
+
+        fillSummary(summary);
+        fillDocumentTable(agent.documents || []);
+        fillCustomerTable(customers);
+        updateModalEditability(agent.can_manage, mode);
+
+        document.getElementById('partner-modal-loading').classList.add('d-none');
+        document.getElementById('partner-modal-body').classList.remove('d-none');
+    } catch (error) {
+        document.getElementById('partner-modal-loading').innerHTML = `<div class="text-danger">${escapeHtml(error.message || 'Unable to load details')}</div>`;
+        if (showModal) {
+            showPageAlert('danger', error.message || 'Unable to load channel partner details');
+        }
+    }
+}
+
+function openPartnerModal(agentId, mode) {
+    loadPartnerDetail(agentId, mode, true);
+}
+
+async function savePartnerChanges() {
+    if (!currentModalCanManage) {
+        return;
+    }
+    const agentId = document.getElementById('partner-edit-id').value;
+    const formData = new FormData();
+    formData.append('name', document.getElementById('partner-edit-name').value.trim());
+    formData.append('email', document.getElementById('partner-edit-email').value.trim());
+    formData.append('phone', document.getElementById('partner-edit-phone').value.trim());
+    formData.append('gender', document.getElementById('partner-edit-gender').value);
+    formData.append('status', document.getElementById('partner-edit-status').value);
+    formData.append('pin_code', document.getElementById('partner-edit-pin-code').value.trim());
+    formData.append('state', document.getElementById('partner-edit-state').value.trim());
+    formData.append('city', document.getElementById('partner-edit-city').value.trim());
+    formData.append('address', document.getElementById('partner-edit-address').value.trim());
+
+    const photoInput = document.getElementById('partner-edit-photo');
+    if (photoInput.files && photoInput.files[0]) {
+        formData.append('photo', photoInput.files[0]);
+    }
+
+    try {
+        const response = await fetch(`/api/employee/agents/${agentId}/update/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCookie('csrftoken') },
+            body: formData,
+            credentials: 'same-origin',
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+            throw new Error(data.error || 'Unable to update channel partner');
+        }
+        showPageAlert('success', data.message || 'Channel partner updated successfully.');
+        await loadChannelPartners(false);
+        await loadPartnerDetail(agentId, 'view', false);
+        updateModalEditability(true, 'view');
+    } catch (error) {
+        showPageAlert('danger', error.message || 'Unable to update channel partner');
+    }
+}
+
+async function blockChannelPartner(agentId, agentName) {
+    const confirmed = window.confirm(`Block ${agentName || 'this channel partner'}?`);
+    if (!confirmed) {
+        return;
+    }
+    try {
+        const response = await fetch(`/api/employee/agents/${agentId}/delete/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCookie('csrftoken') },
+            credentials: 'same-origin',
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+            throw new Error(data.error || 'Unable to block channel partner');
+        }
+        showPageAlert('success', data.message || 'Channel partner blocked successfully.');
+        await loadChannelPartners(false);
+    } catch (error) {
+        showPageAlert('danger', error.message || 'Unable to block channel partner');
+    }
+}
+
+async function handleCreatePartner(event) {
+    event.preventDefault();
+    const formData = new FormData(partnerCreateForm);
+    try {
+        const response = await fetch('/api/employee/add-agent/', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCookie('csrftoken') },
+            body: formData,
+            credentials: 'same-origin',
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+            throw new Error(data.error || 'Unable to create channel partner');
+        }
+        partnerCreateForm.reset();
+        togglePartnerForm(false);
+        showPageAlert('success', data.message || 'Channel partner created successfully.');
+        await loadChannelPartners(false);
+    } catch (error) {
+        showPageAlert('danger', error.message || 'Unable to create channel partner');
+    }
+}
+
+function schedulePartnerRefresh() {
+    if (partnerListRefreshTimer) {
+        clearInterval(partnerListRefreshTimer);
+    }
+    partnerListRefreshTimer = setInterval(() => {
+        if (document.hidden) {
             return;
         }
-        
-        try {
-            // Create FormData for file upload
-            const formData = new FormData();
-            formData.append('name', name);
-            formData.append('phone', phone);
-            formData.append('email', email);
-            formData.append('password', password);
-            formData.append('status', status);
-            formData.append('gender', gender);
-            formData.append('address', address);
-            formData.append('pin_code', pin_code);
-            formData.append('state', state);
-            if (photo) {
-                formData.append('photo', photo);
-            }
-            
-            const response = await fetch('/api/employee/agent/add/', {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': getCookie('csrftoken')
-                },
-                body: formData,
-                credentials: 'same-origin'
-            });
+        loadChannelPartners(false);
+    }, 12000);
+}
 
-            const data = await response.json();
+document.getElementById('toggle-partner-form').addEventListener('click', () => togglePartnerForm());
+document.getElementById('cancel-partner-form').addEventListener('click', () => togglePartnerForm(false));
+document.getElementById('refresh-partners-btn').addEventListener('click', () => loadChannelPartners(true));
+partnerCreateForm.addEventListener('submit', handleCreatePartner);
+document.getElementById('partner-modal-save-btn').addEventListener('click', savePartnerChanges);
+partnerSearchInput.addEventListener('input', () => loadChannelPartners(false));
+partnerStatusFilter.addEventListener('change', () => loadChannelPartners(false));
 
-            if (data.success) {
-                // Close modal
-                const modal = bootstrap.Modal.getInstance(document.getElementById('addAgentModal'));
-                if (modal) modal.hide();
-                
-                // Reset form
-                form.reset();
-                document.getElementById('photoPreview').innerHTML = '<i class="bi bi-person-circle" style="font-size: 40px; color: #9ca3af;"></i>';
-                
-                // Reload agents
-                await loadAgents();
-                
-                // Show success message
-                alert('Channel Partner created successfully!');
-            } else {
-                alert('Error: ' + (data.error || 'Failed to add agent'));
-            }
-        } catch (error) {
-            console.error('Error adding agent:', error);
-            alert('Error adding agent: ' + error.message);
-        }
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+        loadChannelPartners(false);
     }
+});
 
-    let AGENTS_CACHE = [];
-    let CURRENT_AGENT_ID = null;
+window.addEventListener('focus', () => loadChannelPartners(false));
+partnerModalElement.addEventListener('hidden.bs.modal', () => {
+    currentModalPartnerId = null;
+    currentModalMode = 'view';
+    currentModalCanManage = false;
+    document.getElementById('partner-modal-loading').innerHTML = `
+        <div class="spinner-border text-primary mb-3" role="status"></div>
+        <div>Loading channel partner details...</div>
+    `;
+});
 
-    // Initialize
-    document.addEventListener('DOMContentLoaded', function() {
-        loadAgents();
-        
-        // Photo preview
-        document.getElementById('agentPhoto').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(event) {
-                    document.getElementById('photoPreview').innerHTML = '<img src="' + event.target.result + '" style="width: 100%; height: 100%; object-fit: cover;">';
-                };
-                reader.readAsDataURL(file);
-            }
-        });
-        
-        document.getElementById('add-agent-btn').addEventListener('click', function() {
-            const modal = new bootstrap.Modal(document.getElementById('addAgentModal'));
-            modal.show();
-        });
-
-        document.getElementById('addAgentForm').addEventListener('submit', submitAddAgent);
-    });
-
-    async function openViewAgent(agentId) {
-        const agent = AGENTS_CACHE.find(a => a.id === agentId);
-        if (!agent) return;
-
-        document.getElementById('viewAgentName').textContent = agent.name || 'N/A';
-        document.getElementById('viewAgentEmail').textContent = agent.email || 'N/A';
-        document.getElementById('viewAgentPhone').textContent = agent.phone || 'N/A';
-        document.getElementById('viewAgentCity').textContent = agent.city || 'N/A';
-        document.getElementById('viewAgentState').textContent = agent.state || 'N/A';
-        document.getElementById('viewAgentStatus').textContent = agent.status || 'N/A';
-        document.getElementById('viewAgentLoans').textContent = agent.total_loans || 0;
-
-        const modal = new bootstrap.Modal(document.getElementById('viewAgentModal'));
-        modal.show();
-    }
-
-    function openEditAgent(agentId) {
-        const agent = AGENTS_CACHE.find(a => a.id === agentId);
-        if (!agent) return;
-
-        CURRENT_AGENT_ID = agentId;
-        document.getElementById('editAgentName').value = agent.name || '';
-        document.getElementById('editAgentEmail').value = agent.email || '';
-        document.getElementById('editAgentPhone').value = agent.phone || '';
-        document.getElementById('editAgentCity').value = agent.city || '';
-        document.getElementById('editAgentState').value = agent.state || '';
-        document.getElementById('editAgentStatus').value = agent.status || 'active';
-
-        const modal = new bootstrap.Modal(document.getElementById('editAgentModal'));
-        modal.show();
-    }
-
-    async function submitEditAgent() {
-        if (!CURRENT_AGENT_ID) return;
-
-        const payload = new FormData();
-        payload.append('name', document.getElementById('editAgentName').value);
-        payload.append('email', document.getElementById('editAgentEmail').value);
-        payload.append('phone', document.getElementById('editAgentPhone').value);
-        payload.append('city', document.getElementById('editAgentCity').value);
-        payload.append('state', document.getElementById('editAgentState').value);
-        payload.append('status', document.getElementById('editAgentStatus').value);
-
-        const res = await fetch(`/api/employee/agents/${CURRENT_AGENT_ID}/update/`, {
-            method: 'POST',
-            headers: { 'X-CSRFToken': getCookie('csrftoken') },
-            body: payload,
-            credentials: 'same-origin'
-        });
-
-        const data = await res.json().catch(() => ({}));
-        if (res.ok && data.success) {
-            await loadAgents();
-            bootstrap.Modal.getInstance(document.getElementById('editAgentModal')).hide();
-        } else {
-            alert(data.error || 'Failed to update agent');
-        }
-    }
-
-    function confirmDeleteAgent(agentId) {
-        CURRENT_AGENT_ID = agentId;
-        const modal = new bootstrap.Modal(document.getElementById('deleteAgentModal'));
-        modal.show();
-    }
-
-    async function submitDeleteAgent() {
-        if (!CURRENT_AGENT_ID) return;
-
-        const res = await fetch(`/api/employee/agents/${CURRENT_AGENT_ID}/delete/`, {
-            method: 'POST',
-            headers: { 'X-CSRFToken': getCookie('csrftoken') },
-            credentials: 'same-origin'
-        });
-
-        const data = await res.json().catch(() => ({}));
-        if (res.ok && data.success) {
-            await loadAgents();
-            bootstrap.Modal.getInstance(document.getElementById('deleteAgentModal')).hide();
-        } else {
-            alert(data.error || 'Failed to delete agent');
-        }
-    }
+document.addEventListener('DOMContentLoaded', () => {
+    loadChannelPartners(false);
+    schedulePartnerRefresh();
+});
 </script>
 {% endblock %}

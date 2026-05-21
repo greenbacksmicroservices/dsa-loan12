@@ -5,16 +5,7 @@
 
 {% block content %}
 <div class="agent-dashboard container-fluid py-3 py-lg-4">
-    <div class="dashboard-topbar mb-4">
-        <div>
-            <h1 class="h3 mb-1 fw-bold">Channel Partner Dashboard</h1>
-            <p class="text-muted mb-0">Live overview of your applications</p>
-        </div>
-        <div class="d-flex align-items-center gap-2">
-            <span class="live-dot"></span>
-            <small class="text-muted">Realtime sync</small>
-            <small class="text-muted" id="last-updated">--</small>
-        </div>
+    
     </div>
 
     <div class="card-container">
@@ -22,56 +13,56 @@
             <p class="status-title">New Application</p>
             <h2 class="main-value" id="stat-new-entry">0</h2>
             <p class="description">Total New Applications</p>
-            <span class="view-details" style="color:#4c51bf;">View Details →</span>
+            <span class="view-details" style="color:#4c51bf;">View Details &rarr;</span>
         </a>
 
         <a class="insight-card c-process text-decoration-none" href="{% url 'agent_my_applications' %}?status=waiting">
             <p class="status-title">Document Pending</p>
             <h2 class="main-value" id="stat-waiting">0</h2>
             <p class="description">Pending Review</p>
-            <span class="view-details" style="color:#d69e2e;">View Details →</span>
+            <span class="view-details" style="color:#d69e2e;">View Details &rarr;</span>
         </a>
 
         <a class="insight-card c-updated text-decoration-none" href="{% url 'agent_my_applications' %}?status=updated_document">
-            <p class="status-title">Updated Document</p>
+            <p class="status-title">Pending Document Cleared</p>
             <h2 class="main-value" id="stat-updated-document">0</h2>
             <p class="description">Ready for Banking Process</p>
             <span class="view-details" style="color:#059669;">View Details &rarr;</span>
         </a>
 
         <a class="insight-card c-bank text-decoration-none" href="{% url 'agent_my_applications' %}?status=follow_up">
-            <p class="status-title">Banking Processing Queue</p>
+            <p class="status-title">Banking Processing</p>
             <h2 class="main-value" id="stat-banking">0</h2>
             <p class="description">Banking Processing Queue</p>
-            <span class="view-details" style="color:#319795;">View Details →</span>
+            <span class="view-details" style="color:#319795;">View Details &rarr;</span>
         </a>
 
         <a class="insight-card c-follow text-decoration-none" href="{% url 'agent_my_applications' %}?status=follow_up_pending" id="follow-up-card">
             <p class="status-title">Follow Up</p>
             <h2 class="main-value" id="stat-followup-pending">0</h2>
             <p class="description">Reverted for Correction</p>
-            <span class="view-details" style="color:#d53f8c;">View Details →</span>
+            <span class="view-details" style="color:#d53f8c;">View Details &rarr;</span>
         </a>
 
         <a class="insight-card c-approved text-decoration-none" href="{% url 'agent_my_applications' %}?status=approved">
             <p class="status-title">Approved</p>
             <h2 class="main-value" id="stat-approved">0</h2>
             <p class="description">Successfully Approved</p>
-            <span class="view-details" style="color:#38a169;">View Details →</span>
+            <span class="view-details" style="color:#38a169;">View Details &rarr;</span>
         </a>
 
         <a class="insight-card c-rejected text-decoration-none" href="{% url 'agent_my_applications' %}?status=rejected">
             <p class="status-title">Rejected</p>
             <h2 class="main-value" id="stat-rejected">0</h2>
             <p class="description">Rejected Applications</p>
-            <span class="view-details" style="color:#e53e3e;">View Details →</span>
+            <span class="view-details" style="color:#e53e3e;">View Details &rarr;</span>
         </a>
 
         <a class="insight-card c-disbursed text-decoration-none" href="{% url 'agent_my_applications' %}?status=disbursed">
             <p class="status-title">Disbursed</p>
             <h2 class="main-value" id="stat-disbursed">0</h2>
             <p class="description">Fund Disbursed Successfully</p>
-            <span class="view-details" style="color:#3182ce;">View Details →</span>
+            <span class="view-details" style="color:#3182ce;">View Details &rarr;</span>
         </a>
     </div>
 
@@ -439,6 +430,71 @@ document.addEventListener('DOMContentLoaded', () => {
     .c-approved { color: #48bb78; }
     .c-rejected { color: #f56565; }
     .c-disbursed { color: #4299e1; }
+
+    .insight-card {
+        color: #ffffff !important;
+        border: 2px solid rgba(255, 255, 255, 0.22);
+        box-shadow: 0 12px 34px rgba(15, 23, 42, 0.16);
+        transition: transform 0.35s ease, box-shadow 0.35s ease;
+        min-height: 178px;
+    }
+
+    .insight-card:hover {
+        transform: translateY(-10px) scale(1.01);
+        box-shadow: 0 20px 48px rgba(15, 23, 42, 0.22);
+    }
+
+    .insight-card::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        left: -120%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.22), transparent);
+        transition: left 0.55s ease;
+    }
+
+    .insight-card:hover::before {
+        left: 120%;
+    }
+
+    .insight-card::after {
+        background: rgba(255, 255, 255, 0.16);
+        opacity: 1;
+    }
+
+    .insight-card .status-title,
+    .insight-card .main-value,
+    .insight-card .description,
+    .insight-card .view-details {
+        color: #ffffff !important;
+        position: relative;
+        z-index: 1;
+    }
+
+    .insight-card .main-value {
+        font-size: 40px;
+        text-shadow: 0 2px 12px rgba(0,0,0,0.22);
+    }
+
+    .insight-card .description {
+        opacity: 0.86;
+        font-weight: 600;
+    }
+
+    .insight-card .view-details {
+        background: rgba(255,255,255,0.22);
+        padding: 8px 12px;
+        border-radius: 8px;
+    }
+
+    .c-new { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important; }
+    .c-process { background: linear-gradient(135deg, #e878f4 0%, #f5576c 100%) !important; }
+    .c-updated { background: linear-gradient(135deg, #4facfe 0%, #16979d 100%) !important; }
+    .c-bank { background: linear-gradient(135deg, #43e97b 0%, #17a48b 100%) !important; }
+    .c-follow { background: linear-gradient(135deg, #e63f71 0%, #fee140 100%) !important; }
+    .c-approved { background: linear-gradient(135deg, #30cfd0 0%, #330867 100%) !important; }
+    .c-rejected { background: linear-gradient(135deg, #e63946 0%, #a4161a 100%) !important; }
+    .c-disbursed { background: linear-gradient(135deg, #457b9d 0%, #1d3557 100%) !important; }
 
     .followup-alert {
         border: 2px solid #dc2626 !important;

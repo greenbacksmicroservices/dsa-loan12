@@ -171,3 +171,65 @@ def collect_onboarding_documents(request):
         doc_type = types[idx] if idx < len(types) and types[idx] else 'other'
         documents.append((doc_type, doc_file))
     return documents
+
+
+PROFILE_DOCUMENT_FIELDS = [
+    ('pan_card_doc', 'pan_card', 'PAN Card'),
+    ('aadhar_card_doc', 'aadhaar_card', 'Aadhaar Card'),
+    ('bank_details_doc', 'bank_statement', 'Passbook/Cancel Cheque/Statement'),
+]
+
+
+def collect_user_document_payload(user):
+    """
+    Return every profile/onboarding document uploaded for a user.
+    Includes fixed profile KYC fields and dynamic onboarding documents.
+    """
+    if not user:
+        return []
+
+    payload = []
+    seen = set()
+
+    for field_name, doc_type, label in PROFILE_DOCUMENT_FIELDS:
+        file_obj = getattr(user, field_name, None)
+        if not file_obj:
+            continue
+        try:
+            url = file_obj.url
+        except ValueError:
+            url = ''
+        if not url:
+            continue
+        payload.append({
+            'id': field_name,
+            'type': doc_type,
+            'label': label,
+            'url': url,
+            'uploaded_at': user.updated_at.strftime('%Y-%m-%d %H:%M') if getattr(user, 'updated_at', None) else '',
+            'source': 'profile',
+        })
+        seen.add((doc_type, url))
+
+    documents_manager = getattr(user, 'onboarding_documents', None)
+    if documents_manager:
+        for doc in documents_manager.all().order_by('-uploaded_at'):
+            if not getattr(doc, 'file', None):
+                continue
+            try:
+                url = doc.file.url
+            except ValueError:
+                url = ''
+            if not url or (doc.document_type, url) in seen:
+                continue
+            payload.append({
+                'id': doc.id,
+                'type': doc.document_type or 'other',
+                'label': (doc.document_type or 'other').replace('_', ' ').title(),
+                'url': url,
+                'uploaded_at': doc.uploaded_at.strftime('%Y-%m-%d %H:%M') if doc.uploaded_at else '',
+                'source': 'onboarding',
+            })
+            seen.add((doc.document_type, url))
+
+    return payload

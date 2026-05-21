@@ -1,0 +1,366 @@
+{% extends "subadmin/base_subadmin.html" %}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+{% block page_title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+{{ detail_payload|json_script:"subadmin-detail-data" }}
+
+<div class="space-y-6">
+    <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
+            <div class="flex items-center gap-4">
+                {% if profile.photo_url %}
+                    <img src="{{ profile.photo_url }}" alt="{{ profile.name }}" class="w-20 h-20 rounded-full object-cover border border-gray-200 shadow-sm">
+                {% else %}
+                    <div class="w-20 h-20 rounded-full bg-slate-200 text-slate-700 text-2xl font-bold flex items-center justify-center">{{ profile.name|first|upper }}</div>
+                {% endif %}
+                <div>
+                    <p class="text-xs uppercase tracking-wide text-gray-500">
+                        {% if detail_type == 'employee' %}Employee Details{% else %}Channel Partner Details{% endif %}
+                    </p>
+                    <h1 class="text-2xl font-bold text-gray-900 mt-1">{{ profile.name }}</h1>
+                    <p class="text-sm text-gray-600 mt-1">
+                        {% if detail_type == 'employee' %}
+                            {{ profile.employee_id }}
+                        {% else %}
+                            {{ profile.agent_id }}
+                        {% endif %}
+                        | {{ profile.email|default:"No email" }} | {{ profile.phone|default:"No phone" }}
+                    </p>
+                </div>
+            </div>
+            <div class="flex gap-2 flex-wrap">
+                {% if detail_type == 'employee' %}
+                    <a href="{% url 'subadmin_my_employees' %}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Back To Employees</a>
+                {% else %}
+                    <a href="{% url 'subadmin_my_agents' %}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Back To Channel Partners</a>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+            <div class="bg-slate-50 rounded-lg border border-slate-200 p-4">
+                <p class="text-xs text-gray-500 uppercase">Status</p>
+                <p class="font-bold text-gray-900 mt-1">{{ profile.status|title }}</p>
+            </div>
+            <div class="bg-slate-50 rounded-lg border border-slate-200 p-4">
+                <p class="text-xs text-gray-500 uppercase">{% if detail_type == 'employee' %}Role{% else %}Under Employee{% endif %}</p>
+                <p class="font-bold text-gray-900 mt-1">{% if detail_type == 'employee' %}{{ profile.role|default:"Loan Processor" }}{% else %}{{ profile.under_employee|default:"Not Assigned" }}{% endif %}</p>
+            </div>
+            <div class="bg-slate-50 rounded-lg border border-slate-200 p-4">
+                <p class="text-xs text-gray-500 uppercase">{% if detail_type == 'employee' %}Channel Partners Under Employee{% else %}Created Under{% endif %}</p>
+                <p class="font-bold text-gray-900 mt-1">{% if detail_type == 'employee' %}{{ profile.assigned_channel_partners|length }} linked{% else %}{{ profile.created_under|default:"-" }}{% endif %}</p>
+            </div>
+        </div>
+
+        {% if detail_type == 'employee' %}
+        <div class="mt-5">
+            <label class="block text-sm font-semibold text-gray-700 mb-2">Channel Partners Under Employee</label>
+            <details class="relative max-w-xl">
+                <summary class="list-none cursor-pointer w-full px-4 py-3 border border-gray-300 rounded-lg bg-slate-50 text-sm font-semibold text-gray-800 flex items-center justify-between">
+                    <span>ID + full name list</span>
+                    <i class="fas fa-chevron-down text-gray-500"></i>
+                </summary>
+                <div class="absolute z-30 mt-2 w-full max-h-72 overflow-y-auto bg-white border border-gray-200 rounded-xl shadow-xl p-2">
+                    {% for partner in profile.assigned_channel_partners %}
+                        <div class="p-3 rounded-lg border border-gray-100 mb-2 last:mb-0">
+                            <strong class="block text-sm text-gray-900">{{ partner.agent_id|default:"EDC-CP" }}{% if not partner.agent_id %}-{{ partner.id|stringformat:"04d" }}{% endif %} - {{ partner.name }}</strong>
+                            <small class="block text-xs text-gray-500">{{ partner.email|default:"No email" }}{% if partner.phone %} | {{ partner.phone }}{% endif %}</small>
+                        </div>
+                    {% empty %}
+                        <div class="p-3 text-sm text-gray-500">No channel partners linked.</div>
+                    {% endfor %}
+                </div>
+            </details>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <button type="button" onclick="openRecordsModal('submitted', 'Submitted Applications')" class="text-left bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:shadow-md hover:-translate-y-1 transition">
+            <p class="text-xs text-gray-500 uppercase">Submitted</p>
+            <p class="text-2xl font-bold text-gray-900 mt-1">{{ summary.total_submitted_applications|default:0 }}</p>
+        </button>
+        <button type="button" onclick="openRecordsModal('assigned', 'Assigned Applications')" class="text-left bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:shadow-md hover:-translate-y-1 transition">
+            <p class="text-xs text-gray-500 uppercase">Assigned</p>
+            <p class="text-2xl font-bold text-gray-900 mt-1">{{ summary.total_assigned_applications|default:0 }}</p>
+        </button>
+        <button type="button" onclick="openRecordsModal('approved', 'Approved Applications')" class="text-left bg-emerald-50 border border-emerald-200 rounded-xl p-4 shadow-sm hover:shadow-md hover:-translate-y-1 transition">
+            <p class="text-xs text-emerald-700 uppercase">Approved</p>
+            <p class="text-2xl font-bold text-emerald-700 mt-1">{{ summary.approved|default:0 }}</p>
+        </button>
+        <button type="button" onclick="openRecordsModal('rejected', 'Rejected Applications')" class="text-left bg-rose-50 border border-rose-200 rounded-xl p-4 shadow-sm hover:shadow-md hover:-translate-y-1 transition">
+            <p class="text-xs text-rose-700 uppercase">Rejected</p>
+            <p class="text-2xl font-bold text-rose-700 mt-1">{{ summary.rejected|default:0 }}</p>
+        </button>
+        <button type="button" onclick="openRecordsModal('banking_processing', 'Bank Processing Applications')" class="text-left bg-cyan-50 border border-cyan-200 rounded-xl p-4 shadow-sm hover:shadow-md hover:-translate-y-1 transition">
+            <p class="text-xs text-cyan-700 uppercase">Bank Processing</p>
+            <p class="text-2xl font-bold text-cyan-700 mt-1">{{ summary.banking_processing|default:0 }}</p>
+        </button>
+        <button type="button" onclick="openRecordsModal('waiting', 'Document Pending Applications')" class="text-left bg-amber-50 border border-amber-200 rounded-xl p-4 shadow-sm hover:shadow-md hover:-translate-y-1 transition">
+            <p class="text-xs text-amber-700 uppercase">Document Pending</p>
+            <p class="text-2xl font-bold text-amber-700 mt-1">{{ summary.waiting|default:0 }}</p>
+        </button>
+        <button type="button" onclick="openRecordsModal('disbursed', 'Disbursed Applications')" class="text-left bg-indigo-50 border border-indigo-200 rounded-xl p-4 shadow-sm hover:shadow-md hover:-translate-y-1 transition">
+            <p class="text-xs text-indigo-700 uppercase">Disbursed</p>
+            <p class="text-2xl font-bold text-indigo-700 mt-1">{{ summary.disbursed|default:0 }}</p>
+        </button>
+        <button type="button" onclick="openRecordsModal('all', 'Customer and Application Details')" class="text-left bg-gray-50 border border-gray-200 rounded-xl p-4 shadow-sm hover:shadow-md hover:-translate-y-1 transition">
+            <p class="text-xs text-gray-600 uppercase">Total Customers</p>
+            <p class="text-2xl font-bold text-gray-900 mt-1">{{ summary.total_customers|default:0 }}</p>
+        </button>
+    </div>
+
+    <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+        <div class="px-5 py-4 border-b border-gray-200 bg-gray-50 flex items-center justify-between gap-3">
+            <h2 class="font-bold text-gray-900">Customer and Application Details</h2>
+            <button type="button" onclick="openRecordsModal('all', 'Customer and Application Details')" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">Open Table</button>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full min-w-[1200px] text-sm">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-3 text-left">Loan ID</th>
+                        <th class="px-4 py-3 text-left">Customer</th>
+                        <th class="px-4 py-3 text-left">Mobile</th>
+                        <th class="px-4 py-3 text-left">Type</th>
+                        <th class="px-4 py-3 text-left">Amount</th>
+                        <th class="px-4 py-3 text-left">Status</th>
+                        <th class="px-4 py-3 text-left">Source</th>
+                        <th class="px-4 py-3 text-left">Created</th>
+                        <th class="px-4 py-3 text-left">Action</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    {% for row in customers %}
+                    <tr>
+                        <td class="px-4 py-3 font-semibold text-gray-900">{{ row.loan_uid }}</td>
+                        <td class="px-4 py-3">{{ row.customer_name }}</td>
+                        <td class="px-4 py-3">{{ row.mobile }}</td>
+                        <td class="px-4 py-3">{{ row.loan_type }}</td>
+                        <td class="px-4 py-3 font-semibold">Rs. {{ row.loan_amount }}</td>
+                        <td class="px-4 py-3">{{ row.status_display }}</td>
+                        <td class="px-4 py-3">{{ row.source }}</td>
+                        <td class="px-4 py-3">{{ row.created_at }}</td>
+                        <td class="px-4 py-3">
+                            <button type="button" onclick="openLoanDetail({{ row.loan_id }})" class="px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700">View</button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="9" class="px-4 py-8 text-center text-gray-500">No applications found.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+        <div class="px-5 py-4 border-b border-gray-200 bg-gray-50">
+            <h2 class="font-bold text-gray-900">Uploaded Documents</h2>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-3 text-left">Document</th>
+                        <th class="px-4 py-3 text-left">Source</th>
+                        <th class="px-4 py-3 text-left">Uploaded</th>
+                        <th class="px-4 py-3 text-left">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    {% for doc in profile.documents %}
+                    <tr>
+                        <td class="px-4 py-3 font-semibold">{{ doc.label|default:doc.type }}</td>
+                        <td class="px-4 py-3">{{ doc.source|default:"Profile" }}</td>
+                        <td class="px-4 py-3">{{ doc.uploaded_at|default:"-" }}</td>
+                        <td class="px-4 py-3">
+                            {% if doc.url %}
+                                <a href="{{ doc.url }}" target="_blank" class="px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700">View</a>
+                                <a href="{{ doc.url }}" download class="px-3 py-1 bg-emerald-600 text-white rounded text-xs hover:bg-emerald-700 ml-1">Download</a>
+                            {% else %}
+                                <span class="text-gray-400">No file</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="px-4 py-8 text-center text-gray-500">No profile documents uploaded.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="records-modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-7xl max-h-[90vh] overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+            <h3 id="records-modal-title" class="font-bold text-gray-900">Applications</h3>
+            <button type="button" onclick="closeRecordsModal()" class="text-gray-500 hover:text-gray-800"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="p-5 overflow-y-auto max-h-[78vh]">
+            <div class="overflow-x-auto border border-gray-200 rounded-lg">
+                <table class="w-full min-w-[1300px] text-sm">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-3 py-2 text-left">Loan ID</th>
+                            <th class="px-3 py-2 text-left">Customer</th>
+                            <th class="px-3 py-2 text-left">Mobile</th>
+                            <th class="px-3 py-2 text-left">Email</th>
+                            <th class="px-3 py-2 text-left">Type</th>
+                            <th class="px-3 py-2 text-left">Amount</th>
+                            <th class="px-3 py-2 text-left">Status</th>
+                            <th class="px-3 py-2 text-left">Assigned To</th>
+                            <th class="px-3 py-2 text-left">Assigned By</th>
+                            <th class="px-3 py-2 text-left">Created</th>
+                            <th class="px-3 py-2 text-left">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="records-modal-body" class="divide-y divide-gray-200"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="loan-detail-modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-[60] p-4">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-6xl max-h-[92vh] overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+            <h3 id="loan-detail-title" class="font-bold text-gray-900">Application Full Details</h3>
+            <button type="button" onclick="closeLoanDetail()" class="text-gray-500 hover:text-gray-800"><i class="fas fa-times"></i></button>
+        </div>
+        <div id="loan-detail-body" class="p-5 overflow-y-auto max-h-[80vh] space-y-5"></div>
+    </div>
+</div>
+
+<script>
+const detailPayload = JSON.parse(document.getElementById('subadmin-detail-data').textContent || '{}');
+const customers = detailPayload.customers || [];
+
+function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;',
+    }[char]));
+}
+
+function recordsForFilter(filterKey) {
+    if (filterKey === 'submitted') return customers.filter((item) => item.source === 'Submitted');
+    if (filterKey === 'assigned') return customers.filter((item) => item.source === 'Assigned');
+    if (filterKey === 'approved') return customers.filter((item) => item.status_raw === 'approved' || item.status === 'approved');
+    if (filterKey === 'rejected') return customers.filter((item) => item.status_raw === 'rejected' || item.status === 'rejected');
+    if (filterKey === 'banking_processing') return customers.filter((item) => item.status_raw === 'follow_up' || item.status === 'follow_up');
+    if (filterKey === 'waiting') return customers.filter((item) => item.status_raw === 'waiting' || item.status === 'waiting');
+    if (filterKey === 'disbursed') return customers.filter((item) => item.status_raw === 'disbursed' || item.status === 'disbursed');
+    return customers;
+}
+
+function openRecordsModal(filterKey, title) {
+    const rows = recordsForFilter(filterKey);
+    document.getElementById('records-modal-title').textContent = `${title} (${rows.length})`;
+    const body = document.getElementById('records-modal-body');
+    if (!rows.length) {
+        body.innerHTML = '<tr><td colspan="11" class="px-3 py-8 text-center text-gray-500">No records found.</td></tr>';
+    } else {
+        body.innerHTML = rows.map((item) => `
+            <tr>
+                <td class="px-3 py-2 font-semibold text-gray-900">${escapeHtml(item.loan_uid || item.loan_id || '-')}</td>
+                <td class="px-3 py-2">${escapeHtml(item.customer_name || '-')}</td>
+                <td class="px-3 py-2">${escapeHtml(item.mobile || '-')}</td>
+                <td class="px-3 py-2">${escapeHtml(item.email || '-')}</td>
+                <td class="px-3 py-2">${escapeHtml(item.loan_type || '-')}</td>
+                <td class="px-3 py-2 font-semibold">Rs. ${Number(item.loan_amount || 0).toLocaleString('en-IN')}</td>
+                <td class="px-3 py-2">${escapeHtml(item.status_display || '-')}</td>
+                <td class="px-3 py-2">${escapeHtml(item.assigned_to || '-')}</td>
+                <td class="px-3 py-2">${escapeHtml(item.assigned_by || '-')}</td>
+                <td class="px-3 py-2">${escapeHtml(item.created_at || '-')}</td>
+                <td class="px-3 py-2"><button type="button" onclick="openLoanDetail(${Number(item.loan_id) || 0})" class="px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700">View</button></td>
+            </tr>
+        `).join('');
+    }
+    document.getElementById('records-modal').classList.remove('hidden');
+    document.getElementById('records-modal').classList.add('flex');
+}
+
+function closeRecordsModal() {
+    document.getElementById('records-modal').classList.add('hidden');
+    document.getElementById('records-modal').classList.remove('flex');
+}
+
+async function openLoanDetail(loanId) {
+    if (!loanId) return;
+    const body = document.getElementById('loan-detail-body');
+    document.getElementById('loan-detail-title').textContent = 'Application Full Details';
+    body.innerHTML = '<div class="py-8 text-center text-gray-500">Loading...</div>';
+    document.getElementById('loan-detail-modal').classList.remove('hidden');
+    document.getElementById('loan-detail-modal').classList.add('flex');
+
+    try {
+        const response = await fetch(`/api/subadmin/loan/${loanId}/details/`);
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+            throw new Error(result.error || 'Failed to load loan details');
+        }
+        renderLoanDetail(result.data || {});
+    } catch (error) {
+        body.innerHTML = `<div class="py-8 text-center text-rose-600">${escapeHtml(error.message || 'Unable to load details')}</div>`;
+    }
+}
+
+function renderLoanDetail(data) {
+    document.getElementById('loan-detail-title').textContent = `${data.loan_id || 'Application'} - ${data.full_name || ''}`;
+    const details = Array.isArray(data.full_application_details) ? data.full_application_details : [];
+    const documents = Array.isArray(data.documents) ? data.documents : [];
+    const detailRows = details.length ? details.map((row) => `
+        <tr>
+            <td class="px-3 py-2 font-semibold text-gray-700 bg-gray-50">${escapeHtml(row.label || '-')}</td>
+            <td class="px-3 py-2 text-gray-900">${escapeHtml(row.value || '-')}</td>
+        </tr>
+    `).join('') : '<tr><td colspan="2" class="px-3 py-6 text-center text-gray-500">No full details available.</td></tr>';
+    const documentRows = documents.length ? documents.map((doc) => `
+        <tr>
+            <td class="px-3 py-2 font-semibold">${escapeHtml(doc.name || doc.label || doc.type || 'Document')}</td>
+            <td class="px-3 py-2">${escapeHtml(doc.source || '-')}</td>
+            <td class="px-3 py-2">${escapeHtml(doc.uploaded_at || '-')}</td>
+            <td class="px-3 py-2">
+                ${doc.url ? `<a href="${escapeHtml(doc.url)}" target="_blank" class="px-3 py-1 bg-blue-600 text-white rounded text-xs">View</a> <a href="${escapeHtml(doc.url)}" download class="px-3 py-1 bg-emerald-600 text-white rounded text-xs">Download</a>` : '<span class="text-gray-400">No file</span>'}
+            </td>
+        </tr>
+    `).join('') : '<tr><td colspan="4" class="px-3 py-6 text-center text-gray-500">No documents uploaded.</td></tr>';
+
+    document.getElementById('loan-detail-body').innerHTML = `
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <div class="bg-slate-50 border border-slate-200 rounded-lg p-3"><p class="text-xs text-gray-500">Status</p><p class="font-bold">${escapeHtml(data.status_display || '-')}</p></div>
+            <div class="bg-slate-50 border border-slate-200 rounded-lg p-3"><p class="text-xs text-gray-500">Loan Type</p><p class="font-bold">${escapeHtml(data.loan_type || '-')}</p></div>
+            <div class="bg-slate-50 border border-slate-200 rounded-lg p-3"><p class="text-xs text-gray-500">Amount</p><p class="font-bold">Rs. ${Number(data.loan_amount || 0).toLocaleString('en-IN')}</p></div>
+            <div class="bg-slate-50 border border-slate-200 rounded-lg p-3"><p class="text-xs text-gray-500">Created</p><p class="font-bold">${escapeHtml(data.created_at || '-')}</p></div>
+        </div>
+        <div class="border border-gray-200 rounded-lg overflow-hidden">
+            <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 font-bold">Full Application Form Details</div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm"><tbody>${detailRows}</tbody></table>
+            </div>
+        </div>
+        <div class="border border-gray-200 rounded-lg overflow-hidden">
+            <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 font-bold">Uploaded Documents</div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-gray-50"><tr><th class="px-3 py-2 text-left">Document</th><th class="px-3 py-2 text-left">Source</th><th class="px-3 py-2 text-left">Uploaded</th><th class="px-3 py-2 text-left">Actions</th></tr></thead>
+                    <tbody>${documentRows}</tbody>
+                </table>
+            </div>
+        </div>
+    `;
+}
+
+function closeLoanDetail() {
+    document.getElementById('loan-detail-modal').classList.add('hidden');
+    document.getElementById('loan-detail-modal').classList.remove('flex');
+}
+</script>
+{% endblock %}

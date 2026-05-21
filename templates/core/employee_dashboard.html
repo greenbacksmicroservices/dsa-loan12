@@ -28,72 +28,96 @@
     </div>
 </div>
 
-<!-- Dashboard Stats Cards - Professional Fintech Design (4 Cards in Single Row) -->
+<!-- Dashboard Stats Cards - 8 Status Cards with Animations and Colors -->
 <div class="container-fluid mb-5">
-    <div class="row g-3">
-        <!-- Total Loans Card - Blue -->
-        <div class="col-lg-3 col-md-6 col-sm-12">
-            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; padding: 20px; color: white; box-shadow: 0 8px 24px rgba(102, 126, 234, 0.15); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative; overflow: hidden; cursor: pointer; height: 100%;" onclick="window.location.href='{% url 'employee_new_entry_request' %}'">
-                <div style="position: absolute; top: -40%; right: -40%; width: 150px; height: 150px; background: rgba(255,255,255,0.1); border-radius: 50%; pointer-events: none;"></div>
-                <div style="position: relative; z-index: 2;">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
-                        <div>
-                            <p style="font-size: 12px; opacity: 0.85; margin: 0; font-weight: 500; letter-spacing: 0.5px;">TOTAL LOANS</p>
-                        </div>
-                        <i class="bi bi-briefcase" style="font-size: 24px; opacity: 0.8;"></i>
-                    </div>
-                    <div style="font-size: 28px; font-weight: 700; margin-bottom: 0;" id="total-loans">0</div>
-                </div>
+    <div class="dashboard-cards-grid">
+        <!-- New Application Card - Blue -->
+        <a href="{% url 'employee_new_entry_request' %}" class="dashboard-card card-new">
+            <div class="card-header-row">
+                <p class="card-title">New Application</p>
+                <i class="bi bi-file-earmark-plus"></i>
             </div>
-        </div>
+            <h2 class="card-count" id="stat-new-entry">0</h2>
+            <p class="card-subtitle">Total New Applications</p>
+            <span class="card-link">View Details →</span>
+        </a>
 
-        <!-- Document Pending Card - Orange/Red -->
-        <div class="col-lg-3 col-md-6 col-sm-12">
-            <div style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); border-radius: 12px; padding: 20px; color: white; box-shadow: 0 8px 24px rgba(249, 115, 22, 0.15); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative; overflow: hidden; cursor: pointer; height: 100%;" onclick="window.location.href='{% url 'employee_new_entry_request' %}?status=waiting'">
-                <div style="position: absolute; top: -40%; right: -40%; width: 150px; height: 150px; background: rgba(255,255,255,0.1); border-radius: 50%; pointer-events: none;"></div>
-                <div style="position: relative; z-index: 2;">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
-                        <div>
-                            <p style="font-size: 12px; opacity: 0.85; margin: 0; font-weight: 500; letter-spacing: 0.5px;">DOCUMENT PENDING</p>
-                        </div>
-                        <i class="bi bi-hourglass-split" style="font-size: 24px; opacity: 0.8;"></i>
-                    </div>
-                    <div style="font-size: 28px; font-weight: 700; margin-bottom: 0;" id="processing-loans">0</div>
-                </div>
+        <!-- Document Pending Card - Orange -->
+        <a href="{% url 'employee_new_entry_request' %}" class="dashboard-card card-pending">
+            <div class="card-header-row">
+                <p class="card-title">Document Pending</p>
+                <i class="bi bi-hourglass-split"></i>
             </div>
-        </div>
+            <h2 class="card-count" id="stat-waiting">0</h2>
+            <p class="card-subtitle">Pending Review</p>
+            <span class="card-link">View Details →</span>
+        </a>
+
+        <!-- Pending Document Cleared Card - Teal -->
+        <a href="{% url 'employee_new_entry_request' %}" class="dashboard-card card-cleared">
+            <div class="card-header-row">
+                <p class="card-title">Pending Document Cleared</p>
+                <i class="bi bi-check2-circle"></i>
+            </div>
+            <h2 class="card-count" id="stat-updated-document">0</h2>
+            <p class="card-subtitle">Ready for Banking Process</p>
+            <span class="card-link">View Details →</span>
+        </a>
+
+        <!-- Banking Processing Card - Purple -->
+        <a href="{% url 'employee_new_entry_request' %}" class="dashboard-card card-banking">
+            <div class="card-header-row">
+                <p class="card-title">Banking Processing</p>
+                <i class="bi bi-building"></i>
+            </div>
+            <h2 class="card-count" id="stat-banking-processing">0</h2>
+            <p class="card-subtitle">Banking Processing Queue</p>
+            <span class="card-link">View Details →</span>
+        </a>
+
+        <!-- Follow Up Card - Orange-Red -->
+        <a href="{% url 'employee_new_entry_request' %}" class="dashboard-card card-followup">
+            <div class="card-header-row">
+                <p class="card-title">Follow Up</p>
+                <i class="bi bi-arrow-repeat"></i>
+            </div>
+            <h2 class="card-count" id="stat-follow-up-pending">1</h2>
+            <p class="card-subtitle">Reverted for Correction</p>
+            <span class="card-link">View Details →</span>
+        </a>
 
         <!-- Approved Card - Green -->
-        <div class="col-lg-3 col-md-6 col-sm-12">
-            <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 12px; padding: 20px; color: white; box-shadow: 0 8px 24px rgba(16, 185, 129, 0.15); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative; overflow: hidden; cursor: pointer; height: 100%;" onclick="window.location.href='{% url 'employee_new_entry_request' %}?status=approved'">
-                <div style="position: absolute; top: -40%; right: -40%; width: 150px; height: 150px; background: rgba(255,255,255,0.1); border-radius: 50%; pointer-events: none;"></div>
-                <div style="position: relative; z-index: 2;">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
-                        <div>
-                            <p style="font-size: 12px; opacity: 0.85; margin: 0; font-weight: 500; letter-spacing: 0.5px;">APPROVED</p>
-                        </div>
-                        <i class="bi bi-check-circle" style="font-size: 24px; opacity: 0.8;"></i>
-                    </div>
-                    <div style="font-size: 28px; font-weight: 700; margin-bottom: 0;" id="approved-loans">0</div>
-                </div>
+        <a href="{% url 'employee_new_entry_request' %}" class="dashboard-card card-approved">
+            <div class="card-header-row">
+                <p class="card-title">Approved</p>
+                <i class="bi bi-check-circle"></i>
             </div>
-        </div>
+            <h2 class="card-count" id="stat-approved">0</h2>
+            <p class="card-subtitle">Successfully Approved</p>
+            <span class="card-link">View Details →</span>
+        </a>
 
         <!-- Rejected Card - Red -->
-        <div class="col-lg-3 col-md-6 col-sm-12">
-            <div style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border-radius: 12px; padding: 20px; color: white; box-shadow: 0 8px 24px rgba(239, 68, 68, 0.15); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative; overflow: hidden; cursor: pointer; height: 100%;" onclick="window.location.href='{% url 'employee_new_entry_request' %}?status=rejected'">
-                <div style="position: absolute; top: -40%; right: -40%; width: 150px; height: 150px; background: rgba(255,255,255,0.1); border-radius: 50%; pointer-events: none;"></div>
-                <div style="position: relative; z-index: 2;">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
-                        <div>
-                            <p style="font-size: 12px; opacity: 0.85; margin: 0; font-weight: 500; letter-spacing: 0.5px;">REJECTED</p>
-                        </div>
-                        <i class="bi bi-x-circle" style="font-size: 24px; opacity: 0.8;"></i>
-                    </div>
-                    <div style="font-size: 28px; font-weight: 700; margin-bottom: 0;" id="rejected-loans">0</div>
-                </div>
+        <a href="{% url 'employee_new_entry_request' %}" class="dashboard-card card-rejected">
+            <div class="card-header-row">
+                <p class="card-title">Rejected</p>
+                <i class="bi bi-x-circle"></i>
             </div>
-        </div>
+            <h2 class="card-count" id="stat-rejected">0</h2>
+            <p class="card-subtitle">Rejected Applications</p>
+            <span class="card-link">View Details →</span>
+        </a>
+
+        <!-- Disbursed Card - Cyan -->
+        <a href="{% url 'employee_new_entry_request' %}" class="dashboard-card card-disbursed">
+            <div class="card-header-row">
+                <p class="card-title">Disbursed</p>
+                <i class="bi bi-cash-coin"></i>
+            </div>
+            <h2 class="card-count" id="stat-disbursed">0</h2>
+            <p class="card-subtitle">Fund Disbursed Successfully</p>
+            <span class="card-link">View Details →</span>
+        </a>
     </div>
 </div>
 
@@ -132,6 +156,197 @@
 
 {% block extra_css %}
 <style>
+    /* Dashboard Cards Grid */
+    .dashboard-cards-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 24px;
+        margin-bottom: 32px;
+    }
+
+    /* Animations */
+    @keyframes slideInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes shimmer {
+        0% { left: -100%; }
+        100% { left: 100%; }
+    }
+
+    /* Dashboard Card Base */
+    .dashboard-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 20px;
+        padding: 28px;
+        color: white;
+        box-shadow: 0 10px 40px rgba(102, 126, 234, 0.25);
+        transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        position: relative;
+        overflow: hidden;
+        border: 2px solid rgba(255, 255, 255, 0.15);
+        text-decoration: none;
+        display: flex;
+        flex-direction: column;
+        min-height: 220px;
+        animation: slideInUp 0.6s ease-out;
+    }
+
+    .dashboard-card:hover {
+        transform: translateY(-16px) scale(1.02);
+        box-shadow: 0 20px 60px rgba(102, 126, 234, 0.4);
+    }
+
+    /* Shine Effect */
+    .dashboard-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.25), transparent);
+        animation: shimmer 3s infinite;
+    }
+
+    /* Blob Effect */
+    .dashboard-card::after {
+        content: '';
+        position: absolute;
+        width: 120px;
+        height: 120px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 50%;
+        top: -20px;
+        right: -20px;
+        transition: all 0.3s ease;
+    }
+
+    .dashboard-card:hover::after {
+        width: 200px;
+        height: 200px;
+        top: -50px;
+        right: -50px;
+    }
+
+    /* Card Header */
+    .card-header-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+        position: relative;
+        z-index: 2;
+    }
+
+    .card-title {
+        font-size: 14px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        opacity: 0.95;
+        margin: 0;
+        color: rgba(255, 255, 255, 0.95);
+    }
+
+    .card-header-row i {
+        font-size: 24px;
+        opacity: 0.85;
+    }
+
+    /* Card Count */
+    .card-count {
+        font-size: 48px;
+        font-weight: 900;
+        margin: 12px 0;
+        line-height: 1;
+        position: relative;
+        z-index: 2;
+        text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Card Subtitle */
+    .card-subtitle {
+        font-size: 13px;
+        opacity: 0.85;
+        margin: 8px 0;
+        position: relative;
+        z-index: 2;
+        font-weight: 500;
+    }
+
+    /* Card Link */
+    .card-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        font-weight: 700;
+        color: rgba(255, 255, 255, 0.95);
+        margin-top: auto;
+        padding: 10px 14px;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(2px);
+        transition: all 0.3s ease;
+        position: relative;
+        z-index: 2;
+        width: fit-content;
+    }
+
+    .dashboard-card:hover .card-link {
+        background: rgba(255, 255, 255, 0.35);
+        gap: 10px;
+    }
+
+    /* Color Variants */
+    .card-new {
+        background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+        box-shadow: 0 10px 40px rgba(37, 99, 235, 0.25);
+    }
+
+    .card-pending {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        box-shadow: 0 10px 40px rgba(245, 158, 11, 0.25);
+    }
+
+    .card-cleared {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        box-shadow: 0 10px 40px rgba(79, 172, 254, 0.25);
+    }
+
+    .card-banking {
+        background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+        box-shadow: 0 10px 40px rgba(139, 92, 246, 0.25);
+    }
+
+    .card-followup {
+        background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+        box-shadow: 0 10px 40px rgba(249, 115, 22, 0.25);
+    }
+
+    .card-approved {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        box-shadow: 0 10px 40px rgba(16, 185, 129, 0.25);
+    }
+
+    .card-rejected {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        box-shadow: 0 10px 40px rgba(239, 68, 68, 0.25);
+    }
+
+    .card-disbursed {
+        background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+        box-shadow: 0 10px 40px rgba(6, 182, 212, 0.25);
+    }
+
     /* Stat Card Base Styling */
     .stat-card {
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -142,10 +357,6 @@
     .stat-card:hover {
         transform: translateY(-8px);
         box-shadow: 0 16px 48px rgba(0, 0, 0, 0.15) !important;
-    }
-
-    .stat-card:hover {
-        filter: brightness(1.05);
     }
 
     /* Dashboard Header */
@@ -214,21 +425,63 @@
     }
 
     /* Responsive Grid */
-    @media (max-width: 1200px) {
-        .col-lg-3 {
-            flex: 0 0 50%;
-            max-width: 50%;
+    @media (max-width: 1400px) {
+        .dashboard-cards-grid {
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        }
+    }
+
+    @media (max-width: 1024px) {
+        .dashboard-cards-grid {
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+        }
+
+        .card-count {
+            font-size: 40px;
         }
     }
 
     @media (max-width: 768px) {
-        .col-lg-3 {
-            flex: 0 0 100%;
-            max-width: 100%;
+        .dashboard-cards-grid {
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
         }
-        
+
+        .card-count {
+            font-size: 32px;
+        }
+
+        .dashboard-card {
+            padding: 20px;
+            min-height: 200px;
+        }
+
+        .card-title {
+            font-size: 12px;
+        }
+
         .dashboard-header h1 {
             font-size: 24px !important;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .dashboard-cards-grid {
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 10px;
+        }
+
+        .card-count {
+            font-size: 28px;
+        }
+
+        .dashboard-card {
+            padding: 16px;
+        }
+
+        .card-header-row i {
+            font-size: 20px;
         }
     }
 
@@ -294,11 +547,15 @@
 
             const data = await response.json();
             
-            // Update stats
-            document.getElementById('total-loans').textContent = data.total_assigned || 0;
-            document.getElementById('processing-loans').textContent = data.processing || 0;
-            document.getElementById('approved-loans').textContent = data.approved || 0;
-            document.getElementById('rejected-loans').textContent = data.rejected || 0;
+            // Update all 8 card stats
+            document.getElementById('stat-new-entry').textContent = data.new_entry || 0;
+            document.getElementById('stat-waiting').textContent = data.waiting || 0;
+            document.getElementById('stat-updated-document').textContent = data.updated_document || 0;
+            document.getElementById('stat-banking-processing').textContent = data.banking_processing || 0;
+            document.getElementById('stat-follow-up-pending').textContent = data.follow_up_pending || 0;
+            document.getElementById('stat-approved').textContent = data.approved || 0;
+            document.getElementById('stat-rejected').textContent = data.rejected || 0;
+            document.getElementById('stat-disbursed').textContent = data.disbursed || 0;
 
             // Load charts
             loadCharts(data);
@@ -316,21 +573,29 @@
             statusChart = new Chart(statusCtx, {
                 type: 'doughnut',
                 data: {
-                    labels: ['Approved', 'Rejected', 'Disbursed', 'Document Pending'],
+                    labels: ['New Application', 'Document Pending', 'Pending Document Cleared', 'Banking Processing', 'Follow Up', 'Approved', 'Rejected', 'Disbursed'],
                     datasets: [{
                         data: [
+                            data.new_entry || 0,
+                            data.waiting || 0,
+                            data.updated_document || 0,
+                            data.banking_processing || 0,
+                            data.follow_up_pending || 0,
                             data.approved || 0,
                             data.rejected || 0,
-                            data.disbursed || 0,
-                            data.processing || 0
+                            data.disbursed || 0
                         ],
                         backgroundColor: [
+                            '#2563eb',  // Blue - New Application
+                            '#f59e0b',  // Amber - Document Pending
+                            '#4facfe',  // Cyan - Pending Document Cleared
+                            '#8b5cf6',  // Purple - Banking Processing
+                            '#f97316',  // Orange - Follow Up
                             '#10b981',  // Green - Approved
                             '#ef4444',  // Red - Rejected
-                            '#3b82f6',  // Blue - Disbursed
-                            '#f59e0b'   // Amber - Processing
+                            '#06b6d4'   // Cyan - Disbursed
                         ],
-                        borderColor: ['#ffffff', '#ffffff', '#ffffff', '#ffffff'],
+                        borderColor: ['#ffffff', '#ffffff', '#ffffff', '#ffffff', '#ffffff', '#ffffff', '#ffffff', '#ffffff'],
                         borderWidth: 2,
                         borderRadius: 8
                     }]

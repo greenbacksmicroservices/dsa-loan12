@@ -238,6 +238,10 @@
                             <input id="editApplicantEmail" class="form-control" type="email" placeholder="Email">
                         </div>
                         <div class="col-md-4">
+                            <label class="form-label fw-semibold">Manual Loan ID</label>
+                            <input id="editManualLoanId" class="form-control" type="text" placeholder="Enter manual Loan ID">
+                        </div>
+                        <div class="col-md-4">
                             <label class="form-label fw-semibold">City</label>
                             <input id="editCity" class="form-control" type="text" placeholder="City">
                         </div>
@@ -414,6 +418,8 @@
                 <input id="bankerEmailInput" class="form-control mb-2" type="email" placeholder="Enter banker email">
                 <label class="form-label">Loan Account Number</label>
                 <input id="processingLoanAccountNumberInput" class="form-control mb-2" type="text" placeholder="Enter loan account number">
+                <label class="form-label">Manual Loan ID *</label>
+                <input id="processingManualLoanIdInput" class="form-control mb-2" type="text" placeholder="Enter manual Loan ID">
                 <label class="form-label">Verified Loan Amount *</label>
                 <input id="verifiedLoanAmountInput" class="form-control mb-2" type="number" min="0" step="0.01" placeholder="Enter verified loan amount">
                 <label class="form-label">Final Loan Amount *</label>
@@ -520,6 +526,10 @@
                     <div class="col-md-6">
                         <label class="form-label">Current Loan Account Number</label>
                         <input id="disburseLoanAccountNumber" class="form-control" type="text" placeholder="Current loan account number">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Manual Loan ID</label>
+                        <input id="disburseManualLoanIdInput" class="form-control" type="text" placeholder="Edit manual Loan ID">
                     </div>
                     <div class="col-12">
                         <label class="form-label">Description</label>
@@ -816,6 +826,7 @@ function prefillBankProcessingModal(v) {
     setInputValue('processingDsaNameInput', meta.dsa_name || v?.sm_name || '');
     setInputValue('bankerDescriptionInput', meta.banker_description);
     setInputValue('bankRemarkInput', meta.bank_remark);
+    setInputValue('processingManualLoanIdInput', v?.user_id || '');
 }
 
 function prefillApproveModal(v, force = false) {
@@ -847,6 +858,7 @@ function prefillDisburseModal(v) {
     setInputValue('disburseDescriptionInput', meta.banker_description);
     setInputValue('disburseBankNotes', meta.bank_remark);
     setInputValue('disburseLoanAccountNumber', v?.account_number || '');
+    setInputValue('disburseManualLoanIdInput', v?.user_id || '');
     setInputValue('disburseAmount', meta.final_loan_amount || v?.loan_amount || '');
     setInputValue('disburseDate', new Date().toISOString().slice(0, 10));
 }
@@ -1070,6 +1082,7 @@ function fillFollowUpEditFields(v) {
     setInputValue('editApplicantName', v.applicant_name || '');
     setInputValue('editApplicantMobile', v.mobile || '');
     setInputValue('editApplicantEmail', v.email || '');
+    setInputValue('editManualLoanId', v.user_id || '');
     setInputValue('editCity', v.city || '');
     setInputValue('editState', v.state || '');
     setInputValue('editPinCode', v.pin_code || '');
@@ -1134,7 +1147,7 @@ function fill() {
     set('name', v.applicant_name);
     set('mobile', v.mobile);
     set('altMobile', v.alternate_mobile || fromMap('alternate mobile'));
-    set('loanManualId', pick(v.user_id, fromMap('loan id manual', 'loan uid'), v.loan_reference, v.loan_application_id, v.id));
+    set('loanManualId', pick(v.manual_loan_id_display, v.user_id, fromMap('loan id manual', 'loan uid')) || 'Pending Manual ID');
     set('email', v.email);
     set('fatherName', v.father_name || fromMap('father name'));
     set('motherName', v.mother_name || fromMap('mother name'));
@@ -1232,7 +1245,7 @@ function fill() {
                         return fileUrl
                             ? `<a class="btn btn-sm btn-outline-primary" target="_blank" href="${fileUrl}">View</a>
                                <a class="btn btn-sm btn-outline-success" download href="${fileUrl}">Download</a>`
-                            : '<span class="small text-warning-emphasis fw-semibold">View/Download upload ke baad available hoga</span>';
+                            : '<span class="small text-warning-emphasis fw-semibold">View and download options will appear after upload</span>';
                     })()}
                 </div>
             </div>
@@ -1589,6 +1602,7 @@ document.getElementById('addFollowUpDocRowBtn').onclick = () => {
     container.appendChild(buildFollowUpDocRow());
 };
 document.getElementById('saveFollowUpEditBtn').onclick = async () => {
+    const manualLoanId = document.getElementById('editManualLoanId').value.trim();
     const payload = {
         full_name: document.getElementById('editApplicantName').value.trim(),
         mobile: document.getElementById('editApplicantMobile').value.trim(),
@@ -1607,6 +1621,9 @@ document.getElementById('saveFollowUpEditBtn').onclick = async () => {
         current_address: document.getElementById('editCurrentAddress').value.trim(),
         edit_remark: document.getElementById('editFollowUpRemark').value.trim(),
     };
+    if (manualLoanId) {
+        payload.manual_loan_id = manualLoanId;
+    }
     try {
         const d = await call(`/api/employee/loan/${loanId}/follow-up/update/`, payload);
         msg('success', d.message || 'Case details updated');
@@ -1680,6 +1697,7 @@ document.getElementById('confirmBankProcessing').onclick = async () => {
     const bankerPhone = document.getElementById('bankerPhoneInput').value.trim();
     const bankerEmail = document.getElementById('bankerEmailInput').value.trim();
     const loanAccountNumber = document.getElementById('processingLoanAccountNumberInput').value.trim();
+    const manualLoanId = document.getElementById('processingManualLoanIdInput').value.trim();
     const processingBankName = document.getElementById('processingBankNameInput').value.trim();
     const verifiedLoanAmount = document.getElementById('verifiedLoanAmountInput').value.trim();
     const finalLoanAmount = document.getElementById('finalLoanAmountInput').value.trim();
@@ -1687,8 +1705,8 @@ document.getElementById('confirmBankProcessing').onclick = async () => {
     const bankerDescription = document.getElementById('bankerDescriptionInput').value.trim();
     const bankRemark = document.getElementById('bankRemarkInput').value.trim();
 
-    if (!processingBankName || !bankerName || !bankerPhone || !bankerEmail || !verifiedLoanAmount || !finalLoanAmount || !processingDsaName) {
-        msg('danger', 'Please fill bank name, banker details, verified/final amount, and DSA name.');
+    if (!processingBankName || !bankerName || !bankerPhone || !bankerEmail || !manualLoanId || !verifiedLoanAmount || !finalLoanAmount || !processingDsaName) {
+        msg('danger', 'Please fill bank name, banker details, manual Loan ID, verified/final amount, and DSA name.');
         return;
     }
     const phoneDigits = bankerPhone.replace(/\D/g, '');
@@ -1713,6 +1731,7 @@ document.getElementById('confirmBankProcessing').onclick = async () => {
             banker_phone: bankerPhone,
             banker_email: bankerEmail,
             loan_account_number: loanAccountNumber,
+            manual_loan_id: manualLoanId,
             bank_name: processingBankName,
             verified_loan_amount: verifiedLoanAmount,
             final_loan_amount: finalLoanAmount,
@@ -1815,6 +1834,7 @@ document.getElementById('confirmDisburse').onclick = async () => {
         const finalLoanAmount = document.getElementById('disburseFinalLoanAmountInput').value.trim();
         const dsaName = document.getElementById('disburseDsaNameInput').value.trim();
         const currentLoanAccountNumber = document.getElementById('disburseLoanAccountNumber').value.trim();
+        const manualLoanId = document.getElementById('disburseManualLoanIdInput').value.trim();
         const description = document.getElementById('disburseDescriptionInput').value.trim();
         const bankNotes = document.getElementById('disburseBankNotes').value.trim();
 
@@ -1843,6 +1863,7 @@ document.getElementById('confirmDisburse').onclick = async () => {
             dsa_name: dsaName,
             banker_description: description,
             current_loan_account_number: currentLoanAccountNumber,
+            manual_loan_id: manualLoanId,
             disbursement_notes: bankNotes,
             disbursement_amount: document.getElementById('disburseAmount').value || null,
             disbursement_date: document.getElementById('disburseDate').value || null,

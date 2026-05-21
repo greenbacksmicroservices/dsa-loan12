@@ -58,6 +58,7 @@
             box-shadow: 0 18px 34px rgba(2, 6, 23, 0.45);
             position: relative;
             border-right: 1px solid rgba(255,255,255,0.08);
+            transition: width 0.28s ease, box-shadow 0.28s ease;
         }
 
         .sidebar::after {
@@ -236,6 +237,47 @@
             gap: 12px;
         }
 
+        body.sidebar-collapsed .sidebar {
+            width: 92px;
+        }
+
+        body.sidebar-collapsed .sidebar-header {
+            justify-content: center;
+            padding: 18px 10px;
+        }
+
+        body.sidebar-collapsed .brand-text,
+        body.sidebar-collapsed .profile-name,
+        body.sidebar-collapsed .profile-role,
+        body.sidebar-collapsed .profile-email,
+        body.sidebar-collapsed .sidebar-link span,
+        body.sidebar-collapsed .sidebar-footer {
+            display: none;
+        }
+
+        body.sidebar-collapsed .sidebar-profile-section {
+            padding: 16px 10px 12px;
+        }
+
+        body.sidebar-collapsed .profile-photo {
+            width: 52px;
+            height: 52px;
+        }
+
+        body.sidebar-collapsed .sidebar-nav {
+            padding: 10px 8px;
+        }
+
+        body.sidebar-collapsed .sidebar-link {
+            justify-content: center;
+            padding: 11px 10px;
+            gap: 0;
+        }
+
+        body.sidebar-collapsed .sidebar-link:hover {
+            transform: none;
+        }
+
         .main-content {
             flex: 1;
             display: flex;
@@ -252,6 +294,78 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
+            position: relative;
+            overflow: visible;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            position: relative;
+            padding-left: 18px;
+        }
+
+        .sidebar-toggle-btn {
+            border: 1px solid #d1d5db;
+            border-radius: 14px;
+            background: linear-gradient(145deg, #ffffff 0%, #e2f6f3 100%);
+            color: #0f766e;
+            width: 48px;
+            height: 44px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 12px 24px rgba(15, 118, 110, 0.14);
+            position: absolute;
+            left: -46px;
+            top: 50%;
+            transform: translateY(-50%);
+            transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease, background 0.25s ease;
+        }
+
+        .sidebar-toggle-bars {
+            display: inline-flex;
+            flex-direction: column;
+            gap: 4px;
+            width: 18px;
+        }
+
+        .sidebar-toggle-bars span {
+            display: block;
+            height: 2px;
+            border-radius: 999px;
+            background: currentColor;
+            transition: width 0.2s ease;
+        }
+
+        .sidebar-toggle-bars span:nth-child(2) {
+            width: 72%;
+            align-self: flex-end;
+        }
+
+        .sidebar-toggle-bars span:nth-child(3) {
+            width: 54%;
+            align-self: flex-end;
+        }
+
+        .sidebar-toggle-btn.is-active .sidebar-toggle-bars span:nth-child(2),
+        .sidebar-toggle-btn.is-active .sidebar-toggle-bars span:nth-child(3) {
+            width: 100%;
+        }
+
+        .sidebar-toggle-btn:hover {
+            background: linear-gradient(145deg, #f0fdfa 0%, #ccfbf1 100%);
+            border-color: #14b8a6;
+            transform: translate(-2px, -50%);
+            box-shadow: 0 16px 30px rgba(15, 118, 110, 0.22);
+        }
+
+        .sidebar-toggle-btn.is-active {
+            border-color: #0d9488;
+            background: linear-gradient(145deg, #ccfbf1 0%, #99f6e4 100%);
+            color: #115e59;
         }
 
         .page-content {
@@ -367,6 +481,26 @@
 
         .theme-toggle-btn:hover {
             background: #f3f4f6;
+        }
+
+        @media (max-width: 768px) {
+            .header-left {
+                padding-left: 0;
+            }
+
+            .sidebar-toggle-btn {
+                position: static;
+                left: auto;
+                top: auto;
+                transform: none;
+                width: 44px;
+                height: 44px;
+                border-radius: 12px;
+            }
+
+            .sidebar-toggle-btn:hover {
+                transform: translateY(-1px);
+            }
         }
 
         .notification-item {
@@ -702,7 +836,14 @@
             <!-- HEADER -->
             <header class="header" x-data="{ notificationOpen: false, profileOpen: false }">
                 <!-- Left Section -->
-                <div style="display: flex; align-items: center; gap: 16px;">
+                <div class="header-left">
+                    <button class="sidebar-toggle-btn" type="button" id="subadmin-sidebar-toggle-btn" onclick="toggleSubadminSidebar()" aria-label="Collapse Sidebar" title="Collapse sidebar">
+                        <span class="sidebar-toggle-bars" aria-hidden="true">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </span>
+                    </button>
                     <h2 style="font-size: 20px; font-weight: bold; color: #111827;">{% block page_title %}Partner Dashboard{% endblock %}</h2>
                 </div>
                 
@@ -781,6 +922,32 @@
             const next = document.body.classList.contains('dark-mode') ? 'light' : 'dark';
             localStorage.setItem('partnerThemeMode', next);
             applyThemeMode(next);
+        }
+
+        function isSubadminMobileViewport() {
+            return window.matchMedia('(max-width: 768px)').matches;
+        }
+
+        function syncSubadminSidebarToggle() {
+            const button = document.getElementById('subadmin-sidebar-toggle-btn');
+            if (!button) return;
+            const collapsed = document.body.classList.contains('sidebar-collapsed');
+            button.classList.toggle('is-active', collapsed);
+            button.setAttribute('aria-label', collapsed ? 'Expand Sidebar' : 'Collapse Sidebar');
+            button.title = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
+        }
+
+        function applySubadminSidebarState(collapsed) {
+            document.body.classList.toggle('sidebar-collapsed', !!collapsed);
+            syncSubadminSidebarToggle();
+        }
+
+        function toggleSubadminSidebar() {
+            const nextCollapsed = !document.body.classList.contains('sidebar-collapsed');
+            applySubadminSidebarState(nextCollapsed);
+            if (!isSubadminMobileViewport()) {
+                localStorage.setItem('subadminSidebarCollapsed', nextCollapsed ? '1' : '0');
+            }
         }
 
         function getPanelRoleKey() {
@@ -919,6 +1086,16 @@
 
         document.addEventListener('DOMContentLoaded', function() {
             applyThemeMode(localStorage.getItem('partnerThemeMode') || 'light');
+            const collapsedSaved = localStorage.getItem('subadminSidebarCollapsed') === '1';
+            applySubadminSidebarState(!isSubadminMobileViewport() && collapsedSaved);
+            window.addEventListener('resize', function() {
+                if (isSubadminMobileViewport()) {
+                    applySubadminSidebarState(false);
+                } else {
+                    const saved = localStorage.getItem('subadminSidebarCollapsed') === '1';
+                    applySubadminSidebarState(saved);
+                }
+            });
             bindPanelNotificationInteractions();
             const clearBtn = document.getElementById('panelNotificationsClearBtn');
             if (clearBtn) {

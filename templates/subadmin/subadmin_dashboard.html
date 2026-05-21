@@ -2,7 +2,7 @@
 {% load static %}
 
 {% block title %}Partner Dashboard{% endblock %}
-{% block page_title %}Dashboard{% endblock %}
+{% block page_title %}Partner Dashboard{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -21,51 +21,22 @@
         margin: 0 auto;
     }
 
-    /* Animations */
-    @keyframes slideInUp {
-        from {
-            opacity: 0;
-            transform: translateY(30px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-
     .insight-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #1e293b, #0f172a);
         border-radius: 20px;
         padding: 24px;
-        box-shadow: 0 10px 40px rgba(102, 126, 234, 0.3);
-        transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        box-shadow: var(--card-shadow);
+        transition: transform 0.3s ease;
         position: relative;
         overflow: hidden;
-        border: 2px solid rgba(255, 255, 255, 0.2);
+        border: 1px solid rgba(255,255,255,0.8);
         text-decoration: none;
-        color: white;
+        color: #fff;
         display: block;
-        animation: slideInUp 0.6s ease-out;
     }
 
     .insight-card:hover {
-        transform: translateY(-15px) scale(1.02);
-        box-shadow: 0 20px 60px rgba(102, 126, 234, 0.5);
-    }
-
-    .insight-card::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: -100%;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-        transition: left 0.5s ease;
-    }
-
-    .insight-card:hover::before {
-        left: 100%;
+        transform: translateY(-5px);
     }
 
     .insight-card::after {
@@ -73,23 +44,15 @@
         position: absolute;
         width: 120px;
         height: 120px;
-        background: rgba(255, 255, 255, 0.15);
+        background: rgba(255, 255, 255, 0.18);
         border-radius: 50%;
         top: -20px;
         right: -20px;
-        transition: all 0.3s ease;
-    }
-
-    .insight-card:hover::after {
-        width: 200px;
-        height: 200px;
-        top: -50px;
-        right: -50px;
     }
 
     .status-title {
         font-size: 14px;
-        color: rgba(255, 255, 255, 0.85);
+        color: rgba(255, 255, 255, 0.86);
         margin: 0;
         font-weight: 600;
         text-transform: uppercase;
@@ -97,18 +60,16 @@
     }
 
     .main-value {
-        font-size: 42px;
+        font-size: 32px;
         font-weight: 800;
         margin: 10px 0;
-        color: #fff;
-        text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        color: #ffffff;
     }
 
     .description {
         font-size: 13px;
-        color: rgba(255, 255, 255, 0.8);
+        color: rgba(255, 255, 255, 0.82);
         margin-bottom: 15px;
-        font-weight: 500;
     }
 
     .view-details {
@@ -117,26 +78,22 @@
         text-decoration: none;
         font-size: 13px;
         font-weight: 700;
-        color: rgba(255, 255, 255, 0.95);
-        transition: all 0.3s ease;
-        background: rgba(255, 255, 255, 0.2);
-        padding: 8px 12px;
-        border-radius: 6px;
+        color: #ffffff;
+        transition: gap 0.2s;
     }
 
     .view-details:hover {
         gap: 8px;
-        background: rgba(255, 255, 255, 0.35);
     }
 
-    .c-new { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important; }
-    .c-process { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important; }
-    .c-updated { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%) !important; }
-    .c-bank { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%) !important; }
-    .c-follow { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%) !important; }
-    .c-approved { background: linear-gradient(135deg, #30cfd0 0%, #330867 100%) !important; }
-    .c-rejected { background: linear-gradient(135deg, #e63946 0%, #a4161a 100%) !important; }
-    .c-disbursed { background: linear-gradient(135deg, #457b9d 0%, #1d3557 100%) !important; }
+    .c-new { background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%); }
+    .c-process { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
+    .c-updated { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+    .c-bank { background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); }
+    .c-follow { background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); }
+    .c-approved { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+    .c-rejected { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); }
+    .c-disbursed { background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); }
 
     .status-chart-shell {
         position: relative;
@@ -261,9 +218,6 @@
 
 {% block content %}
 <div class="space-y-6">
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h1 class="text-2xl font-bold text-gray-900">Loan Workflow Dashboard</h1>
-        <p class="text-sm text-gray-600 mt-1">Live status view for all applications under your team.</p>
     </div>
 
     <div class="card-container">
@@ -282,7 +236,7 @@
         </a>
 
         <a href="{% url 'subadmin_all_loans' %}?status=updated_document" class="insight-card c-updated">
-            <p class="status-title">Updated Document</p>
+            <p class="status-title">Pending Document Cleared</p>
             <h2 class="main-value" id="stat-updated-document">0</h2>
             <p class="description">Ready for Banking Process</p>
             <span class="view-details">View Details →</span>
@@ -291,14 +245,14 @@
         <a href="{% url 'subadmin_all_loans' %}?status=follow_up" class="insight-card c-bank">
             <p class="status-title">Banking Processing</p>
             <h2 class="main-value" id="stat-banking-processing">0</h2>
-            <p class="description">Need Follow-up</p>
+            <p class="description">Banking Processing Queue</p>
             <span class="view-details">View Details →</span>
         </a>
 
         <a href="{% url 'subadmin_all_loans' %}?status=follow_up_pending" class="insight-card c-follow">
             <p class="status-title">Follow Up</p>
             <h2 class="main-value" id="stat-follow-up-pending">0</h2>
-            <p class="description">Reverted Cases</p>
+            <p class="description">Reverted for Correction</p>
             <span class="view-details">View Details →</span>
         </a>
 
@@ -319,7 +273,7 @@
         <a href="{% url 'subadmin_all_loans' %}?status=disbursed" class="insight-card c-disbursed">
             <p class="status-title">Disbursed</p>
             <h2 class="main-value" id="stat-disbursed">0</h2>
-            <p class="description">Amount Disbursed</p>
+            <p class="description">Fund Disbursed Successfully</p>
             <span class="view-details">View Details →</span>
         </a>
 
@@ -350,7 +304,7 @@
                     <div class="status-value-wrap"><div id="count-updated-document" class="status-count">0</div><div id="pct-updated-document" class="status-pct">0%</div></div>
                 </div>
                 <div class="status-legend-item">
-                    <div class="status-legend-left"><span class="status-dot" style="background:#7c3aed;"></span><span class="text-sm text-gray-700">Bank Processing</span></div>
+                    <div class="status-legend-left"><span class="status-dot" style="background:#7c3aed;"></span><span class="text-sm text-gray-700">Banking Processing</span></div>
                     <div class="status-value-wrap"><div id="count-banking-processing" class="status-count">0</div><div id="pct-banking-processing" class="status-pct">0%</div></div>
                 </div>
                 <div class="status-legend-item">
@@ -450,7 +404,7 @@ function updateStatusDistributionChart(newEntry, waiting, updatedDocument, banki
         statusDistributionChart = new Chart(chartElement, {
             type: 'doughnut',
             data: {
-                labels: ['New Application', 'Document Pending', 'Updated Document', 'Bank Processing', 'Follow Up', 'Approved', 'Rejected', 'Disbursed'],
+                labels: ['New Application', 'Document Pending', 'Pending Document Cleared', 'Banking Processing', 'Follow Up', 'Approved', 'Rejected', 'Disbursed'],
                 datasets: [{
                     data: values,
                     backgroundColor: ['#2563eb', '#d97706', '#16a34a', '#7c3aed', '#ea580c', '#059669', '#dc2626', '#0891b2'],
@@ -500,13 +454,12 @@ function loadDashboardStats() {
             const newEntry = Number(stats.new_entry || 0);
             const waiting = Number(stats.waiting || stats.in_processing || 0);
             const updatedDocument = Number(stats.updated_document || 0);
-            const banking = Number(stats.follow_up || stats.banking_processing || 0);
+            const banking = Number(stats.banking_processing || stats.follow_up || 0);
             const followUpPending = Number(stats.follow_up_pending || 0);
             const approved = Number(stats.approved || 0);
             const rejected = Number(stats.rejected || 0);
             const disbursed = Number(stats.disbursed || 0);
 
-            document.getElementById('stat-total').textContent = total.toLocaleString('en-IN');
             document.getElementById('stat-new-entry').textContent = newEntry.toLocaleString('en-IN');
             document.getElementById('stat-processing').textContent = waiting.toLocaleString('en-IN');
             document.getElementById('stat-updated-document').textContent = updatedDocument.toLocaleString('en-IN');

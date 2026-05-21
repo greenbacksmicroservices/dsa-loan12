@@ -73,12 +73,24 @@
             </div>
             <div class="md:col-span-2">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Channel Partners Under Employee (Optional)</label>
-                <select name="channel_partner_ids" id="subadmin-add-channel-partners" multiple size="5" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500">
-                    {% for partner in channel_partner_options %}
-                        <option value="{{ partner.id }}">{{ partner.name|default:partner.user.get_full_name|default:partner.user.username }}</option>
-                    {% endfor %}
-                </select>
-                <p class="text-xs text-gray-500 mt-1">Hold Ctrl (Windows) / Cmd (Mac) to select multiple Channel Partners.</p>
+                <details class="relative">
+                    <summary class="list-none cursor-pointer w-full px-4 py-3 border border-gray-300 rounded-lg bg-slate-50 text-sm font-semibold text-gray-800 flex items-center justify-between">
+                        <span>Select ID + full name</span>
+                        <i class="fas fa-chevron-down text-gray-500"></i>
+                    </summary>
+                    <div class="absolute z-40 mt-2 w-full max-h-72 overflow-y-auto bg-white border border-gray-200 rounded-xl shadow-xl p-2">
+                        {% for partner in channel_partner_options %}
+                            <label class="flex items-start gap-3 p-3 rounded-lg hover:bg-blue-50 cursor-pointer">
+                                <input type="checkbox" name="channel_partner_ids" value="{{ partner.id }}" class="mt-1">
+                                <span>
+                                    <strong class="block text-sm text-gray-900">{{ partner.agent_id|default:"EDC-CP" }}{% if not partner.agent_id %}-{{ partner.id|stringformat:"04d" }}{% endif %} - {{ partner.name|default:partner.user.get_full_name|default:partner.user.username }}</strong>
+                                    <small class="block text-xs text-gray-500">{{ partner.email|default:"No email" }}{% if partner.phone %} | {{ partner.phone }}{% endif %}</small>
+                                </span>
+                            </label>
+                        {% endfor %}
+                    </div>
+                </details>
+                <p class="text-xs text-gray-500 mt-1">Open the dropdown and select one or more channel partners.</p>
             </div>
             <div class="md:col-span-2">
                 <button type="submit" class="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold">Save Employee</button>
@@ -162,7 +174,7 @@
                             <td class="px-4 py-3 text-sm text-gray-700">{{ employee.created_date }}</td>
                             <td class="px-4 py-3 text-sm">
                                 <div class="flex gap-2">
-                                    <button type="button" class="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700" onclick="openEmployeeModal('view', {{ employee.id }})">View</button>
+                                    <a href="{% url 'subadmin_employee_detail' employee.id %}" class="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700">View</a>
                                     <button type="button" class="px-2 py-1 bg-emerald-600 text-white rounded text-xs hover:bg-emerald-700" onclick="openEmployeeModal('edit', {{ employee.id }})">Edit</button>
                                     <button type="button" class="px-2 py-1 bg-rose-600 text-white rounded text-xs hover:bg-rose-700" onclick="deleteEmployee({{ employee.id }})">Deactivate</button>
                                 </div>
@@ -253,7 +265,7 @@
                     <label class="block text-sm font-medium text-gray-700 mb-1">Channel Partners Under Employee</label>
                     <select id="employee-modal-channel-partners" multiple size="5" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
                         {% for partner in channel_partner_options %}
-                            <option value="{{ partner.id }}">{{ partner.name|default:partner.user.get_full_name|default:partner.user.username }}</option>
+                            <option value="{{ partner.id }}">{{ partner.agent_id|default:"EDC-CP" }}{% if not partner.agent_id %}-{{ partner.id|stringformat:"04d" }}{% endif %} - {{ partner.name|default:partner.user.get_full_name|default:partner.user.username }}</option>
                         {% endfor %}
                     </select>
                     <p class="text-xs text-gray-500 mt-1">Multiple select supported.</p>

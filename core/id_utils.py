@@ -34,6 +34,18 @@ def format_sequence_id(prefix, serial):
     return f"{prefix}{serial:04d}"
 
 
+def normalize_manual_loan_id(raw_value):
+    value = str(raw_value or "").strip()
+    if not value:
+        return ""
+    return re.sub(r"\s+", "", value).upper()
+
+
+def display_manual_loan_id(loan_obj, empty_label="Pending Manual ID"):
+    value = normalize_manual_loan_id(getattr(loan_obj, "user_id", ""))
+    return value or empty_label
+
+
 @transaction.atomic
 def generate_user_sequence_id(role):
     role = str(role or "").strip().lower()

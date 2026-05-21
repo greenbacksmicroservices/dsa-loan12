@@ -16,6 +16,7 @@ import re
 from .models import Loan, LoanStatusHistory, LoanApplication, LoanDocument, ApplicantDocument
 from .decorators import admin_required
 from .loan_sync import extract_assignment_context, find_related_loan_application
+from .id_utils import normalize_manual_loan_id
 
 FOLLOW_UP_PENDING_LABEL = 'Follow Up'
 
@@ -1103,6 +1104,7 @@ def api_update_disbursed_details(request, loan_id):
             raise ValueError('Disbursement amount cannot be negative')
         disbursed_date = parse_date_value(payload.get('disbursed_date'))
         sm_signed_at = parse_datetime_value(payload.get('sm_signed_at'))
+        manual_loan_id = normalize_manual_loan_id(payload.get('manual_loan_id'))
         loan_amount = parse_decimal_value(payload.get('loan_amount'))
         loan_type = normalize_loan_type(payload.get('loan_type'))
         tenure_months = parse_int_value(payload.get('tenure_months'), 'tenure months')
@@ -1239,6 +1241,15 @@ def api_update_disbursed_details(request, loan_id):
             if loan.remarks != updated_remarks:
                 loan.remarks = updated_remarks
                 loan_update_fields.append('remarks')
+
+        if 'manual_loan_id' in payload:
+            if not manual_loan_id:
+                raise ValueError('Manual Loan ID is required')
+            if Loan.objects.exclude(id=loan.id).filter(user_id__iexact=manual_loan_id).exists():
+                raise ValueError('Manual Loan ID already exists')
+            if normalize_manual_loan_id(loan.user_id) != manual_loan_id:
+                loan.user_id = manual_loan_id
+                loan_update_fields.append('user_id')
 
         if recalc_emi and 'emi' not in loan_update_fields:
             loan_update_fields.append('emi')

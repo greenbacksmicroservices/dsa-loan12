@@ -19,6 +19,7 @@
     <style>
         :root {
             --sidebar-width: 260px;
+            --sidebar-collapsed-width: 92px;
             --primary-color: #4f46e5;
             --secondary-color: #64748b;
             --success-color: #10b981;
@@ -58,6 +59,7 @@
             box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
             display: flex;
             flex-direction: column;
+            transition: width 0.28s ease, transform 0.28s ease, box-shadow 0.28s ease;
         }
 
         .sidebar-header {
@@ -305,7 +307,7 @@
         }
 
         body.agent-theme .sidebar {
-            background: linear-gradient(180deg, #0f766e 0%, #115e59 100%);
+            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
         }
 
         body.employee-theme .sidebar,
@@ -431,11 +433,62 @@
         }
 
         body.agent-theme .sidebar-menu a.active {
-            background: rgba(16, 185, 129, 0.26);
+            background: rgba(79, 70, 229, 0.2);
         }
 
         body.agent-theme .sidebar-menu a.active i {
-            background: rgba(16, 185, 129, 0.35);
+            background: rgba(79, 70, 229, 0.35);
+        }
+
+        body.sidebar-collapsed .sidebar {
+            width: var(--sidebar-collapsed-width);
+        }
+
+        body.sidebar-collapsed .sidebar-header {
+            justify-content: center;
+            padding: 18px 10px 16px;
+        }
+
+        body.sidebar-collapsed .brand-text,
+        body.sidebar-collapsed .profile-name,
+        body.sidebar-collapsed .profile-role,
+        body.sidebar-collapsed .employee-profile-name,
+        body.sidebar-collapsed .employee-profile-role,
+        body.sidebar-collapsed .employee-profile-email,
+        body.sidebar-collapsed .profile-email,
+        body.sidebar-collapsed .profile-id-number,
+        body.sidebar-collapsed .sidebar-menu a span,
+        body.sidebar-collapsed .sidebar-company {
+            display: none !important;
+        }
+
+        body.sidebar-collapsed .sidebar-profile-section {
+            padding: 16px 10px 12px;
+        }
+
+        body.sidebar-collapsed .employee-profile-photo,
+        body.sidebar-collapsed .profile-photo-large {
+            width: 52px;
+            height: 52px;
+            margin-bottom: 0 !important;
+        }
+
+        body.sidebar-collapsed .sidebar-menu {
+            padding: 10px 8px 2px;
+        }
+
+        body.sidebar-collapsed .sidebar-menu a {
+            justify-content: center;
+            gap: 0;
+            padding: 11px 10px;
+        }
+
+        body.sidebar-collapsed .sidebar-menu a:hover {
+            transform: none;
+        }
+
+        body.sidebar-collapsed .sidebar-menu a i {
+            margin-right: 0;
         }
 
         body.employee-theme .topbar,
@@ -484,6 +537,7 @@
             padding: 30px;
             min-height: 100vh;
             padding-top: 0;
+            transition: margin-left 0.28s ease;
         }
 
         .main-content.no-auth {
@@ -517,6 +571,7 @@
             top: 0;
             z-index: 100;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            transition: margin-left 0.28s ease;
         }
 
         .topbar-inner {
@@ -524,6 +579,18 @@
             justify-content: space-between;
             align-items: center;
             gap: 16px;
+        }
+
+        .topbar-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            position: relative;
+            padding-left: 18px;
+        }
+
+        .topbar-title-wrap {
+            min-width: 0;
         }
 
         .topbar-title {
@@ -539,6 +606,73 @@
             margin-top: 2px;
         }
 
+        .sidebar-toggle-btn {
+            border: 1px solid #d1d5db;
+            border-radius: 14px;
+            background: linear-gradient(145deg, #ffffff 0%, #e2f6f3 100%);
+            color: #0f766e;
+            width: 48px;
+            height: 44px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 12px 24px rgba(15, 118, 110, 0.14);
+            position: absolute;
+            left: -46px;
+            top: 50%;
+            transform: translateY(-50%);
+            transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease, background 0.25s ease;
+        }
+
+        .sidebar-toggle-bars {
+            display: inline-flex;
+            flex-direction: column;
+            gap: 4px;
+            width: 18px;
+        }
+
+        .sidebar-toggle-bars span {
+            display: block;
+            height: 2px;
+            border-radius: 999px;
+            background: currentColor;
+            transition: width 0.2s ease, opacity 0.2s ease;
+        }
+
+        .sidebar-toggle-bars span:nth-child(2) {
+            width: 72%;
+            align-self: flex-end;
+        }
+
+        .sidebar-toggle-bars span:nth-child(3) {
+            width: 54%;
+            align-self: flex-end;
+        }
+
+        .sidebar-toggle-btn.is-active .sidebar-toggle-bars span:nth-child(2),
+        .sidebar-toggle-btn.is-active .sidebar-toggle-bars span:nth-child(3) {
+            width: 100%;
+        }
+
+        .sidebar-toggle-btn:hover {
+            background: linear-gradient(145deg, #f0fdfa 0%, #ccfbf1 100%);
+            border-color: #14b8a6;
+            transform: translate(-2px, -50%);
+            box-shadow: 0 16px 30px rgba(15, 118, 110, 0.22);
+        }
+
+        .sidebar-toggle-btn.is-active {
+            border-color: #0d9488;
+            background: linear-gradient(145deg, #ccfbf1 0%, #99f6e4 100%);
+            color: #115e59;
+        }
+
+        body.sidebar-collapsed .main-content,
+        body.sidebar-collapsed .topbar {
+            margin-left: var(--sidebar-collapsed-width);
+        }
+
         .topbar-user-btn {
             border: 1px solid #d1d5db;
             border-radius: 999px;
@@ -550,6 +684,27 @@
             display: inline-flex;
             align-items: center;
             gap: 8px;
+        }
+
+        .topbar-user-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            overflow: hidden;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #4f46e5, #06b6d4);
+            color: #ffffff;
+            font-size: 12px;
+            font-weight: 800;
+            flex: 0 0 28px;
+        }
+
+        .topbar-user-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
         }
 
         .topbar-user-btn:hover,
@@ -1602,6 +1757,29 @@
                 padding: 20px;
             }
 
+            .topbar {
+                margin-left: 0;
+                padding-left: 72px;
+            }
+
+            .topbar-left {
+                padding-left: 0;
+            }
+
+            .sidebar-toggle-btn {
+                position: static;
+                left: auto;
+                top: auto;
+                transform: none;
+                width: 44px;
+                height: 44px;
+                border-radius: 12px;
+            }
+
+            .sidebar-toggle-btn:hover {
+                transform: translateY(-1px);
+            }
+
             .mobile-toggle {
                 display: block;
                 position: fixed;
@@ -1618,6 +1796,11 @@
 
         .mobile-toggle {
             display: none;
+        }
+
+        body[data-role="employee"] .mobile-toggle,
+        body[data-role="agent"] .mobile-toggle {
+            display: none !important;
         }
 
         /* Activity Panel */
@@ -1887,7 +2070,7 @@
             <li>
                 <a href="/employee/my-agents/" class="{% if request.resolver_match.url_name == 'employee_my_agents_page' %}active{% endif %}">
                     <i class="bi bi-people"></i>
-                    <span>My Partners</span>
+                    <span>My Channel Partners</span>
                 </a>
             </li>
             <li class="sidebar-divider"></li>
@@ -1966,19 +2149,26 @@
     <!-- Top Navigation Bar -->
     <nav class="topbar">
         <div class="topbar-inner">
-            <div>
-                {% if user.role == 'agent' %}
-                    <div class="topbar-title">{{ sidebar_brand_text|default:"DREAM CAPITAL" }}</div>
-                    <div class="topbar-subtitle">{{ panel_hierarchy_line|default:user.get_full_name|default:user.username }}</div>
-                {% elif user.role == 'employee' %}
-                    <div class="topbar-title">{{ sidebar_brand_text|default:"DREAM CAPITAL" }}</div>
-                    <div class="topbar-subtitle">{{ panel_hierarchy_line|default:user.get_full_name|default:user.username }}</div>
-                {% elif user.role == 'subadmin' %}
-                    <div class="topbar-title">{{ sidebar_brand_text|default:"DREAM CAPITAL" }}</div>
-                    <div class="topbar-subtitle">{{ user.get_full_name|default:user.username }}</div>
-                {% else %}
-                    <div class="topbar-title">{{ sidebar_brand_text|default:"DREAM CAPITAL" }}</div>
+            <div class="topbar-left">
+                {% if user.role == 'employee' or user.role == 'agent' %}
+                <button class="sidebar-toggle-btn" type="button" id="panel-sidebar-toggle-btn" onclick="togglePanelSidebar()" aria-label="Collapse Sidebar" title="Collapse sidebar">
+                    <span class="sidebar-toggle-bars" aria-hidden="true">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </span>
+                </button>
                 {% endif %}
+                <div class="topbar-title-wrap">
+                    <div class="topbar-title">{{ sidebar_brand_text|default:"DREAM CAPITAL" }}</div>
+                    {% if user.role == 'agent' or user.role == 'employee' %}
+                        {% if panel_hierarchy_line %}
+                            <div class="topbar-subtitle">{{ panel_hierarchy_line }}</div>
+                        {% endif %}
+                    {% elif user.role == 'subadmin' %}
+                        <div class="topbar-subtitle">{{ user.get_full_name|default:user.username }}</div>
+                    {% endif %}
+                </div>
             </div>
             <div class="d-flex align-items-center gap-2">
                 <button class="btn theme-toggle-btn" type="button" id="theme-toggle-btn" onclick="toggleThemeMode()">
@@ -2002,7 +2192,15 @@
                 </div>
                 <div class="dropdown">
                     <button class="btn dropdown-toggle topbar-user-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="bi bi-person-circle"></i>
+                        <span class="topbar-user-avatar">
+                            {% if user.role == 'agent' and agent_profile and agent_profile.profile_photo %}
+                                <img src="{{ agent_profile.profile_photo.url }}" alt="{{ agent_profile.name }}">
+                            {% elif user.profile_photo %}
+                                <img src="{{ user.profile_photo.url }}" alt="{{ user.get_full_name|default:user.username }}">
+                            {% else %}
+                                {{ user.get_full_name|default:user.username|first|upper }}
+                            {% endif %}
+                        </span>
                         <span>{{ user.get_full_name|default:user.username }}</span>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end topbar-menu">
@@ -2051,6 +2249,68 @@
     <script>
         function toggleSidebar() {
             document.getElementById('sidebar').classList.toggle('show');
+        }
+
+        function isPanelSidebarManagedRole() {
+            const role = document.body?.dataset?.role || '';
+            return role === 'employee' || role === 'agent';
+        }
+
+        function isPanelMobileViewport() {
+            return window.matchMedia('(max-width: 768px)').matches;
+        }
+
+        function panelSidebarStorageKey() {
+            const role = document.body?.dataset?.role || 'panel';
+            return `panelSidebarCollapsed:${role}`;
+        }
+
+        function syncPanelSidebarToggle() {
+            const button = document.getElementById('panel-sidebar-toggle-btn');
+            if (!button || !isPanelSidebarManagedRole()) {
+                return;
+            }
+
+            if (isPanelMobileViewport()) {
+                const sidebar = document.getElementById('sidebar');
+                const isOpen = !!(sidebar && sidebar.classList.contains('show'));
+                button.classList.toggle('is-active', isOpen);
+                button.setAttribute('aria-label', isOpen ? 'Close Sidebar' : 'Open Sidebar');
+                button.title = isOpen ? 'Close sidebar' : 'Open sidebar';
+                return;
+            }
+
+            const collapsed = document.body.classList.contains('sidebar-collapsed');
+            button.classList.toggle('is-active', collapsed);
+            button.setAttribute('aria-label', collapsed ? 'Expand Sidebar' : 'Collapse Sidebar');
+            button.title = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
+        }
+
+        function applyPanelSidebarState(collapsed) {
+            if (!isPanelSidebarManagedRole()) {
+                return;
+            }
+            document.body.classList.toggle('sidebar-collapsed', !!collapsed);
+            syncPanelSidebarToggle();
+        }
+
+        function togglePanelSidebar() {
+            if (!isPanelSidebarManagedRole()) {
+                return;
+            }
+
+            const sidebar = document.getElementById('sidebar');
+            if (isPanelMobileViewport()) {
+                if (sidebar) {
+                    sidebar.classList.toggle('show');
+                }
+                syncPanelSidebarToggle();
+                return;
+            }
+
+            const nextCollapsed = !document.body.classList.contains('sidebar-collapsed');
+            applyPanelSidebarState(nextCollapsed);
+            localStorage.setItem(panelSidebarStorageKey(), nextCollapsed ? '1' : '0');
         }
 
         function applyThemeMode(mode) {
@@ -2195,8 +2455,13 @@
             const toggle = document.querySelector('.mobile-toggle');
             
             if (window.innerWidth <= 768) {
-                if (!sidebar.contains(event.target) && !toggle.contains(event.target)) {
+                const headerToggle = document.getElementById('panel-sidebar-toggle-btn');
+                const clickedOnSidebar = sidebar && sidebar.contains(event.target);
+                const clickedOnMobileToggle = toggle && toggle.contains(event.target);
+                const clickedOnHeaderToggle = headerToggle && headerToggle.contains(event.target);
+                if (sidebar && !clickedOnSidebar && !clickedOnMobileToggle && !clickedOnHeaderToggle) {
                     sidebar.classList.remove('show');
+                    syncPanelSidebarToggle();
                 }
             }
         });
@@ -2222,6 +2487,24 @@
         document.addEventListener('DOMContentLoaded', function() {
             const savedTheme = localStorage.getItem('panelThemeMode') || 'light';
             applyThemeMode(savedTheme);
+            if (isPanelSidebarManagedRole()) {
+                const savedCollapsed = localStorage.getItem(panelSidebarStorageKey()) === '1';
+                applyPanelSidebarState(!isPanelMobileViewport() && savedCollapsed);
+                window.addEventListener('resize', function() {
+                    if (isPanelMobileViewport()) {
+                        document.body.classList.remove('sidebar-collapsed');
+                        const sidebar = document.getElementById('sidebar');
+                        if (sidebar) {
+                            sidebar.classList.remove('show');
+                        }
+                    } else {
+                        const shouldCollapse = localStorage.getItem(panelSidebarStorageKey()) === '1';
+                        applyPanelSidebarState(shouldCollapse);
+                    }
+                    syncPanelSidebarToggle();
+                });
+                syncPanelSidebarToggle();
+            }
             bindPanelNotificationInteractions();
             const clearBtn = document.getElementById('panelNotificationsClearBtn');
             if (clearBtn) {

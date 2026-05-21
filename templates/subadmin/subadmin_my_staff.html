@@ -8,8 +8,8 @@
 <div class="space-y-6">
     <div class="flex justify-between items-center">
         <div>
-            <h1 class="text-3xl font-bold text-gray-900">Staff Management</h1>
-            <p class="text-gray-600 mt-1">Manage agents under your subadmin scope.</p>
+            <h1 class="text-3xl font-bold text-gray-900">Channel Partner Management</h1>
+            <p class="text-gray-600 mt-1">Manage channel partners under your partner scope.</p>
         </div>
         <button type="button" id="toggle-staff-form" class="px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 transition-all hover:shadow-lg flex items-center gap-2">
             <i class="fas fa-plus"></i> Add New Channel Partner
@@ -166,7 +166,7 @@
                             <td class="px-4 py-3 text-sm text-gray-700">{{ agent.created_date }}</td>
                             <td class="px-4 py-3 text-sm">
                                 <div class="flex gap-2">
-                                    <button type="button" class="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700" onclick="openAgentModal('view', {{ agent.id }})">View</button>
+                                    <a href="{% url 'subadmin_agent_detail' agent.id %}" class="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700">View</a>
                                     <button type="button" class="px-2 py-1 bg-emerald-600 text-white rounded text-xs hover:bg-emerald-700" onclick="openAgentModal('edit', {{ agent.id }})">Edit</button>
                                     <button type="button" class="px-2 py-1 bg-rose-600 text-white rounded text-xs hover:bg-rose-700" onclick="deleteAgent({{ agent.id }})">Block</button>
                                 </div>

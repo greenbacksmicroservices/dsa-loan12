@@ -19,8 +19,9 @@ import re
 
 from .models import User, Loan, EmployeeProfile, LoanApplication, Agent, UserOnboardingProfile, UserOnboardingDocument
 from .decorators import admin_required
-from .onboarding_utils import collect_onboarding_payload, collect_onboarding_documents
+from .onboarding_utils import collect_onboarding_payload, collect_onboarding_documents, collect_user_document_payload
 from .id_utils import generate_agent_sequence_id
+from .account_notifications import send_account_credentials_email
 
 
 # ============= PROCESSING REQUESTS / ASSIGN / APPLICATIONS =============
@@ -1013,8 +1014,9 @@ def api_add_agent(request):
     """
     try:
         name = request.POST.get('name', '').strip()
+        username = request.POST.get('username', '').strip()
         email = request.POST.get('email', '').strip()
-        phone = request.POST.get('phone', '').strip()
+        phone = request.POST.get('phone', '').strip() or request.POST.get('mobile_number', '').strip()
         gender = request.POST.get('gender', 'Other').strip()
         address = request.POST.get('address', '').strip()
         city = (
@@ -1034,6 +1036,8 @@ def api_add_agent(request):
             or request.POST.get('onb_perm_state', '').strip()
         )
         password = request.POST.get('password', '').strip()
+        assigned_employee_id = request.POST.get('assigned_employee_id', '').strip()
+        assigned_subadmin_id = request.POST.get('assigned_subadmin_id', '').strip()
         profile_photo = request.FILES.get('profile_photo') or request.FILES.get('photo')
 
         # Validation
@@ -1077,6 +1081,40 @@ def api_add_agent(request):
                 'error': 'PIN code must be 6 digits'
             }, status=400)
 
+        if assigned_employee_id and assigned_subadmin_id:
+            return JsonResponse({
+                'success': False,
+                'error': 'Select either an Employee or a Partner for assignment, not both'
+            }, status=400)
+
+        assigned_employee = None
+        if assigned_employee_id:
+            try:
+                assigned_employee = User.objects.get(
+                    id=int(assigned_employee_id),
+                    role='employee',
+                    is_active=True,
+                )
+            except (TypeError, ValueError, User.DoesNotExist):
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Selected employee was not found'
+                }, status=400)
+
+        assigned_subadmin = None
+        if assigned_subadmin_id:
+            try:
+                assigned_subadmin = User.objects.get(
+                    id=int(assigned_subadmin_id),
+                    role='subadmin',
+                    is_active=True,
+                )
+            except (TypeError, ValueError, User.DoesNotExist):
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Selected partner was not found'
+                }, status=400)
+
         address_parts = [address]
         if city:
             address_parts.append(f"City: {city}")
@@ -1088,18 +1126,38 @@ def api_add_agent(request):
             address_parts.append(f"PIN: {pin_code}")
         normalized_address = " | ".join([part for part in address_parts if part])
 
-        # Generate username from email
-        base_username = email.split('@')[0]
-        username = base_username
-        counter = 1
-        while User.objects.filter(username=username).exists():
-            username = f"{base_username}{counter}"
-            counter += 1
+        if username:
+            if User.objects.filter(username=username).exists():
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Username already registered'
+                }, status=400)
+        else:
+            base_username = email.split('@')[0]
+            username = base_username
+            counter = 1
+            while User.objects.filter(username=username).exists():
+                username = f"{base_username}{counter}"
+                counter += 1
 
         # Parse full name
         name_parts = name.split(' ', 1)
         first_name = name_parts[0]
         last_name = name_parts[1] if len(name_parts) > 1 else ''
+
+        owner_user = request.user
+        owner_role_label = 'Admin'
+        owner_name = request.user.get_full_name() or request.user.username or 'System'
+        under_employee = None
+        if assigned_subadmin:
+            owner_user = assigned_subadmin
+            owner_role_label = 'Partner'
+            owner_name = assigned_subadmin.get_full_name() or assigned_subadmin.username or 'Partner'
+        elif assigned_employee:
+            owner_user = assigned_employee
+            owner_role_label = 'Employee'
+            owner_name = assigned_employee.get_full_name() or assigned_employee.username or 'Employee'
+            under_employee = assigned_employee
 
         # Create User
         user = User.objects.create_user(
@@ -1139,7 +1197,8 @@ def api_add_agent(request):
             state=state or None,
             pin_code=pin_code,
             status='active',
-            created_by=request.user
+            under_employee=under_employee,
+            created_by=owner_user,
         )
 
         # Reuse user photo if available
@@ -1151,12 +1210,11 @@ def api_add_agent(request):
             agent.save()
 
         onboarding_payload = collect_onboarding_payload(request)
-        creator_name = request.user.get_full_name() or request.user.username or 'System'
         if isinstance(onboarding_payload, dict):
             onboarding_payload['_meta'] = {
-                'created_by_id': request.user.id,
-                'created_by_name': creator_name,
-                'created_by_role': 'Admin',
+                'created_by_id': owner_user.id,
+                'created_by_name': owner_name,
+                'created_by_role': owner_role_label,
             }
         if onboarding_payload:
             profile, _ = UserOnboardingProfile.objects.get_or_create(
@@ -1179,9 +1237,20 @@ def api_add_agent(request):
                 file=doc_file,
             )
 
+        email_sent, email_detail = send_account_credentials_email(
+            request=request,
+            email=user.email,
+            full_name=agent.name,
+            username=user.username,
+            password=password,
+            role=user.role,
+        )
+
         return JsonResponse({
             'success': True,
-            'message': 'Agent added successfully',
+            'message': 'Channel Partner added successfully',
+            'email_sent': email_sent,
+            'email_message': email_detail,
             'agent': {
                 'id': agent.id,
                 'agent_id': agent.agent_id or '',
@@ -1194,7 +1263,9 @@ def api_add_agent(request):
                 'city': city or '',
                 'district': district or '',
                 'pin_code': pin_code or '',
-                'created_by': creator_name,
+                'created_by': f"{owner_role_label} - {owner_name}",
+                'created_under': f"{owner_role_label} - {owner_name}",
+                'under_employee': under_employee.get_full_name() if under_employee else '',
                 'total_applications': 0,
                 'running_applications': 0,
             }
@@ -1256,6 +1327,17 @@ def api_get_agent(request, agent_id):
             owner_name = owner.get_full_name() or owner.username or '-'
             return role_label, owner_name
 
+        def role_label_for_user(user_obj):
+            if not user_obj:
+                return 'Admin'
+            return {
+                'admin': 'Admin',
+                'subadmin': 'Partner',
+                'employee': 'Employee',
+                'agent': 'Channel Partner',
+                'dsa': 'DSA',
+            }.get(user_obj.role, user_obj.role.title() if user_obj.role else 'User')
+
         def latest_bank_remark(loan_obj):
             remarks = []
             if loan_obj.remarks:
@@ -1307,11 +1389,11 @@ def api_get_agent(request, agent_id):
             if loan.assigned_employee:
                 assigned_to = f"Employee - {loan.assigned_employee.get_full_name() or loan.assigned_employee.username}"
             elif loan.assigned_agent:
-                assigned_to = f"Agent - {loan.assigned_agent.name}"
+                assigned_to = f"Channel Partner - {loan.assigned_agent.name}"
 
             customers.append({
                 'loan_id': loan.id,
-                'loan_uid': loan.user_id or f'LOAN-{loan.id}',
+                'loan_uid': loan.user_id or 'Pending Manual ID',
                 'customer_name': loan.full_name or '-',
                 'mobile': loan.mobile_number or '-',
                 'email': loan.email or '-',
@@ -1351,10 +1433,21 @@ def api_get_agent(request, agent_id):
                 'assigned_agent_id': loan.assigned_agent_id,
             })
 
+        created_under = 'Admin - System'
+        if getattr(agent, 'created_by', None):
+            created_under = f"{role_label_for_user(agent.created_by)} - {agent.created_by.get_full_name() or agent.created_by.username or '-'}"
+
+        reports_to = 'Direct under Admin'
+        if agent.under_employee:
+            reports_to = f"Employee - {agent.under_employee.get_full_name() or agent.under_employee.username or '-'}"
+        elif getattr(agent, 'created_by', None) and getattr(agent.created_by, 'role', '') == 'subadmin':
+            reports_to = f"Partner - {agent.created_by.get_full_name() or agent.created_by.username or '-'}"
+
         summary = {
             'total_submitted_applications': submitted_qs.count(),
             'total_assigned_applications': assigned_qs.count(),
             'total_applications': combined_qs.count(),
+            'channel_partner_count': 0,
             'approved': combined_qs.filter(status='approved').count(),
             'rejected': combined_qs.filter(status='rejected').count(),
             'banking_processing': combined_qs.filter(status='follow_up').count(),
@@ -1364,20 +1457,12 @@ def api_get_agent(request, agent_id):
         }
 
         onboarding = {}
-        documents = []
         if agent_user and hasattr(agent_user, 'onboarding_profile') and agent_user.onboarding_profile:
             onboarding = agent_user.onboarding_profile.data or {}
-        if agent_user and hasattr(agent_user, 'onboarding_documents'):
-            documents = [
-                {
-                    'type': doc.document_type or 'other',
-                    'url': doc.file.url if doc.file else '',
-                    'uploaded_at': doc.uploaded_at.strftime('%Y-%m-%d %H:%M') if doc.uploaded_at else '',
-                }
-                for doc in agent_user.onboarding_documents.all()
-            ]
+        documents = collect_user_document_payload(agent_user)
 
         section1 = onboarding.get('section1') if isinstance(onboarding, dict) else {}
+        section6 = onboarding.get('section6') if isinstance(onboarding, dict) else {}
         perm = (section1 or {}).get('permanent_address') or {}
         district = str(perm.get('district') or '').strip()
         if not district and isinstance(onboarding, dict):
@@ -1400,11 +1485,18 @@ def api_get_agent(request, agent_id):
                 'address': agent.address or '',
                 'gender': agent.gender or 'Other',
                 'status': agent.status or 'active',
-                'photo_url': agent.profile_photo.url if agent.profile_photo else '',
+                'photo_url': agent.profile_photo.url if agent.profile_photo else (
+                    agent_user.profile_photo.url if agent_user and agent_user.profile_photo else ''
+                ),
+                'username': agent_user.username if agent_user else '',
+                'joined_on': agent.created_at.strftime('%Y-%m-%d') if agent.created_at else '',
                 'city': agent.city or str(perm.get('city') or '').strip(),
                 'state': agent.state or str(perm.get('state') or '').strip(),
                 'pin_code': agent.pin_code or str(perm.get('pin_code') or '').strip(),
                 'district': district or '',
+                'created_under': created_under,
+                'reports_to': reports_to,
+                'aadhar_number': str((section6 or {}).get('aadhar_number') or '').strip(),
             },
             'summary': summary,
             'customers': customers,
@@ -1425,14 +1517,17 @@ def api_update_agent(request, agent_id):
     """API Endpoint: Update agent details"""
     try:
         agent = get_object_or_404(Agent, id=agent_id)
-        data = json.loads(request.body)
+        is_json = bool(request.content_type and 'application/json' in request.content_type)
+        data = json.loads(request.body) if is_json else request.POST
 
         name = data.get('name', '').strip()
         email = data.get('email', '').strip()
         phone = data.get('phone', '').strip()
         address = data.get('address', '').strip()
         gender = data.get('gender', '').strip()
-        status_val = data.get('status', '').strip()
+        status_val = data.get('status', '').strip().lower()
+        if status_val == 'inactive':
+            status_val = 'blocked'
 
         # Validate required fields
         if not name or not email or not phone:
@@ -1464,6 +1559,14 @@ def api_update_agent(request, agent_id):
             agent.gender = gender
         if status_val in ['active', 'blocked']:
             agent.status = status_val
+        profile_photo = request.FILES.get('profile_photo') or request.FILES.get('photo')
+        if profile_photo:
+            if profile_photo.size > 5 * 1024 * 1024:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Profile photo must be less than 5MB'
+                }, status=400)
+            agent.profile_photo = profile_photo
         agent.save()
 
         # Update linked user if exists
@@ -1478,11 +1581,15 @@ def api_update_agent(request, agent_id):
                 agent.user.gender = gender
             if status_val in ['active', 'blocked']:
                 agent.user.is_active = status_val == 'active'
+            if profile_photo:
+                agent.user.profile_photo = profile_photo
             agent.user.save()
 
         return JsonResponse({
             'success': True,
-            'message': 'Agent updated successfully'
+            'message': 'Channel Partner updated successfully',
+            'status': 'active' if agent.status == 'active' else 'inactive',
+            'photo_url': agent.profile_photo.url if agent.profile_photo else '',
         })
     except json.JSONDecodeError:
         return JsonResponse({
@@ -1512,7 +1619,7 @@ def api_delete_agent(request, agent_id):
 
         return JsonResponse({
             'success': True,
-            'message': 'Agent deleted successfully'
+            'message': 'Channel Partner deleted successfully'
         })
     except Exception as e:
         return JsonResponse({
@@ -1540,8 +1647,7 @@ def api_upload_user_document(request):
 def api_get_user_documents(request, user_id=None):
     try:
         target_user = User.objects.get(id=user_id) if user_id and request.user.role in ['admin', 'subadmin'] else request.user
-        docs = UserOnboardingDocument.objects.filter(user=target_user)
-        documents = [{'id': doc.id, 'type': doc.document_type, 'url': doc.file.url} for doc in docs]
+        documents = collect_user_document_payload(target_user)
         return JsonResponse({'success': True, 'documents': documents})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)

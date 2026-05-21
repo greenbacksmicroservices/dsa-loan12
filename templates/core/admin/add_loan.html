@@ -12,7 +12,7 @@
     }
 
     .section-header {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        background: linear-gradient(135deg, #06216b 0%, #543ad5 100%);
         color: white;
         padding: 15px 20px;
         border-radius: 8px 8px 0 0;
@@ -71,7 +71,7 @@
     }
 
     .form-control:focus, .form-select:focus, textarea.form-control:focus {
-        border-color: #10b981;
+        border-color: #0d0932;
         box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
         outline: none;
     }
@@ -120,7 +120,7 @@
     }
 
     .repeatable-item.repeatable-item-enter {
-        border-color: #10b981;
+        border-color: #0c0941;
         box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.12);
     }
 
@@ -168,7 +168,7 @@
     }
 
     .btn-primary-custom {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        background: linear-gradient(135deg, #112ab8 0%, #17246e 100%);
         color: white;
         padding: 12px 30px;
         border: none;
@@ -206,7 +206,7 @@
 
     .sub-section-title {
         font-weight: 700;
-        color: #10b981;
+        color: #09101f;
         margin: 20px 0 15px 0;
         padding-bottom: 10px;
         border-bottom: 2px solid #d1fce7;
@@ -215,12 +215,12 @@
 
     .info-alert {
         background: #ecfdf5;
-        border: 1px solid #10b981;
+        border: 1px solid #152650;
         border-radius: 6px;
         padding: 12px 15px;
         margin-bottom: 20px;
         font-size: 13px;
-        color: #047857;
+        color: #072741;
     }
 
     .sticky-header {
@@ -235,7 +235,7 @@
     .service-documents-shell {
         margin-top: 14px;
         padding: 10px;
-        border: 1px dashed #86efac;
+        border: 1px dashed #121854;
         border-radius: 10px;
         background: #f0fdf4;
     }
@@ -254,7 +254,7 @@
     }
 
     .document-item[data-required="true"] {
-        border-color: #86efac !important;
+        border-color: #0f3377 !important;
         background: #ecfdf5 !important;
     }
 
@@ -263,14 +263,14 @@
         align-items: center;
         gap: 6px;
         font-size: 12px;
-        color: #047857;
+        color: #101a53;
         margin-bottom: 10px;
         font-weight: 700;
     }
 
     /* Recent Applications Table Styles */
     .page-header {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        background: linear-gradient(135deg, #162794 0%, #1581c5 100%);
         color: white;
         padding: 30px 20px;
         border-radius: 8px;
@@ -414,7 +414,7 @@
     }
 
     .btn-action:hover {
-        background: #16a085;
+        background: #132282;
         transform: scale(1.05);
     }
 
@@ -480,6 +480,7 @@
 
 <div class="form-container">
     <!-- Page Header -->
+    {% if request.user.role != 'agent' %}
     <div class="page-header">
         <div class="page-header-icon">
             <i class="bi bi-plus-circle"></i>
@@ -489,6 +490,7 @@
             <p>Fill in all the required details to submit a new loan application</p>
         </div>
     </div>
+    {% endif %}
 
     <!-- Django Messages Display -->
     {% if messages %}
@@ -540,7 +542,7 @@
                     {% if request.user.role != 'agent' %}
                     <label>Loan ID (Manual)</label>
                     <input type="text" class="form-control" name="loan_uid" placeholder="Enter manual loan ID (optional)">
-                    <div class="helper-text">Leave blank to auto-generate</div>
+                    <div class="helper-text">Optional at entry stage. Assign the manual Loan ID during processing.</div>
                     {% endif %}
                 </div>
             </div>

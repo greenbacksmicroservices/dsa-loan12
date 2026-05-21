@@ -1,0 +1,50 @@
+{# Table filter bar — pass filter_id (unique), filter_type, filter_label, search_placeholder, table_selector #}
+<div class="admin-table-filters" id="{{ filter_id|default:'adminTableFilters' }}" data-filter-type="{{ filter_type|default:'generic' }}" data-table-selector="{{ table_selector|default:'' }}">
+    <div class="admin-table-filters-title">
+        <i class="fas fa-filter"></i> Filter {{ filter_label|default:"Records" }}
+    </div>
+    <div class="admin-table-filters-grid">
+        <div class="admin-filter-field">
+            <label>Search</label>
+            <input type="text" class="admin-filter-search" placeholder="{{ search_placeholder|default:'Search...' }}" autocomplete="off">
+        </div>
+        {% if filter_type == 'partners' or filter_type == 'employees' or filter_type == 'agents' %}
+        <div class="admin-filter-field">
+            <label>Status</label>
+            <select class="admin-filter-status">
+                <option value="">All Status</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+            </select>
+        </div>
+        {% endif %}
+        {% if filter_type == 'loans' %}
+        <div class="admin-filter-field">
+            <label>Status</label>
+            <select class="admin-filter-status">
+                <option value="">All Status</option>
+                <option value="new">New Entry</option>
+                <option value="processing">Processing</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+                <option value="disbursed">Disbursed</option>
+            </select>
+        </div>
+        {% endif %}
+        <div class="admin-filter-field">
+            <label>From Date</label>
+            <input type="date" class="admin-filter-date-from">
+        </div>
+        <div class="admin-filter-field">
+            <label>To Date</label>
+            <input type="date" class="admin-filter-date-to">
+        </div>
+        <div class="admin-filter-field">
+            <label>&nbsp;</label>
+            <div class="admin-filter-actions">
+                <button type="button" class="admin-filter-btn admin-filter-btn-primary admin-filter-apply">Apply</button>
+                <button type="button" class="admin-filter-btn admin-filter-btn-secondary admin-filter-reset">Reset</button>
+            </div>
+        </div>
+    </div>
+</div>

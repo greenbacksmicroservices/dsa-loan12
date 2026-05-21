@@ -1,9 +1,9 @@
 {% extends 'core/admin/admin_base.html' %}
 {% load static %}
 
-{% block title %}Partner Management - Admin{% endblock %}
+{% block title %}{{ page_title|default:"Partner Management" }} - Admin{% endblock %}
 
-{% block page_title %}Partner Management{% endblock %}
+{% block page_title %}{{ page_title|default:"Partner Management" }}{% endblock %}
 
 {% block content %}
 <style>
@@ -12,6 +12,43 @@
         grid-template-columns: 1fr;
         gap: 20px;
         margin-bottom: 30px;
+    }
+
+    .partners-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        padding: 20px 0;
+    }
+
+    .partners-title {
+        font-size: 28px;
+        font-weight: 700;
+        color: #1f2937;
+        margin: 0;
+    }
+
+    .partners-count {
+        font-size: 14px;
+        color: #6b7280;
+        font-weight: 600;
+        margin-left: 15px;
+    }
+
+    .btn-add-primary {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        color: white;
+        padding: 10px 20px;
+        border-radius: 6px;
+        text-decoration: none;
+        font-weight: 600;
+        border: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+        font-size: 14px;
     }
 
     .form-section {
@@ -221,11 +258,11 @@
     }
 
     .subadmins-table th {
-        padding: 12px 10px;
+        padding: 9px 8px;
         text-align: left;
         font-weight: 600;
         color: #fff;
-        font-size: 12px;
+        font-size: 11px;
         text-transform: uppercase;
         white-space: nowrap;
         position: sticky;
@@ -243,9 +280,9 @@
     }
 
     .subadmins-table td {
-        padding: 10px 10px;
+        padding: 8px 8px;
         color: #2d3748;
-        font-size: 13px;
+        font-size: 12px;
         white-space: nowrap;
     }
 
@@ -266,6 +303,14 @@
         color: white;
         font-weight: 700;
         font-size: 12px;
+        overflow: hidden;
+        flex: 0 0 34px;
+    }
+
+    .user-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
     }
 
     .action-btns {
@@ -643,19 +688,91 @@
         padding: 14px;
     }
 
+    .multi-id-dropdown {
+        position: relative;
+        width: 100%;
+    }
+
+    .multi-id-trigger {
+        width: 100%;
+        border: 1px solid #cbd5e1;
+        border-radius: 10px;
+        background: #f8fafc;
+        color: #0f172a;
+        padding: 11px 13px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        cursor: pointer;
+        font-weight: 700;
+        min-height: 44px;
+    }
+
+    .multi-id-dropdown.open .multi-id-trigger {
+        border-color: #4f46e5;
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+        background: #ffffff;
+    }
+
+    .multi-id-menu {
+        display: none;
+        position: absolute;
+        z-index: 80;
+        left: 0;
+        right: 0;
+        top: calc(100% + 8px);
+        max-height: 280px;
+        overflow-y: auto;
+        background: #ffffff;
+        border: 1px solid #cbd5e1;
+        border-radius: 12px;
+        box-shadow: 0 18px 44px rgba(15, 23, 42, 0.18);
+        padding: 8px;
+    }
+
+    .multi-id-dropdown.open .multi-id-menu {
+        display: block;
+    }
+
+    .multi-id-option {
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+        padding: 10px;
+        border-radius: 10px;
+        cursor: pointer;
+    }
+
+    .multi-id-option:hover {
+        background: #f1f5f9;
+    }
+
+    .multi-id-option input {
+        margin-top: 3px;
+    }
+
+    .multi-id-option strong {
+        display: block;
+        color: #0f172a;
+        font-size: 13px;
+    }
+
+    .multi-id-option small {
+        display: block;
+        color: #64748b;
+        font-size: 11px;
+        margin-top: 2px;
+    }
+
 </style>
 
 <div class="subadmin-container">
+    {% if page_mode != 'add' %}
     <!-- Partners List -->
     <div class="table-section">
-        <div class="table-title">
-            <div class="table-title-left">
-                <i class="fas fa-list"></i> Partners List ({{ subadmin_count }})
-            </div>
-            <button type="button" class="btn-toggle-form" id="toggleSubadminBtn" onclick="toggleSubadminForm()">
-                <i class="fas fa-user-plus"></i> Add / Edit Partners
-            </button>
-        </div>
+
+        {% include 'core/admin/includes/admin_table_filters.html' with filter_id='partnersFilters' filter_type='partners' filter_label='Partners' search_placeholder='Partner ID, name, email, phone...' table_selector='#partnersTable' %}
         
         {% if subadmins %}
         <div class="table-controls">
@@ -669,16 +786,9 @@
                 </select>
                 Entries
             </label>
-            <input
-                type="text"
-                id="partnersSearchInput"
-                class="table-search-input"
-                placeholder="Filter by partner ID, name, username, email, phone..."
-                oninput="filterPartnersTable()"
-            >
         </div>
         <div class="partners-table-wrap">
-            <table class="subadmins-table" id="partnersTable">
+            <table class="subadmins-table admin-compact-table" id="partnersTable">
                 <thead>
                     <tr>
                         <th>Partner ID</th>
@@ -686,7 +796,7 @@
                         <th>Email</th>
                         <th>Phone</th>
                         <th>Joined</th>
-                        <th>Agents</th>
+                        <th>Channel Partners</th>
                         <th>Employees</th>
                         <th>Loan Apps</th>
                         <th>Running</th>
@@ -697,7 +807,7 @@
                 </thead>
                 <tbody id="partnersTableBody">
                     {% for subadmin in subadmins %}
-                    <tr data-subadmin-id="{{ subadmin.id }}" data-search="{{ subadmin.employee_id|default:''|lower }},{{ subadmin.get_full_name|lower }},{{ subadmin.username|lower }},{{ subadmin.email|lower }},{{ subadmin.phone|default:''|lower }}">
+                    <tr data-subadmin-id="{{ subadmin.id }}" data-search="{{ subadmin.employee_id|default:''|lower }},{{ subadmin.get_full_name|lower }},{{ subadmin.username|lower }},{{ subadmin.email|lower }},{{ subadmin.phone|default:''|lower }}" data-status="{% if subadmin.is_active %}active{% else %}inactive{% endif %}" data-joined="{{ subadmin.date_joined|date:'Y-m-d' }}">
                         <td>
                             <strong>
                                 {% if subadmin.employee_id %}
@@ -709,7 +819,13 @@
                         </td>
                         <td>
                             <div class="user-cell">
-                                <div class="user-avatar">{{ subadmin.first_name|first|upper }}</div>
+                                <div class="user-avatar">
+                                    {% if subadmin.profile_photo %}
+                                        <img src="{{ subadmin.profile_photo.url }}" alt="{{ subadmin.get_full_name|default:subadmin.username }}">
+                                    {% else %}
+                                        {{ subadmin.first_name|default:subadmin.username|first|upper }}
+                                    {% endif %}
+                                </div>
                                 <div>
                                     <strong>{{ subadmin.get_full_name }}</strong>
                                     <br><small style="color: #718096;">@{{ subadmin.username }}</small>
@@ -771,20 +887,165 @@
             <h3>No Partners Yet</h3>
             <p>Add your first Partner using the button above this table.</p>
         </div>
-        {% endif %}
     </div>
+    {% endif %}
+    {% else %}
+    <!-- Add Partner Form Inline -->
+    <div class="table-section">
+        <h2><i class="fas fa-user-shield"></i> Add New Partner</h2>
+        <form id="subadminFormInline" enctype="multipart/form-data" method="POST" action="">
+            {% csrf_token %}
+            <input type="hidden" name="role" value="subadmin">
+            
+            <div class="section-card">
+                <div class="section-title">APPLICANT INFORMATION</div>
+                <p class="section-subtext">Keep the partner creation page compact and fast. PAN number field has been removed.</p>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Name *</label>
+                        <input type="text" name="name" required placeholder="Partner full name">
+                    </div>
+                    <div class="form-group">
+                        <label>Email ID *</label>
+                        <input type="email" name="email" required placeholder="example@gmail.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Phone Number *</label>
+                        <input type="tel" name="phone" required placeholder="10-15 digits" pattern="[0-9]{10,15}">
+                    </div>
+                    <div class="form-group">
+                        <label>Gender</label>
+                        <select name="gender">
+                            <option value="Other" selected>Other</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Address</label>
+                        <textarea name="address" placeholder="Residential address"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>State</label>
+                        <input type="text" name="state" placeholder="State">
+                    </div>
+                    <div class="form-group">
+                        <label>City *</label>
+                        <input type="text" name="city" required placeholder="City">
+                    </div>
+                    <div class="form-group">
+                        <label>District *</label>
+                        <input type="text" name="district" required placeholder="District">
+                    </div>
+                    <div class="form-group">
+                        <label>PIN Code *</label>
+                        <input type="text" name="pin_code" required placeholder="6 digit PIN code" pattern="[0-9]{6}" maxlength="6">
+                    </div>
+                </div>
+            </div>
 
-    <!-- Add Partner Form -->
-    <div class="form-section" id="subadminFormSection" style="display: none;">
-        <div class="form-title">
-            <span><i class="fas fa-user-shield"></i> Add / Edit Partner Form</span>
+            <div class="section-card">
+                <div class="section-title">LOGIN DETAILS & ASSIGNMENT</div>
+                <p class="section-subtext">Create the login and keep employee assignment on this page for a smoother admin flow.</p>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Username *</label>
+                        <input type="text" name="username" required placeholder="Unique username">
+                    </div>
+                    <div class="form-group">
+                        <label>Password *</label>
+                        <input type="password" name="password" required placeholder="Minimum 8 characters" minlength="8">
+                    </div>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Partner ID</label>
+                        <input type="text" name="employee_id" placeholder="Auto-generated" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label>Profile Photo</label>
+                        <input type="file" name="photo" accept="image/*">
+                        <small style="color: #718096; display: block; margin-top: 5px;">Optional partner photo for cards and detail views.</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-card">
+                <div class="section-title">Assign Employees Under Partner</div>
+                <p class="section-subtext">Use the ID + name dropdown so employees instantly appear under this partner.</p>
+                <div class="form-group">
+                    <label>Employees</label>
+                    <div class="multi-id-dropdown" data-multi-id-dropdown data-placeholder="Select employees by ID + name">
+                        <button type="button" class="multi-id-trigger">
+                            <span data-multi-id-label>Select employees by ID + name</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="multi-id-menu" id="partnerEmployeeDropdownInlineMenu">
+                        {% for emp in employee_options %}
+                            <label class="multi-id-option">
+                                <input type="checkbox" name="employee_ids" value="{{ emp.id }}">
+                                <span>
+                                    <strong>{{ emp.employee_id|default:"EDC-EMP" }} - {{ emp.get_full_name|default:emp.username }}</strong>
+                                    <small>{{ emp.email|default:"No email" }}{% if emp.phone %} | {{ emp.phone }}{% endif %}</small>
+                                </span>
+                            </label>
+                        {% endfor %}
+                        </div>
+                    </div>
+                    <small style="color:#64748b;">Click the dropdown and tick multiple employees.</small>
+                </div>
+            </div>
+
+            <div class="section-card">
+                <div class="section-title">Documents</div>
+                <div id="subadminDocumentRowsInline">
+                    <div class="document-row" style="display: flex; gap: 15px; margin-bottom: 10px;">
+                        <div class="form-group" style="flex: 1;">
+                            <label>Document Type</label>
+                            <select name="document_type">
+                                <option value="pan_card">PAN Card</option>
+                                <option value="aadhaar_card">Aadhaar Card</option>
+                                <option value="photo">Applicant Photo</option>
+                                <option value="address_proof">Address Proof</option>
+                                <option value="salary_slip">Salary Slip</option>
+                                <option value="bank_statement">Bank Statement</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label>Upload File</label>
+                            <input type="file" name="document_file">
+                        </div>
+                    </div>
+                </div>
+                <button type="button" class="btn-add-row" onclick="addSubadminDocumentRowInline()" style="background: none; border: 1px dashed #cbd5e1; padding: 10px; width: 100%; border-radius: 6px; cursor: pointer; color: #475569;">+ Add Another Document</button>
+            </div>
+
+            <div id="subadminFormMessageInline" style="display:none; margin-top: 12px; padding: 10px 12px; border-radius: 6px; font-size: 13px; font-weight: 600;"></div>
+            
+            <div style="margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px;">
+                <a href="{% url 'admin_partners_list' %}" class="btn-toggle-form" style="padding:10px 24px; text-decoration:none; display:inline-block; border:1px solid #cbd5e1; border-radius:6px; color:#475569; background:#f8fafc;">Cancel</a>
+                <button type="button" class="btn-submit" onclick="submitSubadminFormInline()" style="width:auto; padding:10px 24px; background:#4f46e5; color:white; border:none; border-radius:6px; cursor:pointer;">
+                    <i class="fas fa-user-plus"></i> Create Partner
+                </button>
+            </div>
+        </form>
+    </div>
+    {% endif %}
+</div>
+
+<div id="addPartnerSheet" class="admin-bottom-sheet" style="display: none;">
+    <div class="admin-bottom-sheet-backdrop"></div>
+    <div class="admin-bottom-sheet-panel">
+        <div class="admin-bottom-sheet-header">
+            <h2 class="admin-bottom-sheet-title"><i class="fas fa-user-shield"></i> Add New Partner</h2>
+            <button type="button" class="admin-bottom-sheet-close" onclick="closeAddPartnerSheet()">&times;</button>
         </div>
-        <p class="form-help">Fill details below to create a new subadmin.</p>
-        <form id="subadminForm" action="{% url 'add_agent' %}" method="POST" enctype="multipart/form-data">
+        <form id="subadminForm" enctype="multipart/form-data">
             {% csrf_token %}
             
             <input type="hidden" name="role" value="subadmin">
-
+            <div class="admin-bottom-sheet-body">
             <div class="section-card">
                 <div class="section-title">SECTION 1: APPLICANT INFORMATION</div>
                 <p class="section-subtext">Provide accurate personal information. This will be verified during processing.</p>
@@ -820,7 +1081,7 @@
                     </div>
                     <div class="form-group">
                         <label>Date of Birth</label>
-                        <input type="date" name="onb_dob">
+                        <input type="text" name="onb_dob" placeholder="dd-mm-yyyy">
                     </div>
                     <div class="form-group">
                         <label>Marital Status</label>
@@ -910,9 +1171,33 @@
             </div>
 
             <div class="section-card">
+                <div class="section-title">Assign Employees Under Partner</div>
+                <p class="section-subtext">Selected employees will appear under this Partner in admin and partner panels.</p>
+                <div class="form-group">
+                    <label>Employees</label>
+                    <div class="multi-id-dropdown" data-multi-id-dropdown data-placeholder="Select employees by ID + name">
+                        <button type="button" class="multi-id-trigger">
+                            <span data-multi-id-label>Select employees by ID + name</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="multi-id-menu">
+                        {% for emp in employee_options %}
+                            <label class="multi-id-option">
+                                <input type="checkbox" name="employee_ids" value="{{ emp.id }}">
+                                <span>
+                                    <strong>{{ emp.employee_id|default:"EDC-EMP" }} - {{ emp.get_full_name|default:emp.username }}</strong>
+                                    <small>{{ emp.email|default:"No email" }}{% if emp.phone %} | {{ emp.phone }}{% endif %}</small>
+                                </span>
+                            </label>
+                        {% endfor %}
+                        </div>
+                    </div>
+                    <small style="color:#64748b;">Click the dropdown and tick multiple employees.</small>
+                </div>
+            </div>
 
             <div class="section-card">
-                <div class="section-title">SECTION 2: DOCUMENTS</div>
+                <div class="section-title">Documents</div>
                 <div id="subadminDocumentRows">
                     <div class="document-row">
                         <div class="form-group">
@@ -936,10 +1221,14 @@
                 <button type="button" class="btn-add-row" onclick="addSubadminDocumentRow()">+ Add Another Document</button>
             </div>
 
-            <button type="submit" class="btn-submit">
-                <i class="fas fa-user-plus"></i> Create Partner
-            </button>
             <div id="subadminFormMessage" style="display:none; margin-top: 12px; padding: 10px 12px; border-radius: 6px; font-size: 13px; font-weight: 600;"></div>
+            </div>
+            <div class="admin-bottom-sheet-footer">
+                <button type="button" class="btn-toggle-form" onclick="closeAddPartnerSheet()">Cancel</button>
+                <button type="submit" class="btn-submit" style="width:auto; padding:10px 24px;">
+                    <i class="fas fa-user-plus"></i> Create Partner
+                </button>
+            </div>
         </form>
     </div>
 </div>
@@ -995,6 +1284,11 @@
                         <label>Reset Password (Optional)</label>
                         <input type="password" id="editSubadminPassword" placeholder="Leave blank to keep existing">
                     </div>
+                    <div class="form-group">
+                        <label>Profile Photo</label>
+                        <input type="file" id="editSubadminPhoto" accept="image/*">
+                        <small style="color:#64748b; font-size:12px;">Optional. Upload a new partner profile photo.</small>
+                    </div>
                 </div>
                 <div id="editSubadminMessage" style="display:none; margin-top: 12px; padding: 10px 12px; border-radius: 6px; font-size: 13px; font-weight: 600;"></div>
                 <div class="modal-footer" style="padding: 0; margin-top: 18px;">
@@ -1046,10 +1340,24 @@
     }
 
     function applyPartnersFilters() {
-        const searchValue = (document.getElementById('partnersSearchInput')?.value || '').toLowerCase().trim();
+        const bar = document.getElementById('partnersFilters');
+        const searchValue = (bar?.querySelector('.admin-filter-search')?.value || '').toLowerCase().trim();
+        const status = (bar?.querySelector('.admin-filter-status')?.value || '').toLowerCase();
+        const fromVal = bar?.querySelector('.admin-filter-date-from')?.value || '';
+        const toVal = bar?.querySelector('.admin-filter-date-to')?.value || '';
+        const fromDate = fromVal ? new Date(fromVal + 'T00:00:00') : null;
+        const toDate = toVal ? new Date(toVal + 'T23:59:59') : null;
+
         partnersTableState.filteredRows = partnersTableState.allRows.filter((row) => {
             const searchText = (row.getAttribute('data-search') || '').toLowerCase();
-            return searchText.includes(searchValue);
+            if (!searchText.includes(searchValue)) return false;
+            const rowStatus = (row.getAttribute('data-status') || '').toLowerCase();
+            if (status && rowStatus !== status) return false;
+            const raw = row.getAttribute('data-joined') || '';
+            const rowDate = raw ? new Date(raw + 'T12:00:00') : null;
+            if (fromDate && rowDate && rowDate < fromDate) return false;
+            if (toDate && rowDate && rowDate > toDate) return false;
+            return true;
         });
         renderPartnersTablePage();
     }
@@ -1138,18 +1446,68 @@
         applyPartnersFilters();
     }
 
-    function toggleSubadminForm() {
-        const section = document.getElementById('subadminFormSection');
-        const button = document.getElementById('toggleSubadminBtn');
-        if (!section || !button) return;
-        const willOpen = section.style.display === 'none';
-        section.style.display = willOpen ? 'block' : 'none';
-        button.innerHTML = willOpen
-            ? '<i class="fas fa-chevron-up"></i> Hide Form'
-            : '<i class="fas fa-user-plus"></i> Add / Edit Partners';
-        if (willOpen) {
-            section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    function openAddPartnerSheet() {
+        const addPageUrl = "{% url 'admin_partners_add' %}";
+        if (window.location.pathname !== addPageUrl) {
+            window.location.href = addPageUrl;
         }
+    }
+
+    function closeAddPartnerSheet() {
+        if (window.AdminBottomSheet) {
+            AdminBottomSheet.close('addPartnerSheet');
+        }
+        const form = document.getElementById('subadminForm');
+        if (form) form.reset();
+        resetSubadminDocumentRows();
+    }
+
+    function toggleSubadminForm() {
+        openAddPartnerSheet();
+    }
+
+    function insertPartnerRow(partner) {
+        const tbody = document.getElementById('partnersTableBody');
+        if (!tbody || !partner) return;
+        const partnerId = partner.partner_id || `EDC-P-${String(partner.id).padStart(4, '0')}`;
+        const name = partner.name || partner.username || '-';
+        const username = partner.username || '-';
+        const email = partner.email || '-';
+        const phone = partner.phone || '-';
+        const joined = partner.date_joined || new Date().toISOString().slice(0, 10);
+        const initials = name.charAt(0).toUpperCase();
+        const photoUrl = partner.photo_url || '';
+        const isActive = partner.is_active !== false;
+        const rowHtml = `
+            <tr data-subadmin-id="${partner.id}" data-search="${partnerId.toLowerCase()},${name.toLowerCase()},${username.toLowerCase()},${email.toLowerCase()},${phone.toLowerCase()}" data-status="${isActive ? 'active' : 'inactive'}" data-joined="${joined}">
+                <td><strong>${escapeHtml(partnerId)}</strong></td>
+                <td><div class="user-cell"><div class="user-avatar">${photoUrl ? `<img src="${escapeHtml(photoUrl)}" alt="${escapeHtml(name)}">` : initials}</div><div><strong>${escapeHtml(name)}</strong><br><small style="color:#718096;">@${escapeHtml(username)}</small></div></div></td>
+                <td>${escapeHtml(email)}</td>
+                <td>${escapeHtml(phone)}</td>
+                <td>${escapeHtml(joined)}</td>
+                <td>${partner.total_agents || 0}</td>
+                <td>${partner.total_employees || 0}</td>
+                <td>${partner.total_applications || 0}</td>
+                <td>${partner.running_applications || 0}</td>
+                <td>${partner.total_entries || 0}</td>
+                <td><span class="badge ${isActive ? 'badge-active' : 'badge-inactive'}">${isActive ? 'Active' : 'Inactive'}</span></td>
+                <td><div class="action-btns">
+                    <button class="btn-action" onclick="viewSubadmin(${partner.id})"><i class="fas fa-eye"></i> View</button>
+                    <button class="btn-action" onclick="editSubadmin(${partner.id})"><i class="fas fa-edit"></i> Edit</button>
+                    <button class="btn-action btn-delete" onclick="deleteSubadmin(${partner.id}, '${escapeJsString(name)}')"><i class="fas fa-trash"></i> Delete</button>
+                </div></td>
+            </tr>`;
+        tbody.insertAdjacentHTML('afterbegin', rowHtml);
+        initializePartnersTableExperience();
+        const countEl = document.querySelector('.partners-count');
+        if (countEl) {
+            const match = countEl.textContent.match(/\d+/);
+            if (match) countEl.textContent = `Total: ${parseInt(match[0], 10) + 1} Partners`;
+        }
+    }
+
+    function escapeJsString(value) {
+        return String(value || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
     }
 
     function showSubadminFormMessage(message, isError = false) {
@@ -1217,14 +1575,14 @@
         event.preventDefault();
         const form = event.target;
         const formData = new FormData(form);
-        const firstName = (formData.get('first_name') || '').toString().trim();
+        const fullName = ((formData.get('name') || formData.get('first_name') || '').toString().trim());
         const username = (formData.get('username') || '').toString().trim();
         const email = (formData.get('email') || '').toString().trim();
         const phone = (formData.get('phone') || '').toString().trim();
         const password = (formData.get('password') || '').toString().trim();
 
-        if (!firstName || !username || !email || !phone || !password) {
-            showSubadminFormMessage('First Name, Username, Email, Phone and Password are required.', true);
+        if (!fullName || !username || !email || !phone || !password) {
+            showSubadminFormMessage('Name, Username, Email, Phone and Password are required.', true);
             return;
         }
 
@@ -1256,9 +1614,10 @@
             }
 
             showSubadminFormMessage(data.message || 'Partner created successfully.');
+            insertPartnerRow(data.subadmin || data);
             form.reset();
             resetSubadminDocumentRows();
-            setTimeout(() => window.location.reload(), 700);
+            setTimeout(() => closeAddPartnerSheet(), 900);
         } catch (error) {
             showSubadminFormMessage(error.message || 'Could not create subadmin.', true);
         } finally {
@@ -1312,6 +1671,7 @@
         }
         const detailRows = Array.isArray(item.full_application_details) ? item.full_application_details : [];
         const timeline = Array.isArray(item.status_timeline) ? item.status_timeline : [];
+        const documents = Array.isArray(item.documents) ? item.documents : [];
         const detailHtml = detailRows.length
             ? detailRows.map(row => `
                 <div style="display:flex; justify-content:space-between; gap:12px; padding:6px 0; border-bottom:1px dashed #e5e7eb;">
@@ -1330,6 +1690,18 @@
                 </div>
             `).join('')
             : '<div style="font-size:12px; color:#64748b;">No status timeline available.</div>';
+
+        const documentHtml = documents.length
+            ? documents.map(doc => `
+                <div style="display:flex; justify-content:space-between; gap:12px; padding:8px 0; border-bottom:1px dashed #e5e7eb;">
+                    <div>
+                        <div style="font-size:12px; font-weight:700; color:#0f172a;">${escapeHtml(doc.label || doc.name || doc.document_type || doc.type || 'Document')}</div>
+                        <div style="font-size:11px; color:#64748b;">${escapeHtml(doc.uploaded_at || '-')}</div>
+                    </div>
+                    ${doc.url ? `<span style="display:flex; gap:6px; flex-wrap:wrap;"><a href="${escapeHtml(doc.url)}" target="_blank" rel="noopener" class="btn-action">View</a><a href="${escapeHtml(doc.url)}" download class="btn-action">Download</a></span>` : '<span style="font-size:11px; color:#94a3b8;">No file</span>'}
+                </div>
+            `).join('')
+            : '<div style="font-size:12px; color:#64748b;">No application documents available.</div>';
 
         return `
             <div style="padding:14px;">
@@ -1353,6 +1725,10 @@
                     <summary style="font-size:12px; font-weight:700; color:#0f172a; cursor:pointer;">Status + Remark Timeline</summary>
                     <div style="margin-top:8px;">${timelineHtml}</div>
                 </details>
+                <details style="border:1px solid #e5e7eb; border-radius:10px; padding:10px; background:#f8fafc; margin-bottom:10px;">
+                    <summary style="font-size:12px; font-weight:700; color:#0f172a; cursor:pointer;">Documents</summary>
+                    <div style="margin-top:8px;">${documentHtml}</div>
+                </details>
                 <div>
                     <div style="font-size:12px; color:#64748b; margin-bottom:4px;">Remarks</div>
                     <div style="padding:10px; border:1px solid #e5e7eb; border-radius:8px; background:#f8fafc; font-size:12px; color:#0f172a;">${escapeHtml(item.remarks || item.bank_remark || '-')}</div>
@@ -1367,6 +1743,16 @@
         const customers = Array.isArray(data.customers) ? data.customers : [];
         const managedEmployees = Array.isArray(data.managed_employees) ? data.managed_employees : [];
         const managedAgents = Array.isArray(data.managed_agents) ? data.managed_agents : [];
+        const documents = Array.isArray(data.documents) ? data.documents : [];
+        const documentsHtml = documents.length ? documents.map((doc) => `
+            <div style="display:flex; justify-content:space-between; gap:12px; align-items:center; padding:9px 0; border-bottom:1px dashed #e5e7eb;">
+                <div>
+                    <div style="font-size:12px; font-weight:700; color:#0f172a;">${escapeHtml(doc.label || doc.name || doc.type || 'Document')}</div>
+                    <div style="font-size:11px; color:#64748b;">Uploaded: ${escapeHtml(doc.uploaded_at || '-')}</div>
+                </div>
+                ${doc.url ? `<span style="display:flex; gap:6px; flex-wrap:wrap;"><a href="${escapeHtml(doc.url)}" target="_blank" rel="noopener" class="btn-action"><i class="fas fa-eye"></i> View</a><a href="${escapeHtml(doc.url)}" download class="btn-action"><i class="fas fa-download"></i> Download</a></span>` : '<span style="font-size:12px; color:#94a3b8;">No file</span>'}
+            </div>
+        `).join('') : '<div style="padding:12px; color:#64748b; font-size:12px;">No partner documents uploaded yet.</div>';
         const panel = document.getElementById('partnerInlineDetails');
         const body = document.getElementById('partnerInlineBody');
         if (!body) return;
@@ -1384,18 +1770,29 @@
                 <div><strong>Email:</strong> ${escapeHtml(subadmin.email || '-')}</div>
                 <div><strong>Phone:</strong> ${escapeHtml(subadmin.phone || '-')}</div>
                 <div><strong>Joined:</strong> ${escapeHtml(subadmin.joined_on || '-')}</div>
+                <div><strong>City:</strong> ${escapeHtml(subadmin.city || '-')}</div>
+                <div><strong>District:</strong> ${escapeHtml(subadmin.district || '-')}</div>
+                <div><strong>State:</strong> ${escapeHtml(subadmin.state || '-')}</div>
+                <div><strong>PIN:</strong> ${escapeHtml(subadmin.pin_code || '-')}</div>
+                <div><strong>Aadhaar:</strong> ${escapeHtml(subadmin.aadhar_number || '-')}</div>
                 <div><strong>Status:</strong> ${escapeHtml(subadmin.status || '-')}</div>
+                <div style="grid-column: 1 / -1;"><strong>Address:</strong> ${escapeHtml(subadmin.address || '-')}</div>
             </div>
 
             <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap:10px; margin-bottom:14px;">
                 <button type="button" class="partner-stat-btn" data-section="applications" style="text-align:left; border:1px solid #dbeafe; border-radius:10px; background:#eff6ff; padding:10px; cursor:pointer;"><div style="font-size:12px;color:#1d4ed8;">Applications</div><div style="font-size:20px;font-weight:700;color:#1e3a8a;">${summary.total_applications || 0}</div></button>
                 <button type="button" class="partner-stat-btn" data-section="employees" style="text-align:left; border:1px solid #e2e8f0; border-radius:10px; background:#f8fafc; padding:10px; cursor:pointer;"><div style="font-size:12px;color:#334155;">Employees</div><div style="font-size:20px;font-weight:700;color:#0f172a;">${summary.managed_employees || 0}</div></button>
-                <button type="button" class="partner-stat-btn" data-section="agents" style="text-align:left; border:1px solid #bbf7d0; border-radius:10px; background:#f0fdf4; padding:10px; cursor:pointer;"><div style="font-size:12px;color:#15803d;">Agents</div><div style="font-size:20px;font-weight:700;color:#166534;">${summary.managed_agents || 0}</div></button>
+                <button type="button" class="partner-stat-btn" data-section="agents" style="text-align:left; border:1px solid #bbf7d0; border-radius:10px; background:#f0fdf4; padding:10px; cursor:pointer;"><div style="font-size:12px;color:#15803d;">Channel Partners</div><div style="font-size:20px;font-weight:700;color:#166534;">${summary.managed_agents || 0}</div></button>
                 <button type="button" class="partner-stat-btn" data-section="approved" style="text-align:left; border:1px solid #bbf7d0; border-radius:10px; background:#ecfdf5; padding:10px; cursor:pointer;"><div style="font-size:12px;color:#047857;">Approved</div><div style="font-size:20px;font-weight:700;color:#065f46;">${summary.approved || 0}</div></button>
                 <button type="button" class="partner-stat-btn" data-section="rejected" style="text-align:left; border:1px solid #fecaca; border-radius:10px; background:#fef2f2; padding:10px; cursor:pointer;"><div style="font-size:12px;color:#b91c1c;">Rejected</div><div style="font-size:20px;font-weight:700;color:#7f1d1d;">${summary.rejected || 0}</div></button>
                 <button type="button" class="partner-stat-btn" data-section="follow_up" style="text-align:left; border:1px solid #fed7aa; border-radius:10px; background:#fff7ed; padding:10px; cursor:pointer;"><div style="font-size:12px;color:#c2410c;">Banking Processing</div><div style="font-size:20px;font-weight:700;color:#9a3412;">${summary.banking_processing || 0}</div></button>
                 <button type="button" class="partner-stat-btn" data-section="customers" style="text-align:left; border:1px solid #e2e8f0; border-radius:10px; background:#f8fafc; padding:10px; cursor:pointer;"><div style="font-size:12px;color:#334155;">Customers</div><div style="font-size:20px;font-weight:700;color:#0f172a;">${summary.total_customers || 0}</div></button>
             </div>
+
+            <details open style="border:1px solid #e5e7eb; border-radius:10px; padding:12px; background:#f8fafc; margin-bottom:12px;">
+                <summary style="font-size:13px; font-weight:800; color:#0f172a; cursor:pointer;">Uploaded Documents</summary>
+                <div style="margin-top:10px;">${documentsHtml}</div>
+            </details>
 
             <div id="partnerSectionBody" style="border:1px solid #e5e7eb; border-radius:10px; background:#ffffff; overflow:auto; max-height:430px;"></div>
             <div id="partnerLoanDetailsPanel" style="border:1px solid #e5e7eb; border-radius:10px; margin-top:12px; background:#f8fafc;">
@@ -1451,6 +1848,7 @@
             const rowsHtml = managedEmployees.length ? managedEmployees.map((item, idx) => `
                 <tr>
                     <td style="padding:8px; border-bottom:1px solid #eef2f7;">${idx + 1}</td>
+                    <td style="padding:8px; border-bottom:1px solid #eef2f7;">${item.photo_url ? `<img src="${escapeHtml(item.photo_url)}" alt="${escapeHtml(item.name || 'Employee')}" style="width:34px;height:34px;border-radius:50%;object-fit:cover;border:1px solid #e2e8f0;">` : `<span style="width:34px;height:34px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:#eff6ff;color:#1d4ed8;font-weight:800;">${escapeHtml(String(item.name || '?').charAt(0).toUpperCase())}</span>`}</td>
                     <td style="padding:8px; border-bottom:1px solid #eef2f7;">${escapeHtml(item.employee_id || '-')}</td>
                     <td style="padding:8px; border-bottom:1px solid #eef2f7;">${escapeHtml(item.name || '-')}</td>
                     <td style="padding:8px; border-bottom:1px solid #eef2f7;">${escapeHtml(item.email || '-')}</td>
@@ -1461,7 +1859,7 @@
                         <button type="button" class="btn-action" data-partner-employee-apps="${escapeHtml(item.id)}"><i class="fas fa-list"></i> Applications</button>
                     </td>
                 </tr>
-            `).join('') : '<tr><td colspan="8" style="padding:18px; text-align:center; color:#6b7280;">No employees linked.</td></tr>';
+            `).join('') : '<tr><td colspan="9" style="padding:18px; text-align:center; color:#6b7280;">No employees linked.</td></tr>';
 
             sectionBody.innerHTML = `
                 <div style="padding:10px 12px; border-bottom:1px solid #e5e7eb; font-size:13px; font-weight:700; color:#0f172a;">Employees Under This Partner</div>
@@ -1469,6 +1867,7 @@
                     <thead style="background:#f8fafc; color:#334155;">
                         <tr>
                             <th style="padding:8px; text-align:left;">#</th>
+                            <th style="padding:8px; text-align:left;">Photo</th>
                             <th style="padding:8px; text-align:left;">Employee ID</th>
                             <th style="padding:8px; text-align:left;">Name</th>
                             <th style="padding:8px; text-align:left;">Email</th>
@@ -1487,6 +1886,7 @@
             const rowsHtml = managedAgents.length ? managedAgents.map((item, idx) => `
                 <tr>
                     <td style="padding:8px; border-bottom:1px solid #eef2f7;">${idx + 1}</td>
+                    <td style="padding:8px; border-bottom:1px solid #eef2f7;">${item.photo_url ? `<img src="${escapeHtml(item.photo_url)}" alt="${escapeHtml(item.name || 'Channel Partner')}" style="width:34px;height:34px;border-radius:50%;object-fit:cover;border:1px solid #e2e8f0;">` : `<span style="width:34px;height:34px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:#f0fdf4;color:#15803d;font-weight:800;">${escapeHtml(String(item.name || '?').charAt(0).toUpperCase())}</span>`}</td>
                     <td style="padding:8px; border-bottom:1px solid #eef2f7;">${escapeHtml(item.agent_id || '-')}</td>
                     <td style="padding:8px; border-bottom:1px solid #eef2f7;">${escapeHtml(item.name || '-')}</td>
                     <td style="padding:8px; border-bottom:1px solid #eef2f7;">${escapeHtml(item.email || '-')}</td>
@@ -1497,15 +1897,16 @@
                         <button type="button" class="btn-action" data-partner-agent-apps="${escapeHtml(item.id)}"><i class="fas fa-list"></i> Applications</button>
                     </td>
                 </tr>
-            `).join('') : '<tr><td colspan="8" style="padding:18px; text-align:center; color:#6b7280;">No agents linked.</td></tr>';
+            `).join('') : '<tr><td colspan="9" style="padding:18px; text-align:center; color:#6b7280;">No agents linked.</td></tr>';
 
             sectionBody.innerHTML = `
-                <div style="padding:10px 12px; border-bottom:1px solid #e5e7eb; font-size:13px; font-weight:700; color:#0f172a;">Agents / Channel Partners Under This Partner</div>
+                <div style="padding:10px 12px; border-bottom:1px solid #e5e7eb; font-size:13px; font-weight:700; color:#0f172a;">Channel Partners Under This Partner</div>
                 <table style="width:100%; border-collapse:collapse; font-size:12px; min-width:900px;">
                     <thead style="background:#f8fafc; color:#334155;">
                         <tr>
                             <th style="padding:8px; text-align:left;">#</th>
-                            <th style="padding:8px; text-align:left;">Agent ID</th>
+                            <th style="padding:8px; text-align:left;">Photo</th>
+                            <th style="padding:8px; text-align:left;">Channel Partner ID</th>
                             <th style="padding:8px; text-align:left;">Name</th>
                             <th style="padding:8px; text-align:left;">Email</th>
                             <th style="padding:8px; text-align:left;">Phone</th>
@@ -1583,8 +1984,8 @@
             if (agentAppsBtn) {
                 const agentId = Number(agentAppsBtn.getAttribute('data-partner-agent-apps'));
                 const rows = customers.filter((item) => Number(item.assigned_agent_id) === agentId);
-                const agentName = managedAgents.find((item) => Number(item.id) === agentId)?.name || 'Agent';
-                renderApplications(rows, `Applications Under Agent: ${agentName}`);
+                const agentName = managedAgents.find((item) => Number(item.id) === agentId)?.name || 'Channel Partner';
+                renderApplications(rows, `Applications Under Channel Partner: ${agentName}`);
             }
         };
     }
@@ -1656,6 +2057,9 @@
             document.getElementById('editSubadminAddress').value = subadmin.address || '';
             document.getElementById('editSubadminStatus').value =
                 String(subadmin.status || '').toLowerCase() === 'active' ? 'active' : 'inactive';
+            document.getElementById('editSubadminPassword').value = '';
+            const editPhoto = document.getElementById('editSubadminPhoto');
+            if (editPhoto) editPhoto.value = '';
         } catch (error) {
             showEditSubadminMessage(error.message || 'Unable to load subadmin details.', true);
         }
@@ -1704,6 +2108,96 @@
     if (subadminFormEl) {
         subadminFormEl.addEventListener('submit', submitSubadminForm);
     }
+    
+    // Inline Form JS
+    window.addSubadminDocumentRowInline = function() {
+        const container = document.getElementById('subadminDocumentRowsInline');
+        const row = document.createElement('div');
+        row.className = 'document-row';
+        row.style = 'display: flex; gap: 15px; margin-bottom: 10px; align-items: flex-end;';
+        row.innerHTML = `
+            <div class="form-group" style="flex: 1;">
+                <label>Document Type</label>
+                <select name="document_type">
+                    <option value="pan_card">PAN Card</option>
+                    <option value="aadhaar_card">Aadhaar Card</option>
+                    <option value="photo">Applicant Photo</option>
+                    <option value="address_proof">Address Proof</option>
+                    <option value="salary_slip">Salary Slip</option>
+                    <option value="bank_statement">Bank Statement</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            <div class="form-group" style="flex: 1;">
+                <label>Upload File</label>
+                <input type="file" name="document_file">
+            </div>
+            <button type="button" onclick="this.parentElement.remove()" style="background: none; border: none; color: #ef4444; font-size: 20px; cursor: pointer; padding: 0 5px;">&times;</button>
+        `;
+        container.appendChild(row);
+    };
+
+    window.submitSubadminFormInline = async function() {
+        const form = document.getElementById('subadminFormInline');
+        const msgBox = document.getElementById('subadminFormMessageInline');
+        msgBox.style.display = 'none';
+
+        if (!form.reportValidity()) {
+            return;
+        }
+
+        const fullName = form.querySelector('[name="name"]').value.trim();
+        const username = form.querySelector('[name="username"]').value.trim();
+        const email = form.querySelector('[name="email"]').value.trim();
+        const phone = form.querySelector('[name="phone"]').value.trim();
+        const password = form.querySelector('[name="password"]').value.trim();
+
+        if (!fullName || !username || !email || !phone || !password) {
+            msgBox.textContent = 'Name, Username, Email, Phone and Password are required.';
+            msgBox.style.color = '#721c24';
+            msgBox.style.backgroundColor = '#f8d7da';
+            msgBox.style.display = 'block';
+            return;
+        }
+
+        const formData = new FormData(form);
+        const submitBtn = form.querySelector('.btn-submit');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
+        submitBtn.disabled = true;
+
+        try {
+            const url = "{% url 'api_create_subadmin' %}";
+            const response = await fetch(url, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                }
+            });
+
+            const data = await response.json();
+            if (response.ok && data.success) {
+                msgBox.textContent = data.message || 'Partner created successfully.';
+                msgBox.style.color = '#155724';
+                msgBox.style.backgroundColor = '#d4edda';
+                msgBox.style.display = 'block';
+                setTimeout(() => {
+                    window.location.href = "{% url 'admin_partners_list' %}";
+                }, 1000);
+            } else {
+                throw new Error(data.error || data.message || 'Error creating partner.');
+            }
+        } catch (error) {
+            msgBox.textContent = error.message;
+            msgBox.style.color = '#721c24';
+            msgBox.style.backgroundColor = '#f8d7da';
+            msgBox.style.display = 'block';
+        } finally {
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+        }
+    };
 
     const editSubadminForm = document.getElementById('editSubadminForm');
     if (editSubadminForm) {
@@ -1734,13 +2228,18 @@
             }
 
             try {
+                const formData = new FormData();
+                Object.entries(payload).forEach(([key, value]) => formData.append(key, value));
+                const photoFile = document.getElementById('editSubadminPhoto')?.files?.[0];
+                if (photoFile) {
+                    formData.append('profile_photo', photoFile);
+                }
                 const response = await fetch(`/api/admin/subadmin/${currentEditSubadminId}/update/`, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
                         'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '',
                     },
-                    body: JSON.stringify(payload)
+                    body: formData
                 });
                 const raw = await response.text();
                 let data = {};
@@ -1802,7 +2301,110 @@
         if (event.target === deleteModal) closeModal('deleteModal');
     });
 
-    document.addEventListener('DOMContentLoaded', initializePartnersTableExperience);
+    function updateMultiIdDropdownLabel(dropdown) {
+        if (!dropdown) return;
+        const label = dropdown.querySelector('[data-multi-id-label]');
+        const checked = Array.from(dropdown.querySelectorAll('input[type="checkbox"]:checked'));
+        const placeholder = dropdown.getAttribute('data-placeholder') || 'Select records';
+        if (!label) return;
+        if (!checked.length) {
+            label.textContent = placeholder;
+            return;
+        }
+        if (checked.length === 1) {
+            const text = checked[0].closest('.multi-id-option')?.querySelector('strong')?.textContent || '1 selected';
+            label.textContent = text;
+            return;
+        }
+        label.textContent = `${checked.length} selected`;
+    }
+
+    function initMultiIdDropdowns(root = document) {
+        root.querySelectorAll('[data-multi-id-dropdown]').forEach((dropdown) => {
+            if (dropdown.dataset.ready === '1') {
+                updateMultiIdDropdownLabel(dropdown);
+                return;
+            }
+            dropdown.dataset.ready = '1';
+            dropdown.querySelector('.multi-id-trigger')?.addEventListener('click', (event) => {
+                event.stopPropagation();
+                document.querySelectorAll('[data-multi-id-dropdown].open').forEach((item) => {
+                    if (item !== dropdown) item.classList.remove('open');
+                });
+                dropdown.classList.toggle('open');
+            });
+            dropdown.querySelectorAll('input[type="checkbox"]').forEach((input) => {
+                input.addEventListener('change', () => updateMultiIdDropdownLabel(dropdown));
+            });
+            updateMultiIdDropdownLabel(dropdown);
+        });
+    }
+
+    document.addEventListener('click', () => {
+        document.querySelectorAll('[data-multi-id-dropdown].open').forEach((dropdown) => dropdown.classList.remove('open'));
+    });
+
+    document.addEventListener('DOMContentLoaded', function () {
+        initializePartnersTableExperience();
+        initMultiIdDropdowns();
+        const employeeMenu = document.getElementById('partnerEmployeeDropdownInlineMenu');
+        if (employeeMenu) {
+            fetch("{% url 'api_get_employees' %}")
+                .then((response) => response.ok ? response.json() : Promise.reject(new Error('Failed to load employees')))
+                .then((data) => {
+                    if (!data.success || !Array.isArray(data.employees)) return;
+                    employeeMenu.innerHTML = '';
+                    data.employees.forEach((emp) => {
+                        if ((emp.status || '').toLowerCase() === 'inactive' || emp.is_active === false) {
+                            return;
+                        }
+                        const label = document.createElement('label');
+                        label.className = 'multi-id-option';
+                        label.innerHTML = `
+                            <input type="checkbox" name="employee_ids" value="${escapeHtml(emp.id)}">
+                            <span>
+                                <strong>${escapeHtml(emp.employee_id || `ID:${emp.id}`)} - ${escapeHtml(emp.name || emp.username || 'Employee')}</strong>
+                                <small>${escapeHtml(emp.email || 'No email')}${emp.phone ? ` | ${escapeHtml(emp.phone)}` : ''}</small>
+                            </span>
+                        `;
+                        employeeMenu.appendChild(label);
+                    });
+                    const dropdown = employeeMenu.closest('[data-multi-id-dropdown]');
+                    if (dropdown) {
+                        employeeMenu.querySelectorAll('input[type="checkbox"]').forEach((input) => {
+                            input.addEventListener('change', () => updateMultiIdDropdownLabel(dropdown));
+                        });
+                        updateMultiIdDropdownLabel(dropdown);
+                    }
+                })
+                .catch((error) => {
+                    console.error('Failed to load employees for partner assignment', error);
+                });
+        }
+        const bar = document.getElementById('partnersFilters');
+        if (bar) {
+            const run = () => { partnersTableState.currentPage = 1; applyPartnersFilters(); };
+            bar.querySelector('.admin-filter-apply')?.addEventListener('click', run);
+            bar.querySelector('.admin-filter-reset')?.addEventListener('click', () => {
+                bar.querySelector('.admin-filter-search').value = '';
+                const st = bar.querySelector('.admin-filter-status');
+                if (st) st.value = '';
+                bar.querySelector('.admin-filter-date-from').value = '';
+                bar.querySelector('.admin-filter-date-to').value = '';
+                partnersTableState.currentPage = 1;
+                applyPartnersFilters();
+            });
+            bar.querySelector('.admin-filter-search')?.addEventListener('input', run);
+            bar.querySelector('.admin-filter-status')?.addEventListener('change', run);
+            bar.querySelector('.admin-filter-date-from')?.addEventListener('change', run);
+            bar.querySelector('.admin-filter-date-to')?.addEventListener('change', run);
+        }
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('open_add') === '1') {
+            openAddPartnerSheet();
+            window.history.replaceState({}, '', window.location.pathname);
+        }
+    });
 </script>
 
 {% endblock %}

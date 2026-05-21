@@ -29,6 +29,7 @@ from .models import User, Loan, LoanApplication, Agent, ActivityLog, LoanDocumen
 from .followup_utils import auto_move_overdue_to_follow_up
 from .loan_sync import find_related_loan_application
 from .id_utils import generate_agent_sequence_id
+from .onboarding_utils import collect_user_document_payload
 from .updated_document_utils import (
     UPDATED_DOCUMENT_LABEL,
     UPDATED_DOCUMENT_STATUS_KEY,
@@ -128,6 +129,181 @@ def _partner_under_for(created_by=None, assigned_agent=None):
     if not partner:
         return '-'
     return _display_user(partner, 'Partner')
+
+
+FOLLOW_UP_PENDING_MARKER = 'revert remark '
+
+
+def _employee_role_label(user_obj):
+    if not user_obj:
+        return 'System'
+    mapping = {
+        'admin': 'Admin',
+        'subadmin': 'Partner',
+        'employee': 'Employee',
+        'agent': 'Channel Partner',
+        'dsa': 'DSA',
+    }
+    return mapping.get(getattr(user_obj, 'role', ''), getattr(user_obj, 'role', 'User').title())
+
+
+def _employee_agent_photo_url(agent):
+    if getattr(agent, 'profile_photo', None):
+        return agent.profile_photo.url
+    if getattr(agent, 'user', None) and getattr(agent.user, 'profile_photo', None):
+        return agent.user.profile_photo.url
+    return ''
+
+
+def _employee_is_follow_up_pending_loan(loan_obj):
+    if not loan_obj or loan_obj.status not in ['new_entry', 'waiting']:
+        return False
+    if FOLLOW_UP_PENDING_MARKER in str(loan_obj.remarks or '').lower():
+        return True
+    related_app = find_related_loan_application(loan_obj)
+    return FOLLOW_UP_PENDING_MARKER in str(getattr(related_app, 'approval_notes', '') or '').lower()
+
+
+def _employee_effective_status_key(loan_obj):
+    if _employee_is_follow_up_pending_loan(loan_obj):
+        return 'follow_up_pending'
+    raw_status = str(getattr(loan_obj, 'status', '') or '').strip().lower()
+    if raw_status == 'waiting' and loan_has_updated_documents(loan_obj):
+        return UPDATED_DOCUMENT_STATUS_KEY
+    return raw_status
+
+
+def _employee_status_label(status_key):
+    labels = {
+        'draft': 'Draft',
+        'new_entry': 'New Application',
+        'waiting': 'Document Pending',
+        UPDATED_DOCUMENT_STATUS_KEY: 'Pending Document Cleared',
+        'follow_up': 'Banking Processing',
+        'follow_up_pending': 'Follow Up',
+        'approved': 'Approved',
+        'rejected': 'Rejected',
+        'disbursed': 'Disbursed',
+    }
+    return labels.get(status_key, str(status_key or '-').replace('_', ' ').title())
+
+
+def _employee_agent_scope_loans(employee_user, agent):
+    base_filter = Q(assigned_agent=agent)
+    if getattr(agent, 'user_id', None):
+        base_filter |= Q(created_by=agent.user)
+
+    return Loan.objects.filter(base_filter).filter(
+        Q(assigned_employee=employee_user) |
+        Q(assigned_agent__under_employee=employee_user) |
+        Q(assigned_agent__created_by=employee_user) |
+        Q(created_by=employee_user)
+    ).select_related(
+        'created_by',
+        'assigned_employee',
+        'assigned_agent',
+        'assigned_agent__user',
+    ).prefetch_related('documents').order_by('-created_at').distinct()
+
+
+def _employee_customer_row_from_loan(loan, source):
+    creator = loan.created_by
+    creator_name = _display_user(creator, '-')
+    creator_role = _employee_role_label(creator)
+    status_key = _employee_effective_status_key(loan)
+    partner_under = _partner_under_for(creator, loan.assigned_agent)
+
+    if loan.assigned_employee:
+        assigned_to = f"Employee - {_display_user(loan.assigned_employee, '-')}"
+    elif loan.assigned_agent:
+        assigned_to = f"Channel Partner - {loan.assigned_agent.name}"
+    else:
+        assigned_to = '-'
+
+    return {
+        'loan_id': loan.id,
+        'loan_uid': loan.user_id or f'LOAN-{loan.id:06d}',
+        'customer_name': loan.full_name or '-',
+        'mobile': loan.mobile_number or '-',
+        'email': loan.email or '-',
+        'loan_type': loan.get_loan_type_display() if hasattr(loan, 'get_loan_type_display') else (loan.loan_type or '-'),
+        'loan_amount': float(loan.loan_amount or 0),
+        'status': status_key,
+        'status_raw': loan.status,
+        'status_display': _employee_status_label(status_key),
+        'source': source,
+        'assigned_to': assigned_to,
+        'under_whom': f"{creator_role} - {creator_name}",
+        'assigned_by': partner_under if partner_under != '-' else f"{creator_role} - {creator_name}",
+        'partner_under': partner_under,
+        'bank_remark': str(loan.remarks or '').strip() or '-',
+        'created_at': loan.created_at.strftime('%Y-%m-%d %H:%M') if loan.created_at else '',
+        'detail_url': reverse('employee_loan_detail', kwargs={'loan_id': loan.id}),
+    }
+
+
+def _build_employee_agent_payload(employee_user, agent, include_customers=True):
+    scoped_loans_qs = _employee_agent_scope_loans(employee_user, agent)
+    loans_list = list(scoped_loans_qs)
+    submitted_count = sum(1 for loan in loans_list if agent.user and loan.created_by_id == agent.user.id)
+    assigned_count = sum(1 for loan in loans_list if loan.assigned_agent_id == agent.id)
+
+    customers = []
+    if include_customers:
+        for loan in loans_list[:250]:
+            source = 'Submitted' if (agent.user and loan.created_by_id == agent.user.id) else 'Assigned'
+            customers.append(_employee_customer_row_from_loan(loan, source))
+
+    summary = {
+        'total_submitted_applications': submitted_count,
+        'total_assigned_applications': assigned_count,
+        'total_applications': len(loans_list),
+        'approved': sum(1 for loan in loans_list if _employee_effective_status_key(loan) == 'approved'),
+        'rejected': sum(1 for loan in loans_list if _employee_effective_status_key(loan) == 'rejected'),
+        'banking_processing': sum(1 for loan in loans_list if _employee_effective_status_key(loan) == 'follow_up'),
+        'follow_up_pending': sum(1 for loan in loans_list if _employee_effective_status_key(loan) == 'follow_up_pending'),
+        'waiting': sum(1 for loan in loans_list if _employee_effective_status_key(loan) == 'waiting'),
+        'updated_document': sum(1 for loan in loans_list if _employee_effective_status_key(loan) == UPDATED_DOCUMENT_STATUS_KEY),
+        'disbursed': sum(1 for loan in loans_list if _employee_effective_status_key(loan) == 'disbursed'),
+        'total_customers': len(loans_list),
+    }
+
+    creator = agent.created_by
+    created_under = 'System'
+    if creator:
+        created_under = f"{_employee_role_label(creator)} - {_display_user(creator, '-')}"
+
+    user_documents = collect_user_document_payload(agent.user) if getattr(agent, 'user', None) else []
+    document_lookup = {doc.get('type'): doc.get('url') for doc in user_documents if doc.get('url')}
+
+    return {
+        'agent': {
+            'id': agent.id,
+            'agent_id': agent.agent_id or f'EDC-SCP-{agent.id:04d}',
+            'name': agent.name or _display_user(getattr(agent, 'user', None), 'Channel Partner'),
+            'email': agent.email or (getattr(agent.user, 'email', '') if getattr(agent, 'user', None) else ''),
+            'phone': agent.phone or (getattr(agent.user, 'phone', '') if getattr(agent, 'user', None) else ''),
+            'gender': agent.gender or (getattr(agent.user, 'gender', '') if getattr(agent, 'user', None) else '') or 'Other',
+            'address': agent.address or (getattr(agent.user, 'address', '') if getattr(agent, 'user', None) else ''),
+            'city': agent.city or '',
+            'state': agent.state or '',
+            'pin_code': agent.pin_code or '',
+            'status': agent.status or 'active',
+            'photo_url': _employee_agent_photo_url(agent),
+            'created_under': created_under,
+            'created_by_label': _employee_role_label(creator) if creator else 'System',
+            'under_employee': _display_user(agent.under_employee, 'Not Assigned') if getattr(agent, 'under_employee', None) else 'Not Assigned',
+            'created_at': agent.created_at.strftime('%Y-%m-%d %H:%M') if agent.created_at else '',
+            'documents': user_documents,
+            'pan_card_url': document_lookup.get('pan_card', ''),
+            'aadhar_card_url': document_lookup.get('aadhaar_card', ''),
+            'bank_details_url': document_lookup.get('bank_statement', ''),
+            'can_manage': agent.created_by_id == employee_user.id,
+        },
+        'summary': summary,
+        'customers': customers,
+    }
+
 
 @login_required
 @require_http_methods(["GET"])
@@ -1073,47 +1249,103 @@ def employee_my_agents_page(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def employee_my_agents_api(request):
-    """API endpoint for agents created by/assigned to employee
-    
-    Shows:
-    - All agents created by this employee
-    - All agents assigned to this employee (if any)
-    - Mark creation source (Admin vs Employee-Created)
-    """
+    """Realtime list of channel partners visible under the current employee."""
     if request.user.role != 'employee':
         return Response({'error': 'Only employees can access'}, status=status.HTTP_403_FORBIDDEN)
     
     try:
-        from django.db.models import Q
-        # Get agents created by this employee or assigned under this employee
-        agents = Agent.objects.filter(
+        search_query = str(request.GET.get('q') or request.GET.get('search') or '').strip()
+        status_filter = str(request.GET.get('status') or '').strip().lower()
+
+        agents_qs = Agent.objects.filter(
             Q(created_by=request.user) | Q(under_employee=request.user)
-        ).exclude(status='blocked').order_by('-created_at').distinct()
-        
+        ).select_related('user', 'created_by', 'under_employee').order_by('-created_at').distinct()
+
+        if search_query:
+            agents_qs = agents_qs.filter(
+                Q(agent_id__icontains=search_query) |
+                Q(name__icontains=search_query) |
+                Q(email__icontains=search_query) |
+                Q(phone__icontains=search_query) |
+                Q(city__icontains=search_query) |
+                Q(state__icontains=search_query)
+            )
+
+        if status_filter in {'active', 'blocked'}:
+            agents_qs = agents_qs.filter(status=status_filter)
+
         agents_data = []
-        for agent in agents:
-            # Count of loans created by this agent
-            loan_count = Loan.objects.filter(assigned_agent=agent).count()
-            
+        totals = {
+            'total_agents': 0,
+            'active_agents': 0,
+            'blocked_agents': 0,
+            'total_applications': 0,
+            'approved_applications': 0,
+            'rejected_applications': 0,
+            'disbursed_applications': 0,
+            'banking_processing': 0,
+            'follow_up_pending': 0,
+            'pending_document_cleared': 0,
+        }
+
+        for agent in agents_qs:
+            payload = _build_employee_agent_payload(request.user, agent, include_customers=False)
+            agent_data = payload['agent']
+            summary = payload['summary']
+
             agents_data.append({
-                'id': agent.id,
-                'name': agent.name,
-                'email': agent.email,
-                'phone': agent.phone,
-                'city': agent.city,
-                'state': agent.state,
-                'status': agent.status,
-                'created_by': 'Employee' if agent.created_by and agent.created_by.role == 'employee' else 'Admin',
-                'created_at': agent.created_at.strftime('%Y-%m-%d'),
-                'total_loans': loan_count,
+                **agent_data,
+                'total_loans': summary['total_applications'],
+                'approved_count': summary['approved'],
+                'rejected_count': summary['rejected'],
+                'disbursed_count': summary['disbursed'],
+                'banking_processing': summary['banking_processing'],
+                'follow_up_pending_count': summary['follow_up_pending'],
+                'updated_document_count': summary['updated_document'],
+                'waiting_count': summary['waiting'],
             })
-        
+
+            totals['total_agents'] += 1
+            if agent_data['status'] == 'active':
+                totals['active_agents'] += 1
+            else:
+                totals['blocked_agents'] += 1
+            totals['total_applications'] += summary['total_applications']
+            totals['approved_applications'] += summary['approved']
+            totals['rejected_applications'] += summary['rejected']
+            totals['disbursed_applications'] += summary['disbursed']
+            totals['banking_processing'] += summary['banking_processing']
+            totals['follow_up_pending'] += summary['follow_up_pending']
+            totals['pending_document_cleared'] += summary['updated_document']
+
         return Response({
             'success': True,
+            'stats': totals,
             'agents': agents_data,
             'total': len(agents_data)
         }, status=status.HTTP_200_OK)
     
+    except Exception as e:
+        return Response({
+            'success': False,
+            'error': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def employee_agent_detail_api(request, agent_id):
+    """Detailed employee-scope channel partner payload for modal/table views."""
+    if request.user.role != 'employee':
+        return Response({'error': 'Only employees can access'}, status=status.HTTP_403_FORBIDDEN)
+
+    try:
+        agent = get_object_or_404(
+            Agent.objects.select_related('user', 'created_by', 'under_employee'),
+            Q(id=agent_id) & (Q(created_by=request.user) | Q(under_employee=request.user))
+        )
+        payload = _build_employee_agent_payload(request.user, agent, include_customers=True)
+        return Response({'success': True, **payload}, status=status.HTTP_200_OK)
     except Exception as e:
         return Response({
             'success': False,
@@ -1142,6 +1374,10 @@ def employee_add_agent_api(request):
         password = request.data.get('password', '').strip()
         city = request.data.get('city', '').strip()
         state = request.data.get('state', '').strip()
+        gender = request.data.get('gender', '').strip()
+        address = request.data.get('address', '').strip()
+        pin_code = request.data.get('pin_code', '').strip()
+        photo = request.FILES.get('photo') or request.FILES.get('profile_photo')
         
         # Validate required fields
         if not all([name, phone, email, password]):
@@ -1181,7 +1417,13 @@ def employee_add_agent_api(request):
             phone=phone,
             first_name=name.split()[0] if name else 'Agent',
             last_name=' '.join(name.split()[1:]) if len(name.split()) > 1 else '',
+            gender=gender if gender in ['Male', 'Female', 'Other'] else None,
+            address=address,
         )
+
+        if photo:
+            user.profile_photo = photo
+            user.save(update_fields=['profile_photo', 'updated_at'])
         
         # Create Agent profile
         generated_agent_id = generate_agent_sequence_id(is_sub_channel_partner=True)
@@ -1193,8 +1435,13 @@ def employee_add_agent_api(request):
             email=email,
             city=city,
             state=state,
+            gender=gender if gender in ['Male', 'Female', 'Other'] else None,
+            address=address,
+            pin_code=pin_code,
             status='active',
-            created_by=request.user  # Link to employee who created it
+            created_by=request.user,
+            under_employee=request.user,
+            profile_photo=photo if photo else None,
         )
         
         # Log activity
@@ -1257,6 +1504,9 @@ def employee_update_agent_api(request, agent_id):
         if 'photo' in request.FILES:
             agent.profile_photo = request.FILES.get('photo')
 
+        if not agent.under_employee_id:
+            agent.under_employee = request.user
+
         agent.save()
 
         if agent.user:
@@ -1268,6 +1518,8 @@ def employee_update_agent_api(request, agent_id):
                 agent.user.phone = phone
             if email:
                 agent.user.email = email
+            if 'photo' in request.FILES:
+                agent.user.profile_photo = request.FILES.get('photo')
             agent.user.save()
 
         return Response({

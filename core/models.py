@@ -120,7 +120,7 @@ class Loan(models.Model):
         ('home', 'Home Loan'),
         ('business', 'Business Loan'),
         ('education', 'Education Loan'),
-        ('car', 'Car Loan'),
+        ('car', 'Auto Loan'),
         ('other', 'Other'),
     ]
 
@@ -233,12 +233,6 @@ class Loan(models.Model):
         return f"{self.full_name} - {self.loan_type} ({self.status})"
     
     def save(self, *args, **kwargs):
-        # Auto-generate User ID if not present
-        if not self.user_id:
-            from datetime import datetime
-            timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
-            self.user_id = f"USR{timestamp}"
-        
         # Auto-calculate EMI
         if self.loan_amount and self.tenure_months and self.interest_rate:
             principal = float(self.loan_amount)
@@ -426,7 +420,7 @@ class Applicant(models.Model):
         ('home', 'Home Loan'),
         ('business', 'Business Loan'),
         ('education', 'Education Loan'),
-        ('car', 'Car Loan'),
+        ('car', 'Auto Loan'),
         ('other', 'Other'),
     ]
     

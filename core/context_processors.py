@@ -3,6 +3,13 @@ import re
 from .models import Agent, AgentAssignment, User
 
 
+def _clean_display_name(value):
+    text = str(value or '').strip()
+    if not text or text == '-':
+        return ''
+    return text
+
+
 def _extract_subadmin_id(notes_text):
     match = re.search(r'\[subadmin:(\d+)\]', str(notes_text or ''), flags=re.IGNORECASE)
     if not match:
@@ -15,14 +22,14 @@ def _extract_subadmin_id(notes_text):
 
 def _resolve_subadmin_name_for_employee(employee_user):
     if not employee_user:
-        return '-'
+        return ''
 
     profile = getattr(employee_user, 'employee_profile', None)
     subadmin_id = _extract_subadmin_id(getattr(profile, 'notes', '')) if profile else None
     if subadmin_id:
         subadmin = User.objects.filter(id=subadmin_id, role='subadmin').only('first_name', 'last_name', 'username').first()
         if subadmin:
-            return subadmin.get_full_name() or subadmin.username or '-'
+            return _clean_display_name(subadmin.get_full_name() or subadmin.username)
 
     onboarding = getattr(employee_user, 'onboarding_profile', None)
     payload = onboarding.data if onboarding and isinstance(onboarding.data, dict) else {}
@@ -33,17 +40,17 @@ def _resolve_subadmin_name_for_employee(employee_user):
     if role_text in ['partner', 'subadmin']:
         creator_name = str(meta.get('created_by_name') or '').strip()
         if creator_name:
-            return creator_name
+            return _clean_display_name(creator_name)
 
     created_by = getattr(employee_user, 'created_by', None)
     if created_by and getattr(created_by, 'role', '') == 'subadmin':
-        return created_by.get_full_name() or created_by.username or '-'
-    return '-'
+        return _clean_display_name(created_by.get_full_name() or created_by.username)
+    return ''
 
 
 def _resolve_agent_hierarchy(agent_obj):
     if not agent_obj:
-        return {'employee_name': '-', 'subadmin_name': '-'}
+        return {'employee_name': '', 'subadmin_name': ''}
 
     employee_user = None
     latest_assignment = (
@@ -57,20 +64,20 @@ def _resolve_agent_hierarchy(agent_obj):
     elif agent_obj.created_by and getattr(agent_obj.created_by, 'role', '') == 'employee':
         employee_user = agent_obj.created_by
 
-    employee_name = (
+    employee_name = _clean_display_name(
         (employee_user.get_full_name() or employee_user.username)
-        if employee_user else '-'
+        if employee_user else ''
     )
 
-    subadmin_name = '-'
+    subadmin_name = ''
     if employee_user:
         subadmin_name = _resolve_subadmin_name_for_employee(employee_user)
     elif agent_obj.created_by and getattr(agent_obj.created_by, 'role', '') == 'subadmin':
-        subadmin_name = agent_obj.created_by.get_full_name() or agent_obj.created_by.username or '-'
+        subadmin_name = _clean_display_name(agent_obj.created_by.get_full_name() or agent_obj.created_by.username)
 
     return {
-        'employee_name': employee_name or '-',
-        'subadmin_name': subadmin_name or '-',
+        'employee_name': employee_name,
+        'subadmin_name': subadmin_name,
     }
 
 
@@ -95,14 +102,22 @@ def agent_profile_context(request):
             agent = Agent.objects.get(user=request.user)
             context['agent_profile'] = agent
             hierarchy = _resolve_agent_hierarchy(agent)
-            context['panel_hierarchy_line'] = (
-                f"Subadmin/Partner: {hierarchy['subadmin_name']} | Employee: {hierarchy['employee_name']}"
-            )
+            parts = []
+            if hierarchy['subadmin_name']:
+                parts.append(f"Partner: {hierarchy['subadmin_name']}")
+            if hierarchy['employee_name']:
+                parts.append(f"Employee: {hierarchy['employee_name']}")
+            context['panel_hierarchy_line'] = " | ".join(parts)
+            context['sidebar_profile_label'] = 'Channel Partner'
         except Agent.DoesNotExist:
-            context['panel_hierarchy_line'] = "Subadmin/Partner: - | Employee: -"
+            context['panel_hierarchy_line'] = ""
+            context['sidebar_profile_label'] = 'Channel Partner'
 
     elif role == 'employee':
         subadmin_name = _resolve_subadmin_name_for_employee(request.user)
-        context['panel_hierarchy_line'] = f"Subadmin/Partner: {subadmin_name}"
+        context['panel_hierarchy_line'] = f"Partner: {subadmin_name}" if subadmin_name else ""
+        context['sidebar_profile_label'] = 'Employee'
+    elif role == 'subadmin':
+        context['sidebar_profile_label'] = 'Partner'
 
     return context

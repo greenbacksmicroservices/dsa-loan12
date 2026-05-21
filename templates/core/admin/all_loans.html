@@ -66,7 +66,7 @@
     }
     
     .loans-table thead {
-        background: linear-gradient(135deg, #1abc9c 0%, #16a085 100%);
+        background: linear-gradient(135deg, #1a16a5 0%, #0e4d84 100%);
         color: white;
     }
     
@@ -98,7 +98,7 @@
     
     .loan-id {
         font-weight: 700;
-        color: #1abc9c;
+        color: #080a0f;
     }
     
     .borrower-name {
@@ -159,7 +159,7 @@
         color: white;
         font-weight: 700;
         font-size: 16px;
-        background: linear-gradient(135deg, #1abc9c, #16a085);
+        background: linear-gradient(135deg, #3ca2d1, #2c28a8);
         margin-right: 10px;
         flex-shrink: 0;
     }
@@ -506,13 +506,6 @@
         </div>
         {% endif %}
 
-        <!-- Header -->
-        <div class="loans-header">
-            <div>
-                <h1 class="loans-title">All Loans{% if status_filter_display %} - {{ status_filter_display }}{% endif %}</h1>
-            </div>
-        </div>
-        
         <!-- Search Bar -->
         <div class="search-bar">
             <form method="GET" class="row g-3">
@@ -551,7 +544,7 @@
                                 {{ loan.full_name|first|upper }}
                             </div>
                         </td>
-                        <td><span class="loan-id">{{ loan.user_id|default:loan.id }}</span></td>
+                        <td><span class="loan-id">{{ loan.user_id|default:'Pending Manual ID' }}</span></td>
                         <td><span class="borrower-name">{{ loan.full_name }}</span></td>
                         <td>
                             <span class="loan-type-badge type-{{ loan.get_loan_type_display|lower|cut:' ' }}">
@@ -1169,6 +1162,10 @@
                     <input id="collectLoanAccountNumber" type="text" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px;" placeholder="Enter loan account number">
                 </div>
                 <div>
+                    <label style="display: block; color: #1a202c; font-weight: 700; margin-bottom: 8px; font-size: 13px;">Manual Loan ID *</label>
+                    <input id="collectManualLoanId" type="text" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px;" placeholder="Enter manual Loan ID">
+                </div>
+                <div>
                     <label style="display: block; color: #1a202c; font-weight: 700; margin-bottom: 8px; font-size: 13px;">Verified Loan Amount *</label>
                     <input id="collectVerifiedLoanAmount" type="number" min="0" step="0.01" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px;" placeholder="120000">
                 </div>
@@ -1196,6 +1193,8 @@
         
         <!-- Disbursement Details -->
         <div id="disbursementDetailsDiv" style="display: none; margin-bottom: 30px;">
+            <label style="display: block; color: #1a202c; font-weight: 700; margin-bottom: 10px; font-size: 14px;">Manual Loan ID</label>
+            <input id="disbursementManualLoanId" type="text" style="width: 100%; padding: 12px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 14px; margin-bottom: 12px; box-sizing: border-box;" placeholder="Edit manual Loan ID if needed">
             <label style="display: block; color: #1a202c; font-weight: 700; margin-bottom: 10px; font-size: 14px;">Disbursement Notes (Optional)</label>
             <textarea id="disbursementNotes" style="width: 100%; padding: 12px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 14px; font-family: inherit; resize: vertical; min-height: 100px; box-sizing: border-box;" placeholder="Add any notes about the disbursement (e.g., reference number, bank details verification, etc.)"></textarea>
         </div>
@@ -1289,6 +1288,10 @@
                         <option value="cooperative">Cooperative</option>
                         <option value="nbfc">NBFC</option>
                     </select>
+                </div>
+                <div>
+                    <label style="display: block; color: #334155; font-weight: 700; margin-bottom: 6px; font-size: 12px;">Manual Loan ID</label>
+                    <input id="editManualLoanId" type="text" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px;">
                 </div>
                 <div>
                     <label style="display: block; color: #334155; font-weight: 700; margin-bottom: 6px; font-size: 12px;">Disbursed Amount</label>
@@ -1584,6 +1587,9 @@ function toggleFullRemarksEditor() {
 function prefillDisbursedEditFields(data) {
     const payload = data || {};
     const amountValue = payload.disbursement_amount;
+    document.getElementById('editManualLoanId').value =
+        (payload.loan_uid_manual && payload.loan_uid_manual !== '-') ? payload.loan_uid_manual
+        : (payload.user_id && payload.user_id !== '-' ? payload.user_id : '');
     document.getElementById('editDisbursedAmount').value =
         (amountValue === null || amountValue === undefined || amountValue === '' || amountValue === '-') ? '' : amountValue;
     document.getElementById('editDisbursedDate').value = formatDateForInput(payload.disbursed_at);
@@ -2016,7 +2022,7 @@ function populateDetailModal(data) {
         downloadBtn.disabled = false;
         downloadBtn.textContent = 'Download Full Application';
     }
-    setText('detailLoanUid', data.loan_uid_manual || data.user_id || data.id || '-');
+    setText('detailLoanUid', (data.loan_uid_manual && data.loan_uid_manual !== '-') ? data.loan_uid_manual : 'Pending Manual ID');
     setText('detailStatusText', data.status_display || data.status || '-');
     setText('detailCreatedBy', data.created_by_display || '-');
     setText('detailAssignedEmployee', data.assigned_employee_name || '-');
@@ -2293,7 +2299,7 @@ function generateServiceBasedDocumentsHtml(fullDetails, uploadedDocuments) {
                         ${fileUrl
                             ? `<a href="${escapeHtml(fileUrl)}" target="_blank" style="padding: 6px 10px; border-radius: 6px; border: 1px solid #3b82f6; color: #2563eb; font-size: 12px; font-weight: 600; text-decoration: none; background: #eff6ff;">View</a>
                                <a href="${escapeHtml(fileUrl)}" download style="padding: 6px 10px; border-radius: 6px; border: 1px solid #16a34a; color: #15803d; font-size: 12px; font-weight: 600; text-decoration: none; background: #f0fdf4;">Download</a>`
-                            : `<span style="font-size: 12px; color: #b45309; font-weight: 600;">View/Download upload ke baad available hoga</span>`
+                            : `<span style="font-size: 12px; color: #b45309; font-weight: 600;">View and download options will appear after upload</span>`
                         }
                     </div>
                 </div>
@@ -2619,7 +2625,7 @@ function downloadLoanDetailsA4() {
                     <div class="print-header">
                         <div>
                             <h1>Loan Application Details</h1>
-                            <p class="print-subtitle">${escapeHtml(d.full_name || '-')} | Loan ID: ${escapeHtml(d.user_id || d.id || '-')}</p>
+                            <p class="print-subtitle">${escapeHtml(d.full_name || '-')} | Loan ID: ${escapeHtml((d.loan_uid_manual && d.loan_uid_manual !== '-') ? d.loan_uid_manual : 'Pending Manual ID')}</p>
                         </div>
                         <div class="print-badges">
                             <div><strong>Status:</strong> ${escapeHtml(d.status_display || d.status || '-')}</div>
@@ -2849,21 +2855,28 @@ function resetActionSelection() {
     const collectBankerPhone = document.getElementById('collectBankerPhone');
     const collectBankerEmail = document.getElementById('collectBankerEmail');
     const collectLoanAccountNumber = document.getElementById('collectLoanAccountNumber');
+    const collectManualLoanId = document.getElementById('collectManualLoanId');
     const collectVerifiedLoanAmount = document.getElementById('collectVerifiedLoanAmount');
     const collectFinalLoanAmount = document.getElementById('collectFinalLoanAmount');
     const collectDsaName = document.getElementById('collectDsaName');
     const collectBankerDescription = document.getElementById('collectBankerDescription');
+    const currentManualLoanId = (currentLoanDetails?.loan_uid_manual && currentLoanDetails?.loan_uid_manual !== '-')
+        ? currentLoanDetails.loan_uid_manual
+        : ((currentLoanDetails?.user_id && currentLoanDetails?.user_id !== '-') ? currentLoanDetails.user_id : '');
     if (collectBankName) collectBankName.value = '';
     if (collectBankerName) collectBankerName.value = '';
     if (collectBankerPhone) collectBankerPhone.value = '';
     if (collectBankerEmail) collectBankerEmail.value = '';
     if (collectLoanAccountNumber) collectLoanAccountNumber.value = '';
+    if (collectManualLoanId) collectManualLoanId.value = currentManualLoanId;
     if (collectVerifiedLoanAmount) collectVerifiedLoanAmount.value = '';
     if (collectFinalLoanAmount) collectFinalLoanAmount.value = '';
     if (collectDsaName) collectDsaName.value = '';
     if (collectBankerDescription) collectBankerDescription.value = '';
     document.getElementById('revertRemark').value = '';
     document.getElementById('disbursementNotes').value = '';
+    const disbursementManualLoanId = document.getElementById('disbursementManualLoanId');
+    if (disbursementManualLoanId) disbursementManualLoanId.value = currentManualLoanId;
     
     // Reset radio buttons
     document.getElementById('approveOption').style.borderColor = '#dcfce7';
@@ -2994,13 +3007,14 @@ function submitAction() {
         const bankerPhone = document.getElementById('collectBankerPhone')?.value.trim() || '';
         const bankerEmail = document.getElementById('collectBankerEmail')?.value.trim() || '';
         const loanAccountNumber = document.getElementById('collectLoanAccountNumber')?.value.trim() || '';
+        const manualLoanId = document.getElementById('collectManualLoanId')?.value.trim() || '';
         const verifiedLoanAmount = document.getElementById('collectVerifiedLoanAmount')?.value.trim() || '';
         const finalLoanAmount = document.getElementById('collectFinalLoanAmount')?.value.trim() || '';
         const dsaName = document.getElementById('collectDsaName')?.value.trim() || '';
         const bankerDescription = document.getElementById('collectBankerDescription')?.value.trim() || '';
         const bankRemark = document.getElementById('collectRemark').value.trim();
-        if (!bankName || !bankerName || !bankerPhone || !bankerEmail || !verifiedLoanAmount || !finalLoanAmount || !dsaName) {
-            alert('Please fill bank name, banker details, verified/final amount and DSA name.');
+        if (!bankName || !bankerName || !bankerPhone || !bankerEmail || !manualLoanId || !verifiedLoanAmount || !finalLoanAmount || !dsaName) {
+            alert('Please fill bank name, banker details, manual Loan ID, verified/final amount and DSA name.');
             return;
         }
         const phoneDigits = bankerPhone.replace(/\D/g, '');
@@ -3023,6 +3037,7 @@ function submitAction() {
             banker_phone: bankerPhone,
             banker_email: bankerEmail,
             loan_account_number: loanAccountNumber,
+            manual_loan_id: manualLoanId,
             verified_loan_amount: verifiedLoanAmount,
             final_loan_amount: finalLoanAmount,
             dsa_name: dsaName,
@@ -3044,7 +3059,11 @@ function submitAction() {
     } else if (currentAction === 'disburse') {
         endpoint = `/api/employee/loan/${currentLoanId}/disburse/`;
         const notes = document.getElementById('disbursementNotes').value.trim();
+        const manualLoanId = document.getElementById('disbursementManualLoanId')?.value.trim() || '';
         data = { disbursement_notes: notes, entity_type: 'legacy' };
+        if (manualLoanId) {
+            data.manual_loan_id = manualLoanId;
+        }
     } else if (currentAction === 'update_disbursed') {
         endpoint = `/api/loan/${currentLoanId}/disbursed-details/update/`;
         const leaderName = document.getElementById('editLeaderName').value.trim();
@@ -3088,6 +3107,10 @@ function submitAction() {
             remarks: document.getElementById('editDisbursedRemarks').value.trim(),
             processing_remarks: processingRemarks,
         };
+        const manualLoanId = document.getElementById('editManualLoanId').value.trim();
+        if (manualLoanId) {
+            data.manual_loan_id = manualLoanId;
+        }
 
         const fullEnabled = document.getElementById('editFullRemarksEnabled')?.checked;
         if (fullEnabled) {
@@ -3341,6 +3364,3 @@ document.getElementById('loan-details-download-btn')?.addEventListener('click', 
 </script>
 
 {% endblock %}
-
-
-

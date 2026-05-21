@@ -4,239 +4,657 @@
 {% block title %}Reports - Channel Partner{% endblock %}
 
 {% block content %}
-<div class="container-fluid mt-4">
-    <!-- Header -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h1 class="h3 text-gray-800 mb-0">
-                        <i class="bi bi-file-earmark-bar-graph"></i> Reports
-                    </h1>
-                    <p class="text-muted mt-2 mb-0">Download and view your loan reports</p>
+<div class="agent-reports-page container-fluid py-3 py-lg-4">
+    <div class="reports-hero">
+        <div>
+            <p class="section-kicker mb-2">Channel Partner Panel</p>
+            <h1 class="h3 fw-bold mb-2">Application Reports</h1>
+            <p class="text-muted mb-0">Live-ready reporting view with full application details, loan documents, and fast export options.</p>
+        </div>
+        <div class="hero-actions">
+            <div class="live-indicator">
+                <span class="live-dot"></span>
+                <span>Current Range</span>
+                <small>
+                    {% if period == '6months' %}
+                        Last 6 Months
+                    {% elif period == '1year' %}
+                        Last 1 Year
+                    {% elif period == 'custom' and from_date and to_date %}
+                        {{ from_date }} to {{ to_date }}
+                    {% else %}
+                        Last 1 Month
+                    {% endif %}
+                </small>
+            </div>
+            <button type="button" class="btn btn-outline-primary hero-btn" onclick="window.location.reload()">
+                <i class="bi bi-arrow-clockwise"></i>
+                <span>Refresh</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="summary-grid">
+        <div class="summary-card summary-primary">
+            <span>Total Applications</span>
+            <strong>{{ total_loans }}</strong>
+            <small>All applications in this report range</small>
+        </div>
+        <div class="summary-card summary-success">
+            <span>Approved</span>
+            <strong>{{ approved_loans }}</strong>
+            <small>Successfully approved applications</small>
+        </div>
+        <div class="summary-card summary-danger">
+            <span>Rejected</span>
+            <strong>{{ rejected_loans }}</strong>
+            <small>Applications rejected in the workflow</small>
+        </div>
+        <div class="summary-card summary-info">
+            <span>Disbursed</span>
+            <strong>{{ disbursed_loans }}</strong>
+            <small>Funds moved to customer accounts</small>
+        </div>
+        <div class="summary-card summary-dark">
+            <span>Total Value</span>
+            <strong>Rs. {{ total_amount|floatformat:0 }}</strong>
+            <small>Total loan amount in this report view</small>
+        </div>
+    </div>
+
+    <div class="download-grid">
+        <a href="?period=1month&format=csv&download=1" class="download-card gradient-blue">
+            <div class="download-card-icon"><i class="bi bi-calendar-month"></i></div>
+            <div>
+                <h2>Last 1 Month</h2>
+                <p>Export the last 30 days in CSV format.</p>
+            </div>
+            <span>Download CSV</span>
+        </a>
+        <a href="?period=6months&format=excel&download=1" class="download-card gradient-emerald">
+            <div class="download-card-icon"><i class="bi bi-calendar2-week"></i></div>
+            <div>
+                <h2>Last 6 Months</h2>
+                <p>Export the last 6 months in Excel format.</p>
+            </div>
+            <span>Download Excel</span>
+        </a>
+        <a href="?period=1year&format=excel&download=1" class="download-card gradient-violet">
+            <div class="download-card-icon"><i class="bi bi-calendar-year"></i></div>
+            <div>
+                <h2>Last 1 Year</h2>
+                <p>Download a yearly business snapshot instantly.</p>
+            </div>
+            <span>Download Excel</span>
+        </a>
+        <button type="button" class="download-card gradient-amber border-0 text-start" data-bs-toggle="collapse" data-bs-target="#customDateForm" aria-expanded="{% if period == 'custom' %}true{% else %}false{% endif %}">
+            <div class="download-card-icon"><i class="bi bi-calendar-range"></i></div>
+            <div>
+                <h2>Custom Date Range</h2>
+                <p>Choose your own date range and export the exact applications you need.</p>
+            </div>
+            <span>Open Custom Export</span>
+        </button>
+    </div>
+
+    <div id="customDateForm" class="collapse {% if period == 'custom' %}show{% endif %} mb-4">
+        <div class="filter-shell">
+            <div>
+                <h2 class="h5 fw-bold mb-1">Custom Report Export</h2>
+                <p class="text-muted mb-0">Select dates, choose the file format, and download the matching report.</p>
+            </div>
+            <form method="get" class="row g-3 mt-1">
+                <input type="hidden" name="period" value="custom">
+                <input type="hidden" name="download" value="1">
+                <div class="col-md-3">
+                    <label class="form-label">From Date</label>
+                    <input type="date" name="from_date" class="form-control" value="{{ from_date }}" required>
                 </div>
-                <div class="dropdown">
-                    <button class="btn btn-light border rounded-circle p-3" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="bi bi-person-circle" style="font-size: 1.5rem; color: #007bff;"></i>
+                <div class="col-md-3">
+                    <label class="form-label">To Date</label>
+                    <input type="date" name="to_date" class="form-control" value="{{ to_date }}" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Format</label>
+                    <select name="format" class="form-select" required>
+                        <option value="csv">CSV</option>
+                        <option value="excel">Excel</option>
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-download"></i>
+                        <span>Download Report</span>
                     </button>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item" href="{% url 'agent_profile' %}"><i class="bi bi-person"></i> My Profile</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item text-danger" href="{% url 'logout' %}"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
-                    </ul>
                 </div>
-            </div>
+            </form>
         </div>
     </div>
 
-    <!-- Report Templates -->
-    <div class="row mb-4">
-        <!-- Quick Download Cards -->
-        <div class="col-md-6 mb-3">
-            <div class="card shadow border-left-primary">
-                <div class="card-body text-center">
-                    <i class="bi bi-calendar-month display-3 text-primary mb-3"></i>
-                    <h5 class="card-title">Last 1 Month</h5>
-                    <p class="card-text text-muted">Download loan data from the last 30 days</p>
-                    <div class="btn-group w-100" role="group">
-                        <a href="?period=1month&format=csv&download=1" class="btn btn-outline-primary">
-                            <i class="bi bi-download"></i> CSV
-                        </a>
-                        <a href="?period=1month&format=excel&download=1" class="btn btn-outline-primary">
-                            <i class="bi bi-file-earmark-excel"></i> Excel
-                        </a>
-                    </div>
-                </div>
+    <section class="report-table-shell">
+        <div class="table-head">
+            <div>
+                <h2 class="h5 fw-bold mb-1">Application Report Details</h2>
+                <p class="text-muted mb-0">Every application in the selected range is listed here with direct view and download actions.</p>
             </div>
+            <div class="table-head-note" id="reports-refreshed-at">Updated just now</div>
         </div>
-
-        <div class="col-md-6 mb-3">
-            <div class="card shadow border-left-success">
-                <div class="card-body text-center">
-                    <i class="bi bi-calendar2-week display-3 text-success mb-3"></i>
-                    <h5 class="card-title">Last 6 Months</h5>
-                    <p class="card-text text-muted">Download loan data from the last 6 months</p>
-                    <div class="btn-group w-100" role="group">
-                        <a href="?period=6months&format=csv&download=1" class="btn btn-outline-success">
-                            <i class="bi bi-download"></i> CSV
-                        </a>
-                        <a href="?period=6months&format=excel&download=1" class="btn btn-outline-success">
-                            <i class="bi bi-file-earmark-excel"></i> Excel
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-6 mb-3">
-            <div class="card shadow border-left-info">
-                <div class="card-body text-center">
-                    <i class="bi bi-calendar-year display-3 text-info mb-3"></i>
-                    <h5 class="card-title">Last 1 Year</h5>
-                    <p class="card-text text-muted">Download loan data from the last 12 months</p>
-                    <div class="btn-group w-100" role="group">
-                        <a href="?period=1year&format=csv&download=1" class="btn btn-outline-info">
-                            <i class="bi bi-download"></i> CSV
-                        </a>
-                        <a href="?period=1year&format=excel&download=1" class="btn btn-outline-info">
-                            <i class="bi bi-file-earmark-excel"></i> Excel
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-6 mb-3">
-            <div class="card shadow border-left-warning">
-                <div class="card-body text-center">
-                    <i class="bi bi-calendar-date display-3 text-warning mb-3"></i>
-                    <h5 class="card-title">Custom Date Range</h5>
-                    <p class="card-text text-muted">Download data for specific dates</p>
-                    <button class="btn btn-outline-warning w-100" data-bs-toggle="collapse" data-bs-target="#customDateForm">
-                        <i class="bi bi-calendar-range"></i> Custom Range
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Custom Date Form -->
-    <div id="customDateForm" class="collapse mb-4">
-        <div class="card shadow">
-            <div class="card-body">
-                <h5 class="card-title mb-3">Select Custom Date Range</h5>
-                <form method="get" action="">
-                    <input type="hidden" name="download" value="1">
-                    <div class="row g-3">
-                        <div class="col-md-3">
-                            <label class="form-label">From Date</label>
-                            <input type="date" name="from_date" class="form-control" required>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label">To Date</label>
-                            <input type="date" name="to_date" class="form-control" required>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label">Format</label>
-                            <select name="format" class="form-select" required>
-                                <option value="csv">CSV</option>
-                                <option value="excel">Excel</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label">&nbsp;</label>
-                            <button type="submit" class="btn btn-primary w-100">
-                                <i class="bi bi-download"></i> Download
-                            </button>
-                        </div>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- Report Statistics -->
-    <div class="row">
-        <div class="col-12">
-            <div class="card shadow">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">Report Summary</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row text-center">
-                        <div class="col-md-3 mb-3">
-                            <div class="h3 text-primary mb-2">{{ total_loans }}</div>
-                            <p class="text-muted">Total Loans</p>
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <div class="h3 text-success mb-2">{{ approved_loans }}</div>
-                            <p class="text-muted">Approved Loans</p>
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <div class="h3 text-info mb-2">{{ disbursed_loans }}</div>
-                            <p class="text-muted">Disbursed Loans</p>
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <div class="h3 text-danger mb-2">{{ rejected_loans }}</div>
-                            <p class="text-muted">Rejected Loans</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Recent Reports -->
-    {% if generated_reports %}
-    <div class="row mt-4">
-        <div class="col-12">
-            <div class="card shadow">
-                <div class="card-header bg-secondary text-white">
-                    <h5 class="mb-0">Generated Reports</h5>
-                </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-hover table-grid mb-0">
-                            <thead class="bg-light">
-                                <tr>
-                                    <th>Report Name</th>
-                                    <th>Date Range</th>
-                                    <th>Format</th>
-                                    <th>Generated Date</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for report in generated_reports %}
-                                <tr>
-                                    <td>{{ report.name }}</td>
-                                    <td>{{ report.from_date }} to {{ report.to_date }}</td>
-                                    <td>
-                                        <span class="badge bg-info">{{ report.format|upper }}</span>
-                                    </td>
-                                    <td>{{ report.generated_date|date:"d M, Y H:i" }}</td>
-                                    <td>
-                                        <a href="{{ report.file_url }}" class="btn btn-sm btn-outline-primary">
-                                            <i class="bi bi-download"></i> Download
-                                        </a>
-                                    </td>
-                                </tr>
+        <div class="table-responsive">
+            <table class="table report-grid-table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Loan ID</th>
+                        <th>Customer</th>
+                        <th>Contact</th>
+                        <th>Loan Type</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                        <th>Assigned Employee</th>
+                        <th>Created On</th>
+                        <th>Documents</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for loan in loans %}
+                    <tr>
+                        <td class="fw-semibold text-nowrap">{{ loan.user_id|default:loan.id }}</td>
+                        <td>
+                            <div class="fw-semibold text-dark">{{ loan.full_name|default:"Not available" }}</div>
+                            <small class="text-muted">{{ loan.email|default:"No email" }}</small>
+                        </td>
+                        <td>
+                            <div>{{ loan.mobile_number|default:"Not available" }}</div>
+                            <small class="text-muted">{{ loan.city|default:"-" }}, {{ loan.state|default:"-" }}</small>
+                        </td>
+                        <td>{{ loan.get_loan_type_display|default:loan.loan_type|default:"Not available" }}</td>
+                        <td class="fw-semibold text-nowrap">Rs. {{ loan.loan_amount|default:0|floatformat:0 }}</td>
+                        <td>
+                            {% if loan.status == 'approved' %}
+                                <span class="status-chip status-approved">Approved</span>
+                            {% elif loan.status == 'rejected' %}
+                                <span class="status-chip status-rejected">Rejected</span>
+                            {% elif loan.status == 'disbursed' %}
+                                <span class="status-chip status-disbursed">Disbursed</span>
+                            {% elif loan.status == 'follow_up' %}
+                                <span class="status-chip status-banking">Banking Processing</span>
+                            {% elif loan.status == 'updated_document' %}
+                                <span class="status-chip status-updated">Pending Document Cleared</span>
+                            {% elif loan.status == 'waiting' %}
+                                <span class="status-chip status-waiting">Document Pending</span>
+                            {% else %}
+                                <span class="status-chip status-new">{{ loan.status|default:"New Application"|title }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ loan.assigned_employee.get_full_name|default:"Pending Assignment" }}</td>
+                        <td class="text-nowrap">{{ loan.created_at|date:"d M Y, h:i A" }}</td>
+                        <td>
+                            <div class="document-stack">
+                                {% for doc in loan.documents.all %}
+                                <div class="document-pill">
+                                    <span>{{ doc.get_document_type_display }}</span>
+                                    <a href="{{ doc.file.url }}" target="_blank" rel="noopener">View</a>
+                                    <a href="{{ doc.file.url }}" download>Download</a>
+                                </div>
+                                {% empty %}
+                                <span class="empty-copy">View and download options will appear after upload</span>
                                 {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="table-actions">
+                                <a href="{% url 'agent_loan_detail' loan.id %}" class="table-action-btn primary-action">View Details</a>
+                                <a href="{% url 'agent_my_applications' %}?loan_id={{ loan.id }}" class="table-action-btn secondary-action">Open</a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="10" class="text-center py-5 text-muted">No applications found for the selected report range.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
-    </div>
-    {% endif %}
+    </section>
 
-    <!-- Help Section -->
-    <div class="row mt-4">
-        <div class="col-12">
-            <div class="alert alert-info">
-                <h5 class="alert-heading">
-                    <i class="bi bi-question-circle"></i> Report Information
-                </h5>
-                <ul class="mb-0">
-                    <li><strong>CSV Format:</strong> Ideal for opening in spreadsheet applications like Excel or Google Sheets</li>
-                    <li><strong>Excel Format:</strong> Pre-formatted with tables, filters, and professional styling</li>
-                    <li><strong>Data Included:</strong> Applicant name, phone, email, loan amount, status, and creation date</li>
-                    <li><strong>Updates:</strong> Reports show real-time data and can be downloaded anytime</li>
-                </ul>
+    {% if generated_reports %}
+    <section class="report-table-shell mt-4">
+        <div class="table-head">
+            <div>
+                <h2 class="h5 fw-bold mb-1">Generated Reports</h2>
+                <p class="text-muted mb-0">Previously created report files ready for download.</p>
             </div>
         </div>
-    </div>
+        <div class="table-responsive">
+            <table class="table report-grid-table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Report Name</th>
+                        <th>Date Range</th>
+                        <th>Format</th>
+                        <th>Generated On</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for report in generated_reports %}
+                    <tr>
+                        <td class="fw-semibold">{{ report.name }}</td>
+                        <td>{{ report.from_date }} to {{ report.to_date }}</td>
+                        <td>{{ report.format|upper }}</td>
+                        <td>{{ report.generated_date|date:"d M Y, h:i A" }}</td>
+                        <td><a href="{{ report.file_url }}" class="table-action-btn primary-action">Download</a></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+    {% endif %}
 </div>
 
 <style>
-.border-left-primary { border-left: 0.25rem solid #007bff !important; }
-.border-left-success { border-left: 0.25rem solid #28a745 !important; }
-.border-left-warning { border-left: 0.25rem solid #ffc107 !important; }
-.border-left-info { border-left: 0.25rem solid #17a2b8 !important; }
-.border-left-secondary { border-left: 0.25rem solid #6c757d !important; }
+    .agent-reports-page {
+        max-width: 1680px;
+    }
 
-.card { border: none; }
-.table-hover tbody tr:hover { background-color: #f8f9fa; }
+    .reports-hero,
+    .summary-card,
+    .download-card,
+    .filter-shell,
+    .report-table-shell {
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 22px;
+        box-shadow: 0 18px 42px rgba(15, 23, 42, 0.08);
+    }
+
+    .reports-hero {
+        padding: 24px 26px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 18px;
+        margin-bottom: 22px;
+        background:
+            radial-gradient(circle at top left, rgba(99, 102, 241, 0.12), transparent 36%),
+            radial-gradient(circle at bottom right, rgba(14, 165, 233, 0.14), transparent 30%),
+            #ffffff;
+    }
+
+    .section-kicker {
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: #4f46e5;
+    }
+
+    .hero-actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+
+    .live-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 14px;
+        border: 1px solid #dbeafe;
+        border-radius: 999px;
+        background: #eff6ff;
+        color: #1e3a8a;
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    .live-indicator small {
+        color: #475569;
+    }
+
+    .live-dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 999px;
+        background: #10b981;
+        box-shadow: 0 0 0 6px rgba(16, 185, 129, 0.18);
+    }
+
+    .hero-btn {
+        border-radius: 12px;
+        padding-inline: 16px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 16px;
+        margin-bottom: 22px;
+    }
+
+    .summary-card {
+        padding: 20px 22px;
+        color: #ffffff;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .summary-card::after {
+        content: "";
+        position: absolute;
+        width: 110px;
+        height: 110px;
+        top: -24px;
+        right: -26px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.16);
+    }
+
+    .summary-card span,
+    .summary-card strong,
+    .summary-card small {
+        position: relative;
+        z-index: 1;
+        display: block;
+    }
+
+    .summary-card span {
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        opacity: 0.9;
+    }
+
+    .summary-card strong {
+        font-size: 2rem;
+        margin: 12px 0 6px;
+        line-height: 1.05;
+    }
+
+    .summary-card small {
+        font-size: 12px;
+        opacity: 0.92;
+    }
+
+    .summary-primary { background: linear-gradient(135deg, #2563eb, #4f46e5); }
+    .summary-success { background: linear-gradient(135deg, #10b981, #0f766e); }
+    .summary-danger { background: linear-gradient(135deg, #ef4444, #be123c); }
+    .summary-info { background: linear-gradient(135deg, #06b6d4, #2563eb); }
+    .summary-dark { background: linear-gradient(135deg, #1e293b, #0f172a); }
+
+    .download-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 16px;
+        margin-bottom: 22px;
+    }
+
+    .download-card {
+        color: #ffffff;
+        padding: 20px 22px;
+        text-decoration: none;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        min-height: 208px;
+        position: relative;
+        overflow: hidden;
+        transition: transform 0.22s ease, box-shadow 0.22s ease;
+    }
+
+    .download-card::after {
+        content: "";
+        position: absolute;
+        width: 108px;
+        height: 108px;
+        right: -20px;
+        top: -22px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.15);
+    }
+
+    .download-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 18px 34px rgba(15, 23, 42, 0.16);
+        color: #ffffff;
+    }
+
+    .download-card > * {
+        position: relative;
+        z-index: 1;
+    }
+
+    .download-card-icon {
+        width: 52px;
+        height: 52px;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.2);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+    }
+
+    .download-card h2 {
+        font-size: 1.15rem;
+        font-weight: 800;
+        margin: 0 0 6px;
+    }
+
+    .download-card p,
+    .download-card span {
+        margin: 0;
+        font-size: 13px;
+        opacity: 0.92;
+        font-weight: 600;
+    }
+
+    .gradient-blue { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
+    .gradient-emerald { background: linear-gradient(135deg, #10b981, #059669); }
+    .gradient-violet { background: linear-gradient(135deg, #7c3aed, #4f46e5); }
+    .gradient-amber { background: linear-gradient(135deg, #f59e0b, #ea580c); }
+
+    .filter-shell,
+    .report-table-shell {
+        padding: 22px 24px;
+    }
+
+    .report-table-shell {
+        overflow: hidden;
+        padding: 0;
+    }
+
+    .table-head {
+        padding: 22px 24px 18px;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 18px;
+        border-bottom: 1px solid #eef2f7;
+    }
+
+    .table-head-note {
+        font-size: 12px;
+        font-weight: 700;
+        color: #475569;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 999px;
+        padding: 8px 12px;
+        white-space: nowrap;
+    }
+
+    .report-grid-table {
+        min-width: 1420px;
+        margin-bottom: 0;
+    }
+
+    .report-grid-table thead th {
+        padding: 15px 16px;
+        border: 0;
+        background: linear-gradient(135deg, #1e293b, #0f172a);
+        color: #ffffff;
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+
+    .report-grid-table tbody td {
+        padding: 16px;
+        border-color: #e5e7eb;
+        background: #ffffff;
+        vertical-align: top;
+    }
+
+    .report-grid-table tbody tr:nth-child(even) td {
+        background: #f8fafc;
+    }
+
+    .report-grid-table tbody tr:hover td {
+        background: #eef2ff;
+    }
+
+    .status-chip {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 7px 12px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 800;
+        white-space: nowrap;
+    }
+
+    .status-new { background: #dbeafe; color: #1d4ed8; }
+    .status-waiting { background: #fef3c7; color: #b45309; }
+    .status-updated { background: #dcfce7; color: #15803d; }
+    .status-banking { background: #ede9fe; color: #6d28d9; }
+    .status-approved { background: #d1fae5; color: #047857; }
+    .status-rejected { background: #ffe4e6; color: #be123c; }
+    .status-disbursed { background: #cffafe; color: #0f766e; }
+
+    .document-stack,
+    .table-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .document-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        flex-wrap: wrap;
+        padding: 7px 10px;
+        border-radius: 14px;
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        color: #1e3a8a;
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    .document-pill a,
+    .table-action-btn {
+        text-decoration: none;
+        font-weight: 800;
+    }
+
+    .document-pill a {
+        color: #1d4ed8;
+    }
+
+    .table-action-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 8px 12px;
+        border-radius: 999px;
+        font-size: 12px;
+        border: 1px solid transparent;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .table-action-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 10px 18px rgba(15, 23, 42, 0.12);
+    }
+
+    .primary-action {
+        background: #dbeafe;
+        color: #1d4ed8;
+        border-color: #bfdbfe;
+    }
+
+    .secondary-action {
+        background: #ecfeff;
+        color: #0f766e;
+        border-color: #a5f3fc;
+    }
+
+    .empty-copy {
+        color: #b45309;
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    body.dark-mode .reports-hero,
+    body.dark-mode .summary-card,
+    body.dark-mode .download-card,
+    body.dark-mode .filter-shell,
+    body.dark-mode .report-table-shell,
+    body.dark-mode .report-grid-table tbody td {
+        background-color: #0f172a !important;
+        border-color: #334155 !important;
+        color: #e5e7eb !important;
+    }
+
+    body.dark-mode .table-head,
+    body.dark-mode .report-grid-table tbody tr:nth-child(even) td {
+        background: #111827 !important;
+        border-color: #334155 !important;
+    }
+
+    body.dark-mode .table-head-note,
+    body.dark-mode .live-indicator,
+    body.dark-mode .document-pill,
+    body.dark-mode .form-control,
+    body.dark-mode .form-select {
+        background: #0b1220 !important;
+        border-color: #334155 !important;
+        color: #e5e7eb !important;
+    }
+
+    @media (max-width: 992px) {
+        .reports-hero,
+        .table-head {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .hero-actions {
+            width: 100%;
+            justify-content: flex-start;
+        }
+    }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const stamp = document.getElementById('reports-refreshed-at');
+    if (stamp) {
+        stamp.textContent = `Updated ${new Date().toLocaleTimeString('en-IN')}`;
+    }
+});
+</script>
 {% endblock %}

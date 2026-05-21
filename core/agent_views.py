@@ -32,6 +32,8 @@ from .updated_document_utils import (
     UPDATED_DOCUMENT_STATUS_KEY,
     loan_has_updated_documents,
 )
+from .account_notifications import send_account_credentials_email
+from .id_utils import normalize_manual_loan_id
 
 
 def get_agent_loan_queryset(user, agent):
@@ -315,11 +317,25 @@ def create_sub_agent(request):
             gender=gender if gender else None,
             created_by=request.user,
         )
+
+        email_sent, email_detail = send_account_credentials_email(
+            request=request,
+            email=user.email,
+            full_name=sub_agent.name,
+            username=user.username,
+            password=password,
+            role=user.role,
+        )
         
         return JsonResponse({
             'success': True,
-            'message': f'Team member {sub_agent.name} created successfully!',
+            'message': (
+                f'Team member {sub_agent.name} created successfully!'
+                + (' Credentials email sent successfully.' if email_sent else (f' Credentials email could not be sent: {email_detail}' if email_detail else ''))
+            ),
             'agent_id': sub_agent.id,
+            'email_sent': email_sent,
+            'email_message': email_detail,
         })
         
     except Exception as e:
@@ -425,7 +441,7 @@ def agent_forward_application(request):
     try:
         agent = Agent.objects.get(user=request.user)
         loan_id = str(request.POST.get('loan_id', '')).strip()
-        manual_loan_id = str(request.POST.get('manual_loan_id', '')).strip()
+        manual_loan_id = normalize_manual_loan_id(request.POST.get('manual_loan_id'))
         next_stage = str(request.POST.get('next_stage', 'waiting')).strip().lower()
 
         if not loan_id or not manual_loan_id:
@@ -436,7 +452,7 @@ def agent_forward_application(request):
         if loan.status not in ['new_entry', 'draft', 'waiting']:
             return JsonResponse({'success': False, 'error': 'Forward is allowed only for New Application/Draft/Document Pending.'}, status=400)
 
-        if Loan.objects.exclude(id=loan.id).filter(user_id=manual_loan_id).exists():
+        if Loan.objects.exclude(id=loan.id).filter(user_id__iexact=manual_loan_id).exists():
             return JsonResponse({'success': False, 'error': 'Manual Loan ID already exists.'}, status=400)
 
         target_status = 'follow_up' if next_stage == 'follow_up' else 'waiting'
@@ -726,7 +742,11 @@ def agent_reports(request):
     loans = get_agent_loan_queryset(request.user, agent).filter(
         created_at__gte=start_date,
         created_at__lt=end_date
-    ).order_by('-created_at')
+    ).select_related(
+        'created_by',
+        'assigned_employee',
+        'assigned_agent',
+    ).prefetch_related('documents').order_by('-created_at')
     
     # Handle download
     if request.GET.get('download'):

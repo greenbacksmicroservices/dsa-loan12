@@ -194,6 +194,91 @@
         color: #0f172a;
         background: #e2e8f0;
     }
+
+    .status-control-box {
+        margin-top: 14px;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 14px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .status-control-box select {
+        min-width: 180px;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        padding: 9px 10px;
+    }
+
+    .status-save-btn {
+        border: none;
+        background: #2563eb;
+        color: #fff;
+        border-radius: 8px;
+        padding: 9px 14px;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .documents-panel {
+        margin-top: 14px;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 14px;
+    }
+
+    .documents-panel h3 {
+        margin: 0 0 4px;
+        color: #0f172a;
+        font-size: 16px;
+        font-weight: 700;
+    }
+
+    .documents-panel p {
+        margin: 0 0 12px;
+        color: #64748b;
+        font-size: 12px;
+    }
+
+    .document-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 10px;
+    }
+
+    .document-card {
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 12px;
+        background: #f8fafc;
+    }
+
+    .document-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 10px;
+    }
+
+    .doc-action-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border: 1px solid #bfdbfe;
+        background: #eff6ff;
+        color: #1d4ed8;
+        border-radius: 8px;
+        padding: 7px 10px;
+        font-size: 12px;
+        font-weight: 700;
+        text-decoration: none;
+    }
 </style>
 
 <div class="detail-shell">
@@ -207,6 +292,24 @@
 
     <div id="agentSummaryGrid" class="summary-grid"></div>
     <div id="agentStatGrid" class="stat-grid"></div>
+    <div class="status-control-box">
+        <div>
+            <div style="font-size:12px; color:#64748b; margin-bottom:4px;">Channel Partner Status</div>
+            <div style="font-size:14px; font-weight:700; color:#0f172a;">Change this channel partner account status in real time.</div>
+        </div>
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <select id="agentStatusSelect">
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+            </select>
+            <button type="button" class="status-save-btn" onclick="saveAgentStatus()">Save Status</button>
+        </div>
+    </div>
+    <div class="documents-panel">
+        <h3>Uploaded Documents</h3>
+        <p>Channel partner profile aur onboarding se uploaded documents yahan realtime dikhte hain.</p>
+        <div id="agentDocumentsPanel" class="document-list"></div>
+    </div>
 </div>
 
 <div class="popup-overlay" id="sectionPopup">
@@ -234,7 +337,8 @@ const agentId = Number('{{ agent.id }}');
 let agentData = {
     agent: {},
     summary: {},
-    customers: []
+    customers: [],
+    documents: []
 };
 
 function escapeHtml(value) {
@@ -291,6 +395,7 @@ function renderLoanDetailCard(item) {
     }
     const detailRows = Array.isArray(item.full_application_details) ? item.full_application_details : [];
     const timeline = Array.isArray(item.status_timeline) ? item.status_timeline : [];
+    const documents = Array.isArray(item.documents) ? item.documents : [];
     const detailHtml = detailRows.length
         ? detailRows.map((row) => `
             <div style="display:flex; justify-content:space-between; gap:12px; padding:6px 0; border-bottom:1px dashed #e5e7eb;">
@@ -309,6 +414,18 @@ function renderLoanDetailCard(item) {
             </div>
         `).join('')
         : '<div style="font-size:12px; color:#64748b;">No status timeline available.</div>';
+
+    const documentHtml = documents.length
+        ? documents.map((doc) => `
+            <div style="display:flex; justify-content:space-between; gap:12px; padding:8px 0; border-bottom:1px dashed #e5e7eb;">
+                <div>
+                    <div style="font-size:12px; font-weight:700; color:#0f172a;">${escapeHtml(doc.label || doc.name || doc.document_type || doc.type || 'Document')}</div>
+                    <div style="font-size:11px; color:#64748b;">${escapeHtml(doc.uploaded_at || '-')}</div>
+                </div>
+                ${doc.url ? `<span style="display:flex; gap:6px; flex-wrap:wrap;"><a href="${escapeHtml(doc.url)}" target="_blank" rel="noopener" class="mini-btn">View</a><a href="${escapeHtml(doc.url)}" download class="mini-btn">Download</a></span>` : '<span style="font-size:11px; color:#94a3b8;">No file</span>'}
+            </div>
+        `).join('')
+        : '<div style="font-size:12px; color:#64748b;">No application documents available.</div>';
 
     return `
         <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:10px; margin-bottom:12px;">
@@ -331,6 +448,10 @@ function renderLoanDetailCard(item) {
             <summary style="font-size:12px; font-weight:700; color:#0f172a; cursor:pointer;">Status + Remark Timeline</summary>
             <div style="margin-top:8px;">${timelineHtml}</div>
         </details>
+        <details style="border:1px solid #e5e7eb; border-radius:10px; padding:10px; background:#f8fafc; margin-bottom:10px;">
+            <summary style="font-size:12px; font-weight:700; color:#0f172a; cursor:pointer;">Documents</summary>
+            <div style="margin-top:8px;">${documentHtml}</div>
+        </details>
         <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(210px,1fr)); gap:10px; margin-bottom:10px;">
             <div><strong>Customer:</strong> ${escapeHtml(item.customer_name || '-')}</div>
             <div><strong>Mobile:</strong> ${escapeHtml(item.mobile || '-')}</div>
@@ -345,6 +466,25 @@ function renderLoanDetailCard(item) {
             <div style="padding:10px; border:1px solid #e5e7eb; border-radius:8px; background:#f8fafc; font-size:12px; color:#0f172a;">${escapeHtml(item.remarks || item.bank_remark || '-')}</div>
         </div>
     `;
+}
+
+function renderAgentDocuments() {
+    const container = document.getElementById('agentDocumentsPanel');
+    if (!container) return;
+    const documents = Array.isArray(agentData.documents) ? agentData.documents : [];
+    if (!documents.length) {
+        container.innerHTML = '<div style="grid-column:1/-1; padding:14px; border:1px dashed #cbd5e1; border-radius:10px; color:#64748b; background:#f8fafc;">No channel partner documents uploaded yet.</div>';
+        return;
+    }
+    container.innerHTML = documents.map((doc) => `
+        <div class="document-card">
+            <strong style="display:block; color:#0f172a; font-size:13px;">${escapeHtml(doc.label || doc.name || doc.type || 'Document')}</strong>
+            <span style="display:block; color:#64748b; font-size:12px; margin-top:4px;">Uploaded: ${escapeHtml(doc.uploaded_at || '-')}</span>
+            <div class="document-actions">
+                ${doc.url ? `<a class="doc-action-btn" href="${escapeHtml(doc.url)}" target="_blank" rel="noopener"><i class="fas fa-eye"></i> View</a><a class="doc-action-btn" href="${escapeHtml(doc.url)}" download><i class="fas fa-download"></i> Download</a>` : '<span style="font-size:12px; color:#94a3b8;">No file</span>'}
+            </div>
+        </div>
+    `).join('');
 }
 
 function openLoanPopupById(loanId) {
@@ -395,6 +535,10 @@ function openAgentSection(sectionKey) {
     const customers = Array.isArray(agentData.customers) ? agentData.customers : [];
     const key = String(sectionKey || '').toLowerCase();
 
+    if (key === 'channel_partners') {
+        renderApplicationsTable([], 'Channel Partners Under This Channel Partner');
+        return;
+    }
     if (key === 'approved' || key === 'rejected' || key === 'follow_up') {
         const filtered = customers.filter((item) => statusKey(item.status) === key);
         renderApplicationsTable(filtered, `${key.replace('_', ' ').toUpperCase()} Applications`);
@@ -411,6 +555,7 @@ function renderAgentCards() {
     const summary = agentData.summary || {};
     const cards = [
         { key: 'applications', label: 'Applications', value: summary.total_applications || 0, border: '#dbeafe', bg: '#eff6ff', color: '#1d4ed8', valueColor: '#1e3a8a' },
+        { key: 'channel_partners', label: 'Channel Partners', value: summary.channel_partner_count || 0, border: '#bbf7d0', bg: '#f0fdf4', color: '#15803d', valueColor: '#166534' },
         { key: 'approved', label: 'Approved', value: summary.approved || 0, border: '#bbf7d0', bg: '#ecfdf5', color: '#047857', valueColor: '#065f46' },
         { key: 'rejected', label: 'Rejected', value: summary.rejected || 0, border: '#fecaca', bg: '#fef2f2', color: '#b91c1c', valueColor: '#7f1d1d' },
         { key: 'follow_up', label: 'Banking Processing', value: summary.banking_processing || 0, border: '#fed7aa', bg: '#fff7ed', color: '#c2410c', valueColor: '#9a3412' },
@@ -428,15 +573,50 @@ function renderAgentCards() {
 function renderAgentSummary() {
     const agent = agentData.agent || {};
     document.getElementById('agentName').textContent = agent.name || '{{ agent.name|default:"Channel Partner" }}';
-    document.getElementById('agentMeta').textContent = `${agent.email || '-'} | ${agent.phone || '-'} | Status: ${agent.status || '-'}`;
+    document.getElementById('agentMeta').textContent = `${agent.email || '-'} | ${agent.phone || '-'} | Status: ${agent.status || '-'} | Reports To: ${agent.reports_to || 'Direct under Admin'}`;
+    document.getElementById('agentStatusSelect').value = String(agent.status || '').toLowerCase() === 'blocked' ? 'inactive' : 'active';
     document.getElementById('agentSummaryGrid').innerHTML = `
-        <div class="summary-item"><strong>Partner ID:</strong> ${escapeHtml(agent.agent_id || '-')}</div>
+        <div class="summary-item"><strong>Channel Partner ID:</strong> ${escapeHtml(agent.agent_id || '-')}</div>
+        <div class="summary-item"><strong>Username:</strong> ${escapeHtml(agent.username || '-')}</div>
+        <div class="summary-item"><strong>Joined:</strong> ${escapeHtml(agent.joined_on || '-')}</div>
+        <div class="summary-item"><strong>Created Under:</strong> ${escapeHtml(agent.created_under || 'Admin - System')}</div>
+        <div class="summary-item"><strong>Reports To:</strong> ${escapeHtml(agent.reports_to || 'Direct under Admin')}</div>
+        <div class="summary-item"><strong>Gender:</strong> ${escapeHtml(agent.gender || 'Other')}</div>
         <div class="summary-item"><strong>City:</strong> ${escapeHtml(agent.city || '-')}</div>
         <div class="summary-item"><strong>District:</strong> ${escapeHtml(agent.district || '-')}</div>
-        <div class="summary-item"><strong>PIN:</strong> ${escapeHtml(agent.pin_code || '-')}</div>
         <div class="summary-item"><strong>State:</strong> ${escapeHtml(agent.state || '-')}</div>
+        <div class="summary-item"><strong>PIN:</strong> ${escapeHtml(agent.pin_code || '-')}</div>
+        <div class="summary-item"><strong>Aadhaar:</strong> ${escapeHtml(agent.aadhar_number || '-')}</div>
         <div class="summary-item"><strong>Address:</strong> ${escapeHtml(agent.address || '-')}</div>
     `;
+}
+
+async function saveAgentStatus() {
+    const agent = agentData.agent || {};
+    const nextStatus = document.getElementById('agentStatusSelect').value;
+    const payload = {
+        name: agent.name || '',
+        email: agent.email || '',
+        phone: agent.phone || '',
+        address: agent.address || '',
+        gender: agent.gender || 'Other',
+        status: nextStatus,
+    };
+    const response = await fetch(`/api/admin/agents/${agentId}/update/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken'),
+        },
+        body: JSON.stringify(payload),
+    });
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+        alert(data.error || 'Failed to update channel partner status.');
+        return;
+    }
+    agentData.agent.status = nextStatus === 'active' ? 'active' : 'blocked';
+    renderAgentSummary();
 }
 
 async function loadAgentDetails() {
@@ -455,10 +635,12 @@ async function loadAgentDetails() {
         agentData = data;
         renderAgentSummary();
         renderAgentCards();
+        renderAgentDocuments();
     } catch (error) {
         document.getElementById('agentMeta').textContent = error.message || 'Unable to load channel partner details.';
         document.getElementById('agentSummaryGrid').innerHTML = '';
         document.getElementById('agentStatGrid').innerHTML = '';
+        document.getElementById('agentDocumentsPanel').innerHTML = '';
     }
 }
 

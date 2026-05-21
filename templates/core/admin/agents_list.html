@@ -1,9 +1,9 @@
-{% extends 'core/admin/admin_base.html' %}
+﻿{% extends 'core/admin/admin_base.html' %}
 {% load static %}
 {% load custom_filters %}
 
-{% block title %}All Channel Partners - Admin Panel{% endblock %}
-{% block page_title %}All Channel Partners{% endblock %}
+{% block title %}{{ page_title|default:"All Channel Partners" }} - Admin Panel{% endblock %}
+{% block page_title %}{{ page_title|default:"All Channel Partners" }}{% endblock %}
 
 {% block content %}
 <style>
@@ -133,7 +133,7 @@
         color: #15803d;
     }
     
-    .status-blocked {
+    .status-Inactive {
         background: #fee2e2;
         color: #991b1b;
     }
@@ -521,27 +521,10 @@
 
 <div class="agents-container">
     <div class="container-fluid">
-        <!-- Header -->
-        <div class="agents-header">
-            <div>
-                <h1 class="agents-title">All Channel Partners</h1>
-                <span class="agents-count">Total: {{ agents|length }} Channel Partners</span>
-            </div>
-            <button type="button" class="btn btn-primary" onclick="openAddAgentModal()" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 600; border: none;">
-                <i class="fas fa-plus"></i> Add Channel Partner
-            </button>
-        </div>
+        {% if page_mode != 'add' %}
         
-        <!-- Search Bar -->
-        <div class="search-bar">
-            <form method="GET" class="row g-3">
-                <div class="col-md-12">
-                    <input type="text" name="q" placeholder="Search by name, email, or phone..." 
-                           value="{{ search_query }}" class="form-control w-100" id="searchInput" onkeyup="filterTable()">
-                </div>
-            </form>
-        </div>
-        
+        {% include 'core/admin/includes/admin_table_filters.html' with filter_id='agentsFilters' filter_type='agents' filter_label='Channel Partners' search_placeholder='Name, email, phone, partner ID...' table_selector='#agentsTable' %}
+
         <!-- Agents Table -->
         <div class="agents-table-container">
             {% if agents %}
@@ -557,7 +540,7 @@
                     Entries
                 </label>
             </div>
-            <table class="agents-table" id="agentsTable">
+            <table class="agents-table admin-compact-table" id="agentsTable">
                 <thead>
                     <tr>
                         <th style="width: 11%;">Partner ID</th>
@@ -575,7 +558,7 @@
                 </thead>
                 <tbody id="agentsTableBody">
                     {% for agent in agents %}
-                    <tr data-agent-id="{{ agent.id }}" data-search="{{ agent.agent_id|default:''|lower }},{{ agent.name|lower }},{{ agent.email|lower }},{{ agent.phone|lower }}">
+                    <tr data-agent-id="{{ agent.id }}" data-search="{{ agent.agent_id|default:''|lower }},{{ agent.name|lower }},{{ agent.email|lower }},{{ agent.phone|lower }}" data-status="{{ agent.status|default:'active' }}" data-joined="{{ agent.created_at|date:'Y-m-d' }}">
                         <td>
                             <strong>
                                 {% if agent.agent_id %}
@@ -602,13 +585,7 @@
                         <td><span style="color: #1f2937;">{{ agent.email|default:"-" }}</span></td>
                         <td><span style="color: #1f2937;">{{ agent.phone|default:"-" }}</span></td>
                         <td><span style="color: #1f2937;">{{ agent_location_display|get_item:agent.id|default:"-" }}</span></td>
-                        <td>
-                            {% if agent.created_by %}
-                                <span class="date-text">{{ agent.created_by.get_full_name|default:agent.created_by.username }}</span>
-                            {% else %}
-                                <span class="date-text">Admin</span>
-                            {% endif %}
-                        </td>
+                        <td><span class="date-text">{{ agent_created_under_display|get_item:agent.id|default:"Admin - System" }}</span></td>
                         <td>
                             <span class="count-badge">{{ agent_total_applications|get_item:agent.id|default:agent.total_leads|default:"0" }}</span>
                         </td>
@@ -616,8 +593,8 @@
                             <span class="count-badge" style="background:#ffedd5; color:#9a3412;">{{ agent_running_applications|get_item:agent.id|default:"0" }}</span>
                         </td>
                         <td>
-                            <span class="agent-status-badge {% if agent.status == 'active' %}status-active{% else %}status-blocked{% endif %}">
-                                {% if agent.status == 'active' %}&#10003; Active{% else %}&#10007; Blocked{% endif %}
+                            <span class="agent-status-badge {% if agent.status == 'active' %}status-active{% else %}status-Inactive{% endif %}">
+                                {% if agent.status == 'active' %}&#10003; Active{% else %}&#10007; Inactive{% endif %}
                             </span>
                         </td>
                         <td>
@@ -662,25 +639,288 @@
             </div>
             {% endif %}
         </div>
+    {% else %}
+    <!-- Add Agent Form Inline -->
+    <div class="table-section" style="background: white; border-radius: 8px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+        <h2 style="margin-top: 0; margin-bottom: 24px;"><i class="fas fa-person-hiking"></i> Add New Channel Partner</h2>
+        <form id="addAgentFormInline" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="section-card" style="margin-bottom: 24px; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px;">
+                <div class="section-title" style="font-weight: 600; margin-bottom: 16px; color: #1e293b; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">APPLICANT INFORMATION</div>
+                <div class="form-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px;">
+                    <div class="form-group">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 500;">Name *</label>
+                        <input type="text" name="name" required placeholder="Full name" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                    </div>
+                    <div class="form-group">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 500;">Email ID *</label>
+                        <input type="email" name="email" required placeholder="example@gmail.com" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                    </div>
+                    <div class="form-group">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 500;">Phone Number *</label>
+                        <input type="tel" name="phone" required placeholder="10-15 digits" pattern="[0-9]{10,15}" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                    </div>
+                    <div class="form-group">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 500;">Gender</label>
+                        <select name="gender" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                            <option value="Other" selected>Other</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 500;">Address</label>
+                        <input type="text" name="address" placeholder="Residential address" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                    </div>
+                    <div class="form-group">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 500;">State</label>
+                        <input type="text" name="state" placeholder="State" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                    </div>
+                    <div class="form-group">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 500;">City *</label>
+                        <input type="text" name="city" required placeholder="City" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                    </div>
+                    <div class="form-group">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 500;">District *</label>
+                        <input type="text" name="district" required placeholder="District" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                    </div>
+                    <div class="form-group">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 500;">PIN Code *</label>
+                        <input type="text" name="pin_code" required placeholder="6 digit PIN code" pattern="[0-9]{6}" maxlength="6" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-card" style="margin-bottom: 24px; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px;">
+                <div class="section-title" style="font-weight: 600; margin-bottom: 16px; color: #1e293b; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">LOGIN DETAILS & ASSIGNMENT</div>
+                <div class="form-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px;">
+                    <div class="form-group">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 500;">Username *</label>
+                        <input type="text" name="username" required placeholder="Unique username" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                    </div>
+                    <div class="form-group">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 500;">Password *</label>
+                        <input type="password" name="password" required placeholder="Minimum 8 characters" minlength="8" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                    </div>
+                    <div class="form-group">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #d97706;">Assign Under Employee (Optional)</label>
+                        <select name="assigned_employee_id" id="assignedEmployeeSelect" style="width: 100%; padding: 10px; border: 2px solid #f59e0b; border-radius: 6px; background-color: #fffbeb; font-weight: 500;">
+                            <option value="">-- Direct under Admin --</option>
+                            {% for employee in employee_options %}
+                            <option value="{{ employee.id }}">{{ employee.employee_id|default:"EDC-EMP" }} - {{ employee.get_full_name|default:employee.username }}</option>
+                            {% endfor %}
+                        </select>
+                        <small style="color: #64748b; margin-top: 4px; display: block;">Select the Employee this Channel Partner will report to.</small>
+                    </div>
+                    <div class="form-group">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #4f46e5;">Or Assign Under Partner (Optional)</label>
+                        <select name="assigned_subadmin_id" id="assignedSubadminSelectAgent" style="width: 100%; padding: 10px; border: 2px solid #6366f1; border-radius: 6px; background-color: #f8fafc; font-weight: 500;">
+                            <option value="">-- Direct under Admin --</option>
+                            {% for subadmin in subadmin_options %}
+                            <option value="{{ subadmin.id }}">{{ subadmin.employee_id|default:"EDC-P" }} - {{ subadmin.get_full_name|default:subadmin.username }}</option>
+                            {% endfor %}
+                        </select>
+                        <small style="color: #64748b; margin-top: 4px; display: block;">Alternatively, select a Partner.</small>
+                    </div>
+                    <div class="form-group">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 500;">Profile Photo</label>
+                        <input type="file" name="photo" accept="image/*" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-card" style="margin-bottom: 24px; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px;">
+                <div class="section-title" style="font-weight: 600; margin-bottom: 16px; color: #1e293b; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">Documents</div>
+                <div id="agentDocumentRowsInline">
+                    <div class="document-row" style="display: flex; gap: 15px; margin-bottom: 10px;">
+                        <div class="form-group" style="flex: 1;">
+                            <label style="display: block; margin-bottom: 8px; font-weight: 500;">Document Type</label>
+                            <select name="document_type" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                                <option value="pan_card">PAN Card</option>
+                                <option value="aadhaar_card">Aadhaar Card</option>
+                                <option value="photo">Applicant Photo</option>
+                                <option value="address_proof">Address Proof</option>
+                                <option value="salary_slip">Salary Slip</option>
+                                <option value="bank_statement">Bank Statement</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label style="display: block; margin-bottom: 8px; font-weight: 500;">Upload File</label>
+                            <input type="file" name="document_file" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                        </div>
+                    </div>
+                </div>
+                <button type="button" class="btn-add-row" onclick="addAgentDocumentRowInline()" style="background: none; border: 1px dashed #cbd5e1; padding: 10px; width: 100%; border-radius: 6px; cursor: pointer; color: #475569;">+ Add Another Document</button>
+            </div>
+
+            <div id="agentFormMessageInline" style="display:none; margin-top: 12px; padding: 10px 12px; border-radius: 6px; font-size: 13px; font-weight: 600;"></div>
+            
+            <div style="margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px;">
+                <a href="{% url 'admin_agents_list' %}" class="btn-toggle-form" style="padding:10px 24px; text-decoration:none; display:inline-block; border:1px solid #cbd5e1; border-radius:6px; color:#475569; background:#f8fafc;">Cancel</a>
+                <button type="submit" class="btn-submit" id="saveAgentBtnInline" style="width:auto; padding:10px 24px; background:#d97706; color:white; border:none; border-radius:6px; cursor:pointer;">
+                    <i class="fas fa-plus"></i> Create Channel Partner
+                </button>
+            </div>
+        </form>
     </div>
-</div>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const empSelect = document.getElementById('assignedEmployeeSelect');
+            if (empSelect) {
+                try {
+                    const response = await fetch("{% url 'api_get_employees' %}");
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.success && data.employees) {
+                            empSelect.innerHTML = '<option value="">-- Direct under Admin --</option>';
+                            data.employees.forEach(emp => {
+                                if ((emp.status || '').toLowerCase() === 'inactive' || emp.is_active === false) {
+                                    return;
+                                }
+                                const option = document.createElement('option');
+                                option.value = emp.id;
+                                option.textContent = `${emp.employee_id || 'ID:'+emp.id} - ${emp.name || emp.username}`;
+                                empSelect.appendChild(option);
+                            });
+                        }
+                    }
+                } catch (e) {
+                    console.error("Failed to load employees", e);
+                }
+            }
+
+            const saSelect = document.getElementById('assignedSubadminSelectAgent');
+            if (saSelect) {
+                try {
+                    const response = await fetch("{% url 'api_get_subadmins' %}");
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.success && data.subadmins) {
+                            saSelect.innerHTML = '<option value="">-- Direct under Admin --</option>';
+                            data.subadmins.forEach(sa => {
+                                const option = document.createElement('option');
+                                option.value = sa.id;
+                                option.textContent = `${sa.partner_id || 'ID:'+sa.id} - ${sa.name || sa.username}`;
+                                saSelect.appendChild(option);
+                            });
+                        }
+                    }
+                } catch (e) {
+                    console.error("Failed to load subadmins", e);
+                }
+            }
+
+            if (empSelect && saSelect) {
+                empSelect.addEventListener('change', () => {
+                    if (empSelect.value) {
+                        saSelect.value = '';
+                    }
+                });
+                saSelect.addEventListener('change', () => {
+                    if (saSelect.value) {
+                        empSelect.value = '';
+                    }
+                });
+            }
+        });
+        
+        window.addAgentDocumentRowInline = function() {
+            const container = document.getElementById('agentDocumentRowsInline');
+            const row = document.createElement('div');
+            row.className = 'document-row';
+            row.style = 'display: flex; gap: 15px; margin-bottom: 10px; align-items: flex-end;';
+            row.innerHTML = `
+                <div class="form-group" style="flex: 1;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500;">Document Type</label>
+                    <select name="document_type" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                        <option value="pan_card">PAN Card</option>
+                        <option value="aadhaar_card">Aadhaar Card</option>
+                        <option value="photo">Applicant Photo</option>
+                        <option value="address_proof">Address Proof</option>
+                        <option value="salary_slip">Salary Slip</option>
+                        <option value="bank_statement">Bank Statement</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500;">Upload File</label>
+                    <input type="file" name="document_file" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                </div>
+                <button type="button" onclick="this.parentElement.remove()" style="background: none; border: none; color: #ef4444; font-size: 20px; cursor: pointer; padding: 0 5px;">&times;</button>
+            `;
+            container.appendChild(row);
+        };
+
+        const addAgentFormInline = document.getElementById('addAgentFormInline');
+        if (addAgentFormInline) {
+            addAgentFormInline.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                if (!addAgentFormInline.reportValidity()) {
+                    return;
+                }
+                const msgBox = document.getElementById('agentFormMessageInline');
+                const btn = document.getElementById('saveAgentBtnInline');
+                const originalText = btn.innerHTML;
+                
+                msgBox.style.display = 'none';
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+                btn.disabled = true;
+
+                try {
+                    const formData = new FormData(addAgentFormInline);
+                    
+                    const response = await fetch("{% url 'api_add_agent' %}", {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                        }
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (response.ok && result.success) {
+                        msgBox.style.display = 'block';
+                        msgBox.style.backgroundColor = '#d1fae5';
+                        msgBox.style.color = '#065f46';
+                        msgBox.textContent = result.message || 'Channel Partner added successfully!';
+                        setTimeout(() => {
+                            window.location.href = "{% url 'admin_agents_list' %}";
+                        }, 1000);
+                    } else {
+                        throw new Error(result.error || result.message || 'Failed to add Channel Partner');
+                    }
+                } catch (error) {
+                    msgBox.style.display = 'block';
+                    msgBox.style.backgroundColor = '#fee2e2';
+                    msgBox.style.color = '#991b1b';
+                    msgBox.textContent = error.message;
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }
+            });
+        }
+    </script>
+    {% endif %}
 
 <!-- Add Agent Modal -->
-<div id="addAgentModal" class="modal-overlay">
-    <div class="modal-card">
-        <div class="modal-header">
-            <h2 class="modal-title">Add New Agent</h2>
-            <button type="button" onclick="closeAddAgentModal()" style="background: none; border: none; font-size: 26px; cursor: pointer; color: #6b7280;">&times;</button>
+<div id="addAgentModal" class="admin-bottom-sheet">
+    <div class="admin-bottom-sheet-backdrop"></div>
+    <div class="admin-bottom-sheet-panel">
+        <div class="admin-bottom-sheet-header">
+            <h2 class="admin-bottom-sheet-title">Add New Channel Partner</h2>
+            <button type="button" class="admin-bottom-sheet-close" onclick="closeAddAgentModal()">&times;</button>
         </div>
         <form id="addAgentForm" enctype="multipart/form-data">
             {% csrf_token %}
-            <div class="modal-body scroll">
+            <div class="admin-bottom-sheet-body">
                 <div class="section-card">
                     <div class="section-title">APPLICANT INFORMATION</div>
                     <div class="form-grid">
                         <div class="form-group">
                             <label>Name *</label>
-                            <input type="text" name="name" id="agentName" required placeholder="Agent full name">
+                            <input type="text" name="name" id="agentName" required placeholder="Channel Partner full name">
                         </div>
                         <div class="form-group">
                             <label>Email ID *</label>
@@ -711,15 +951,51 @@
                             <input type="text" name="pin_code" id="agentPinCode" required placeholder="6-digit PIN code" pattern="[0-9]{6}" maxlength="6">
                         </div>
                         <div class="form-group">
+                            <label>Date of Birth</label>
+                            <input type="text" name="onb_dob" placeholder="dd-mm-yyyy">
+                        </div>
+                        <div class="form-group">
                             <label>Password *</label>
                             <input type="password" name="password" id="agentPassword" required placeholder="Create login password">
                         </div>
+                        <div class="form-group">
+                            <label>Profile Photo</label>
+                            <input type="file" name="profile_photo" id="agentPhoto" accept="image/*">
+                        </div>
+                        <div class="form-group" style="grid-column:1/-1;">
+                            <label>Address</label>
+                            <textarea name="address" id="agentAddress" placeholder="Full address"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>State</label>
+                            <input type="text" name="state" placeholder="State">
+                        </div>
                     </div>
                 </div>
+                <div class="section-card">
+                    <div class="section-title">Documents</div>
+                    <div id="agentDocumentRows">
+                        <div class="document-row">
+                            <div class="form-group">
+                                <label>Document Type</label>
+                                <select name="document_type">
+                                    <option value="pan_card">PAN Card</option>
+                                    <option value="aadhaar_card">Aadhaar Card</option>
+                                    <option value="bank_statement">Bank Passbook / Statement / Cancel Cheque</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Upload File</label>
+                                <input type="file" name="document_file">
+                            </div>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-add-row" onclick="addAgentDocumentRow()">+ Add Document</button>
+                </div>
             </div>
-            <div class="modal-actions">
+            <div class="admin-bottom-sheet-footer">
                 <button type="button" class="btn-secondary" onclick="closeAddAgentModal()">Cancel</button>
-                <button type="submit" class="btn-primary-solid" id="saveAgentBtn">Save Agent</button>
+                <button type="submit" class="btn-primary-solid" id="saveAgentBtn">Create Channel Partner</button>
             </div>
         </form>
     </div>
@@ -738,7 +1014,7 @@
                 <div class="form-grid">
                     <div class="form-group">
                         <label>Name *</label>
-                        <input type="text" name="name" id="editAgentName" required placeholder="Agent full name">
+                        <input type="text" name="name" id="editAgentName" required placeholder="Channel Partner full name">
                     </div>
                     <div class="form-group">
                         <label>Email *</label>
@@ -768,8 +1044,13 @@
                         <label>Status</label>
                         <select name="status" id="editAgentStatus">
                             <option value="active">Active</option>
-                            <option value="blocked">Blocked</option>
+                            <option value="inactive">Inactive</option>
                         </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Profile Photo</label>
+                        <input type="file" name="profile_photo" id="editAgentPhoto" accept="image/*">
+                        <small style="color:#64748b; font-size:12px;">Optional. Upload a new channel partner photo.</small>
                     </div>
                 </div>
             </div>
@@ -798,10 +1079,27 @@ function initializeAgentsTableExperience() {
 }
 
 function applyAgentsFilters() {
-    const searchValue = (document.getElementById('searchInput')?.value || '').toLowerCase().trim();
+    const bar = document.getElementById('agentsFilters');
+    const searchValue = (bar?.querySelector('.admin-filter-search')?.value || '').toLowerCase().trim();
+    const status = (bar?.querySelector('.admin-filter-status')?.value || '').toLowerCase();
+    const fromVal = bar?.querySelector('.admin-filter-date-from')?.value || '';
+    const toVal = bar?.querySelector('.admin-filter-date-to')?.value || '';
+    const fromDate = fromVal ? new Date(fromVal + 'T00:00:00') : null;
+    const toDate = toVal ? new Date(toVal + 'T23:59:59') : null;
+
     agentsTableState.filteredRows = agentsTableState.allRows.filter((row) => {
         const searchText = (row.getAttribute('data-search') || '').toLowerCase();
-        return searchText.includes(searchValue);
+        if (!searchText.includes(searchValue)) return false;
+        const rowStatus = (row.getAttribute('data-status') || '').toLowerCase();
+        if (status) {
+            const normalizedRow = rowStatus === 'Inactive' ? 'inactive' : rowStatus;
+            if (normalizedRow !== status) return false;
+        }
+        const raw = row.getAttribute('data-joined') || '';
+        const rowDate = raw ? new Date(raw + 'T12:00:00') : null;
+        if (fromDate && rowDate && rowDate < fromDate) return false;
+        if (toDate && rowDate && rowDate > toDate) return false;
+        return true;
     });
     renderAgentsTablePage();
 }
@@ -891,20 +1189,17 @@ function filterTable() {
 }
 
 function openAddAgentModal() {
-    const modal = document.getElementById('addAgentModal');
-    if (modal) {
-        modal.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
+    const addPageUrl = "{% url 'admin_agents_add' %}";
+    if (window.location.pathname !== addPageUrl) {
+        window.location.href = addPageUrl;
     }
 }
 
 function closeAddAgentModal() {
-    const modal = document.getElementById('addAgentModal');
-    const form = document.getElementById('addAgentForm');
-    if (modal) {
-        modal.style.display = 'none';
-        document.body.style.overflow = 'auto';
+    if (window.AdminBottomSheet) {
+        AdminBottomSheet.close('addAgentModal');
     }
+    const form = document.getElementById('addAgentForm');
     if (form) {
         form.reset();
     }
@@ -997,9 +1292,9 @@ function insertAgentRow(agent) {
     if (district) locationParts.push(`District ${district}`);
     if (pinCode && pinCode !== '-') locationParts.push(`PIN ${pinCode}`);
     const location = escapeHtml(locationParts.length ? locationParts.join(' | ') : 'N/A');
-    const createdBy = escapeHtml(agent.created_by || 'Admin');
-    const status = agent.status === 'active' ? 'active' : 'blocked';
-    const statusLabel = status === 'active' ? '\u2713 Active' : '\u2717 Blocked';
+    const createdBy = escapeHtml(agent.created_under || agent.created_by || 'Admin - System');
+    const status = agent.status === 'active' ? 'active' : 'Inactive';
+    const statusLabel = status === 'active' ? '\u2713 Active' : '\u2717 Inactive';
     const photoUrl = agent.photo_url || '';
     const agentCode = escapeHtml(agent.agent_id || `EDC-CP-${String(agent.id).padStart(4, '0')}`);
     const initials = name ? name.charAt(0).toUpperCase() : '?';
@@ -1026,7 +1321,7 @@ function insertAgentRow(agent) {
             <td><span class="count-badge">${totalApplications}</span></td>
             <td><span class="count-badge" style="background:#ffedd5; color:#9a3412;">${runningApplications}</span></td>
             <td>
-                <span class="agent-status-badge ${status === 'active' ? 'status-active' : 'status-blocked'}">
+                <span class="agent-status-badge ${status === 'active' ? 'status-active' : 'status-Inactive'}">
                     ${statusLabel}
                 </span>
             </td>
@@ -1182,9 +1477,9 @@ function renderOnboardingHtml(onboarding, documents) {
     const docsHtml = docs.length
         ? docs.map(doc => `
             <div style="display:flex; justify-content:space-between; gap:12px; padding:6px 0; border-bottom:1px dashed #e5e7eb;">
-                <div style="font-size:12px; color:#4b5563;">${escapeHtml(doc.type || 'other')}</div>
+                <div style="font-size:12px; color:#4b5563;">${escapeHtml(doc.label || doc.name || doc.type || 'other')}</div>
                 <div style="font-size:12px;">
-                    ${doc.url ? `<a href="${escapeHtml(doc.url)}" target="_blank" style="color:#2563eb; text-decoration:none;">View</a>` : '<span style="color:#9ca3af;">No file</span>'}
+                    ${doc.url ? `<span style="display:flex; gap:6px; flex-wrap:wrap;"><a href="${escapeHtml(doc.url)}" target="_blank" rel="noopener" style="color:#2563eb; text-decoration:none; font-weight:700;">View</a><a href="${escapeHtml(doc.url)}" download style="color:#2563eb; text-decoration:none; font-weight:700;">Download</a></span>` : '<span style="color:#9ca3af;">No file</span>'}
                 </div>
             </div>
         `).join('')
@@ -1267,6 +1562,7 @@ function renderAgentLoanDetailCard(item) {
     }
     const detailRows = Array.isArray(item.full_application_details) ? item.full_application_details : [];
     const timeline = Array.isArray(item.status_timeline) ? item.status_timeline : [];
+    const documents = Array.isArray(item.documents) ? item.documents : [];
     const detailHtml = detailRows.length
         ? detailRows.map((row) => `
             <div style="display:flex; justify-content:space-between; gap:12px; padding:6px 0; border-bottom:1px dashed #e5e7eb;">
@@ -1284,6 +1580,17 @@ function renderAgentLoanDetailCard(item) {
             </div>
         `).join('')
         : '<div style="font-size:12px; color:#64748b;">No status timeline available.</div>';
+    const documentHtml = documents.length
+        ? documents.map((doc) => `
+            <div style="display:flex; justify-content:space-between; gap:12px; padding:8px 0; border-bottom:1px dashed #e5e7eb;">
+                <div>
+                    <div style="font-size:12px; font-weight:700; color:#0f172a;">${escapeHtml(doc.label || doc.name || doc.document_type || doc.type || 'Document')}</div>
+                    <div style="font-size:11px; color:#64748b;">${escapeHtml(doc.uploaded_at || '-')}</div>
+                </div>
+                ${doc.url ? `<span style="display:flex; gap:6px; flex-wrap:wrap;"><a href="${escapeHtml(doc.url)}" target="_blank" rel="noopener" class="btn-action">View</a><a href="${escapeHtml(doc.url)}" download class="btn-action">Download</a></span>` : '<span style="font-size:11px; color:#94a3b8;">No file</span>'}
+            </div>
+        `).join('')
+        : '<div style="font-size:12px; color:#64748b;">No application documents available.</div>';
     return `
         <div style="padding:14px;">
             <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:10px; margin-bottom:12px;">
@@ -1306,6 +1613,10 @@ function renderAgentLoanDetailCard(item) {
                 <summary style="font-size:12px; font-weight:700; color:#0f172a; cursor:pointer;">Status + Remark Timeline</summary>
                 <div style="margin-top:8px;">${timelineHtml}</div>
             </details>
+            <details style="border:1px solid #e5e7eb; border-radius:10px; padding:10px; background:#f8fafc; margin-bottom:10px;">
+                <summary style="font-size:12px; font-weight:700; color:#0f172a; cursor:pointer;">Documents</summary>
+                <div style="margin-top:8px;">${documentHtml}</div>
+            </details>
             <div>
                 <div style="font-size:12px; color:#64748b; margin-bottom:4px;">Remarks</div>
                 <div style="padding:10px; border:1px solid #e5e7eb; border-radius:8px; background:#f8fafc; font-size:12px; color:#0f172a;">${escapeHtml(item.remarks || item.bank_remark || '-')}</div>
@@ -1326,17 +1637,23 @@ function renderAgentViewModal(agent, summary, customers, onboarding, documents) 
 
     panelBody.innerHTML = `
         <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:10px; margin-bottom:14px;">
+            <div><strong>Channel Partner ID:</strong> ${escapeHtml(agent.agent_id || agent.id || '-')}</div>
+            <div><strong>Username:</strong> ${escapeHtml(agent.username || '-')}</div>
+            <div><strong>Joined:</strong> ${escapeHtml(agent.joined_on || '-')}</div>
             <div><strong>Phone:</strong> ${escapeHtml(agent.phone || '-')}</div>
-            <div><strong>Partner ID:</strong> ${escapeHtml(agent.agent_id || agent.id || '-')}</div>
             <div><strong>City:</strong> ${escapeHtml(agent.city || '-')}</div>
-            <div><strong>PIN:</strong> ${escapeHtml(agent.pin_code || '-')}</div>
             <div><strong>District:</strong> ${escapeHtml(agent.district || '-')}</div>
-            <div><strong>Created By:</strong> ${escapeHtml(agent.created_by || 'Admin')}</div>
+            <div><strong>State:</strong> ${escapeHtml(agent.state || '-')}</div>
+            <div><strong>PIN:</strong> ${escapeHtml(agent.pin_code || '-')}</div>
+            <div><strong>Created Under:</strong> ${escapeHtml(agent.created_under || agent.created_by || 'Admin - System')}</div>
+            <div><strong>Reports To:</strong> ${escapeHtml(agent.reports_to || 'Direct under Admin')}</div>
             <div><strong>Status:</strong> ${escapeHtml(agent.status || '-')}</div>
+            <div><strong>Aadhaar:</strong> ${escapeHtml(agent.aadhar_number || '-')}</div>
             <div><strong>Assigned Apps:</strong> ${summary.total_assigned_applications || 0}</div>
         </div>
         <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap:10px; margin-bottom:14px;">
             <button type="button" class="agent-stat-btn" data-section="applications" style="text-align:left; border:1px solid #dbeafe; border-radius:10px; background:#eff6ff; padding:10px; cursor:pointer;"><div style="font-size:12px;color:#1d4ed8;">Applications</div><div style="font-size:20px;font-weight:700;color:#1e3a8a;">${summary.total_applications || 0}</div></button>
+            <button type="button" class="agent-stat-btn" data-section="channel_partners" style="text-align:left; border:1px solid #bbf7d0; border-radius:10px; background:#f0fdf4; padding:10px; cursor:pointer;"><div style="font-size:12px;color:#15803d;">Channel Partners</div><div style="font-size:20px;font-weight:700;color:#166534;">${summary.channel_partner_count || 0}</div></button>
             <button type="button" class="agent-stat-btn" data-section="approved" style="text-align:left; border:1px solid #bbf7d0; border-radius:10px; background:#ecfdf5; padding:10px; cursor:pointer;"><div style="font-size:12px;color:#047857;">Approved</div><div style="font-size:20px;font-weight:700;color:#065f46;">${summary.approved || 0}</div></button>
             <button type="button" class="agent-stat-btn" data-section="rejected" style="text-align:left; border:1px solid #fecaca; border-radius:10px; background:#fef2f2; padding:10px; cursor:pointer;"><div style="font-size:12px;color:#b91c1c;">Rejected</div><div style="font-size:20px;font-weight:700;color:#7f1d1d;">${summary.rejected || 0}</div></button>
             <button type="button" class="agent-stat-btn" data-section="follow_up" style="text-align:left; border:1px solid #fed7aa; border-radius:10px; background:#fff7ed; padding:10px; cursor:pointer;"><div style="font-size:12px;color:#c2410c;">Banking Processing</div><div style="font-size:20px;font-weight:700;color:#9a3412;">${summary.banking_processing || 0}</div></button>
@@ -1401,6 +1718,11 @@ function renderAgentViewModal(agent, summary, customers, onboarding, documents) 
 
     function renderSection(sectionKey) {
         const key = String(sectionKey || '').toLowerCase();
+        if (key === 'channel_partners') {
+            renderApplications([], 'Channel Partners Under This Channel Partner');
+            activateCard('channel_partners');
+            return;
+        }
         if (key === 'approved' || key === 'rejected' || key === 'follow_up') {
             const filtered = safeCustomers.filter((item) => normalizeAgentStatusKey(item.status) === key);
             renderApplications(filtered, `${key.replace('_', ' ').toUpperCase()} Applications`);
@@ -1497,6 +1819,8 @@ function openEditAgentModal(agentId) {
         document.getElementById('editAgentAddress').value = agent.address || '';
         document.getElementById('editAgentGender').value = agent.gender || 'Other';
         document.getElementById('editAgentStatus').value = agent.status || 'active';
+        const editPhoto = document.getElementById('editAgentPhoto');
+        if (editPhoto) editPhoto.value = '';
 
         modal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
@@ -1532,13 +1856,18 @@ if (editAgentForm) {
         };
 
         try {
+            const formData = new FormData();
+            Object.entries(payload).forEach(([key, value]) => formData.append(key, value));
+            const photoFile = document.getElementById('editAgentPhoto')?.files?.[0];
+            if (photoFile) {
+                formData.append('profile_photo', photoFile);
+            }
             const response = await fetch(`/api/admin/agents/${currentEditingAgentId}/update/`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
                     'X-CSRFToken': getCookie('csrftoken')
                 },
-                body: JSON.stringify(payload)
+                body: formData
             });
             const data = await response.json();
             if (!response.ok || !data.success) {
@@ -1551,12 +1880,18 @@ if (editAgentForm) {
                 if (cells[2]) cells[2].querySelector('span').textContent = payload.name || payload.email;
                 if (cells[3]) cells[3].querySelector('span').textContent = payload.email || '-';
                 if (cells[4]) cells[4].querySelector('span').textContent = payload.phone || '-';
+                if (data.photo_url && cells[1]) {
+                    const photoBox = cells[1].querySelector('.agent-photo');
+                    if (photoBox) {
+                        photoBox.innerHTML = `<img src="${data.photo_url}" alt="${payload.name || 'Channel Partner'}">`;
+                    }
+                }
                 const badge = row.querySelector('.agent-status-badge');
                 if (badge) {
                     const active = payload.status === 'active';
                     badge.classList.toggle('status-active', active);
-                    badge.classList.toggle('status-blocked', !active);
-                    badge.textContent = active ? '✓ Active' : '✗ Blocked';
+                    badge.classList.toggle('status-Inactive', !active);
+                    badge.textContent = active ? '✓ Active' : '✗ Inactive';
                 }
                 const partnerCode = (cells[0]?.textContent || '').trim().toLowerCase();
                 row.setAttribute('data-search', `${partnerCode},${(payload.name || '').toLowerCase()},${(payload.email || '').toLowerCase()},${(payload.phone || '').toLowerCase()}`);
@@ -1564,7 +1899,7 @@ if (editAgentForm) {
 
             closeEditAgentModal();
             initializeAgentsTableExperience();
-            alert(data.message || 'Agent updated successfully');
+            alert(data.message || 'Channel Partner updated successfully');
         } catch (error) {
             console.error('Update agent error:', error);
             alert(error.message || 'Error updating agent');
@@ -1625,7 +1960,7 @@ if (addAgentForm) {
 
             insertAgentRow(result.agent || result);
             closeAddAgentModal();
-            alert(result.message || 'Agent added successfully');
+            alert(result.message || 'Channel Partner added successfully');
         } catch (error) {
             console.error('Add agent error:', error);
             alert(error.message || 'Error adding agent');
@@ -1709,7 +2044,32 @@ document.addEventListener('click', function(event) {
         closeAddAgentModal();
     }
 });
-document.addEventListener('DOMContentLoaded', initializeAgentsTableExperience);
+document.addEventListener('DOMContentLoaded', function () {
+    initializeAgentsTableExperience();
+    const bar = document.getElementById('agentsFilters');
+    if (bar) {
+        const run = () => { agentsTableState.currentPage = 1; filterTable(); };
+        bar.querySelector('.admin-filter-apply')?.addEventListener('click', run);
+        bar.querySelector('.admin-filter-reset')?.addEventListener('click', () => {
+            bar.querySelector('.admin-filter-search').value = '';
+            const st = bar.querySelector('.admin-filter-status');
+            if (st) st.value = '';
+            bar.querySelector('.admin-filter-date-from').value = '';
+            bar.querySelector('.admin-filter-date-to').value = '';
+            agentsTableState.currentPage = 1;
+            filterTable();
+        });
+        bar.querySelector('.admin-filter-search')?.addEventListener('input', run);
+        bar.querySelector('.admin-filter-status')?.addEventListener('change', run);
+        bar.querySelector('.admin-filter-date-from')?.addEventListener('change', run);
+        bar.querySelector('.admin-filter-date-to')?.addEventListener('change', run);
+    }
+    const agentParams = new URLSearchParams(window.location.search);
+    if (agentParams.get('open_add') === '1') {
+        openAddAgentModal();
+        window.history.replaceState({}, '', window.location.pathname);
+    }
+});
 </script>
 
 {% endblock %}
