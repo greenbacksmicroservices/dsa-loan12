@@ -15,6 +15,7 @@ from openpyxl import Workbook
 
 from .models import (
     Loan,
+    LoanApplication,
     Agent,
     Complaint,
     User,
@@ -23,17 +24,31 @@ from .models import (
     AgentAssignment,
     UserOnboardingDocument,
 )
-from .loan_sync import sync_loan_to_application
+from .loan_sync import find_related_loan_application, sync_loan_to_application
 from .followup_utils import auto_move_overdue_to_follow_up
 from .role_decorators import agent_required
 from .upload_limits import validate_loan_document_batch
 from .updated_document_utils import (
     UPDATED_DOCUMENT_LABEL,
     UPDATED_DOCUMENT_STATUS_KEY,
+    application_has_updated_documents,
     loan_has_updated_documents,
 )
 from .account_notifications import send_account_credentials_email
-from .id_utils import normalize_manual_loan_id
+from .id_utils import generate_agent_sequence_id, normalize_manual_loan_id
+from .workflow_rows import (
+    application_effective_status_key,
+    build_application_display_row,
+)
+
+APP_STATUS_TO_LOAN_KEY = {
+    'New Entry': 'new_entry',
+    'Waiting for Processing': 'waiting',
+    'Required Follow-up': 'follow_up',
+    'Approved': 'approved',
+    'Rejected': 'rejected',
+    'Disbursed': 'disbursed',
+}
 
 
 def get_agent_loan_queryset(user, agent):
@@ -127,6 +142,60 @@ def _status_breakdown(loans_iterable):
     return counts
 
 
+def _effective_status_key_for_application(app_obj):
+    app_key = APP_STATUS_TO_LOAN_KEY.get(getattr(app_obj, 'status', ''), '')
+    if app_key in ['new_entry', 'waiting'] and _has_revert_marker(getattr(app_obj, 'approval_notes', '')):
+        return 'follow_up_pending'
+    if app_key == 'waiting' and application_has_updated_documents(app_obj):
+        return UPDATED_DOCUMENT_STATUS_KEY
+    return app_key
+
+
+def _application_status_breakdown(apps_iterable):
+    counts = {
+        'new_entry': 0,
+        'waiting': 0,
+        UPDATED_DOCUMENT_STATUS_KEY: 0,
+        'follow_up': 0,
+        'follow_up_pending': 0,
+        'approved': 0,
+        'rejected': 0,
+        'disbursed': 0,
+        'total': 0,
+    }
+    for app_obj in apps_iterable:
+        status_key = _effective_status_key_for_application(app_obj)
+        if status_key in counts:
+            counts[status_key] += 1
+        counts['total'] += 1
+    return counts
+
+
+def _merge_status_counts(primary_counts, extra_counts):
+    for key, value in extra_counts.items():
+        primary_counts[key] = primary_counts.get(key, 0) + value
+    return primary_counts
+
+
+def _agent_workflow_only_applications(agent, legacy_loans):
+    related_app_ids = {
+        related_app.id
+        for related_app in (find_related_loan_application(loan) for loan in legacy_loans)
+        if related_app
+    }
+    filters = Q(assigned_agent=agent)
+    if getattr(agent, 'user_id', None):
+        filters |= Q(assigned_by_id=agent.user_id)
+    return LoanApplication.objects.select_related(
+        'applicant',
+        'assigned_by',
+        'assigned_employee',
+        'assigned_agent',
+        'assigned_agent__user',
+        'assigned_agent__created_by',
+    ).filter(filters).exclude(id__in=related_app_ids)
+
+
 @agent_required
 def agent_dashboard(request):
     """
@@ -139,6 +208,10 @@ def agent_dashboard(request):
     agent_loans_qs = get_agent_loan_queryset(request.user, agent)
     agent_loans = list(agent_loans_qs)
     counts = _status_breakdown(agent_loans)
+    counts = _merge_status_counts(
+        counts,
+        _application_status_breakdown(_agent_workflow_only_applications(agent, agent_loans)),
+    )
 
     # Real-time dashboard statistics
     dashboard_data = {
@@ -207,7 +280,7 @@ def agent_sub_agents(request):
     agent = Agent.objects.get(user=request.user)
     
     # Get sub-agents created by this agent
-    sub_agents = Agent.objects.filter(created_by=request.user)
+    sub_agents = Agent.objects.filter(created_by=request.user).select_related('user').order_by('-created_at')
     
     context = {
         'sub_agents': sub_agents,
@@ -259,18 +332,23 @@ def create_sub_agent(request):
                 'error': 'Full Name, Email, Phone, and Password are required'
             }, status=400)
         
-        # Check email uniqueness
-        if User.objects.filter(email=email).exists():
+        # Reuse contact details from deleted/blocked accounts, but block active duplicates.
+        if (
+            User.objects.filter(email__iexact=email, is_active=True).exists()
+            or Agent.objects.filter(email__iexact=email, status='active').exists()
+        ):
             return JsonResponse({
                 'success': False,
-                'error': 'Email already registered'
+                'error': 'Email already registered for an active channel partner'
             }, status=400)
         
-        # Check phone uniqueness  
-        if User.objects.filter(phone=phone).exists():
+        if (
+            User.objects.filter(phone=phone, is_active=True).exists()
+            or Agent.objects.filter(phone=phone, status='active').exists()
+        ):
             return JsonResponse({
                 'success': False,
-                'error': 'Phone number already registered'
+                'error': 'Phone number already registered for an active channel partner'
             }, status=400)
         
         # Parse full name
@@ -278,9 +356,16 @@ def create_sub_agent(request):
         first_name = name_parts[0]
         last_name = name_parts[1] if len(name_parts) > 1 else ''
         
+        base_username = email.split('@')[0]
+        username = base_username
+        counter = 1
+        while User.objects.filter(username=username).exists():
+            counter += 1
+            username = f"{base_username}{counter}"
+
         # Create user
         user = User.objects.create_user(
-            username=email.split('@')[0],  # Username from email prefix
+            username=username,
             email=email,
             password=password,
             role='agent',
@@ -304,9 +389,12 @@ def create_sub_agent(request):
             user.profile_photo = profile_photo
             user.save()
         
+        generated_agent_id = generate_agent_sequence_id(is_sub_channel_partner=True)
+
         # Create agent
         sub_agent = Agent.objects.create(
             user=user,
+            agent_id=generated_agent_id,
             name=f"{first_name} {last_name}",
             phone=phone,
             email=email,
@@ -316,6 +404,7 @@ def create_sub_agent(request):
             pin_code=pin_code if pin_code else None,
             gender=gender if gender else None,
             created_by=request.user,
+            under_employee=_resolve_employee_for_agent(parent_agent),
         )
 
         email_sent, email_detail = send_account_credentials_email(
@@ -325,15 +414,17 @@ def create_sub_agent(request):
             username=user.username,
             password=password,
             role=user.role,
+            account_id=sub_agent.agent_id,
         )
         
         return JsonResponse({
             'success': True,
             'message': (
-                f'Team member {sub_agent.name} created successfully!'
+                f'Sub channel partner {sub_agent.name} ({generated_agent_id}) created successfully!'
                 + (' Credentials email sent successfully.' if email_sent else (f' Credentials email could not be sent: {email_detail}' if email_detail else ''))
             ),
             'agent_id': sub_agent.id,
+            'agent_code': generated_agent_id,
             'email_sent': email_sent,
             'email_message': email_detail,
         })
@@ -356,6 +447,22 @@ def agent_my_applications(request):
     # Show both created and assigned applications
     all_loans_qs = get_agent_loan_queryset(request.user, agent).order_by('-created_at')
     all_loans = list(all_loans_qs)
+    workflow_apps = list(_agent_workflow_only_applications(agent, all_loans))
+    workflow_rows = [
+        build_application_display_row(app_obj, status_key=application_effective_status_key(app_obj))
+        for app_obj in workflow_apps
+    ]
+
+    def _prepare_legacy_row(loan_obj):
+        status_key = _effective_status_key_for_loan(loan_obj)
+        loan_obj.entity_type = 'legacy'
+        loan_obj.status_raw = loan_obj.status
+        loan_obj.status = status_key
+        loan_obj.has_revert_pending = status_key == 'follow_up_pending'
+        return loan_obj
+
+    all_display_rows = [_prepare_legacy_row(loan) for loan in all_loans] + workflow_rows
+    all_display_rows.sort(key=lambda row: getattr(getattr(row, 'created_at', None), 'timestamp', lambda: 0)(), reverse=True)
     
     # Filter by status if provided
     status_filter = request.GET.get('status')
@@ -368,19 +475,15 @@ def agent_my_applications(request):
     }
     normalized_status = status_alias_map.get(status_filter, status_filter) if status_filter else None
     if normalized_status:
-        loans = [loan for loan in all_loans if _effective_status_key_for_loan(loan) == normalized_status]
+        loans = [loan for loan in all_display_rows if getattr(loan, 'status', '') == normalized_status]
     else:
-        loans = list(all_loans)
+        loans = list(all_display_rows)
 
-    for loan in loans:
-        loan.has_revert_pending = _effective_status_key_for_loan(loan) == 'follow_up_pending'
-
-    recent_submitted = list(all_loans[:10])
-    for loan in recent_submitted:
-        loan.has_revert_pending = _effective_status_key_for_loan(loan) == 'follow_up_pending'
+    recent_submitted = list(all_display_rows[:10])
 
     # Get counts by status
     counts = _status_breakdown(all_loans)
+    counts = _merge_status_counts(counts, _application_status_breakdown(workflow_apps))
     total_count = counts['total']
     follow_up_pending_count = counts['follow_up_pending']
     processing_count = counts['new_entry'] + counts['waiting'] + counts[UPDATED_DOCUMENT_STATUS_KEY] + counts['follow_up']
@@ -427,9 +530,34 @@ def agent_loan_detail(request, loan_id):
     records and return documents with access control for agents.
     """
     agent = Agent.objects.get(user=request.user)
-    loan = get_object_or_404(get_agent_loan_queryset(request.user, agent), id=loan_id)
-    # Share the same UI with employee, but hide employee-only actions in JS by role.
-    return render(request, 'core/employee/loan_detail.html', {'loan_id': loan.id})
+    source = str(request.GET.get('entity_type') or request.GET.get('source') or '').strip().lower()
+
+    if source == 'application':
+        app = get_object_or_404(
+            LoanApplication.objects.filter(Q(assigned_agent=agent) | Q(assigned_by=request.user)),
+            id=loan_id,
+        )
+        return render(request, 'core/employee/loan_detail.html', {
+            'loan_id': app.id,
+            'entity_type': 'application',
+        })
+
+    legacy_qs = get_agent_loan_queryset(request.user, agent)
+    loan = legacy_qs.filter(id=loan_id).first()
+    if loan:
+        return render(request, 'core/employee/loan_detail.html', {
+            'loan_id': loan.id,
+            'entity_type': 'legacy',
+        })
+
+    app = get_object_or_404(
+        LoanApplication.objects.filter(Q(assigned_agent=agent) | Q(assigned_by=request.user)),
+        id=loan_id,
+    )
+    return render(request, 'core/employee/loan_detail.html', {
+        'loan_id': app.id,
+        'entity_type': 'application',
+    })
 
 
 @agent_required
@@ -709,6 +837,11 @@ def agent_reports(request):
     agent = Agent.objects.get(user=request.user)
     
     period = request.GET.get('period', '1month')
+    status_filter = (request.GET.get('status') or '').strip()
+    employee_filter = (request.GET.get('employee') or '').strip()
+    partner_filter = (request.GET.get('partner') or '').strip()
+    search_query = (request.GET.get('q') or '').strip()
+    loan_id_filter = (request.GET.get('loan_id') or '').strip()
 
     # Calculate date range
     today = timezone.now()
@@ -747,20 +880,74 @@ def agent_reports(request):
         'assigned_employee',
         'assigned_agent',
     ).prefetch_related('documents').order_by('-created_at')
+
+    if loan_id_filter:
+        try:
+            loans = loans.filter(id=int(loan_id_filter))
+        except (TypeError, ValueError):
+            loans = loans.none()
+
+    if status_filter:
+        status_alias_map = {
+            'processing': 'waiting',
+            'waiting_for_processing': 'waiting',
+            'updated': UPDATED_DOCUMENT_STATUS_KEY,
+            'banking': 'follow_up',
+            'followup_pending': 'follow_up_pending',
+        }
+        normalized_status = status_alias_map.get(status_filter, status_filter)
+        matching_ids = [
+            loan.id for loan in loans
+            if _effective_status_key_for_loan(loan) == normalized_status
+        ]
+        loans = loans.filter(id__in=matching_ids)
+        status_filter = normalized_status
+
+    if employee_filter:
+        loans = loans.filter(assigned_employee_id=employee_filter)
+
+    if partner_filter:
+        loans = loans.filter(assigned_agent_id=partner_filter)
+
+    if search_query:
+        loans = loans.filter(
+            Q(full_name__icontains=search_query) |
+            Q(mobile_number__icontains=search_query) |
+            Q(email__icontains=search_query) |
+            Q(user_id__icontains=search_query)
+        )
     
     # Handle download
     if request.GET.get('download'):
         format_type = request.GET.get('format', 'csv')
         if format_type == 'csv':
             return export_loans_csv(loans, period)
-        elif format_type == 'excel':
+        elif format_type in ['excel', 'xlsx']:
             return export_loans_excel(loans, period)
+
+    employee_options = User.objects.filter(
+        id__in=get_agent_loan_queryset(request.user, agent)
+        .exclude(assigned_employee__isnull=True)
+        .values_list('assigned_employee_id', flat=True)
+    ).order_by('first_name', 'last_name', 'username')
+
+    partner_options = Agent.objects.filter(
+        id__in=get_agent_loan_queryset(request.user, agent)
+        .exclude(assigned_agent__isnull=True)
+        .values_list('assigned_agent_id', flat=True)
+    ).order_by('name')
     
     context = {
         'loans': loans,
         'period': period,
         'from_date': from_date,
         'to_date': to_date,
+        'status_filter': status_filter,
+        'employee_filter': employee_filter,
+        'partner_filter': partner_filter,
+        'search_query': search_query,
+        'employee_options': employee_options,
+        'partner_options': partner_options,
         'total_loans': loans.count(),
         'total_amount': loans.aggregate(Sum('loan_amount'))['loan_amount__sum'] or 0,
         'approved_count': loans.filter(status='approved').count(),
@@ -886,23 +1073,86 @@ def file_complaint(request):
         return redirect('agent_complaints')
 
 
+def _report_user_name(user_obj):
+    if not user_obj:
+        return ''
+    return user_obj.get_full_name() or user_obj.username or user_obj.email or ''
+
+
+def _report_partner_name(agent_obj):
+    if not agent_obj:
+        return ''
+    return agent_obj.name or _report_user_name(agent_obj.user) or ''
+
+
+def _report_datetime(value):
+    if not value:
+        return ''
+    try:
+        return timezone.localtime(value).strftime('%Y-%m-%d %H:%M')
+    except Exception:
+        return str(value)
+
+
+def _loan_report_row(loan):
+    status_key = _effective_status_key_for_loan(loan)
+    return [
+        loan.user_id or loan.id,
+        loan.full_name or '',
+        loan.mobile_number or '',
+        loan.email or '',
+        loan.get_loan_type_display() if hasattr(loan, 'get_loan_type_display') else (loan.loan_type or ''),
+        loan.loan_amount or 0,
+        get_status_label(status_key),
+        _report_user_name(loan.assigned_employee),
+        _report_partner_name(loan.assigned_agent),
+        _report_user_name(loan.created_by),
+        _report_datetime(loan.created_at),
+        _report_datetime(loan.updated_at),
+        _report_datetime(loan.assigned_at),
+        _report_datetime(loan.action_taken_at),
+        loan.bank_name or '',
+        loan.bank_account_number or '',
+        loan.bank_ifsc_code or '',
+        loan.sm_name or '',
+        loan.remarks or '',
+    ]
+
+
+def _loan_report_headers():
+    return [
+        'Loan ID',
+        'Applicant Name',
+        'Phone',
+        'Email',
+        'Loan Type',
+        'Loan Amount',
+        'Status',
+        'Assigned Employee',
+        'Channel Partner',
+        'Created By',
+        'Created Time',
+        'Updated Time',
+        'Assigned Time',
+        'Action Time',
+        'Bank Name',
+        'Bank Account Number',
+        'Bank IFSC',
+        'SM / DSA Name',
+        'Remarks',
+    ]
+
+
 def export_loans_csv(loans, period):
     """Export loans data as CSV"""
     response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = f'attachment; filename="loans_{period}.csv"'
+    response['Content-Disposition'] = f'attachment; filename="channel_partner_loans_{period}.csv"'
     
     writer = csv.writer(response)
-    writer.writerow(['Applicant Name', 'Phone', 'Email', 'Loan Amount', 'Status', 'Created Date'])
+    writer.writerow(_loan_report_headers())
     
     for loan in loans:
-        writer.writerow([
-            loan.full_name,
-            loan.mobile_number,
-            loan.email,
-            loan.loan_amount,
-            loan.get_status_display(),
-            loan.created_at.strftime('%Y-%m-%d'),
-        ])
+        writer.writerow(_loan_report_row(loan))
     
     return response
 
@@ -914,19 +1164,11 @@ def export_loans_excel(loans, period):
     worksheet.title = 'Loans'
     
     # Headers
-    headers = ['Applicant Name', 'Phone', 'Email', 'Loan Amount', 'Status', 'Created Date']
-    worksheet.append(headers)
+    worksheet.append(_loan_report_headers())
     
     # Data
     for loan in loans:
-        worksheet.append([
-            loan.full_name,
-            loan.mobile_number,
-            loan.email,
-            loan.loan_amount,
-            loan.get_status_display(),
-            loan.created_at.strftime('%Y-%m-%d'),
-        ])
+        worksheet.append(_loan_report_row(loan))
     
     # Auto-adjust columns
     for column in worksheet.columns:
@@ -941,7 +1183,7 @@ def export_loans_excel(loans, period):
     response = HttpResponse(
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
-    response['Content-Disposition'] = f'attachment; filename="loans_{period}.xlsx"'
+    response['Content-Disposition'] = f'attachment; filename="channel_partner_loans_{period}.xlsx"'
     workbook.save(response)
     
     return response
@@ -960,6 +1202,10 @@ def api_agent_dashboard_stats(request):
     agent_loans_qs = get_agent_loan_queryset(request.user, agent)
     agent_loans = list(agent_loans_qs)
     counts = _status_breakdown(agent_loans)
+    counts = _merge_status_counts(
+        counts,
+        _application_status_breakdown(_agent_workflow_only_applications(agent, agent_loans)),
+    )
     
     data = {
         'total_assigned': counts['total'],
@@ -1136,8 +1382,16 @@ def agent_edit_profile(request):
 
 @agent_required
 def agent_settings(request):
-    """Legacy settings route now merged into profile page."""
-    return redirect('agent_profile')
+    """Channel partner settings and profile management."""
+    try:
+        agent = Agent.objects.get(user=request.user)
+    except Agent.DoesNotExist:
+        messages.error(request, "Agent profile not found!")
+        return redirect('agent_dashboard')
+    return render(request, 'core/shared/panel_settings.html', {
+        'agent': agent,
+        'page_title': 'Settings',
+    })
 
 
 @agent_required
@@ -1157,38 +1411,56 @@ def api_agent_recent_entries(request):
         recent_loans_qs = get_agent_loan_queryset(request.user, agent).select_related(
             'assigned_employee', 'assigned_agent'
         ).order_by('-created_at')
-        recent_loans = recent_loans_qs[:limit]
+        legacy_loans = list(recent_loans_qs)
+        workflow_apps = list(_agent_workflow_only_applications(agent, legacy_loans))
+        workflow_rows = [
+            build_application_display_row(app_obj, status_key=application_effective_status_key(app_obj))
+            for app_obj in workflow_apps
+        ]
+        recent_rows = []
+        for loan in legacy_loans:
+            status_key = _effective_status_key_for_loan(loan)
+            loan.entity_type = 'legacy'
+            loan.status = status_key
+            recent_rows.append(loan)
+        recent_rows.extend(workflow_rows)
+        recent_rows.sort(key=lambda row: getattr(getattr(row, 'created_at', None), 'timestamp', lambda: 0)(), reverse=True)
+        recent_rows = recent_rows[:limit]
         
         # Format response data
         loans_data = []
-        for loan in recent_loans:
-            status_key = _effective_status_key_for_loan(loan)
+        for loan in recent_rows:
+            status_key = getattr(loan, 'status', '') or _effective_status_key_for_loan(loan)
+            entity_type = getattr(loan, 'entity_type', 'legacy') or 'legacy'
+            assigned_employee = getattr(loan, 'assigned_employee', None)
+            assigned_agent = getattr(loan, 'assigned_agent', None)
             loan_data = {
                 'id': loan.id,
-                'applicant_name': loan.full_name or 'N/A',
-                'mobile_number': loan.mobile_number or 'N/A',
-                'loan_type': loan.loan_type or 'N/A',
-                'loan_amount': float(loan.loan_amount or 0),
+                'applicant_name': getattr(loan, 'full_name', '') or getattr(loan, 'applicant_name', '') or 'N/A',
+                'mobile_number': getattr(loan, 'mobile_number', '') or getattr(loan, 'phone', '') or 'N/A',
+                'loan_type': loan.get_loan_type_display() if hasattr(loan, 'get_loan_type_display') else (getattr(loan, 'loan_type', '') or 'N/A'),
+                'loan_amount': float(getattr(loan, 'loan_amount', 0) or 0),
                 'status': status_key,
                 'status_label': get_status_label(status_key),
                 'stage': get_stage_label(status_key),
                 'created_at': loan.created_at.strftime('%Y-%m-%d %H:%M:%S'),
-                'assigned_date': loan.updated_at.strftime('%Y-%m-%d') if loan.updated_at else 'N/A',
-                'assigned_employee': loan.assigned_employee.get_full_name() if loan.assigned_employee else 'Pending',
+                'assigned_date': getattr(loan, 'updated_at', None).strftime('%Y-%m-%d') if getattr(loan, 'updated_at', None) else 'N/A',
+                'assigned_employee': assigned_employee.get_full_name() if assigned_employee else getattr(loan, 'processed_by', 'Pending'),
                 'assigned_agent': (
-                    loan.assigned_agent.user.get_full_name()
-                    if loan.assigned_agent and loan.assigned_agent.user
-                    else (loan.assigned_agent.name if loan.assigned_agent else 'N/A')
+                    assigned_agent.user.get_full_name()
+                    if assigned_agent and assigned_agent.user
+                    else (assigned_agent.name if assigned_agent else getattr(loan, 'submitted_by', 'N/A'))
                 ),
                 'status_badge': get_status_badge(status_key),
                 # Open directly in My Applications to avoid applicant-id route mismatch
-                'detail_url': f"{reverse('agent_my_applications')}?loan_id={loan.id}",
+                'detail_url': f"{reverse('agent_loan_detail', args=[loan.id])}?entity_type={entity_type}",
+                'entity_type': entity_type,
             }
             loans_data.append(loan_data)
         
         return JsonResponse({
             'success': True,
-            'total': recent_loans_qs.count(),
+            'total': len(legacy_loans) + len(workflow_apps),
             'recent_entries': loans_data,
         })
     

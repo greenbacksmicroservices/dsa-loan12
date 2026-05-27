@@ -37,18 +37,32 @@ from .followup_utils import auto_move_overdue_to_follow_up
 from .updated_document_utils import (
     UPDATED_DOCUMENT_LABEL,
     UPDATED_DOCUMENT_STATUS_KEY,
+    application_has_updated_documents,
     loan_has_updated_documents,
 )
 from .id_utils import generate_agent_sequence_id, generate_user_sequence_id
 from .account_notifications import send_account_credentials_email
 from .onboarding_utils import collect_user_document_payload
+from .workflow_rows import (
+    application_effective_status_key,
+    build_application_display_row,
+    related_application_ids_for_loans,
+)
 from django.utils import timezone
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone as datetime_timezone
 import json
 import logging
 
 logger = logging.getLogger(__name__)
 FOLLOW_UP_PENDING_LABEL = 'Follow Up'
+APP_STATUS_TO_LOAN_KEY = {
+    'New Entry': 'new_entry',
+    'Waiting for Processing': 'waiting',
+    'Required Follow-up': 'follow_up',
+    'Approved': 'approved',
+    'Rejected': 'rejected',
+    'Disbursed': 'disbursed',
+}
 
 
 def _parse_request_data(request):
@@ -80,7 +94,30 @@ def _sync_subadmin_employee_channel_partners(subadmin_user, employee_user, partn
     managed_agent_ids = set(
         _subadmin_managed_agents_qs(subadmin_user).values_list('id', flat=True)
     )
+    managed_employee_ids = set(
+        _subadmin_managed_employees_qs(subadmin_user).values_list('id', flat=True)
+    )
     desired_ids = set(partner_ids) & managed_agent_ids
+    current_ids = set(
+        AgentAssignment.objects.filter(
+            employee=employee_user,
+            agent_id__in=managed_agent_ids,
+        ).values_list('agent_id', flat=True)
+    )
+    removed_ids = current_ids - desired_ids
+
+    if desired_ids:
+        AgentAssignment.objects.filter(
+            agent_id__in=desired_ids,
+            employee_id__in=managed_employee_ids,
+        ).exclude(employee=employee_user).delete()
+        Agent.objects.filter(id__in=desired_ids).update(under_employee=employee_user)
+
+    if removed_ids:
+        Agent.objects.filter(
+            id__in=removed_ids,
+            under_employee=employee_user,
+        ).update(under_employee=None)
 
     AgentAssignment.objects.filter(
         employee=employee_user,
@@ -97,6 +134,35 @@ def _sync_subadmin_employee_channel_partners(subadmin_user, employee_user, partn
     ]
     if create_rows:
         AgentAssignment.objects.bulk_create(create_rows, ignore_conflicts=True)
+
+
+def _agent_type_label(agent):
+    if not agent:
+        return '-'
+    agent_code = str(getattr(agent, 'agent_id', '') or '').upper()
+    creator = getattr(agent, 'created_by', None)
+    if agent_code.startswith('EDC-SCP-') or getattr(creator, 'role', None) == 'agent':
+        return 'Sub Channel Partner'
+    return 'Channel Partner'
+
+
+def _display_user_name(user_obj, fallback='-'):
+    if not user_obj:
+        return fallback
+    return user_obj.get_full_name() or user_obj.username or user_obj.email or fallback
+
+
+def _latest_agent_employee(agent, scoped_employees=None):
+    if not agent:
+        return None
+    if agent.under_employee:
+        return agent.under_employee
+
+    assignment_qs = AgentAssignment.objects.filter(agent=agent).select_related('employee')
+    if scoped_employees is not None:
+        assignment_qs = assignment_qs.filter(employee__in=scoped_employees)
+    assignment = assignment_qs.order_by('-assigned_at').first()
+    return assignment.employee if assignment else None
 
 
 def _subadmin_tag(subadmin_user):
@@ -193,6 +259,41 @@ def _count_statuses_for_loans(loans_iterable):
             counts[status_key] += 1
         counts['total'] += 1
     return counts
+
+
+def _effective_status_key_for_application(app_obj):
+    app_key = APP_STATUS_TO_LOAN_KEY.get(getattr(app_obj, 'status', ''), '')
+    if app_key in ['new_entry', 'waiting'] and _has_revert_marker(getattr(app_obj, 'approval_notes', '')):
+        return 'follow_up_pending'
+    if app_key == 'waiting' and application_has_updated_documents(app_obj):
+        return UPDATED_DOCUMENT_STATUS_KEY
+    return app_key
+
+
+def _count_statuses_for_applications(apps_iterable):
+    counts = {
+        'total': 0,
+        'new_entry': 0,
+        'waiting': 0,
+        UPDATED_DOCUMENT_STATUS_KEY: 0,
+        'follow_up': 0,
+        'follow_up_pending': 0,
+        'approved': 0,
+        'rejected': 0,
+        'disbursed': 0,
+    }
+    for app_obj in apps_iterable:
+        status_key = _effective_status_key_for_application(app_obj)
+        if status_key in counts:
+            counts[status_key] += 1
+        counts['total'] += 1
+    return counts
+
+
+def _merge_status_counts(primary_counts, extra_counts):
+    for key, value in extra_counts.items():
+        primary_counts[key] = primary_counts.get(key, 0) + value
+    return primary_counts
 
 
 def _latest_bank_remark(loan_obj):
@@ -590,7 +691,8 @@ def _build_subadmin_agent_payload(subadmin_user, agent):
     return {
         'agent': {
             'id': agent.id,
-            'agent_id': agent.agent_id or f'EDC-SCP-{agent.id:04d}',
+            'agent_id': agent.agent_id or ('EDC-SCP-' if _agent_type_label(agent) == 'Sub Channel Partner' else 'EDC-CP-') + f'{agent.id:04d}',
+            'agent_type': _agent_type_label(agent),
             'name': agent.name,
             'email': agent.email or '',
             'phone': agent.phone or '',
@@ -599,6 +701,7 @@ def _build_subadmin_agent_payload(subadmin_user, agent):
             'status': agent.status or 'active',
             'photo_url': photo_url,
             'created_under': created_under,
+            'under_employee_id': agent.under_employee_id or '',
             'under_employee': (
                 agent.under_employee.get_full_name() or agent.under_employee.username
                 if agent.under_employee else 'Not Assigned'
@@ -637,8 +740,12 @@ def _build_subadmin_employee_payload(subadmin_user, user):
         'total_customers': scoped_loans_qs.count(),
     }
 
+    managed_agent_ids = set(
+        _subadmin_managed_agents_qs(subadmin_user).values_list('id', flat=True)
+    )
     partner_links = list(
         AgentAssignment.objects.filter(employee=user)
+        .filter(agent_id__in=managed_agent_ids)
         .select_related('agent')
         .order_by('-assigned_at')
     )
@@ -653,6 +760,15 @@ def _build_subadmin_employee_payload(subadmin_user, user):
         for link in partner_links
         if link.agent_id
     ]
+    linked_ids = {item['id'] for item in assigned_channel_partners}
+    for agent in _subadmin_managed_agents_qs(subadmin_user).filter(under_employee=user).exclude(id__in=linked_ids):
+        assigned_channel_partners.append({
+            'id': agent.id,
+            'agent_id': agent.agent_id or '',
+            'name': agent.name or '-',
+            'email': agent.email or '',
+            'phone': agent.phone or '',
+        })
     assigned_channel_partner_ids = [item['id'] for item in assigned_channel_partners]
 
     return {
@@ -703,6 +819,17 @@ def _subadmin_managed_agents_qs(subadmin_user):
     filters = Q(created_by=subadmin_user)
     if managed_employee_ids:
         filters |= Q(loans__assigned_employee_id__in=managed_employee_ids)
+        filters |= Q(under_employee_id__in=managed_employee_ids)
+        filters |= Q(employee_assignments__employee_id__in=managed_employee_ids)
+
+    direct_agent_user_ids = list(
+        Agent.objects.filter(filters)
+        .exclude(user__isnull=True)
+        .values_list('user_id', flat=True)
+        .distinct()
+    )
+    if direct_agent_user_ids:
+        filters |= Q(created_by_id__in=direct_agent_user_ids)
     return Agent.objects.filter(filters).distinct()
 
 
@@ -723,6 +850,31 @@ def _subadmin_scoped_loans_qs(subadmin_user):
         filters |= Q(created_by_id__in=managed_employee_ids)
 
     return Loan.objects.filter(filters).distinct()
+
+
+def _subadmin_workflow_only_applications(subadmin_user, scoped_loans_list):
+    related_app_ids = related_application_ids_for_loans(scoped_loans_list)
+    managed_employee_ids = list(
+        _subadmin_managed_employees_qs(subadmin_user).values_list('id', flat=True)
+    )
+    managed_agent_ids = list(
+        _subadmin_managed_agents_qs(subadmin_user).values_list('id', flat=True)
+    )
+
+    workflow_filters = Q(assigned_by=subadmin_user)
+    if managed_employee_ids:
+        workflow_filters |= Q(assigned_employee_id__in=managed_employee_ids)
+    if managed_agent_ids:
+        workflow_filters |= Q(assigned_agent_id__in=managed_agent_ids)
+
+    return LoanApplication.objects.select_related(
+        'applicant',
+        'assigned_by',
+        'assigned_employee',
+        'assigned_agent',
+        'assigned_agent__user',
+        'assigned_agent__created_by',
+    ).filter(workflow_filters).exclude(id__in=related_app_ids).distinct()
 
 
 # ============ DASHBOARD ============
@@ -748,6 +900,28 @@ def subadmin_dashboard(request):
     # Calculate statistics
     all_loans_list = list(all_loans)
     status_stats = _count_statuses_for_loans(all_loans_list)
+    related_app_ids = {
+        related_app.id
+        for related_app in (find_related_loan_application(loan) for loan in all_loans_list)
+        if related_app
+    }
+    managed_employee_ids_for_apps = list(
+        _subadmin_managed_employees_qs(user).values_list('id', flat=True)
+    )
+    managed_agent_ids_for_apps = list(
+        _subadmin_managed_agents_qs(user).values_list('id', flat=True)
+    )
+    workflow_filters = Q(assigned_by=user)
+    if managed_employee_ids_for_apps:
+        workflow_filters |= Q(assigned_employee_id__in=managed_employee_ids_for_apps)
+    if managed_agent_ids_for_apps:
+        workflow_filters |= Q(assigned_agent_id__in=managed_agent_ids_for_apps)
+    status_stats = _merge_status_counts(
+        status_stats,
+        _count_statuses_for_applications(
+            LoanApplication.objects.filter(workflow_filters).exclude(id__in=related_app_ids)
+        ),
+    )
     total_loans = status_stats['total']
     
     # Calculate percentages
@@ -824,6 +998,26 @@ def api_subadmin_dashboard_stats(request):
         all_loans = _subadmin_scoped_loans_qs(subadmin_user)
         all_loans_list = list(all_loans)
         status_stats = _count_statuses_for_loans(all_loans_list)
+        related_app_ids = {
+            related_app.id
+            for related_app in (find_related_loan_application(loan) for loan in all_loans_list)
+            if related_app
+        }
+        managed_employee_ids = list(
+            _subadmin_managed_employees_qs(subadmin_user).values_list('id', flat=True)
+        )
+        managed_agent_ids = list(
+            _subadmin_managed_agents_qs(subadmin_user).values_list('id', flat=True)
+        )
+        workflow_filters = Q(assigned_by=subadmin_user)
+        if managed_employee_ids:
+            workflow_filters |= Q(assigned_employee_id__in=managed_employee_ids)
+        if managed_agent_ids:
+            workflow_filters |= Q(assigned_agent_id__in=managed_agent_ids)
+        workflow_counts = _count_statuses_for_applications(
+            LoanApplication.objects.filter(workflow_filters).exclude(id__in=related_app_ids)
+        )
+        status_stats = _merge_status_counts(status_stats, workflow_counts)
         
         # Calculate percentages
         total_for_percent = status_stats['total'] if status_stats['total'] > 0 else 1
@@ -1003,7 +1197,6 @@ def subadmin_all_loans(request):
     # Date range filter
     if date_from:
         try:
-            from datetime import datetime
             start_date = datetime.strptime(date_from, '%Y-%m-%d')
             loans_qs = loans_qs.filter(created_at__gte=start_date)
         except:
@@ -1011,7 +1204,6 @@ def subadmin_all_loans(request):
     
     if date_to:
         try:
-            from datetime import datetime
             end_date = datetime.strptime(date_to, '%Y-%m-%d')
             loans_qs = loans_qs.filter(created_at__lte=end_date)
         except:
@@ -1025,25 +1217,22 @@ def subadmin_all_loans(request):
     agents = managed_agents_qs.values('id', 'name').distinct()
     employees = managed_employees_qs.values('id', 'first_name', 'last_name').distinct()
 
+    workflow_apps = list(_subadmin_workflow_only_applications(request.user, scoped_loans_list))
+
     # Real-time counts (scoped)
     status_counts = _count_statuses_for_loans(scoped_loans_list)
+    status_counts = _merge_status_counts(
+        status_counts,
+        _count_statuses_for_applications(workflow_apps),
+    )
     all_loans_count = status_counts['total']
 
-    filtered_loans = []
+    filtered_rows = []
     for loan in candidate_loans:
         effective_status_key = _effective_status_key_for_loan(loan)
         if status_filter and status_filter != 'all' and effective_status_key != status_filter:
             continue
-        filtered_loans.append((loan, effective_status_key))
-
-    # Pagination
-    paginator = Paginator(filtered_loans, per_page)
-    page_number = request.GET.get('page', 1)
-    page_obj = paginator.get_page(page_number)
-
-    # Format loans for display
-    loans_list = []
-    for loan, status_key in page_obj.object_list:
+        status_key = effective_status_key
         creator_role = _role_label(loan.created_by)
         creator_name = (loan.created_by.get_full_name() or loan.created_by.username) if loan.created_by else '-'
         assignment_context = extract_assignment_context(loan)
@@ -1076,8 +1265,9 @@ def subadmin_all_loans(request):
             )
         follow_up_pending = status_key == 'follow_up_pending'
 
-        loans_list.append({
+        filtered_rows.append({
             'id': loan.id,
+            'entity_type': 'legacy',
             'loan_id': loan.user_id or f'LOAN-{loan.id:06d}',
             'applicant_name': loan.full_name,
             'phone': loan.mobile_number,
@@ -1099,6 +1289,68 @@ def subadmin_all_loans(request):
             'assigned_by': _extract_assignment_marker(loan),
             'created_date': loan.created_at,
         })
+
+    def _app_matches_filters(app_obj, status_key):
+        applicant = getattr(app_obj, 'applicant', None)
+        if search_query:
+            haystack = ' '.join([
+                str(getattr(applicant, 'full_name', '') or ''),
+                str(getattr(applicant, 'mobile', '') or ''),
+                str(getattr(applicant, 'email', '') or ''),
+                f"APP-{app_obj.id:06d}",
+            ]).lower()
+            if search_query.lower() not in haystack:
+                return False
+        if status_filter and status_filter != 'all' and status_key != status_filter:
+            return False
+        if agent_filter and str(getattr(app_obj, 'assigned_agent_id', '') or '') != str(agent_filter):
+            return False
+        if employee_filter and str(getattr(app_obj, 'assigned_employee_id', '') or '') != str(employee_filter):
+            return False
+        if date_from and (not app_obj.created_at or app_obj.created_at.date().isoformat() < date_from):
+            return False
+        if date_to and (not app_obj.created_at or app_obj.created_at.date().isoformat() > date_to):
+            return False
+        return True
+
+    for app_obj in workflow_apps:
+        status_key = application_effective_status_key(app_obj)
+        if not _app_matches_filters(app_obj, status_key):
+            continue
+        app_row = build_application_display_row(app_obj, status_key=status_key)
+        filtered_rows.append({
+            'id': app_row.id,
+            'entity_type': 'application',
+            'loan_id': app_row.loan_id,
+            'applicant_name': app_row.applicant_name,
+            'phone': app_row.phone,
+            'email': app_row.email or '-',
+            'loan_type': app_row.get_loan_type_display(),
+            'amount': app_row.amount,
+            'agent': app_row.agent,
+            'employee': app_row.employee,
+            'assigned_to': app_row.assigned_to,
+            'submitted_by': app_row.submitted_by,
+            'processed_by': app_row.processed_by,
+            'partner_under': app_row.partner_under,
+            'status': status_key,
+            'status_raw': app_row.status_raw,
+            'status_key': status_key,
+            'follow_up_pending': app_row.follow_up_pending,
+            'status_display': app_row.status_display,
+            'created_under': app_row.created_under,
+            'assigned_by': app_row.assigned_by,
+            'created_date': app_row.created_date,
+        })
+
+    fallback_created_at = datetime.min.replace(tzinfo=datetime_timezone.utc)
+    filtered_rows.sort(key=lambda row: row.get('created_date') or fallback_created_at, reverse=True)
+
+    # Pagination
+    paginator = Paginator(filtered_rows, per_page)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+    loans_list = list(page_obj.object_list)
     
     context = {
         'page_title': 'All Loans',
@@ -1345,12 +1597,18 @@ def subadmin_my_agents(request):
             messages.error(request, 'Phone number must be 10-15 digits.')
             return redirect('subadmin_my_agents')
 
-        if User.objects.filter(email=email).exists():
-            messages.error(request, 'Email already exists.')
+        if (
+            User.objects.filter(email__iexact=email, is_active=True).exists()
+            or Agent.objects.filter(email__iexact=email, status='active').exists()
+        ):
+            messages.error(request, 'Email already exists for an active channel partner.')
             return redirect('subadmin_my_agents')
 
-        if User.objects.filter(phone=phone).exists() or Agent.objects.filter(phone=phone).exists():
-            messages.error(request, 'Phone number already exists.')
+        if (
+            User.objects.filter(phone=phone, is_active=True).exists()
+            or Agent.objects.filter(phone=phone, status='active').exists()
+        ):
+            messages.error(request, 'Phone number already exists for an active channel partner.')
             return redirect('subadmin_my_agents')
 
         if profile_photo and profile_photo.size > 5 * 1024 * 1024:
@@ -1369,7 +1627,7 @@ def subadmin_my_agents(request):
         name_parts = name.split(' ', 1)
         first_name = name_parts[0]
         last_name = name_parts[1] if len(name_parts) > 1 else ''
-        generated_agent_id = generate_agent_sequence_id(is_sub_channel_partner=True)
+        generated_agent_id = generate_agent_sequence_id(is_sub_channel_partner=False)
         generated_username = generated_agent_id
         if User.objects.filter(username=generated_username).exists():
             base_username = email.split('@')[0]
@@ -1415,6 +1673,13 @@ def subadmin_my_agents(request):
                     agent.profile_photo = agent_user.profile_photo or profile_photo
                     agent.save()
 
+                if under_employee:
+                    AgentAssignment.objects.create(
+                        agent=agent,
+                        employee=under_employee,
+                        assigned_by=request.user,
+                    )
+
             email_sent, email_detail = send_account_credentials_email(
                 request=request,
                 email=agent_user.email,
@@ -1422,6 +1687,7 @@ def subadmin_my_agents(request):
                 username=agent_user.username,
                 password=password,
                 role=agent_user.role,
+                account_id=agent.agent_id or generated_agent_id,
             )
 
             success_message = (
@@ -1484,7 +1750,8 @@ def subadmin_my_agents(request):
 
         agents_list.append({
             'id': agent.id,
-            'agent_id': agent.agent_id or f'EDC-SCP-{agent.id:04d}',
+            'agent_id': agent.agent_id or ('EDC-SCP-' if _agent_type_label(agent) == 'Sub Channel Partner' else 'EDC-CP-') + f'{agent.id:04d}',
+            'agent_type': _agent_type_label(agent),
             'name': agent.name,
             'email': agent.email or 'N/A',
             'phone': agent.phone,
@@ -1492,6 +1759,7 @@ def subadmin_my_agents(request):
             'address': agent.address or 'N/A',
             'created_by': agent.created_by.get_full_name() if agent.created_by else 'Admin',
             'under_employee': agent.under_employee.get_full_name() if agent.under_employee else 'Not Assigned',
+            'under_employee_id': agent.under_employee_id or '',
             'total_loans': agent.agent_total_loans,
             'approved_count': agent.agent_approved_count,
             'status': agent.status,
@@ -1517,6 +1785,17 @@ def subadmin_my_agents(request):
     }
     
     return render(request, 'subadmin/subadmin_my_staff.html', context)
+
+
+@login_required(login_url='login')
+@subadmin_required
+@require_GET
+def subadmin_add_channel_partner(request):
+    context = {
+        'page_title': 'Add Channel Partner',
+        'employees': _subadmin_managed_employees_qs(request.user).filter(is_active=True).order_by('first_name', 'last_name', 'username'),
+    }
+    return render(request, 'subadmin/subadmin_add_channel_partner.html', context)
 
 
 @login_required(login_url='login')
@@ -1571,13 +1850,21 @@ def subadmin_update_agent(request, agent_id):
         gender = data.get('gender', '').strip()
         address = data.get('address', '').strip()
         password = data.get('password', '').strip()
+        under_employee_provided = 'under_employee' in data
+        under_employee_id = data.get('under_employee', '').strip() if under_employee_provided else ''
         status_val = data.get('status', '').strip().lower() or agent.status
         if status_val == 'inactive':
             status_val = 'blocked'
 
         if email:
-            if User.objects.filter(email=email).exclude(id=getattr(agent.user, 'id', None)).exists():
-                return JsonResponse({'success': False, 'error': 'Email already exists'}, status=400)
+            email_exists = (
+                User.objects.filter(email__iexact=email, is_active=True)
+                .exclude(id=getattr(agent.user, 'id', None))
+                .exists()
+                or Agent.objects.filter(email__iexact=email, status='active').exclude(id=agent.id).exists()
+            )
+            if email_exists:
+                return JsonResponse({'success': False, 'error': 'Email already exists for an active channel partner'}, status=400)
 
         if agent_id_val:
             if Agent.objects.filter(agent_id=agent_id_val).exclude(id=agent.id).exists():
@@ -1587,13 +1874,20 @@ def subadmin_update_agent(request, agent_id):
 
         if phone:
             phone_exists = (
-                User.objects.filter(phone=phone).exclude(id=getattr(agent.user, 'id', None)).exists() or
-                Agent.objects.filter(phone=phone).exclude(id=agent.id).exists()
+                User.objects.filter(phone=phone, is_active=True).exclude(id=getattr(agent.user, 'id', None)).exists() or
+                Agent.objects.filter(phone=phone, status='active').exclude(id=agent.id).exists()
             )
             if phone_exists:
-                return JsonResponse({'success': False, 'error': 'Phone number already exists'}, status=400)
+                return JsonResponse({'success': False, 'error': 'Phone number already exists for an active channel partner'}, status=400)
 
         gender_value = gender if gender in ['Male', 'Female', 'Other'] else None
+        under_employee = None
+        if under_employee_provided and under_employee_id:
+            under_employee = get_object_or_404(
+                _subadmin_managed_employees_qs(request.user),
+                id=under_employee_id,
+                role='employee',
+            )
 
         with transaction.atomic():
             if name:
@@ -1627,6 +1921,22 @@ def subadmin_update_agent(request, agent_id):
                 agent.gender = gender_value
                 if agent.user:
                     agent.user.gender = gender_value
+
+            if under_employee_provided:
+                managed_employee_ids = list(
+                    _subadmin_managed_employees_qs(request.user).values_list('id', flat=True)
+                )
+                AgentAssignment.objects.filter(
+                    agent=agent,
+                    employee_id__in=managed_employee_ids,
+                ).delete()
+                agent.under_employee = under_employee
+                if under_employee:
+                    AgentAssignment.objects.create(
+                        agent=agent,
+                        employee=under_employee,
+                        assigned_by=request.user,
+                    )
 
             if status_val in ['active', 'blocked']:
                 agent.status = status_val
@@ -1668,7 +1978,7 @@ def subadmin_delete_agent(request, agent_id):
             agent.user.is_active = False
             agent.user.save()
 
-        return JsonResponse({'success': True, 'message': 'Agent deleted successfully'})
+        return JsonResponse({'success': True, 'message': 'Channel Partner deleted successfully'})
     except Exception as e:
         logger.error(f"Error deleting agent: {str(e)}")
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
@@ -1722,12 +2032,12 @@ def subadmin_my_employees(request):
             messages.error(request, 'Phone number must be 10-15 digits.')
             return redirect('subadmin_my_employees')
 
-        if User.objects.filter(email=email).exists():
-            messages.error(request, 'Email already exists.')
+        if User.objects.filter(email__iexact=email, is_active=True).exists():
+            messages.error(request, 'Email already exists for an active employee.')
             return redirect('subadmin_my_employees')
 
-        if User.objects.filter(phone=phone).exists():
-            messages.error(request, 'Phone number already exists.')
+        if User.objects.filter(phone=phone, is_active=True).exists():
+            messages.error(request, 'Phone number already exists for an active employee.')
             return redirect('subadmin_my_employees')
 
         if profile_photo and profile_photo.size > 5 * 1024 * 1024:
@@ -1779,6 +2089,7 @@ def subadmin_my_employees(request):
                 username=employee.username,
                 password=password,
                 role=employee.role,
+                account_id=employee.employee_id,
             )
 
             success_message = f'Employee {name} created successfully.'
@@ -1872,6 +2183,17 @@ def subadmin_my_employees(request):
 
 @login_required(login_url='login')
 @subadmin_required
+@require_GET
+def subadmin_add_employee(request):
+    context = {
+        'page_title': 'Add Employee',
+        'channel_partner_options': _subadmin_managed_agents_qs(request.user).order_by('name'),
+    }
+    return render(request, 'subadmin/subadmin_add_employee.html', context)
+
+
+@login_required(login_url='login')
+@subadmin_required
 def subadmin_employee_detail(request, employee_id):
     """
     SubAdmin Employee Detail Page
@@ -1935,16 +2257,16 @@ def subadmin_update_employee(request, employee_id):
         status_val = data.get('status', '').strip()
 
         if email:
-            if User.objects.filter(email=email).exclude(id=user.id).exists():
-                return JsonResponse({'success': False, 'error': 'Email already exists'}, status=400)
+            if User.objects.filter(email__iexact=email, is_active=True).exclude(id=user.id).exists():
+                return JsonResponse({'success': False, 'error': 'Email already exists for an active employee'}, status=400)
 
         if employee_id_val:
             if User.objects.filter(employee_id=employee_id_val).exclude(id=user.id).exists():
                 return JsonResponse({'success': False, 'error': 'Employee ID already exists'}, status=400)
 
         if phone:
-            if User.objects.filter(phone=phone).exclude(id=user.id).exists():
-                return JsonResponse({'success': False, 'error': 'Phone number already exists'}, status=400)
+            if User.objects.filter(phone=phone, is_active=True).exclude(id=user.id).exists():
+                return JsonResponse({'success': False, 'error': 'Phone number already exists for an active employee'}, status=400)
 
         gender_value = gender if gender in ['Male', 'Female', 'Other'] else None
 
@@ -2022,6 +2344,102 @@ def subadmin_reports(request):
     all_loans = _subadmin_scoped_loans_qs(request.user)
     managed_employees_qs = _subadmin_managed_employees_qs(request.user)
     managed_agents_qs = _subadmin_managed_agents_qs(request.user)
+
+    search_query = request.GET.get('q', '').strip()
+    status_filter = request.GET.get('status', '').strip()
+    employee_filter = request.GET.get('employee', '').strip()
+    agent_filter = (request.GET.get('partner') or request.GET.get('agent') or '').strip()
+    period = request.GET.get('period', '1month').strip()
+    from_date = (request.GET.get('from_date') or request.GET.get('date_from') or '').strip()
+    to_date = (request.GET.get('to_date') or request.GET.get('date_to') or '').strip()
+    loan_id_filter = request.GET.get('loan_id', '').strip()
+
+    now = timezone.now()
+    if from_date and to_date:
+        try:
+            start_date = timezone.make_aware(datetime.strptime(from_date, '%Y-%m-%d'))
+            end_date = timezone.make_aware(datetime.strptime(to_date, '%Y-%m-%d') + timedelta(days=1))
+            period = 'custom'
+        except ValueError:
+            messages.error(request, 'Invalid custom date range. Showing last 1 month.')
+            from_date = ''
+            to_date = ''
+            start_date = now - timedelta(days=30)
+            end_date = now
+            period = '1month'
+    elif period == '6months':
+        start_date = now - timedelta(days=180)
+        end_date = now
+    elif period == '1year':
+        start_date = now - timedelta(days=365)
+        end_date = now
+    else:
+        start_date = now - timedelta(days=30)
+        end_date = now
+        period = '1month'
+
+    all_loans = all_loans.filter(created_at__gte=start_date, created_at__lt=end_date)
+
+    if loan_id_filter:
+        try:
+            all_loans = all_loans.filter(id=int(loan_id_filter))
+        except (TypeError, ValueError):
+            all_loans = all_loans.none()
+
+    if search_query:
+        all_loans = all_loans.filter(
+            Q(full_name__icontains=search_query) |
+            Q(mobile_number__icontains=search_query) |
+            Q(email__icontains=search_query) |
+            Q(user_id__icontains=search_query)
+        )
+
+    if status_filter:
+        status_alias_map = {
+            'processing': 'waiting',
+            'waiting_for_processing': 'waiting',
+            'updated': UPDATED_DOCUMENT_STATUS_KEY,
+            'banking': 'follow_up',
+            'followup_pending': 'follow_up_pending',
+        }
+        status_filter = status_alias_map.get(status_filter, status_filter)
+        matching_ids = [
+            loan.id for loan in all_loans
+            if _effective_status_key_for_loan(loan) == status_filter
+        ]
+        all_loans = all_loans.filter(id__in=matching_ids)
+
+    if employee_filter:
+        all_loans = all_loans.filter(assigned_employee_id=employee_filter)
+
+    if agent_filter:
+        all_loans = all_loans.filter(assigned_agent_id=agent_filter)
+
+    all_loans = all_loans.select_related(
+        'created_by',
+        'assigned_employee',
+        'assigned_agent',
+        'assigned_agent__user',
+    ).prefetch_related('documents')
+
+    if request.GET.get('download'):
+        from .report_exports import export_loans_csv, export_loans_excel
+        format_type = (request.GET.get('format') or 'csv').lower()
+        if format_type in ['excel', 'xlsx']:
+            return export_loans_excel(
+                all_loans.order_by('-created_at'),
+                period,
+                'partner_loans_report',
+                _effective_status_key_for_loan,
+                _status_label,
+            )
+        return export_loans_csv(
+            all_loans.order_by('-created_at'),
+            period,
+            'partner_loans_report',
+            _effective_status_key_for_loan,
+            _status_label,
+        )
     
     # Overall statistics
     report_stats = {
@@ -2179,6 +2597,7 @@ def subadmin_reports(request):
             'loan_amount': payload.get('loan_amount'),
             'status': payload.get('status_display'),
             'created_at': payload.get('created_at'),
+            'updated_at': payload.get('updated_at'),
             'assigned_employee': payload.get('assigned_employee'),
             'assigned_agent': payload.get('assigned_agent'),
             'documents': payload.get('documents', []),
@@ -2194,6 +2613,19 @@ def subadmin_reports(request):
         'report_employees': report_employees,
         'report_agents': report_agents,
         'report_loans': report_loans,
+        'search_query': search_query,
+        'status_filter': status_filter,
+        'employee_filter': employee_filter,
+        'agent_filter': agent_filter,
+        'partner_filter': agent_filter,
+        'period': period,
+        'from_date': from_date,
+        'to_date': to_date,
+        'date_from': from_date,
+        'date_to': to_date,
+        'employee_options': managed_employees_qs.order_by('first_name', 'last_name', 'username'),
+        'agent_options': managed_agents_qs.order_by('name'),
+        'partner_options': managed_agents_qs.order_by('name'),
     }
     
     return render(request, 'subadmin/subadmin_reports.html', context)
@@ -2215,13 +2647,27 @@ def subadmin_complaints(request):
     scoped_loans_qs = _subadmin_scoped_loans_qs(request.user)
     managed_employees_qs = _subadmin_managed_employees_qs(request.user)
     managed_agents_qs = _subadmin_managed_agents_qs(request.user)
+    managed_agent_user_ids = list(
+        managed_agents_qs.exclude(user__isnull=True).values_list('user_id', flat=True)
+    )
 
     base_complaints_qs = Complaint.objects.filter(
         Q(loan__in=scoped_loans_qs) |
         Q(filed_by_employee__in=managed_employees_qs) |
         Q(filed_by_agent__in=managed_agents_qs) |
+        Q(created_by__in=managed_employees_qs) |
+        Q(created_by_id__in=managed_agent_user_ids) |
         Q(created_by=request.user)
-    ).select_related('loan', 'filed_by_employee', 'filed_by_agent')
+    ).select_related(
+        'loan',
+        'loan__assigned_employee',
+        'loan__assigned_agent',
+        'filed_by_employee',
+        'filed_by_agent',
+        'filed_by_agent__under_employee',
+        'filed_by_agent__created_by',
+        'created_by',
+    )
     complaints_qs = base_complaints_qs
     
     # Search filter
@@ -2259,10 +2705,17 @@ def subadmin_complaints(request):
         priority_label = complaint.get_priority_display() if hasattr(complaint, 'get_priority_display') else complaint.priority
         category_label = complaint.get_complaint_type_display() if hasattr(complaint, 'get_complaint_type_display') else complaint.complaint_type
         complainant = complaint.customer_name or '-'
+        filed_agent = complaint.filed_by_agent or getattr(complaint.loan, 'assigned_agent', None)
+        filed_employee = complaint.filed_by_employee or getattr(complaint.loan, 'assigned_employee', None)
+        if not filed_employee and filed_agent:
+            filed_employee = _latest_agent_employee(filed_agent, managed_employees_qs)
+
         if complaint.filed_by_employee:
             complainant = complaint.filed_by_employee.get_full_name() or complaint.filed_by_employee.username or complaint.customer_name
         elif complaint.filed_by_agent:
             complainant = complaint.filed_by_agent.name or complaint.customer_name
+        elif complaint.created_by:
+            complainant = _display_user_name(complaint.created_by, complaint.customer_name or '-')
 
         complaints_list.append({
             'id': complaint.complaint_id or complaint.id,
@@ -2274,9 +2727,15 @@ def subadmin_complaints(request):
             'priority_key': complaint.priority,
             'category': category_label,
             'complainant_name': complainant,
+            'filer_type': _agent_type_label(filed_agent) if filed_agent else ('Employee' if filed_employee else _role_label(complaint.created_by)),
+            'channel_partner_name': filed_agent.name if filed_agent else '-',
+            'channel_partner_id': filed_agent.agent_id if filed_agent else '',
+            'employee_name': _display_user_name(filed_employee, '-'),
+            'partner_name': _display_user_name(request.user, 'Partner'),
             'date': complaint.created_at,
             'created_date': complaint.created_at.strftime('%Y-%m-%d'),
             'loan_id': complaint.loan.id if complaint.loan else None,
+            'loan_display': complaint.loan.user_id or f'LOAN-{complaint.loan.id:06d}' if complaint.loan else '-',
         })
     
     context = {

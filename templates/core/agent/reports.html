@@ -34,102 +34,8 @@
         </div>
     </div>
 
-    <div class="summary-grid">
-        <div class="summary-card summary-primary">
-            <span>Total Applications</span>
-            <strong>{{ total_loans }}</strong>
-            <small>All applications in this report range</small>
-        </div>
-        <div class="summary-card summary-success">
-            <span>Approved</span>
-            <strong>{{ approved_loans }}</strong>
-            <small>Successfully approved applications</small>
-        </div>
-        <div class="summary-card summary-danger">
-            <span>Rejected</span>
-            <strong>{{ rejected_loans }}</strong>
-            <small>Applications rejected in the workflow</small>
-        </div>
-        <div class="summary-card summary-info">
-            <span>Disbursed</span>
-            <strong>{{ disbursed_loans }}</strong>
-            <small>Funds moved to customer accounts</small>
-        </div>
-        <div class="summary-card summary-dark">
-            <span>Total Value</span>
-            <strong>Rs. {{ total_amount|floatformat:0 }}</strong>
-            <small>Total loan amount in this report view</small>
-        </div>
-    </div>
-
-    <div class="download-grid">
-        <a href="?period=1month&format=csv&download=1" class="download-card gradient-blue">
-            <div class="download-card-icon"><i class="bi bi-calendar-month"></i></div>
-            <div>
-                <h2>Last 1 Month</h2>
-                <p>Export the last 30 days in CSV format.</p>
-            </div>
-            <span>Download CSV</span>
-        </a>
-        <a href="?period=6months&format=excel&download=1" class="download-card gradient-emerald">
-            <div class="download-card-icon"><i class="bi bi-calendar2-week"></i></div>
-            <div>
-                <h2>Last 6 Months</h2>
-                <p>Export the last 6 months in Excel format.</p>
-            </div>
-            <span>Download Excel</span>
-        </a>
-        <a href="?period=1year&format=excel&download=1" class="download-card gradient-violet">
-            <div class="download-card-icon"><i class="bi bi-calendar-year"></i></div>
-            <div>
-                <h2>Last 1 Year</h2>
-                <p>Download a yearly business snapshot instantly.</p>
-            </div>
-            <span>Download Excel</span>
-        </a>
-        <button type="button" class="download-card gradient-amber border-0 text-start" data-bs-toggle="collapse" data-bs-target="#customDateForm" aria-expanded="{% if period == 'custom' %}true{% else %}false{% endif %}">
-            <div class="download-card-icon"><i class="bi bi-calendar-range"></i></div>
-            <div>
-                <h2>Custom Date Range</h2>
-                <p>Choose your own date range and export the exact applications you need.</p>
-            </div>
-            <span>Open Custom Export</span>
-        </button>
-    </div>
-
-    <div id="customDateForm" class="collapse {% if period == 'custom' %}show{% endif %} mb-4">
-        <div class="filter-shell">
-            <div>
-                <h2 class="h5 fw-bold mb-1">Custom Report Export</h2>
-                <p class="text-muted mb-0">Select dates, choose the file format, and download the matching report.</p>
-            </div>
-            <form method="get" class="row g-3 mt-1">
-                <input type="hidden" name="period" value="custom">
-                <input type="hidden" name="download" value="1">
-                <div class="col-md-3">
-                    <label class="form-label">From Date</label>
-                    <input type="date" name="from_date" class="form-control" value="{{ from_date }}" required>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label">To Date</label>
-                    <input type="date" name="to_date" class="form-control" value="{{ to_date }}" required>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label">Format</label>
-                    <select name="format" class="form-select" required>
-                        <option value="csv">CSV</option>
-                        <option value="excel">Excel</option>
-                    </select>
-                </div>
-                <div class="col-md-3 d-flex align-items-end">
-                    <button type="submit" class="btn btn-primary w-100">
-                        <i class="bi bi-download"></i>
-                        <span>Download Report</span>
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
+    
+    
 
     <section class="report-table-shell">
         <div class="table-head">
@@ -150,7 +56,10 @@
                         <th>Amount</th>
                         <th>Status</th>
                         <th>Assigned Employee</th>
+                        <th>Channel Partner</th>
                         <th>Created On</th>
+                        <th>Updated On</th>
+                        <th>Action Time</th>
                         <th>Documents</th>
                         <th>Actions</th>
                     </tr>
@@ -187,7 +96,10 @@
                             {% endif %}
                         </td>
                         <td>{{ loan.assigned_employee.get_full_name|default:"Pending Assignment" }}</td>
+                        <td>{{ loan.assigned_agent.name|default:"-" }}</td>
                         <td class="text-nowrap">{{ loan.created_at|date:"d M Y, h:i A" }}</td>
+                        <td class="text-nowrap">{{ loan.updated_at|date:"d M Y, h:i A" }}</td>
+                        <td class="text-nowrap">{{ loan.action_taken_at|date:"d M Y, h:i A"|default:"-" }}</td>
                         <td>
                             <div class="document-stack">
                                 {% for doc in loan.documents.all %}
@@ -204,13 +116,13 @@
                         <td>
                             <div class="table-actions">
                                 <a href="{% url 'agent_loan_detail' loan.id %}" class="table-action-btn primary-action">View Details</a>
-                                <a href="{% url 'agent_my_applications' %}?loan_id={{ loan.id }}" class="table-action-btn secondary-action">Open</a>
+                                <a href="?{{ request.GET.urlencode }}{% if request.GET.urlencode %}&{% endif %}loan_id={{ loan.id }}&download=1&format=excel" class="table-action-btn secondary-action">Download</a>
                             </div>
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="10" class="text-center py-5 text-muted">No applications found for the selected report range.</td>
+                        <td colspan="13" class="text-center py-5 text-muted">No applications found for the selected report range.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -467,6 +379,15 @@
         padding: 22px 24px;
     }
 
+    .filter-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-bottom: 8px;
+    }
+
     .report-table-shell {
         overflow: hidden;
         padding: 0;
@@ -493,7 +414,7 @@
     }
 
     .report-grid-table {
-        min-width: 1420px;
+        min-width: 1680px;
         margin-bottom: 0;
     }
 

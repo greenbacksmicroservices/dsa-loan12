@@ -111,11 +111,13 @@ urlpatterns = [
     path('subadmin/loan/<int:loan_id>/detail/', subadmin_views.subadmin_loan_detail, name='subadmin_loan_detail'),
     path('subadmin/loan/<int:loan_id>/assign/', subadmin_views.subadmin_assign_employee_api, name='subadmin_assign_employee_api'),
     path('subadmin/my-agents/', subadmin_views.subadmin_my_agents, name='subadmin_my_agents'),
+    path('subadmin/my-agents/add/', subadmin_views.subadmin_add_channel_partner, name='subadmin_add_channel_partner'),
     path('subadmin/agent/<int:agent_id>/detail/', subadmin_views.subadmin_agent_detail, name='subadmin_agent_detail'),
     path('subadmin/agents/<int:agent_id>/', subadmin_views.subadmin_get_agent, name='subadmin_get_agent'),
     path('subadmin/agents/<int:agent_id>/update/', subadmin_views.subadmin_update_agent, name='subadmin_update_agent'),
     path('subadmin/agents/<int:agent_id>/delete/', subadmin_views.subadmin_delete_agent, name='subadmin_delete_agent'),
     path('subadmin/my-employees/', subadmin_views.subadmin_my_employees, name='subadmin_my_employees'),
+    path('subadmin/my-employees/add/', subadmin_views.subadmin_add_employee, name='subadmin_add_employee'),
     path('subadmin/employee/<int:employee_id>/detail/', subadmin_views.subadmin_employee_detail, name='subadmin_employee_detail'),
     path('subadmin/employees/<int:employee_id>/', subadmin_views.subadmin_get_employee, name='subadmin_get_employee'),
     path('subadmin/employees/<int:employee_id>/update/', subadmin_views.subadmin_update_employee, name='subadmin_update_employee'),
@@ -175,6 +177,8 @@ urlpatterns = [
     path('employee/loan/<int:loan_id>/detail/', employee_views_new.employee_loan_detail_page, name='employee_loan_detail'),
     path('employee/loan/<int:loan_id>/bank-processing/', employee_views_new.employee_bank_processing_page, name='employee_bank_processing_detail'),
     path('employee/my-agents/', employee_views_new.employee_my_agents_page, name='employee_my_agents_page'),
+    path('employee/my-agents/add/', employee_views_new.employee_add_channel_partner_page, name='employee_add_channel_partner'),
+    path('employee/reports/', employee_views_new.employee_reports_page, name='employee_reports'),
     
     # Employee Panel - New APIs (Fintech UI)
     path('api/employee/dashboard-stats/', employee_views.employee_dashboard_stats, name='api_employee_dashboard_stats'),

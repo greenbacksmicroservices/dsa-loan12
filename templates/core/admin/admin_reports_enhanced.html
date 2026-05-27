@@ -334,6 +334,171 @@
         color: #fff;
     }
 
+    .download-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 16px;
+        margin-bottom: 22px;
+    }
+
+    .download-card,
+    .filter-shell,
+    .filtered-loans-shell {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
+    }
+
+    .download-card {
+        color: #ffffff;
+        padding: 20px 22px;
+        min-height: 190px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 12px;
+        text-decoration: none;
+        position: relative;
+        overflow: hidden;
+        cursor: pointer;
+    }
+
+    .download-card::after {
+        content: "";
+        position: absolute;
+        width: 108px;
+        height: 108px;
+        top: -24px;
+        right: -24px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.16);
+    }
+
+    .download-card:hover {
+        color: #ffffff;
+        transform: translateY(-2px);
+        box-shadow: 0 18px 34px rgba(15, 23, 42, 0.16);
+    }
+
+    .download-card > * {
+        position: relative;
+        z-index: 1;
+    }
+
+    .download-card-icon {
+        width: 52px;
+        height: 52px;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.22);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+    }
+
+    .download-card h2 {
+        margin: 0 0 6px;
+        font-size: 18px;
+        font-weight: 800;
+    }
+
+    .download-card p,
+    .download-card span {
+        margin: 0;
+        font-size: 13px;
+        font-weight: 700;
+        opacity: 0.92;
+    }
+
+    .gradient-blue { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
+    .gradient-emerald { background: linear-gradient(135deg, #10b981, #059669); }
+    .gradient-violet { background: linear-gradient(135deg, #7c3aed, #4f46e5); }
+    .gradient-amber { background: linear-gradient(135deg, #f59e0b, #ea580c); }
+
+    .filter-shell {
+        padding: 20px;
+        margin-bottom: 22px;
+    }
+
+    .filter-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-bottom: 10px;
+    }
+
+    .filter-shell label {
+        font-size: 12px;
+        font-weight: 800;
+        color: #334155;
+    }
+
+    .filter-shell .form-control,
+    .filter-shell .form-select {
+        min-height: 42px;
+        border-radius: 10px;
+        border: 1px solid #cbd5e1;
+        font-size: 13px;
+    }
+
+    .filtered-loans-shell {
+        overflow: hidden;
+        margin-bottom: 24px;
+    }
+
+    .filtered-loans-head {
+        padding: 18px 20px;
+        border-bottom: 1px solid #e2e8f0;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .filtered-loans-table {
+        min-width: 1500px;
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .filtered-loans-table thead th {
+        background: linear-gradient(135deg, #0f172a, #1e293b);
+        color: #ffffff;
+        padding: 12px 14px;
+        font-size: 11px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        white-space: nowrap;
+    }
+
+    .filtered-loans-table tbody td {
+        padding: 12px 14px;
+        border: 1px solid #e2e8f0;
+        font-size: 13px;
+        color: #1e293b;
+        vertical-align: top;
+    }
+
+    .filtered-loans-table tbody tr:nth-child(even) td {
+        background: #f8fafc;
+    }
+
+    .loan-status-chip {
+        display: inline-flex;
+        border-radius: 999px;
+        padding: 6px 10px;
+        font-size: 11px;
+        font-weight: 800;
+        white-space: nowrap;
+        background: #e0f2fe;
+        color: #0369a1;
+    }
+
     @media (max-width: 768px) {
         .report-header {
             flex-direction: column;
@@ -384,6 +549,223 @@
         <div class="stat-detail">Total loan value</div>
     </div>
 </div>
+
+<div class="download-grid">
+    <a href="?period=1month&format=csv&download=1" class="download-card gradient-blue">
+        <div class="download-card-icon"><i class="bi bi-calendar-month"></i></div>
+        <div>
+            <h2>Last 1 Month</h2>
+            <p>Export the last 30 days in CSV format.</p>
+        </div>
+        <span>Download CSV</span>
+    </a>
+    <a href="?period=6months&format=excel&download=1" class="download-card gradient-emerald">
+        <div class="download-card-icon"><i class="bi bi-calendar2-week"></i></div>
+        <div>
+            <h2>Last 6 Months</h2>
+            <p>Export the last 6 months in Excel format.</p>
+        </div>
+        <span>Download Excel</span>
+    </a>
+    <a href="?period=1year&format=excel&download=1" class="download-card gradient-violet">
+        <div class="download-card-icon"><i class="bi bi-calendar-year"></i></div>
+        <div>
+            <h2>Last 1 Year</h2>
+            <p>Download a yearly business snapshot instantly.</p>
+        </div>
+        <span>Download Excel</span>
+    </a>
+    <button type="button" class="download-card gradient-amber border-0 text-start" data-bs-toggle="collapse" data-bs-target="#customDateForm" aria-expanded="{% if period == 'custom' %}true{% else %}false{% endif %}">
+        <div class="download-card-icon"><i class="bi bi-calendar-range"></i></div>
+        <div>
+            <h2>Custom Date Range</h2>
+            <p>Choose your own date range and export the exact applications you need.</p>
+        </div>
+        <span>Open Custom Export</span>
+    </button>
+</div>
+
+<div id="customDateForm" class="collapse {% if period == 'custom' %}show{% endif %} mb-4">
+    <div class="filter-shell">
+        <div>
+            <h2 class="h5 fw-bold mb-1">Custom Report Export</h2>
+            <p class="text-muted mb-0">Select dates, choose the file format, and download the matching report.</p>
+        </div>
+        <form method="get" class="row g-3 mt-1">
+            <input type="hidden" name="period" value="custom">
+            <input type="hidden" name="download" value="1">
+            <div class="col-md-3">
+                <label class="form-label">From Date</label>
+                <input type="date" name="from_date" class="form-control" value="{{ from_date }}" required>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">To Date</label>
+                <input type="date" name="to_date" class="form-control" value="{{ to_date }}" required>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Format</label>
+                <select name="format" class="form-select" required>
+                    <option value="csv">CSV</option>
+                    <option value="excel">Excel</option>
+                </select>
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-download"></i>
+                    <span>Download Report</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<section class="filter-shell">
+    <div class="filter-head">
+        <div>
+            <h2 class="h5 fw-bold mb-1">Report Filters</h2>
+            <p class="text-muted mb-0">Filter by time, status, employee, channel partner, or customer details.</p>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="?{{ request.GET.urlencode }}{% if request.GET.urlencode %}&{% endif %}download=1&format=csv" class="btn btn-outline-success btn-sm">
+                <i class="bi bi-download"></i>
+                <span>Download CSV</span>
+            </a>
+            <a href="?{{ request.GET.urlencode }}{% if request.GET.urlencode %}&{% endif %}download=1&format=excel" class="btn btn-success btn-sm">
+                <i class="bi bi-file-earmark-excel"></i>
+                <span>Download Excel</span>
+            </a>
+        </div>
+    </div>
+    <form method="get" class="row g-3 mt-1">
+        <div class="col-lg-3 col-md-6">
+            <label class="form-label">Search</label>
+            <input type="text" name="q" class="form-control" value="{{ search_query }}" placeholder="Name, phone, email, loan ID">
+        </div>
+        <div class="col-lg-2 col-md-6">
+            <label class="form-label">Period</label>
+            <select name="period" class="form-select">
+                <option value="1month" {% if period == '1month' %}selected{% endif %}>Last 1 Month</option>
+                <option value="6months" {% if period == '6months' %}selected{% endif %}>Last 6 Months</option>
+                <option value="1year" {% if period == '1year' %}selected{% endif %}>Last 1 Year</option>
+                <option value="custom" {% if period == 'custom' %}selected{% endif %}>Custom</option>
+            </select>
+        </div>
+        <div class="col-lg-2 col-md-6">
+            <label class="form-label">From</label>
+            <input type="date" name="from_date" class="form-control" value="{{ from_date }}">
+        </div>
+        <div class="col-lg-2 col-md-6">
+            <label class="form-label">To</label>
+            <input type="date" name="to_date" class="form-control" value="{{ to_date }}">
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <label class="form-label">Status</label>
+            <select name="status" class="form-select">
+                <option value="">All Status</option>
+                <option value="new_entry" {% if status_filter == 'new_entry' %}selected{% endif %}>New Application</option>
+                <option value="waiting" {% if status_filter == 'waiting' %}selected{% endif %}>Document Pending</option>
+                <option value="updated_document" {% if status_filter == 'updated_document' %}selected{% endif %}>Pending Document Cleared</option>
+                <option value="follow_up" {% if status_filter == 'follow_up' %}selected{% endif %}>Banking Processing</option>
+                <option value="follow_up_pending" {% if status_filter == 'follow_up_pending' %}selected{% endif %}>Follow Up</option>
+                <option value="approved" {% if status_filter == 'approved' %}selected{% endif %}>Approved</option>
+                <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>Rejected</option>
+                <option value="disbursed" {% if status_filter == 'disbursed' %}selected{% endif %}>Disbursed</option>
+            </select>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <label class="form-label">Employee</label>
+            <select name="employee" class="form-select">
+                <option value="">All Employees</option>
+                {% for employee in employee_options %}
+                <option value="{{ employee.id }}" {% if employee_filter == employee.id|stringformat:'s' %}selected{% endif %}>{{ employee.get_full_name|default:employee.username }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <label class="form-label">Channel Partner</label>
+            <select name="partner" class="form-select">
+                <option value="">All Channel Partners</option>
+                {% for partner in partner_options %}
+                <option value="{{ partner.id }}" {% if partner_filter == partner.id|stringformat:'s' %}selected{% endif %}>{{ partner.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-lg-2 col-md-6">
+            <label class="form-label">Format</label>
+            <select name="format" class="form-select">
+                <option value="csv">CSV</option>
+                <option value="excel">Excel</option>
+            </select>
+        </div>
+        <div class="col-lg-4 col-md-6 d-flex align-items-end gap-2 flex-wrap">
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-funnel"></i>
+                <span>Apply Filter</span>
+            </button>
+            <button type="submit" name="download" value="1" class="btn btn-success">
+                <i class="bi bi-download"></i>
+                <span>Download</span>
+            </button>
+            <a href="{% url 'admin_reports' %}" class="btn btn-outline-secondary">Reset</a>
+        </div>
+    </form>
+</section>
+
+<section class="filtered-loans-shell">
+    <div class="filtered-loans-head">
+        <div>
+            <h2 class="h5 fw-bold mb-1">Filtered Loan Applications</h2>
+            <p class="text-muted mb-0">This table follows the filters above. Downloads use the same result set.</p>
+        </div>
+        <span class="percentage">{{ filtered_report_loans|length }} Records</span>
+    </div>
+    <div class="table-responsive">
+        <table class="filtered-loans-table">
+            <thead>
+                <tr>
+                    <th>Loan ID</th>
+                    <th>Customer</th>
+                    <th>Contact</th>
+                    <th>Loan Type</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th>Employee</th>
+                    <th>Channel Partner</th>
+                    <th>Created</th>
+                    <th>Updated</th>
+                    <th>Documents</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for loan in filtered_report_loans %}
+                <tr>
+                    <td><strong>{{ loan.user_id|default:loan.id }}</strong></td>
+                    <td>
+                        <strong>{{ loan.full_name|default:"-" }}</strong>
+                        <div style="font-size:12px; color:#64748b;">{{ loan.email|default:"No email" }}</div>
+                    </td>
+                    <td>{{ loan.mobile_number|default:"-" }}</td>
+                    <td>{{ loan.get_loan_type_display|default:loan.loan_type|default:"-" }}</td>
+                    <td><strong>&#8377;{{ loan.loan_amount|default:0|floatformat:0 }}</strong></td>
+                    <td><span class="loan-status-chip">{{ loan.report_status_label }}</span></td>
+                    <td>{{ loan.assigned_employee.get_full_name|default:"Pending" }}</td>
+                    <td>{{ loan.assigned_agent.name|default:"-" }}</td>
+                    <td>{{ loan.created_at|date:"d M Y, h:i A" }}</td>
+                    <td>{{ loan.updated_at|date:"d M Y, h:i A" }}</td>
+                    <td>{{ loan.documents.all|length }}</td>
+                    <td style="white-space:nowrap;">
+                        <a href="{% url 'admin_loan_detail' loan.id %}" class="report-action-btn view">View</a>
+                        <a href="?{{ request.GET.urlencode }}{% if request.GET.urlencode %}&{% endif %}loan_id={{ loan.id }}&download=1&format=excel" class="report-action-btn download">Download</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="12" style="text-align:center; color:#64748b; padding:28px;">No loan applications found for this filter.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
 
 <!-- Detailed Reports -->
 <div class="reports-grid">
@@ -1106,4 +1488,3 @@ document.addEventListener('keydown', function (event) {
 });
 </script>
 {% endblock %}
-

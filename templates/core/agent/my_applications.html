@@ -25,6 +25,105 @@
         overflow-y: auto;
     }
 
+    .applications-page {
+        max-width: 1650px;
+    }
+
+    .applications-hero,
+    .applications-filter-card,
+    .applications-table-card {
+        border: 1px solid #dbe3ef;
+        border-radius: 18px;
+        background: #ffffff;
+        box-shadow: 0 16px 34px rgba(15, 23, 42, 0.08);
+        overflow: hidden;
+    }
+
+    .applications-hero {
+        padding: 22px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        background:
+            radial-gradient(circle at top left, rgba(20, 184, 166, 0.14), transparent 34%),
+            radial-gradient(circle at bottom right, rgba(37, 99, 235, 0.12), transparent 30%),
+            #ffffff;
+    }
+
+    .applications-kicker {
+        margin: 0 0 7px;
+        color: #0f766e;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+    }
+
+    .add-loan-btn {
+        min-height: 42px;
+        border: 0;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #0f766e 0%, #2563eb 100%);
+        color: #ffffff;
+        box-shadow: 0 12px 22px rgba(15, 118, 110, 0.2);
+        font-weight: 800;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    .add-loan-btn:hover {
+        color: #ffffff;
+        transform: translateY(-1px);
+    }
+
+    .applications-table-card .card-header {
+        padding: 18px 22px;
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
+        color: #ffffff;
+        border: 0;
+    }
+
+    #loans-table thead th {
+        background: linear-gradient(135deg, #0f766e 0%, #2563eb 100%) !important;
+        color: #ffffff;
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        padding: 12px 11px;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+
+    #loans-table tbody td {
+        padding: 12px 11px;
+        border-color: #e2e8f0;
+        color: #1e293b;
+        font-size: 13px;
+    }
+
+    #loans-table tbody tr:nth-child(even) td {
+        background: #f8fafc;
+    }
+
+    #loans-table tbody tr:hover td {
+        background: #ecfdf5;
+    }
+
+    .application-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+    }
+
+    .application-actions .btn {
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 800;
+    }
+
     .recent-strip {
         border: 1px solid #e2e8f0;
         border-radius: 12px;
@@ -84,21 +183,30 @@
     }
 </style>
 
-<div class="container-fluid mt-4">
+<div class="container-fluid mt-4 applications-page">
     <!-- Header -->
     <div class="row mb-4">
         <div class="col-12">
-            <h1 class="h3 text-gray-800 mb-0">
-                <i class="bi bi-file-earmark"></i> My Applications
-            </h1>
-            
+            <div class="applications-hero">
+                <div>
+                    <p class="applications-kicker">Channel Partner Panel</p>
+                    <h1 class="h3 text-gray-800 mb-1">
+                        <i class="bi bi-file-earmark"></i> My Applications
+                    </h1>
+                    <p class="text-muted mb-0">Track submitted loans, documents, and realtime status in one place.</p>
+                </div>
+                <a href="{% url 'agent_add_loan' %}" class="btn add-loan-btn">
+                    <i class="bi bi-plus-circle"></i>
+                    <span>Add Loan</span>
+                </a>
+            </div>
         </div>
     </div>
 
     <!-- Filter and Search -->
     <div class="row mb-3">
         <div class="col-12">
-            <div class="card shadow-sm border-0">
+            <div class="card shadow-sm border-0 applications-filter-card">
                 <div class="card-body">
                     <div class="row g-3">
                         <div class="col-md-4">
@@ -121,7 +229,7 @@
                         </div>
                         <div class="col-md-4">
                             <label class="form-label small fw-600">Actions</label>
-                            <button class="btn btn-sm btn-outline-primary w-100" onclick="window.location.href='{% url 'agent_add_loan' %}'">
+                            <button class="btn btn-sm add-loan-btn w-100" onclick="window.location.href='{% url 'agent_add_loan' %}'">
                                 <i class="bi bi-plus-circle"></i> Add New Loan
                             </button>
                         </div>
@@ -135,8 +243,8 @@
     <!-- Loans Table -->
     <div class="row">
         <div class="col-12">
-            <div class="card shadow-sm border-0">
-                <div class="card-header bg-gradient" style="background: linear-gradient(135deg, #007bff 0%, #0056b3 100%); color: white;">
+            <div class="card shadow-sm border-0 applications-table-card">
+                <div class="card-header bg-gradient">
                     <h5 class="mb-0">
                         <i class="bi bi-table"></i> All Loans
                     </h5>
@@ -171,13 +279,14 @@
                                         </span>
                                     </td>
                                     <td class="align-middle">
-                                        {% if loan.has_revert_pending %}
+                                        {% if loan.has_revert_pending and loan.entity_type|default:'legacy' == 'legacy' %}
                                             <span class="badge badge-follow_up small">Follow Up</span>
                                         {% else %}
                                             <span class="badge badge-{{ loan.status }} small">
                                                 {% if loan.status == 'draft' %} Draft
                                                 {% elif loan.status == 'new_entry' %} New Application
                                                 {% elif loan.status == 'waiting' %} Document Pending
+                                                {% elif loan.status == 'updated_document' %} Pending Document Cleared
                                                 {% elif loan.status == 'follow_up' %} Bank Stage
                                                 {% elif loan.status == 'approved' %} Approved
                                                 {% elif loan.status == 'rejected' %} Rejected
@@ -196,6 +305,8 @@
                                             <span class="stage-badge bg-primary text-white">New Application</span>
                                         {% elif loan.status == 'waiting' %}
                                             <span class="stage-badge bg-warning text-dark">Document Pending</span>
+                                        {% elif loan.status == 'updated_document' %}
+                                            <span class="stage-badge bg-success text-white">Pending Document Cleared</span>
                                         {% elif loan.status == 'follow_up' %}
                                             <span class="stage-badge bg-info text-dark">Bank Stage</span>
                                         {% elif loan.status == 'approved' %}
@@ -210,20 +321,24 @@
                                     </td>
                                     <td class="align-middle"><small class="text-muted">{{ loan.created_at|date:"d M, Y" }}</small></td>
                                     <td class="align-middle">
-                                        {% if loan.has_revert_pending %}
+                                        <div class="application-actions">
+                                        {% if loan.has_revert_pending and loan.entity_type|default:'legacy' == 'legacy' %}
                                         <a class="btn btn-sm btn-outline-warning" href="{% url 'agent_resubmit_reverted_loan' loan.id %}" title="Edit and Re-submit">
                                             <i class="bi bi-pencil-square"></i> Re-submit
                                         </a>
                                     {% else %}
                                         <a class="btn btn-sm btn-outline-primary"
-                                           href="{% url 'agent_loan_detail' loan.id %}"
+                                           href="{% url 'agent_loan_detail' loan.id %}?entity_type={{ loan.entity_type|default:'legacy' }}"
                                            title="View Full Details + Documents">
                                             <i class="bi bi-eye"></i> View
                                         </a>
+                                        {% if loan.entity_type|default:'legacy' == 'legacy' %}
                                         <button class="btn btn-sm btn-outline-success" onclick="downloadLoanDetails({{ loan.id }}, '{{ loan.full_name|escapejs }}')" title="Download Full Loan Application Form">
                                             <i class="bi bi-download"></i> Download
                                         </button>
                                         {% endif %}
+                                        {% endif %}
+                                        </div>
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -284,10 +399,12 @@ function filterTable() {
             return;
         }
         
-        const name = row.cells[0].textContent.toLowerCase();
-        const phone = row.cells[1].textContent.toLowerCase();
-        const amount = row.cells[2].textContent.toLowerCase();
-        const matches = name.includes(searchText) || phone.includes(searchText) || amount.includes(searchText);
+        const name = row.cells[0]?.textContent.toLowerCase() || '';
+        const loanId = row.cells[1]?.textContent.toLowerCase() || '';
+        const phone = row.cells[2]?.textContent.toLowerCase() || '';
+        const amount = row.cells[3]?.textContent.toLowerCase() || '';
+        const type = row.cells[4]?.textContent.toLowerCase() || '';
+        const matches = name.includes(searchText) || loanId.includes(searchText) || phone.includes(searchText) || amount.includes(searchText) || type.includes(searchText);
         row.style.display = matches ? '' : 'none';
     });
 }

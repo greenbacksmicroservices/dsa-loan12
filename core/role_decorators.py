@@ -55,11 +55,11 @@ def agent_required(view_func):
     @wraps(view_func)
     def wrapper(request, *args, **kwargs):
         if not request.user.is_authenticated:
-            messages.error(request, 'Please log in as an agent to access this page.')
+            messages.error(request, 'Please log in as a channel partner to access this page.')
             return redirect('login')
         
         if request.user.role != 'agent':
-            messages.error(request, 'This page is only available for agents.')
+            messages.error(request, 'This page is only available for channel partners.')
             if request.user.role == 'admin':
                 return redirect('admin_dashboard')
             else:

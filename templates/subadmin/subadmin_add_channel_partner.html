@@ -1,0 +1,85 @@
+{% extends "subadmin/base_subadmin.html" %}
+{% load static %}
+
+{% block title %}Add Channel Partner - Partner{% endblock %}
+{% block page_title %}Add Channel Partner{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto space-y-6">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+            <a href="{% url 'subadmin_my_agents' %}" class="inline-flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-gray-900">
+                <i class="fas fa-arrow-left"></i> Back to Channel Partner Management
+            </a>
+            <h1 class="text-3xl font-bold text-gray-900 mt-3">Add New Channel Partner</h1>
+            <p class="text-gray-600 mt-1">Create a channel partner under your partner scope and assign the owner employee.</p>
+        </div>
+        <div class="bg-white border border-gray-200 rounded-lg p-4 min-w-[220px]">
+            <p class="text-xs uppercase tracking-wide text-gray-500">Generated ID</p>
+            <p class="text-xl font-bold text-emerald-700 mt-1">EDC-CP-0000</p>
+        </div>
+    </div>
+
+    <form method="post" action="{% url 'subadmin_my_agents' %}" enctype="multipart/form-data" class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+        {% csrf_token %}
+        <div class="p-6 border-b border-gray-200">
+            <h2 class="text-lg font-semibold text-gray-900">Account Details</h2>
+            <p class="text-sm text-gray-500 mt-1">The channel partner can sign in with the generated ID and password.</p>
+        </div>
+
+        <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Full Name <span class="text-red-500">*</span></label>
+                <input type="text" name="name" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-emerald-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Channel Partner ID</label>
+                <input type="text" name="agent_id" readonly placeholder="Auto-generated as EDC-CP-0000" class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Email <span class="text-red-500">*</span></label>
+                <input type="email" name="email" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-emerald-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Phone <span class="text-red-500">*</span></label>
+                <input type="text" name="phone" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-emerald-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Password <span class="text-red-500">*</span></label>
+                <input type="password" name="password" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-emerald-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Gender</label>
+                <select name="gender" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-emerald-500">
+                    <option value="">Select</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+            <div class="md:col-span-2">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Assign Under Employee <span class="text-red-500">*</span></label>
+                <select name="under_employee" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-emerald-500">
+                    <option value="">Select Employee</option>
+                    {% for emp in employees %}
+                        <option value="{{ emp.id }}">{{ emp.get_full_name|default:emp.username }}{% if emp.employee_id %} ({{ emp.employee_id }}){% endif %}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="md:col-span-2">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                <textarea name="address" rows="3" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-emerald-500"></textarea>
+            </div>
+            <div class="md:col-span-2">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Profile Photo</label>
+                <input type="file" name="profile_photo" accept="image/*" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+            </div>
+        </div>
+
+        <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row justify-end gap-3">
+            <a href="{% url 'subadmin_my_agents' %}" class="px-5 py-2 border border-gray-300 rounded-lg text-gray-700 text-center hover:bg-white">Cancel</a>
+            <button type="submit" class="px-5 py-2 bg-emerald-600 text-white rounded-lg font-semibold hover:bg-emerald-700">Save Channel Partner</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

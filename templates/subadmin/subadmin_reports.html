@@ -5,10 +5,173 @@
 {% block page_title %}Reports{% endblock %}
 
 {% block content %}
+<style>
+    .download-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 16px;
+    }
+
+    .download-card {
+        color: #ffffff;
+        padding: 20px 22px;
+        border-radius: 16px;
+        min-height: 190px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 12px;
+        text-decoration: none;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 18px 34px rgba(15, 23, 42, 0.16);
+        cursor: pointer;
+    }
+
+    .download-card::after {
+        content: "";
+        position: absolute;
+        width: 108px;
+        height: 108px;
+        top: -24px;
+        right: -24px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.16);
+    }
+
+    .download-card > * {
+        position: relative;
+        z-index: 1;
+    }
+
+    .download-card-icon {
+        width: 52px;
+        height: 52px;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.22);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+    }
+
+    .download-card h2 {
+        margin: 0 0 6px;
+        font-size: 18px;
+        font-weight: 800;
+    }
+
+    .download-card p,
+    .download-card span {
+        margin: 0;
+        font-size: 13px;
+        font-weight: 700;
+        opacity: 0.92;
+    }
+
+    .gradient-blue { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
+    .gradient-emerald { background: linear-gradient(135deg, #10b981, #059669); }
+    .gradient-violet { background: linear-gradient(135deg, #7c3aed, #4f46e5); }
+    .gradient-amber { background: linear-gradient(135deg, #f59e0b, #ea580c); }
+
+    .filter-shell {
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
+    }
+
+    .filter-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-bottom: 10px;
+    }
+
+    .custom-date-panel {
+        display: none;
+    }
+
+    .custom-date-panel.open {
+        display: block;
+    }
+</style>
 <div class="space-y-6">
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <h1 class="text-2xl font-bold text-gray-900">Reports and Analytics</h1>
         <p class="text-sm text-gray-600 mt-1">Performance data for applications under your team.</p>
+    </div>
+
+    <div class="download-grid">
+        <a href="?period=1month&format=csv&download=1" class="download-card gradient-blue">
+            <div class="download-card-icon"><i class="fas fa-calendar-alt"></i></div>
+            <div>
+                <h2>Last 1 Month</h2>
+                <p>Export the last 30 days in CSV format.</p>
+            </div>
+            <span>Download CSV</span>
+        </a>
+        <a href="?period=6months&format=excel&download=1" class="download-card gradient-emerald">
+            <div class="download-card-icon"><i class="fas fa-calendar-week"></i></div>
+            <div>
+                <h2>Last 6 Months</h2>
+                <p>Export the last 6 months in Excel format.</p>
+            </div>
+            <span>Download Excel</span>
+        </a>
+        <a href="?period=1year&format=excel&download=1" class="download-card gradient-violet">
+            <div class="download-card-icon"><i class="fas fa-calendar"></i></div>
+            <div>
+                <h2>Last 1 Year</h2>
+                <p>Download a yearly business snapshot instantly.</p>
+            </div>
+            <span>Download Excel</span>
+        </a>
+        <button type="button" class="download-card gradient-amber border-0 text-left" onclick="toggleCustomReportExport()">
+            <div class="download-card-icon"><i class="fas fa-calendar-day"></i></div>
+            <div>
+                <h2>Custom Date Range</h2>
+                <p>Choose your own date range and export exact applications.</p>
+            </div>
+            <span>Open Custom Export</span>
+        </button>
+    </div>
+
+    <div id="customDateForm" class="custom-date-panel {% if period == 'custom' %}open{% endif %}">
+        <div class="filter-shell">
+            <div>
+                <h2 class="text-lg font-bold text-gray-900 mb-1">Custom Report Export</h2>
+                <p class="text-sm text-gray-600 mb-0">Select dates, choose the file format, and download the matching report.</p>
+            </div>
+            <form method="get" class="grid grid-cols-1 md:grid-cols-4 gap-3 mt-4">
+                <input type="hidden" name="period" value="custom">
+                <input type="hidden" name="download" value="1">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">From Date</label>
+                    <input type="date" name="from_date" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" value="{{ from_date }}" required>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">To Date</label>
+                    <input type="date" name="to_date" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" value="{{ to_date }}" required>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Format</label>
+                    <select name="format" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" required>
+                        <option value="csv">CSV</option>
+                        <option value="excel">Excel</option>
+                    </select>
+                </div>
+                <div class="flex items-end">
+                    <button type="submit" class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">
+                        <i class="fas fa-download"></i>
+                        <span>Download Report</span>
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-6 gap-4">
@@ -19,6 +182,98 @@
         <div class="bg-white border border-gray-200 rounded-lg p-4"><p class="text-xs text-gray-500 uppercase">Approval Rate</p><p class="text-2xl font-bold text-blue-600 mt-1">{{ report_stats.approval_rate|default:0 }}%</p></div>
         <div class="bg-white border border-gray-200 rounded-lg p-4"><p class="text-xs text-gray-500 uppercase">Total Value</p><p class="text-2xl font-bold text-gray-900 mt-1">Rs. {{ report_stats.total_value|default:0 }}</p></div>
     </div>
+
+    <section class="filter-shell">
+        <div class="filter-head">
+            <div>
+                <h2 class="text-lg font-bold text-gray-900 mb-1">Report Filters</h2>
+                <p class="text-sm text-gray-600 mb-0">Filter by time, status, employee, channel partner, or customer details.</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <a href="?{{ request.GET.urlencode }}{% if request.GET.urlencode %}&{% endif %}download=1&format=csv" class="px-3 py-2 border border-emerald-300 text-emerald-700 rounded-lg text-sm hover:bg-emerald-50">
+                    <i class="fas fa-download"></i>
+                    <span>Download CSV</span>
+                </a>
+                <a href="?{{ request.GET.urlencode }}{% if request.GET.urlencode %}&{% endif %}download=1&format=excel" class="px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm hover:bg-emerald-700">
+                    <i class="fas fa-file-excel"></i>
+                    <span>Download Excel</span>
+                </a>
+            </div>
+        </div>
+        <form method="get" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-3 mt-4">
+            <div class="xl:col-span-3">
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Search</label>
+                <input type="text" name="q" value="{{ search_query }}" placeholder="Name, phone, email, loan ID" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+            </div>
+            <div class="xl:col-span-2">
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Period</label>
+                <select name="period" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                    <option value="1month" {% if period == '1month' %}selected{% endif %}>Last 1 Month</option>
+                    <option value="6months" {% if period == '6months' %}selected{% endif %}>Last 6 Months</option>
+                    <option value="1year" {% if period == '1year' %}selected{% endif %}>Last 1 Year</option>
+                    <option value="custom" {% if period == 'custom' %}selected{% endif %}>Custom</option>
+                </select>
+            </div>
+            <div class="xl:col-span-2">
+                <label class="block text-xs font-semibold text-gray-600 mb-1">From</label>
+                <input type="date" name="from_date" value="{{ from_date }}" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+            </div>
+            <div class="xl:col-span-2">
+                <label class="block text-xs font-semibold text-gray-600 mb-1">To</label>
+                <input type="date" name="to_date" value="{{ to_date }}" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+            </div>
+            <div class="xl:col-span-3">
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Status</label>
+                <select name="status" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                    <option value="">All Status</option>
+                    <option value="new_entry" {% if status_filter == 'new_entry' %}selected{% endif %}>New Application</option>
+                    <option value="waiting" {% if status_filter == 'waiting' %}selected{% endif %}>Document Pending</option>
+                    <option value="updated_document" {% if status_filter == 'updated_document' %}selected{% endif %}>Pending Document Cleared</option>
+                    <option value="follow_up" {% if status_filter == 'follow_up' %}selected{% endif %}>Banking Processing</option>
+                    <option value="follow_up_pending" {% if status_filter == 'follow_up_pending' %}selected{% endif %}>Follow Up</option>
+                    <option value="approved" {% if status_filter == 'approved' %}selected{% endif %}>Approved</option>
+                    <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>Rejected</option>
+                    <option value="disbursed" {% if status_filter == 'disbursed' %}selected{% endif %}>Disbursed</option>
+                </select>
+            </div>
+            <div class="xl:col-span-3">
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Employee</label>
+                <select name="employee" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                    <option value="">All Employees</option>
+                    {% for employee in employee_options %}
+                    <option value="{{ employee.id }}" {% if employee_filter == employee.id|stringformat:'s' %}selected{% endif %}>{{ employee.get_full_name|default:employee.username }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="xl:col-span-3">
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Channel Partner</label>
+                <select name="partner" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                    <option value="">All Channel Partners</option>
+                    {% for partner in partner_options %}
+                    <option value="{{ partner.id }}" {% if partner_filter == partner.id|stringformat:'s' %}selected{% endif %}>{{ partner.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="xl:col-span-2">
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Format</label>
+                <select name="format" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                    <option value="csv">CSV</option>
+                    <option value="excel">Excel</option>
+                </select>
+            </div>
+            <div class="xl:col-span-4 flex items-end gap-2 flex-wrap">
+                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">
+                    <i class="fas fa-filter"></i>
+                    <span>Apply Filter</span>
+                </button>
+                <button type="submit" name="download" value="1" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm hover:bg-emerald-700">
+                    <i class="fas fa-download"></i>
+                    <span>Download</span>
+                </button>
+                <a href="{% url 'subadmin_reports' %}" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm hover:bg-gray-50">Reset</a>
+            </div>
+        </form>
+    </section>
 
     <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
@@ -160,7 +415,12 @@
                                 {% endfor %}
                             </div>
                         </td>
-                        <td class="px-4 py-2"><a href="{% url 'subadmin_employee_detail' row.id %}" class="px-3 py-1 bg-blue-600 text-white rounded text-xs">View</a></td>
+                        <td class="px-4 py-2">
+                            <div class="flex gap-2 flex-wrap">
+                                <a href="{% url 'subadmin_employee_detail' row.id %}" class="px-3 py-1 bg-blue-600 text-white rounded text-xs">View</a>
+                                <button type="button" onclick="downloadTableRowCsv(this, 'employee-{{ row.employee_id }}.csv')" class="px-3 py-1 bg-emerald-600 text-white rounded text-xs">Download</button>
+                            </div>
+                        </td>
                     </tr>
                     {% empty %}
                     <tr><td colspan="10" class="px-4 py-6 text-center text-gray-500">No employee details.</td></tr>
@@ -216,7 +476,12 @@
                                 {% endfor %}
                             </div>
                         </td>
-                        <td class="px-4 py-2"><a href="{% url 'subadmin_agent_detail' row.id %}" class="px-3 py-1 bg-blue-600 text-white rounded text-xs">View</a></td>
+                        <td class="px-4 py-2">
+                            <div class="flex gap-2 flex-wrap">
+                                <a href="{% url 'subadmin_agent_detail' row.id %}" class="px-3 py-1 bg-blue-600 text-white rounded text-xs">View</a>
+                                <button type="button" onclick="downloadTableRowCsv(this, 'channel-partner-{{ row.agent_id }}.csv')" class="px-3 py-1 bg-emerald-600 text-white rounded text-xs">Download</button>
+                            </div>
+                        </td>
                     </tr>
                     {% empty %}
                     <tr><td colspan="11" class="px-4 py-6 text-center text-gray-500">No channel partner details.</td></tr>
@@ -232,7 +497,7 @@
             <button type="button" onclick="downloadTableCsv('loans-report-table', 'loan-applications-report.csv')" class="px-3 py-2 bg-emerald-600 text-white rounded-lg text-xs hover:bg-emerald-700">Download</button>
         </div>
         <div class="overflow-x-auto">
-            <table id="loans-report-table" class="w-full min-w-[1400px] text-sm">
+            <table id="loans-report-table" class="w-full min-w-[1600px] text-sm">
                 <thead class="bg-gray-50">
                     <tr>
                         <th class="px-4 py-2 text-left">Loan ID</th>
@@ -244,6 +509,8 @@
                         <th class="px-4 py-2 text-left">Status</th>
                         <th class="px-4 py-2 text-left">Employee</th>
                         <th class="px-4 py-2 text-left">Channel Partner</th>
+                        <th class="px-4 py-2 text-left">Created</th>
+                        <th class="px-4 py-2 text-left">Updated</th>
                         <th class="px-4 py-2 text-left">Documents</th>
                         <th class="px-4 py-2 text-left">Actions</th>
                     </tr>
@@ -260,6 +527,8 @@
                         <td class="px-4 py-2">{{ row.status }}</td>
                         <td class="px-4 py-2">{{ row.assigned_employee }}</td>
                         <td class="px-4 py-2">{{ row.assigned_agent }}</td>
+                        <td class="px-4 py-2">{{ row.created_at }}</td>
+                        <td class="px-4 py-2">{{ row.updated_at }}</td>
                         <td class="px-4 py-2">
                             <div class="flex gap-1 flex-wrap">
                                 {% for doc in row.documents %}
@@ -272,10 +541,15 @@
                                 {% endfor %}
                             </div>
                         </td>
-                        <td class="px-4 py-2"><a href="{% url 'subadmin_loan_detail' row.id %}" class="px-3 py-1 bg-blue-600 text-white rounded text-xs">View</a></td>
+                        <td class="px-4 py-2">
+                            <div class="flex gap-2 flex-wrap">
+                                <a href="{% url 'subadmin_loan_detail' row.id %}" class="px-3 py-1 bg-blue-600 text-white rounded text-xs">View</a>
+                                <button type="button" onclick="downloadTableRowCsv(this, 'loan-{{ row.loan_id }}.csv')" class="px-3 py-1 bg-emerald-600 text-white rounded text-xs">Download</button>
+                            </div>
+                        </td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="11" class="px-4 py-6 text-center text-gray-500">No loan applications.</td></tr>
+                    <tr><td colspan="13" class="px-4 py-6 text-center text-gray-500">No loan applications.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
@@ -284,6 +558,34 @@
 </div>
 
 <script>
+function toggleCustomReportExport() {
+    const panel = document.getElementById('customDateForm');
+    if (panel) {
+        panel.classList.toggle('open');
+    }
+}
+
+function downloadTableRowCsv(button, filename) {
+    const row = button.closest('tr');
+    const table = button.closest('table');
+    if (!row || !table) return;
+    const headers = Array.from(table.querySelectorAll('thead th')).map((cell) => cell.innerText.replace(/"/g, '""').trim());
+    const values = Array.from(row.querySelectorAll('td')).map((cell) => cell.innerText.replace(/"/g, '""').trim());
+    const csv = [
+        headers.map((value) => `"${value}"`).join(','),
+        values.map((value) => `"${value}"`).join(','),
+    ].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+}
+
 function downloadTableCsv(tableId, filename) {
     const table = document.getElementById(tableId);
     if (!table) return;

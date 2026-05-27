@@ -7,49 +7,22 @@
 <div class="employee-partners-page container-fluid py-3 py-lg-4">
     <div class="partners-hero">
         <div>
-            <p class="section-kicker mb-2">Employee Panel</p>
             <h1 class="h3 fw-bold mb-2">My Channel Partners</h1>
-            <p class="text-muted mb-0">Live visibility of every channel partner, their documents, and every linked application under your employee scope.</p>
+            <p class="text-muted mb-0"></p>
         </div>
         <div class="hero-actions">
-            <div class="live-indicator">
+            <span class="live-indicator">
                 <span class="live-dot"></span>
-                <span>Realtime sync</span>
-                <small id="partners-last-updated">--</small>
-            </div>
-            <button type="button" class="btn btn-primary hero-btn" id="toggle-partner-form">
+                <span>Updated <span id="partners-last-updated">now</span></span>
+            </span>
+            <a href="{% url 'employee_add_channel_partner' %}" class="btn btn-primary hero-btn">
                 <i class="bi bi-plus-circle"></i>
                 <span>Add Channel Partner</span>
-            </button>
+            </a>
         </div>
     </div>
 
     <div id="partner-page-alert" class="mb-3"></div>
-
-    <section class="partner-stat-grid" aria-label="Channel partner summary">
-        <article class="partner-stat-card stat-total">
-            <p class="stat-label mb-0">Total Channel Partners</p>
-            <h2 class="stat-value mb-0" id="stat-total-agents">0</h2>
-            <p class="stat-meta mb-0">Employee scope ki total live directory</p>
-        </article>
-        <article class="partner-stat-card stat-active">
-            <p class="stat-label mb-0">Active</p>
-            <h2 class="stat-value mb-0" id="stat-active-agents">0</h2>
-            <p class="stat-meta mb-0">Realtime active channel partner accounts</p>
-        </article>
-        <article class="partner-stat-card stat-blocked">
-            <p class="stat-label mb-0">Blocked</p>
-            <h2 class="stat-value mb-0" id="stat-blocked-agents">0</h2>
-            <p class="stat-meta mb-0">Currently blocked or paused accounts</p>
-        </article>
-        <article class="partner-stat-card stat-loans">
-            <p class="stat-label mb-0">Total Applications</p>
-            <h2 class="stat-value mb-0" id="stat-total-applications">0</h2>
-            <p class="stat-meta mb-0">Linked applications synced from live data</p>
-        </article>
-    </section>
-
-
 
     <section class="partner-form-card d-none" id="partner-form-card">
         <div class="form-card-head">
@@ -120,11 +93,7 @@
     </section>
 
     <section class="partner-table-shell">
-        <div class="table-head">
-            <div>
-                <h2 class="h5 fw-bold mb-1">Channel Partner Directory</h2>
-                <p class="text-muted mb-0">Detailed, realtime employee-side view matching the partner panel structure.</p>
-            </div>
+        <div class="table-head compact">
             <div class="table-head-actions">
                 <div class="search-wrap">
                     <i class="bi bi-search"></i>
@@ -526,6 +495,43 @@
         overflow: hidden;
     }
 
+    .partner-overview-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        gap: 14px;
+        margin-bottom: 22px;
+    }
+
+    .partner-overview-card {
+        background: #ffffff;
+        border: 1px solid #dbe3ef;
+        border-top: 4px solid #0f766e;
+        border-radius: 14px;
+        padding: 16px 18px;
+        box-shadow: 0 14px 28px rgba(15, 23, 42, 0.07);
+    }
+
+    .partner-overview-card span {
+        display: block;
+        color: #64748b;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .partner-overview-card strong {
+        display: block;
+        color: #0f172a;
+        font-size: 30px;
+        line-height: 1;
+        margin-top: 10px;
+    }
+
+    .partner-overview-card.accent-green { border-top-color: #16a34a; }
+    .partner-overview-card.accent-red { border-top-color: #dc2626; }
+    .partner-overview-card.accent-blue { border-top-color: #2563eb; }
+
     .table-head {
         padding: 22px 26px 18px;
         display: flex;
@@ -535,12 +541,57 @@
         border-bottom: 1px solid #eef2f7;
     }
 
+    .table-head.compact {
+        justify-content: flex-end;
+    }
+
     .table-head-actions {
         display: flex;
         gap: 10px;
         align-items: center;
         flex-wrap: wrap;
         justify-content: flex-end;
+    }
+
+    .employee-partners-page .table-responsive {
+        border: 0;
+        border-radius: 0;
+    }
+
+    .employee-partners-page .table-grid {
+        min-width: 1240px;
+        width: 100%;
+        border-collapse: collapse;
+        background: #ffffff;
+    }
+
+    .employee-partners-page .table-grid thead th {
+        background: linear-gradient(135deg, #0f766e 0%, #2563eb 100%);
+        color: #ffffff;
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        padding: 12px 11px;
+        font-size: 11px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        white-space: nowrap;
+    }
+
+    .employee-partners-page .table-grid tbody td {
+        border: 1px solid #e2e8f0;
+        padding: 11px;
+        color: #1e293b;
+        font-size: 13px;
+        background: #ffffff;
+        vertical-align: middle;
+    }
+
+    .employee-partners-page .table-grid tbody tr:nth-child(even) td {
+        background: #f8fafc;
+    }
+
+    .employee-partners-page .table-grid tbody tr:hover td {
+        background: #ecfdf5;
     }
 
     .search-wrap {
@@ -756,7 +807,8 @@
     body.dark-mode .partner-table-shell,
     body.dark-mode .partner-modal-content,
     body.dark-mode .detail-section,
-    body.dark-mode .summary-card {
+    body.dark-mode .summary-card,
+    body.dark-mode .partner-overview-card {
         background: #0f172a !important;
         border-color: #334155 !important;
         color: #e5e7eb !important;
@@ -770,6 +822,7 @@
     }
 
     body.dark-mode .summary-card strong,
+    body.dark-mode .partner-overview-card strong,
     body.dark-mode .partners-hero h1,
     body.dark-mode .table-head h2,
     body.dark-mode .modal-title,
@@ -878,6 +931,9 @@ function showPageAlert(type, message) {
 }
 
 function togglePartnerForm(show) {
+    if (!partnerFormCard) {
+        return;
+    }
     const shouldShow = typeof show === 'boolean' ? show : partnerFormCard.classList.contains('d-none');
     partnerFormCard.classList.toggle('d-none', !shouldShow);
     const toggleBtn = document.getElementById('toggle-partner-form');
@@ -989,9 +1045,11 @@ async function loadChannelPartners(showErrors = false) {
             params.set('status', partnerStatusFilter.value);
         }
 
+        params.set('_t', Date.now().toString());
         const response = await fetch(`/api/employee/my-agents/?${params.toString()}`, {
             headers: { 'X-Requested-With': 'XMLHttpRequest' },
             credentials: 'same-origin',
+            cache: 'no-store',
         });
         const data = await response.json();
         if (!response.ok || !data.success) {
@@ -1131,9 +1189,10 @@ async function loadPartnerDetail(agentId, mode = 'view', showModal = true) {
         document.getElementById('partner-modal-name').textContent = agent.name || '-';
         document.getElementById('partner-modal-meta').textContent = `${agent.email || 'No email'} | ${agent.phone || 'No phone'} | ${agent.under_employee || 'Not assigned'}`;
         document.getElementById('partner-modal-created-under').textContent = `Created under: ${agent.created_under || '-'}`;
-        document.getElementById('partner-modal-status-chip').outerHTML = renderStatusChip(agent.status);
         const statusWrap = document.querySelector('.modal-status-wrap');
-        statusWrap.innerHTML = renderStatusChip(agent.status);
+        if (statusWrap) {
+            statusWrap.innerHTML = renderStatusChip(agent.status);
+        }
 
         const avatar = document.getElementById('partner-modal-avatar');
         avatar.innerHTML = agent.photo_url
@@ -1237,6 +1296,9 @@ async function blockChannelPartner(agentId, agentName) {
 
 async function handleCreatePartner(event) {
     event.preventDefault();
+    if (!partnerCreateForm) {
+        return;
+    }
     const formData = new FormData(partnerCreateForm);
     try {
         const response = await fetch('/api/employee/add-agent/', {
@@ -1250,9 +1312,11 @@ async function handleCreatePartner(event) {
             throw new Error(data.error || 'Unable to create channel partner');
         }
         partnerCreateForm.reset();
+        if (partnerSearchInput) partnerSearchInput.value = '';
+        if (partnerStatusFilter) partnerStatusFilter.value = '';
         togglePartnerForm(false);
         showPageAlert('success', data.message || 'Channel partner created successfully.');
-        await loadChannelPartners(false);
+        await loadChannelPartners(true);
     } catch (error) {
         showPageAlert('danger', error.message || 'Unable to create channel partner');
     }
@@ -1270,10 +1334,18 @@ function schedulePartnerRefresh() {
     }, 12000);
 }
 
-document.getElementById('toggle-partner-form').addEventListener('click', () => togglePartnerForm());
-document.getElementById('cancel-partner-form').addEventListener('click', () => togglePartnerForm(false));
+const togglePartnerBtn = document.getElementById('toggle-partner-form');
+if (togglePartnerBtn) {
+    togglePartnerBtn.addEventListener('click', () => togglePartnerForm());
+}
+const cancelPartnerBtn = document.getElementById('cancel-partner-form');
+if (cancelPartnerBtn) {
+    cancelPartnerBtn.addEventListener('click', () => togglePartnerForm(false));
+}
 document.getElementById('refresh-partners-btn').addEventListener('click', () => loadChannelPartners(true));
-partnerCreateForm.addEventListener('submit', handleCreatePartner);
+if (partnerCreateForm) {
+    partnerCreateForm.addEventListener('submit', handleCreatePartner);
+}
 document.getElementById('partner-modal-save-btn').addEventListener('click', savePartnerChanges);
 partnerSearchInput.addEventListener('input', () => loadChannelPartners(false));
 partnerStatusFilter.addEventListener('change', () => loadChannelPartners(false));

@@ -433,6 +433,7 @@
         padding: 24px;
         margin-bottom: 28px;
         box-shadow: 0 18px 35px rgba(5, 150, 105, 0.08);
+        overflow: hidden;
     }
 
     .loan-product-topbar {
@@ -509,23 +510,26 @@
     .loan-product-track {
         display: flex;
         gap: 18px;
-        overflow-x: auto;
+        width: max-content;
+        overflow: visible;
         padding-bottom: 8px;
-        scroll-snap-type: x proximity;
+        animation: loanProductMarquee 46s linear infinite;
+        will-change: transform;
     }
 
-    .loan-product-track::-webkit-scrollbar {
-        height: 8px;
+    .loan-product-track:hover,
+    .loan-product-track:focus-within {
+        animation-play-state: paused;
     }
 
-    .loan-product-track::-webkit-scrollbar-thumb {
-        background: #a7f3d0;
-        border-radius: 999px;
+    @keyframes loanProductMarquee {
+        from { transform: translateX(0); }
+        to { transform: translateX(-50%); }
     }
 
     .loan-product-card {
-        min-width: 292px;
-        max-width: 292px;
+        min-width: 320px;
+        max-width: 320px;
         scroll-snap-align: start;
         background: #ffffff;
         border: 1px solid #d1fae5;
@@ -546,45 +550,20 @@
     }
 
     .loan-product-visual {
-        position: relative;
-        min-height: 190px;
-        padding: 18px;
-        color: #ffffff;
-        background: linear-gradient(135deg, var(--loan-card-a, #059669) 0%, var(--loan-card-b, #10b981) 100%);
+        height: 220px;
+        background: #f8fafc;
+        overflow: hidden;
     }
 
-    .loan-product-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        border-radius: 999px;
-        padding: 6px 10px;
-        background: rgba(255, 255, 255, 0.16);
-        font-size: 11px;
-        font-weight: 700;
-        letter-spacing: 0.05em;
-        text-transform: uppercase;
-        backdrop-filter: blur(8px);
-    }
-
-    .loan-product-icon {
-        position: absolute;
-        right: 18px;
-        bottom: 18px;
-        width: 70px;
-        height: 70px;
-        border-radius: 22px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        background: rgba(255, 255, 255, 0.15);
-        font-size: 30px;
-        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16);
+    .loan-product-visual img {
+        width: 100%;
+        height: 100%;
+        display: block;
+        object-fit: cover;
     }
 
     .loan-product-copy {
-        margin-top: 18px;
-        max-width: 182px;
+        margin-bottom: 16px;
     }
 
     .loan-product-copy h4 {
@@ -598,7 +577,7 @@
         margin: 10px 0 0;
         font-size: 13px;
         line-height: 1.6;
-        color: rgba(255, 255, 255, 0.92);
+        color: #64748b;
     }
 
     .loan-product-body {
@@ -859,14 +838,13 @@
         <div class="loan-product-track">
             <article class="loan-product-card" data-loan-type-card="Personal Loan" style="--loan-card-a:#2563eb; --loan-card-b:#0ea5e9;">
                 <div class="loan-product-visual">
-                    <div class="loan-product-badge"><i class="bi bi-lightning-charge"></i> Fast Approval</div>
+                    <img src="{% static 'cp_loanphoto/Personal_loan.png' %}" alt="Personal Loan">
+                </div>
+                <div class="loan-product-body">
                     <div class="loan-product-copy">
                         <h4>Personal Loan</h4>
                         <p>Quick funding for personal needs with a clean entry flow.</p>
                     </div>
-                    <div class="loan-product-icon"><i class="bi bi-wallet2"></i></div>
-                </div>
-                <div class="loan-product-body">
                     <div class="loan-product-meta">
                         <div>
                             <span>Ideal For</span>
@@ -886,14 +864,13 @@
 
             <article class="loan-product-card" data-loan-type-card="Home Loan" style="--loan-card-a:#0f766e; --loan-card-b:#14b8a6;">
                 <div class="loan-product-visual">
-                    <div class="loan-product-badge"><i class="bi bi-house-heart"></i> Housing</div>
+                    <img src="{% static 'cp_loanphoto/Home_loan.png' %}" alt="Home Loan">
+                </div>
+                <div class="loan-product-body">
                     <div class="loan-product-copy">
                         <h4>Home Loan</h4>
                         <p>Property-focused applications with guided document suggestions.</p>
                     </div>
-                    <div class="loan-product-icon"><i class="bi bi-house-door"></i></div>
-                </div>
-                <div class="loan-product-body">
                     <div class="loan-product-meta">
                         <div>
                             <span>Use Case</span>
@@ -913,14 +890,13 @@
 
             <article class="loan-product-card" data-loan-type-card="LAP" style="--loan-card-a:#7c3aed; --loan-card-b:#a855f7;">
                 <div class="loan-product-visual">
-                    <div class="loan-product-badge"><i class="bi bi-building"></i> Secured</div>
+                    <img src="{% static 'cp_loanphoto/LAP_loan.png' %}" alt="Loan Against Property">
+                </div>
+                <div class="loan-product-body">
                     <div class="loan-product-copy">
                         <h4>LAP</h4>
                         <p>Loan Against Property flow with asset-backed document prompts.</p>
                     </div>
-                    <div class="loan-product-icon"><i class="bi bi-bank2"></i></div>
-                </div>
-                <div class="loan-product-body">
                     <div class="loan-product-meta">
                         <div>
                             <span>Collateral</span>
@@ -940,14 +916,13 @@
 
             <article class="loan-product-card" data-loan-type-card="Business Loan" style="--loan-card-a:#ea580c; --loan-card-b:#f59e0b;">
                 <div class="loan-product-visual">
-                    <div class="loan-product-badge"><i class="bi bi-briefcase"></i> Growth</div>
+                    <img src="{% static 'cp_loanphoto/Business_loan.png' %}" alt="Business Loan">
+                </div>
+                <div class="loan-product-body">
                     <div class="loan-product-copy">
                         <h4>Business Loan</h4>
                         <p>Expansion-ready application flow for running business requirements.</p>
                     </div>
-                    <div class="loan-product-icon"><i class="bi bi-graph-up-arrow"></i></div>
-                </div>
-                <div class="loan-product-body">
                     <div class="loan-product-meta">
                         <div>
                             <span>Best For</span>
@@ -967,14 +942,13 @@
 
             <article class="loan-product-card" data-loan-type-card="Auto Loan" style="--loan-card-a:#475569; --loan-card-b:#0f172a;">
                 <div class="loan-product-visual">
-                    <div class="loan-product-badge"><i class="bi bi-car-front"></i> Vehicle</div>
+                    <img src="{% static 'cp_loanphoto/Auto_loan.png' %}" alt="Auto Loan">
+                </div>
+                <div class="loan-product-body">
                     <div class="loan-product-copy">
                         <h4>Auto Loan</h4>
                         <p>Vehicle funding flow with realtime document suggestions for smoother entry.</p>
                     </div>
-                    <div class="loan-product-icon"><i class="bi bi-speedometer2"></i></div>
-                </div>
-                <div class="loan-product-body">
                     <div class="loan-product-meta">
                         <div>
                             <span>Suitable For</span>
@@ -994,14 +968,13 @@
 
             <article class="loan-product-card" data-loan-type-card="Other" style="--loan-card-a:#0f766e; --loan-card-b:#34d399;">
                 <div class="loan-product-visual">
-                    <div class="loan-product-badge"><i class="bi bi-three-dots"></i> Custom</div>
+                    <img src="{% static 'cp_loanphoto/other_loan.png' %}" alt="Other Loan">
+                </div>
+                <div class="loan-product-body">
                     <div class="loan-product-copy">
                         <h4>Other</h4>
                         <p>Agar listed product match nahi karta to custom service name ke saath continue karein.</p>
                     </div>
-                    <div class="loan-product-icon"><i class="bi bi-pencil-square"></i></div>
-                </div>
-                <div class="loan-product-body">
                     <div class="loan-product-meta">
                         <div>
                             <span>Flexibility</span>
@@ -2326,6 +2299,16 @@
                     updateLoanProductUi();
                 }, 0);
             });
+        }
+
+        const loanProductTrack = document.querySelector('.loan-product-track');
+        if (loanProductTrack && !loanProductTrack.dataset.infiniteReady) {
+            Array.from(loanProductTrack.children).forEach((card) => {
+                const clone = card.cloneNode(true);
+                clone.setAttribute('aria-hidden', 'true');
+                loanProductTrack.appendChild(clone);
+            });
+            loanProductTrack.dataset.infiniteReady = 'true';
         }
 
         document.querySelectorAll('[data-apply-loan-type]').forEach((button) => {

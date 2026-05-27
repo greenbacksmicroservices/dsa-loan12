@@ -235,6 +235,7 @@
         align-items: center;
         justify-content: center;
         padding: 20px;
+        overflow-y: auto;
     }
 
     .modal-card {
@@ -242,8 +243,11 @@
         border-radius: 12px;
         width: 100%;
         max-width: 980px;
+        max-height: calc(100vh - 40px);
         box-shadow: 0 20px 45px rgba(0, 0, 0, 0.2);
         overflow: hidden;
+        display: flex;
+        flex-direction: column;
     }
 
     .modal-header {
@@ -252,6 +256,15 @@
         justify-content: space-between;
         padding: 20px 24px;
         border-bottom: 1px solid #e5e7eb;
+        flex: 0 0 auto;
+        background: #ffffff;
+    }
+
+    .modal-card > form {
+        display: flex;
+        flex-direction: column;
+        flex: 1 1 auto;
+        min-height: 0;
     }
 
     .modal-title {
@@ -263,6 +276,8 @@
 
     .modal-body {
         padding: 24px;
+        overflow-y: auto;
+        flex: 1 1 auto;
     }
 
     .modal-body.scroll {
@@ -361,6 +376,10 @@
         padding: 18px 24px;
         border-top: 1px solid #e5e7eb;
         background: #f9fafb;
+        flex: 0 0 auto;
+        position: sticky;
+        bottom: 0;
+        z-index: 1;
     }
 
     .btn-secondary {
@@ -515,6 +534,23 @@
     @media (max-width: 640px) {
         .form-grid {
             grid-template-columns: 1fr;
+        }
+
+        .modal-overlay {
+            align-items: stretch;
+            padding: 10px;
+        }
+
+        .modal-card {
+            max-height: calc(100vh - 20px);
+        }
+
+        .modal-actions {
+            flex-direction: column-reverse;
+        }
+
+        .modal-actions button {
+            width: 100%;
         }
     }
 </style>
@@ -713,14 +749,14 @@
                         <small style="color: #64748b; margin-top: 4px; display: block;">Select the Employee this Channel Partner will report to.</small>
                     </div>
                     <div class="form-group">
-                        <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #4f46e5;">Or Assign Under Partner (Optional)</label>
+                        <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #4f46e5;">Assign Under Partner (Optional)</label>
                         <select name="assigned_subadmin_id" id="assignedSubadminSelectAgent" style="width: 100%; padding: 10px; border: 2px solid #6366f1; border-radius: 6px; background-color: #f8fafc; font-weight: 500;">
                             <option value="">-- Direct under Admin --</option>
                             {% for subadmin in subadmin_options %}
                             <option value="{{ subadmin.id }}">{{ subadmin.employee_id|default:"EDC-P" }} - {{ subadmin.get_full_name|default:subadmin.username }}</option>
                             {% endfor %}
                         </select>
-                        <small style="color: #64748b; margin-top: 4px; display: block;">Alternatively, select a Partner.</small>
+                        <small style="color: #64748b; margin-top: 4px; display: block;">You can select a Partner and an Employee together.</small>
                     </div>
                     <div class="form-group">
                         <label style="display: block; margin-bottom: 8px; font-weight: 500;">Profile Photo</label>
@@ -811,18 +847,6 @@
                 }
             }
 
-            if (empSelect && saSelect) {
-                empSelect.addEventListener('change', () => {
-                    if (empSelect.value) {
-                        saSelect.value = '';
-                    }
-                });
-                saSelect.addEventListener('change', () => {
-                    if (saSelect.value) {
-                        empSelect.value = '';
-                    }
-                });
-            }
         });
         
         window.addAgentDocumentRowInline = function() {
@@ -970,6 +994,26 @@
                             <label>State</label>
                             <input type="text" name="state" placeholder="State">
                         </div>
+                        <div class="form-group">
+                            <label>Assign Under Employee</label>
+                            <select name="assigned_employee_id" id="modalAssignedEmployeeSelect">
+                                <option value="">-- Direct under Admin --</option>
+                                {% for employee in employee_options %}
+                                <option value="{{ employee.id }}">{{ employee.employee_id|default:"EDC-EMP" }} - {{ employee.get_full_name|default:employee.username }}</option>
+                                {% endfor %}
+                            </select>
+                            <small style="color:#64748b; font-size:12px;">Optional employee reporting line.</small>
+                        </div>
+                        <div class="form-group">
+                            <label>Assign Under Partner</label>
+                            <select name="assigned_subadmin_id" id="modalAssignedSubadminSelect">
+                                <option value="">-- Direct under Admin --</option>
+                                {% for subadmin in subadmin_options %}
+                                <option value="{{ subadmin.id }}">{{ subadmin.employee_id|default:"EDC-P" }} - {{ subadmin.get_full_name|default:subadmin.username }}</option>
+                                {% endfor %}
+                            </select>
+                            <small style="color:#64748b; font-size:12px;">Can be used together with employee.</small>
+                        </div>
                     </div>
                 </div>
                 <div class="section-card">
@@ -1045,6 +1089,24 @@
                         <select name="status" id="editAgentStatus">
                             <option value="active">Active</option>
                             <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Assign Under Employee</label>
+                        <select name="assigned_employee_id" id="editAgentEmployee">
+                            <option value="">-- Direct under Admin --</option>
+                            {% for employee in employee_options %}
+                            <option value="{{ employee.id }}">{{ employee.employee_id|default:"EDC-EMP" }} - {{ employee.get_full_name|default:employee.username }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Assign Under Partner</label>
+                        <select name="assigned_subadmin_id" id="editAgentSubadmin">
+                            <option value="">-- Direct under Admin --</option>
+                            {% for subadmin in subadmin_options %}
+                            <option value="{{ subadmin.id }}">{{ subadmin.employee_id|default:"EDC-P" }} - {{ subadmin.get_full_name|default:subadmin.username }}</option>
+                            {% endfor %}
                         </select>
                     </div>
                     <div class="form-group">
@@ -1819,6 +1881,10 @@ function openEditAgentModal(agentId) {
         document.getElementById('editAgentAddress').value = agent.address || '';
         document.getElementById('editAgentGender').value = agent.gender || 'Other';
         document.getElementById('editAgentStatus').value = agent.status || 'active';
+        const editAgentEmployee = document.getElementById('editAgentEmployee');
+        const editAgentSubadmin = document.getElementById('editAgentSubadmin');
+        if (editAgentEmployee) editAgentEmployee.value = agent.assigned_employee_id || '';
+        if (editAgentSubadmin) editAgentSubadmin.value = agent.assigned_subadmin_id || '';
         const editPhoto = document.getElementById('editAgentPhoto');
         if (editPhoto) editPhoto.value = '';
 
@@ -1852,7 +1918,9 @@ if (editAgentForm) {
             phone: document.getElementById('editAgentPhone').value.trim(),
             address: document.getElementById('editAgentAddress').value.trim(),
             gender: document.getElementById('editAgentGender').value,
-            status: document.getElementById('editAgentStatus').value
+            status: document.getElementById('editAgentStatus').value,
+            assigned_employee_id: document.getElementById('editAgentEmployee')?.value || '',
+            assigned_subadmin_id: document.getElementById('editAgentSubadmin')?.value || ''
         };
 
         try {

@@ -21,6 +21,7 @@ from .followup_utils import auto_move_overdue_to_follow_up
 from .loan_sync import find_related_loan_application
 from .updated_document_utils import (
     UPDATED_DOCUMENT_STATUS_KEY,
+    application_has_updated_documents,
     loan_has_updated_documents,
 )
 
@@ -95,6 +96,45 @@ def _compute_status_breakdown(loans_qs):
         counts['total'] += 1
 
     return counts
+
+
+def _effective_status_key_for_application(app_obj):
+    app_key = APP_STATUS_TO_LOAN_KEY.get(getattr(app_obj, 'status', ''), '')
+    if app_key in ['new_entry', 'waiting'] and _has_revert_marker(getattr(app_obj, 'approval_notes', '')):
+        return 'follow_up_pending'
+    if app_key == 'waiting' and application_has_updated_documents(app_obj):
+        return UPDATED_DOCUMENT_STATUS_KEY
+    return app_key
+
+
+def _compute_application_status_breakdown(app_qs):
+    counts = {
+        'new_entries': 0,
+        'waiting': 0,
+        'updated_document': 0,
+        'follow_up': 0,
+        'follow_up_pending': 0,
+        'approved': 0,
+        'rejected': 0,
+        'disbursed': 0,
+        'total': 0,
+    }
+    for app in app_qs:
+        status_key = _effective_status_key_for_application(app)
+        if status_key == 'new_entry':
+            counts['new_entries'] += 1
+        elif status_key == UPDATED_DOCUMENT_STATUS_KEY:
+            counts['updated_document'] += 1
+        elif status_key in ['waiting', 'follow_up', 'follow_up_pending', 'approved', 'rejected', 'disbursed']:
+            counts[status_key] += 1
+        counts['total'] += 1
+    return counts
+
+
+def _merge_status_counts(primary_counts, extra_counts):
+    for key, value in extra_counts.items():
+        primary_counts[key] = primary_counts.get(key, 0) + value
+    return primary_counts
 
 
 # ============================================================================
@@ -441,7 +481,17 @@ def api_dashboard_stats(request):
     if request.user.role == 'admin':
         # Admin gets all statistics
         base_qs = Loan.objects.all()
-        status_counts = _compute_status_breakdown(base_qs)
+        legacy_loans = list(base_qs)
+        status_counts = _compute_status_breakdown(legacy_loans)
+        related_app_ids = {
+            related_app.id
+            for related_app in (find_related_loan_application(loan) for loan in legacy_loans)
+            if related_app
+        }
+        workflow_counts = _compute_application_status_breakdown(
+            LoanApplication.objects.exclude(id__in=related_app_ids)
+        )
+        status_counts = _merge_status_counts(status_counts, workflow_counts)
         follow_up_pending = status_counts['follow_up_pending']
         new_entries = status_counts['new_entries']
         waiting = status_counts['waiting']
@@ -463,7 +513,17 @@ def api_dashboard_stats(request):
     elif request.user.role == 'employee':
         # Employee sees only assigned loans
         base_qs = Loan.objects.filter(assigned_employee=request.user)
-        status_counts = _compute_status_breakdown(base_qs)
+        legacy_loans = list(base_qs)
+        status_counts = _compute_status_breakdown(legacy_loans)
+        related_app_ids = {
+            related_app.id
+            for related_app in (find_related_loan_application(loan) for loan in legacy_loans)
+            if related_app
+        }
+        workflow_counts = _compute_application_status_breakdown(
+            LoanApplication.objects.filter(assigned_employee=request.user).exclude(id__in=related_app_ids)
+        )
+        status_counts = _merge_status_counts(status_counts, workflow_counts)
         follow_up_pending = status_counts['follow_up_pending']
         new_entries = status_counts['new_entries']
         waiting = status_counts['waiting']

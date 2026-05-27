@@ -481,6 +481,8 @@
         z-index: 1000;
         align-items: center;
         justify-content: center;
+        padding: 18px;
+        overflow-y: auto;
     }
 
     .modal-overlay.active {
@@ -494,6 +496,53 @@
         max-width: 500px;
         width: 90%;
         box-shadow: 0 20px 25px rgba(0, 0, 0, 0.2);
+    }
+
+    #editModal {
+        align-items: flex-start;
+    }
+
+    #editModal .modal-content {
+        width: min(980px, 100%);
+        max-width: 980px;
+        max-height: calc(100vh - 36px);
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    #editModal .modal-header {
+        flex-shrink: 0;
+        margin: 0;
+        padding: 18px 22px;
+        border-bottom: 1px solid #e5e7eb;
+        background: #ffffff;
+    }
+
+    #editModal .modal-body {
+        min-height: 0;
+        margin: 0;
+        padding: 20px 22px 0;
+        overflow-y: auto;
+    }
+
+    #editModal #editSubadminForm {
+        min-height: 0;
+    }
+
+    #editModal .modal-footer {
+        position: sticky;
+        bottom: 0;
+        z-index: 2;
+        padding: 14px 0 18px !important;
+        margin-top: 18px !important;
+        border-top: 1px solid #e5e7eb;
+        background: #ffffff;
+    }
+
+    #editModal select[multiple] {
+        min-height: 142px;
     }
 
     #viewModal .modal-content {
@@ -997,6 +1046,32 @@
             </div>
 
             <div class="section-card">
+                <div class="section-title">Assign Channel Partners Under Partner</div>
+                <p class="section-subtext">Selected channel partners will instantly report under this partner.</p>
+                <div class="form-group">
+                    <label>Channel Partners</label>
+                    <div class="multi-id-dropdown" data-multi-id-dropdown data-placeholder="Select channel partners by ID + name">
+                        <button type="button" class="multi-id-trigger">
+                            <span data-multi-id-label>Select channel partners by ID + name</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="multi-id-menu">
+                        {% for channel_partner in channel_partner_options %}
+                            <label class="multi-id-option">
+                                <input type="checkbox" name="channel_partner_ids" value="{{ channel_partner.id }}">
+                                <span>
+                                    <strong>{{ channel_partner.agent_id|default:"EDC-CP" }}{% if not channel_partner.agent_id %}-{{ channel_partner.id|stringformat:"04d" }}{% endif %} - {{ channel_partner.name }}</strong>
+                                    <small>{{ channel_partner.email|default:"No email" }}{% if channel_partner.phone %} | {{ channel_partner.phone }}{% endif %}</small>
+                                </span>
+                            </label>
+                        {% endfor %}
+                        </div>
+                    </div>
+                    <small style="color:#64748b;">Click the dropdown and tick multiple channel partners.</small>
+                </div>
+            </div>
+
+            <div class="section-card">
                 <div class="section-title">Documents</div>
                 <div id="subadminDocumentRowsInline">
                     <div class="document-row" style="display: flex; gap: 15px; margin-bottom: 10px;">
@@ -1197,6 +1272,32 @@
             </div>
 
             <div class="section-card">
+                <div class="section-title">Assign Channel Partners Under Partner</div>
+                <p class="section-subtext">Selected channel partners will appear under this Partner in admin and partner panels.</p>
+                <div class="form-group">
+                    <label>Channel Partners</label>
+                    <div class="multi-id-dropdown" data-multi-id-dropdown data-placeholder="Select channel partners by ID + name">
+                        <button type="button" class="multi-id-trigger">
+                            <span data-multi-id-label>Select channel partners by ID + name</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="multi-id-menu">
+                        {% for channel_partner in channel_partner_options %}
+                            <label class="multi-id-option">
+                                <input type="checkbox" name="channel_partner_ids" value="{{ channel_partner.id }}">
+                                <span>
+                                    <strong>{{ channel_partner.agent_id|default:"EDC-CP" }}{% if not channel_partner.agent_id %}-{{ channel_partner.id|stringformat:"04d" }}{% endif %} - {{ channel_partner.name }}</strong>
+                                    <small>{{ channel_partner.email|default:"No email" }}{% if channel_partner.phone %} | {{ channel_partner.phone }}{% endif %}</small>
+                                </span>
+                            </label>
+                        {% endfor %}
+                        </div>
+                    </div>
+                    <small style="color:#64748b;">Click the dropdown and tick multiple channel partners.</small>
+                </div>
+            </div>
+
+            <div class="section-card">
                 <div class="section-title">Documents</div>
                 <div id="subadminDocumentRows">
                     <div class="document-row">
@@ -1288,6 +1389,26 @@
                         <label>Profile Photo</label>
                         <input type="file" id="editSubadminPhoto" accept="image/*">
                         <small style="color:#64748b; font-size:12px;">Optional. Upload a new partner profile photo.</small>
+                    </div>
+                </div>
+                <div class="form-grid full">
+                    <div class="form-group">
+                        <label>Assign Employees</label>
+                        <select id="editSubadminEmployees" multiple size="6">
+                            {% for emp in employee_options %}
+                            <option value="{{ emp.id }}">{{ emp.employee_id|default:"EDC-EMP" }} - {{ emp.get_full_name|default:emp.username }}</option>
+                            {% endfor %}
+                        </select>
+                        <small style="color:#64748b; font-size:12px;">Move employees between partners from here.</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Assign Channel Partners</label>
+                        <select id="editSubadminChannelPartners" multiple size="6">
+                            {% for channel_partner in channel_partner_options %}
+                            <option value="{{ channel_partner.id }}">{{ channel_partner.agent_id|default:"EDC-CP" }}{% if not channel_partner.agent_id %}-{{ channel_partner.id|stringformat:"04d" }}{% endif %} - {{ channel_partner.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <small style="color:#64748b; font-size:12px;">Move channel partners under this partner.</small>
                     </div>
                 </div>
                 <div id="editSubadminMessage" style="display:none; margin-top: 12px; padding: 10px 12px; border-radius: 6px; font-size: 13px; font-weight: 600;"></div>
@@ -2060,6 +2181,14 @@
             document.getElementById('editSubadminPassword').value = '';
             const editPhoto = document.getElementById('editSubadminPhoto');
             if (editPhoto) editPhoto.value = '';
+            const selectedEmployees = new Set((data.managed_employees || []).map((item) => String(item.id)));
+            const selectedChannelPartners = new Set((data.managed_agents || []).map((item) => String(item.id)));
+            Array.from(document.getElementById('editSubadminEmployees')?.options || []).forEach((option) => {
+                option.selected = selectedEmployees.has(option.value);
+            });
+            Array.from(document.getElementById('editSubadminChannelPartners')?.options || []).forEach((option) => {
+                option.selected = selectedChannelPartners.has(option.value);
+            });
         } catch (error) {
             showEditSubadminMessage(error.message || 'Unable to load subadmin details.', true);
         }
@@ -2230,6 +2359,14 @@
             try {
                 const formData = new FormData();
                 Object.entries(payload).forEach(([key, value]) => formData.append(key, value));
+                formData.append('employee_ids', '');
+                formData.append('channel_partner_ids', '');
+                Array.from(document.getElementById('editSubadminEmployees')?.selectedOptions || []).forEach((option) => {
+                    formData.append('employee_ids', option.value);
+                });
+                Array.from(document.getElementById('editSubadminChannelPartners')?.selectedOptions || []).forEach((option) => {
+                    formData.append('channel_partner_ids', option.value);
+                });
                 const photoFile = document.getElementById('editSubadminPhoto')?.files?.[0];
                 if (photoFile) {
                     formData.append('profile_photo', photoFile);

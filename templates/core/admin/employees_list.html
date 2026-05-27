@@ -90,7 +90,7 @@
     .table-section {
         background: #ffffff;
         border-radius: 12px;
-        padding: 18px;
+        padding: 14px;
         box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
     }
 
@@ -136,7 +136,7 @@
     .employees-table-wrap {
         width: 100%;
         overflow: auto;
-        max-height: 68vh;
+        max-height: 70vh;
         border: 1px solid #e5e7eb;
         border-radius: 10px;
         background: #ffffff;
@@ -145,7 +145,7 @@
     .employees-table {
         width: 100%;
         border-collapse: collapse;
-        min-width: 1320px;
+        min-width: 1120px;
         table-layout: auto;
         border: 1px solid #e5e7eb;
     }
@@ -156,20 +156,20 @@
     }
 
     .employees-table th {
-        padding: 8px 6px;
+        padding: 7px 6px;
         text-align: left;
         font-weight: 700;
-        font-size: 10px;
+        font-size: 9.5px;
         text-transform: uppercase;
-        letter-spacing: 0.08em;
+        letter-spacing: 0.05em;
         white-space: nowrap;
     }
 
     .employees-table td {
-        padding: 6px 8px;
+        padding: 5px 7px;
         border: 1px solid #e5e7eb;
         vertical-align: middle;
-        font-size: 12px;
+        font-size: 11.5px;
         color: #1f2937;
         background: #ffffff;
     }
@@ -181,14 +181,14 @@
     .user-cell {
         display: flex;
         align-items: center;
-        gap: 8px;
-        min-width: 200px;
+        gap: 7px;
+        min-width: 170px;
     }
 
     .user-avatar {
-        width: 32px;
-        height: 32px;
-        border-radius: 10px;
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
         background: linear-gradient(135deg, #3b82f6 0%, #0ea5e9 100%);
         color: #ffffff;
         display: flex;
@@ -197,7 +197,8 @@
         font-weight: 800;
         overflow: hidden;
         box-shadow: 0 8px 18px rgba(37, 99, 235, 0.18);
-        flex: 0 0 42px;
+        flex: 0 0 30px;
+        font-size: 12px;
     }
 
     .user-avatar img {
@@ -212,19 +213,19 @@
 
     .muted-line {
         color: #64748b;
-        font-size: 12px;
+        font-size: 11px;
     }
 
     .count-badge {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        min-width: 34px;
-        padding: 5px 10px;
+        min-width: 30px;
+        padding: 4px 8px;
         border-radius: 999px;
         background: #eff6ff;
         color: #1d4ed8;
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 700;
     }
 
@@ -232,9 +233,9 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        padding: 6px 12px;
+        padding: 5px 10px;
         border-radius: 999px;
-        font-size: 11px;
+        font-size: 10.5px;
         font-weight: 700;
     }
 
@@ -257,8 +258,8 @@
     .btn-action {
         border: none;
         border-radius: 6px;
-        padding: 7px 12px;
-        font-size: 11px;
+        padding: 6px 9px;
+        font-size: 10.5px;
         font-weight: 700;
         text-decoration: none;
         display: inline-flex;
@@ -985,6 +986,15 @@
                         <textarea id="editNotes"></textarea>
                     </div>
                     <div class="form-group" style="grid-column:1/-1;">
+                        <label>Assign Under Partner</label>
+                        <select id="editAssignedSubadmin">
+                            <option value="">-- Direct under Admin --</option>
+                            {% for subadmin in subadmin_options %}
+                                <option value="{{ subadmin.id }}">{{ subadmin.employee_id|default:"EDC-P" }}{% if not subadmin.employee_id %}-{{ subadmin.id|stringformat:"04d" }}{% endif %} - {{ subadmin.get_full_name|default:subadmin.username }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group" style="grid-column:1/-1;">
                         <label>Assign Channel Partners</label>
                         <select id="editChannelPartners" multiple size="6">
                             {% for channel_partner in channel_partner_options %}
@@ -1235,6 +1245,7 @@
             document.getElementById('editStatus').value = employee.status || 'active';
             document.getElementById('editAddress').value = employee.address || '';
             document.getElementById('editNotes').value = employee.notes || '';
+            document.getElementById('editAssignedSubadmin').value = employee.assigned_subadmin_id || '';
             document.getElementById('editPassword').value = '';
             const photoInput = document.getElementById('editProfilePhoto');
             if (photoInput) photoInput.value = '';
@@ -1351,6 +1362,7 @@
             status: document.getElementById('editStatus').value,
             address: document.getElementById('editAddress').value.trim(),
             notes: document.getElementById('editNotes').value.trim(),
+            assigned_subadmin_id: document.getElementById('editAssignedSubadmin').value,
             channel_partner_ids: Array.from(document.getElementById('editChannelPartners').selectedOptions).map((option) => option.value),
         };
 
@@ -1366,7 +1378,11 @@
             const formData = new FormData();
             Object.entries(payload).forEach(([key, value]) => {
                 if (Array.isArray(value)) {
-                    value.forEach((entry) => formData.append(key, entry));
+                    if (!value.length) {
+                        formData.append(key, '');
+                    } else {
+                        value.forEach((entry) => formData.append(key, entry));
+                    }
                 } else {
                     formData.append(key, value);
                 }

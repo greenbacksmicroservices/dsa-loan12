@@ -16,7 +16,7 @@ def role_display(role):
     return ROLE_LABELS.get(raw_role, raw_role.title() if raw_role else "User")
 
 
-def send_account_credentials_email(*, request, email, full_name, username, password, role):
+def send_account_credentials_email(*, request, email, full_name, username, password, role, account_id=None):
     """
     Send a simple credentials email in English to the newly created user.
     Returns (sent: bool, detail: str).
@@ -25,15 +25,23 @@ def send_account_credentials_email(*, request, email, full_name, username, passw
     if not recipient:
         return False, "Email address not available"
 
+    backend = str(getattr(settings, "EMAIL_BACKEND", "") or "").lower()
+    host_user = str(getattr(settings, "EMAIL_HOST_USER", "") or "").strip()
+    host_password = str(getattr(settings, "EMAIL_HOST_PASSWORD", "") or "").strip()
+    if "smtp" in backend and host_user and not host_password:
+        return False, "EMAIL_HOST_PASSWORD is missing on this server"
+
     login_url = request.build_absolute_uri("/login/") if request else "/login/"
     display_name = str(full_name or "").strip() or username or "User"
     role_name = role_display(role)
+    account_id_line = f"Login ID: {account_id}\n" if str(account_id or "").strip() else ""
 
     subject = f"Your {role_name} Account Credentials"
     message = (
         f"Hello {display_name},\n\n"
         f"Your account has been created successfully on the loan management portal.\n\n"
         f"Role: {role_name}\n"
+        f"{account_id_line}"
         f"Mail ID / Email: {recipient}\n"
         f"User Name: {username}\n"
         f"Password: {password}\n"

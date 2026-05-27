@@ -16,7 +16,7 @@ from rest_framework import status
 import json
 import logging
 
-from .models import Loan, User, ActivityLog, LoanStatusHistory
+from .models import Loan, LoanApplication, User, ActivityLog, LoanStatusHistory
 from .decorators import admin_required
 from .loan_sync import (
     application_status_to_loan_status,
@@ -25,6 +25,29 @@ from .loan_sync import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _normalize_entity_source(data):
+    source = str((data or {}).get('entity_type') or (data or {}).get('source') or '').strip().lower()
+    if source in ['application', 'loan_application', 'app']:
+        return 'application'
+    if source in ['legacy', 'loan']:
+        return 'legacy'
+    return ''
+
+
+def _display_user(user):
+    if not user:
+        return 'System'
+    return user.get_full_name() or user.username or user.email or 'User'
+
+
+def _append_note(existing_text, new_line):
+    line = str(new_line or '').strip()
+    if not line:
+        return existing_text or ''
+    existing = str(existing_text or '').strip()
+    return f"{existing}\n{line}".strip() if existing else line
 
 # ============================================================
 # ADMIN ASSIGN LOAN TO EMPLOYEE (REAL-TIME)
@@ -62,21 +85,13 @@ def admin_assign_loan_to_employee(request):
         data = request.data if hasattr(request, 'data') else json.loads(request.body)
         loan_id = data.get('loan_id')
         employee_id = data.get('employee_id')
+        entity_type = _normalize_entity_source(data)
         
         if not loan_id or not employee_id:
             return Response({
                 'success': False,
                 'error': 'loan_id and employee_id are required'
             }, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Get loan
-        try:
-            loan = Loan.objects.get(id=loan_id)
-        except Loan.DoesNotExist:
-            return Response({
-                'success': False,
-                'error': f'Loan {loan_id} not found'
-            }, status=status.HTTP_404_NOT_FOUND)
         
         # Get employee
         try:
@@ -85,6 +100,70 @@ def admin_assign_loan_to_employee(request):
             return Response({
                 'success': False,
                 'error': f'Employee {employee_id} not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        if entity_type == 'application':
+            try:
+                application = LoanApplication.objects.select_related('applicant').get(id=loan_id)
+            except LoanApplication.DoesNotExist:
+                return Response({
+                    'success': False,
+                    'error': f'Application {loan_id} not found'
+                }, status=status.HTTP_404_NOT_FOUND)
+
+            if application.status != 'New Entry':
+                return Response({
+                    'success': False,
+                    'error': f'Application must be in New Application status. Current status: {application.status}'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            previous_assigned_employee_id = application.assigned_employee_id
+            application.assigned_employee = employee
+            application.assigned_by = request.user
+            application.assigned_at = timezone.now()
+            application.approval_notes = _append_note(
+                application.approval_notes,
+                f"Assigned By Admin: {_display_user(request.user)} -> Employee: {_display_user(employee)}"
+            )
+            application.save(update_fields=['assigned_employee', 'assigned_by', 'assigned_at', 'approval_notes', 'updated_at'])
+
+            if previous_assigned_employee_id != employee.id:
+                LoanStatusHistory.objects.create(
+                    loan_application=application,
+                    from_status='new_entry',
+                    to_status='new_entry',
+                    changed_by=request.user,
+                    reason=f'Assigned to {_display_user(employee)} by admin',
+                    is_auto_triggered=False,
+                )
+
+            applicant_name = application.applicant.full_name if application.applicant else f'Application {application.id}'
+            ActivityLog.objects.create(
+                action='loan_assigned',
+                description=f"Admin {_display_user(request.user)} assigned application {applicant_name} to employee {_display_user(employee)}",
+                user=request.user,
+            )
+
+            return Response({
+                'success': True,
+                'message': f'Application assigned to {_display_user(employee)} successfully',
+                'loan': {
+                    'id': application.id,
+                    'applicant_name': applicant_name,
+                    'status': application.status,
+                    'assigned_employee': _display_user(employee),
+                    'assigned_at': application.assigned_at.isoformat(),
+                    'entity_type': 'application',
+                }
+            }, status=status.HTTP_200_OK)
+
+        # Get loan
+        try:
+            loan = Loan.objects.get(id=loan_id)
+        except Loan.DoesNotExist:
+            return Response({
+                'success': False,
+                'error': f'Loan {loan_id} not found'
             }, status=status.HTTP_404_NOT_FOUND)
         
         # Verify loan is in NEW_ENTRY status
@@ -170,6 +249,7 @@ def admin_reassign_loan(request, loan_id):
         # Get data
         data = request.data if hasattr(request, 'data') else json.loads(request.body)
         new_employee_id = data.get('employee_id')
+        entity_type = _normalize_entity_source(data)
         
         if not new_employee_id:
             return Response({
@@ -177,11 +257,53 @@ def admin_reassign_loan(request, loan_id):
                 'error': 'employee_id is required'
             }, status=status.HTTP_400_BAD_REQUEST)
         
-        # Get loan
-        loan = get_object_or_404(Loan, id=loan_id)
-        
         # Get new employee
         new_employee = get_object_or_404(User, id=new_employee_id, role='employee')
+
+        if entity_type == 'application':
+            application = get_object_or_404(LoanApplication.objects.select_related('applicant', 'assigned_employee'), id=loan_id)
+            old_employee = application.assigned_employee
+            application.assigned_employee = new_employee
+            application.assigned_by = request.user
+            application.assigned_at = timezone.now()
+            application.approval_notes = _append_note(
+                application.approval_notes,
+                f"Assigned By Admin: {_display_user(request.user)} -> Employee: {_display_user(new_employee)}"
+            )
+            application.save(update_fields=['assigned_employee', 'assigned_by', 'assigned_at', 'approval_notes', 'updated_at'])
+
+            LoanStatusHistory.objects.create(
+                loan_application=application,
+                from_status=application_status_to_loan_status(application.status),
+                to_status=application_status_to_loan_status(application.status),
+                changed_by=request.user,
+                reason=f'Reassigned to {_display_user(new_employee)} by admin',
+                is_auto_triggered=False,
+            )
+
+            old_emp_name = _display_user(old_employee) if old_employee else 'None'
+            applicant_name = application.applicant.full_name if application.applicant else f'Application {application.id}'
+            ActivityLog.objects.create(
+                action='loan_reassigned',
+                description=f"Admin {_display_user(request.user)} reassigned application {applicant_name} from {old_emp_name} to {_display_user(new_employee)}",
+                user=request.user,
+            )
+
+            return Response({
+                'success': True,
+                'message': f'Application reassigned to {_display_user(new_employee)} successfully',
+                'loan': {
+                    'id': application.id,
+                    'applicant_name': applicant_name,
+                    'status': application.status,
+                    'assigned_employee': _display_user(new_employee),
+                    'assigned_at': application.assigned_at.isoformat(),
+                    'entity_type': 'application',
+                }
+            }, status=status.HTTP_200_OK)
+
+        # Get loan
+        loan = get_object_or_404(Loan, id=loan_id)
         
         # Store old assignment info for log
         old_employee = loan.assigned_employee

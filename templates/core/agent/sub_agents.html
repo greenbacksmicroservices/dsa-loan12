@@ -25,6 +25,9 @@
                         <i class="bi bi-list-ul"></i> Sub Channel Partners List
                         <span class="badge bg-light text-dark ms-2">{{ sub_agents|length }} sub channel partners</span>
                     </h5>
+                    <a href="{% url 'agent_add_employee' %}" class="btn sub-agent-add-btn fw-semibold">
+                        <i class="bi bi-plus-lg"></i> Add Sub Channel Partner
+                    </a>
                 </div>
                 <div class="card-body p-0">
                     {% if sub_agents %}
@@ -33,6 +36,7 @@
                             <thead>
                                 <tr>
                                     <th width="60">Photo</th>
+                                    <th>Sub CP ID</th>
                                     <th>Name</th>
                                     <th>Email</th>
                                     <th>Phone</th>
@@ -54,6 +58,9 @@
                                                 {{ agent.user.first_name|slice:":1"|upper }}
                                             </div>
                                         {% endif %}
+                                    </td>
+                                    <td class="fw-bold text-nowrap">
+                                        <span class="sub-agent-code">{{ agent.agent_id|default:"Generating..." }}</span>
                                     </td>
                                     <td class="fw-bold">
                                         {{ agent.user.get_full_name|default:agent.user.username }}
@@ -85,9 +92,6 @@
                                             <button type="button" class="btn btn-outline-warning" data-bs-toggle="modal" data-bs-target="#editModal{{ agent.id }}" title="Edit Sub Channel Partner">
                                                 <i class="bi bi-pencil"></i> Edit
                                             </button>
-                                            <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ agent.id }}" title="Delete Sub Channel Partner">
-                                                <i class="bi bi-trash"></i> Delete
-                                            </button>
                                         </div>
                                     </td>
                                 </tr>
@@ -103,9 +107,15 @@
                                             <div class="modal-body">
                                                 <div class="row mb-3">
                                                     <div class="col-md-6">
+                                                        <label class="text-muted fw-bold">Sub Channel Partner ID</label>
+                                                        <p>{{ agent.agent_id|default:"Generating..." }}</p>
+                                                    </div>
+                                                    <div class="col-md-6">
                                                         <label class="text-muted fw-bold">Full Name</label>
                                                         <p>{{ agent.user.get_full_name|default:agent.user.username }}</p>
                                                     </div>
+                                                </div>
+                                                <div class="row mb-3">
                                                     <div class="col-md-6">
                                                         <label class="text-muted fw-bold">Username</label>
                                                         <p>{{ agent.user.username }}</p>
@@ -321,6 +331,35 @@
         background: linear-gradient(135deg, #1e293b, #0f172a);
         color: #ffffff;
         border-bottom: 0;
+    }
+
+    .sub-agent-add-btn {
+        min-height: 40px;
+        border: 0;
+        border-radius: 12px;
+        padding: 9px 14px;
+        background: #ffffff;
+        color: #0f766e;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        box-shadow: 0 10px 22px rgba(15, 23, 42, 0.16);
+    }
+
+    .sub-agent-add-btn:hover {
+        color: #065f46;
+        transform: translateY(-1px);
+    }
+
+    .sub-agent-code {
+        display: inline-flex;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: #eef2ff;
+        color: #3730a3;
+        border: 1px solid #c7d2fe;
+        font-size: 12px;
+        letter-spacing: 0.02em;
     }
 
     .table-responsive {

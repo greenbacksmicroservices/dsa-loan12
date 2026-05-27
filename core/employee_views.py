@@ -15,7 +15,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 
-from .models import User, Loan, ActivityLog
+from .models import User, Loan, LoanApplication, ActivityLog, Agent
+from .loan_sync import find_related_loan_application
 
 
 @login_required
@@ -85,9 +86,12 @@ def add_employee(request):
             if not all([first_name, last_name, email, phone, password]):
                 return JsonResponse({'error': 'All required fields must be filled'}, status=400)
             
-            # Check if email already exists
-            if User.objects.filter(email=email).exists():
-                return JsonResponse({'error': 'Email already exists'}, status=400)
+            # Deleted/inactive employees do not reserve contact details.
+            if User.objects.filter(email__iexact=email, is_active=True).exists():
+                return JsonResponse({'error': 'Email already exists for an active employee'}, status=400)
+
+            if User.objects.filter(phone=phone, is_active=True).exists():
+                return JsonResponse({'error': 'Phone number already exists for an active employee'}, status=400)
             
             # Check if employee_id already exists
             if User.objects.filter(employee_id=employee_id).exists():
@@ -386,7 +390,7 @@ def employee_settings(request):
     context = {
         'user': request.user
     }
-    return render(request, 'core/employee/settings.html', context)
+    return render(request, 'core/shared/panel_settings.html', context)
 
 
 # ========== ASSIGNED LOANS (NEW REQUEST) ==========
@@ -597,24 +601,41 @@ def employee_dashboard_stats(request):
         return Response({'error': 'Only employees can access'}, status=status.HTTP_403_FORBIDDEN)
     
     try:
-        from .models import LoanApplication
-        
-        loans = LoanApplication.objects.filter(assigned_employee=request.user)
+        legacy_loans = list(Loan.objects.filter(assigned_employee=request.user))
+        related_app_ids = {
+            related_app.id
+            for related_app in (find_related_loan_application(loan) for loan in legacy_loans)
+            if related_app
+        }
+        workflow_loans = list(
+            LoanApplication.objects.filter(assigned_employee=request.user).exclude(id__in=related_app_ids)
+        )
+
+        def _app_count(status_name):
+            return sum(1 for app in workflow_loans if app.status == status_name)
+
+        new_entry_count = sum(1 for loan in legacy_loans if loan.status == 'new_entry') + _app_count('New Entry')
+        waiting_count = sum(1 for loan in legacy_loans if loan.status == 'waiting') + _app_count('Waiting for Processing')
+        follow_up_count = sum(1 for loan in legacy_loans if loan.status == 'follow_up') + _app_count('Required Follow-up')
+        approved_count = sum(1 for loan in legacy_loans if loan.status == 'approved') + _app_count('Approved')
+        rejected_count = sum(1 for loan in legacy_loans if loan.status == 'rejected') + _app_count('Rejected')
+        disbursed_count = sum(1 for loan in legacy_loans if loan.status == 'disbursed') + _app_count('Disbursed')
+        total_assigned = len(legacy_loans) + len(workflow_loans)
         
         return Response({
             'success': True,
-            'new_entry': loans.filter(status='New Entry').count(),
-            'waiting': loans.filter(status='Waiting for Processing').count(),
+            'new_entry': new_entry_count,
+            'waiting': waiting_count,
             'updated_document': 0,  # Placeholder for derived status
-            'banking_processing': loans.filter(status='Required Follow-up').count(),
+            'banking_processing': follow_up_count,
             'follow_up_pending': 0,  # Placeholder for derived status
-            'approved': loans.filter(status='Approved').count(),
-            'rejected': loans.filter(status='Rejected').count(),
-            'disbursed': loans.filter(status='Disbursed').count(),
+            'approved': approved_count,
+            'rejected': rejected_count,
+            'disbursed': disbursed_count,
             # Keep backward compatibility
-            'total_assigned': loans.count(),
-            'processing': loans.filter(status='Waiting for Processing').count(),
-            'follow_up': loans.filter(status='Required Follow-up').count(),
+            'total_assigned': total_assigned,
+            'processing': waiting_count,
+            'follow_up': follow_up_count,
         }, status=status.HTTP_200_OK)
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -1139,11 +1160,23 @@ def employee_add_agent_api(request):
                 'error': 'Invalid phone number. Must be at least 10 digits'
             }, status=status.HTTP_400_BAD_REQUEST)
         
-        # Check if email already exists
-        if User.objects.filter(email=email).exists():
+        # Deleted/blocked accounts do not reserve contact details.
+        if (
+            User.objects.filter(email__iexact=email, is_active=True).exists()
+            or Agent.objects.filter(email__iexact=email, status='active').exists()
+        ):
             return Response({
                 'success': False,
-                'error': 'Email already exists'
+                'error': 'Email already exists for an active channel partner'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        if (
+            User.objects.filter(phone=phone, is_active=True).exists()
+            or Agent.objects.filter(phone=phone, status='active').exists()
+        ):
+            return Response({
+                'success': False,
+                'error': 'Phone number already exists for an active channel partner'
             }, status=status.HTTP_400_BAD_REQUEST)
         
         # Create User account for agent
@@ -1191,7 +1224,7 @@ def employee_add_agent_api(request):
         
         return Response({
             'success': True,
-            'message': f'Agent {name} created successfully',
+            'message': f'Channel partner {name} created successfully',
             'agent_id': agent.id,
         }, status=status.HTTP_201_CREATED)
     
@@ -1213,23 +1246,41 @@ def employee_monthly_loans_api(request):
     Get monthly loans data for the current year
     Returns loan count for each month (Jan-Dec)
     """
+    if request.user.role != 'employee':
+        return Response({'success': False, 'error': 'Only employees can access', 'monthly_data': [0] * 12}, status=status.HTTP_403_FORBIDDEN)
+
     try:
-        from datetime import datetime
-        from django.db.models.functions import ExtractMonth
-        
-        current_year = datetime.now().year
+        current_year = timezone.now().year
         monthly_data = [0] * 12
-        
-        # Get loans assigned to current employee, grouped by month
-        loans = Loan.objects.filter(
-            assigned_employee=request.user,
-            assigned_at__year=current_year
-        ).annotate(month=ExtractMonth('assigned_at')).values('month').annotate(count=Count('id'))
-        
-        # Build monthly data array
-        for item in loans:
-            if item['month'] and 1 <= item['month'] <= 12:
-                monthly_data[item['month'] - 1] = item['count']
+
+        loan_rows = list(Loan.objects.filter(assigned_employee=request.user).only('id', 'created_at', 'assigned_at'))
+        related_app_ids = set()
+
+        try:
+            from .loan_sync import find_related_loan_application
+            for loan in loan_rows:
+                related_app = find_related_loan_application(loan)
+                if related_app:
+                    related_app_ids.add(related_app.id)
+        except Exception:
+            related_app_ids = set()
+
+        for loan in loan_rows:
+            stamp = loan.assigned_at or loan.created_at
+            if stamp and stamp.year == current_year:
+                monthly_data[stamp.month - 1] += 1
+
+        try:
+            from .models import LoanApplication
+            app_rows = LoanApplication.objects.filter(
+                assigned_employee=request.user
+            ).exclude(id__in=related_app_ids).only('id', 'created_at', 'assigned_at')
+            for app in app_rows:
+                stamp = app.assigned_at or app.created_at
+                if stamp and stamp.year == current_year:
+                    monthly_data[stamp.month - 1] += 1
+        except Exception:
+            pass
         
         return Response({
             'success': True,

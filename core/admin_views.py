@@ -9,10 +9,12 @@ from django.db import transaction
 from django.db.models import Q, Sum, Count, F, Prefetch
 from django.core.paginator import Paginator
 from django.utils import timezone
+from datetime import datetime, timezone as datetime_timezone
 import json
 import logging
+import re
 
-from .models import LoanApplication, Applicant, ApplicantDocument, LoanAssignment, LoanStatusHistory, User, Agent, Loan, LoanDocument, ActivityLog, SubAdminEntry, UserOnboardingProfile, UserOnboardingDocument, EmployeeProfile
+from .models import LoanApplication, Applicant, ApplicantDocument, LoanAssignment, LoanStatusHistory, User, Agent, Loan, LoanDocument, ActivityLog, SubAdminEntry, UserOnboardingProfile, UserOnboardingDocument, EmployeeProfile, AgentAssignment
 from .decorators import admin_required
 from .loan_sync import extract_assignment_context, role_label, find_related_loan, find_related_loan_application
 from .onboarding_utils import (
@@ -27,9 +29,14 @@ from .id_utils import generate_agent_sequence_id, generate_user_sequence_id, nor
 from .updated_document_utils import (
     UPDATED_DOCUMENT_LABEL,
     UPDATED_DOCUMENT_STATUS_KEY,
+    application_has_updated_documents,
     loan_has_updated_documents,
 )
 from .account_notifications import send_account_credentials_email
+from .workflow_rows import (
+    application_effective_status_key,
+    build_application_display_row,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +49,7 @@ APP_STATUS_TO_LOAN_KEY = {
     'Rejected': 'rejected',
     'Disbursed': 'disbursed',
 }
+SUBADMIN_TAG_PATTERN = re.compile(r'\[subadmin:\d+\]', flags=re.IGNORECASE)
 
 
 def _has_revert_marker(value):
@@ -50,6 +58,72 @@ def _has_revert_marker(value):
 
 def _follow_up_pending_q():
     return Q(status__in=['new_entry', 'waiting']) & Q(remarks__icontains='Revert Remark')
+
+
+def _parse_int_list(raw_values):
+    ids = []
+    for value in raw_values or []:
+        try:
+            parsed = int(str(value).strip())
+        except (TypeError, ValueError):
+            continue
+        if parsed > 0:
+            ids.append(parsed)
+    return sorted(set(ids))
+
+
+def _set_employee_under_subadmin(employee, subadmin_user=None):
+    profile, _ = EmployeeProfile.objects.get_or_create(user=employee)
+    notes = SUBADMIN_TAG_PATTERN.sub('', str(profile.notes or '')).strip()
+    notes = re.sub(r'\n{3,}', '\n\n', notes)
+    if subadmin_user:
+        tag = f"[subadmin:{subadmin_user.id}]"
+        notes = f"{notes}\n{tag}".strip() if notes else tag
+    profile.notes = notes
+    profile.save(update_fields=['notes', 'updated_at'])
+    return profile
+
+
+def _sync_partner_employees(subadmin, employee_ids):
+    tag = f"[subadmin:{subadmin.id}]"
+    desired_ids = set(
+        User.objects.filter(id__in=employee_ids, role='employee').values_list('id', flat=True)
+    )
+
+    current_employees = User.objects.filter(
+        role='employee',
+        employee_profile__notes__icontains=tag,
+    ).distinct()
+    for employee in current_employees.exclude(id__in=desired_ids):
+        _set_employee_under_subadmin(employee, None)
+    for employee in User.objects.filter(id__in=desired_ids, role='employee'):
+        _set_employee_under_subadmin(employee, subadmin)
+    return len(desired_ids)
+
+
+def _sync_partner_channel_partners(subadmin, channel_partner_ids, fallback_owner=None):
+    desired_ids = set(
+        Agent.objects.filter(id__in=channel_partner_ids, status='active').values_list('id', flat=True)
+    )
+    fallback = fallback_owner or User.objects.filter(role='admin', is_active=True).order_by('id').first()
+
+    Agent.objects.filter(created_by=subadmin).exclude(id__in=desired_ids).update(created_by=fallback)
+
+    selected_agents = Agent.objects.filter(id__in=desired_ids).select_related('under_employee')
+    for agent in selected_agents:
+        update_fields = []
+        if agent.created_by_id != subadmin.id:
+            agent.created_by = subadmin
+            update_fields.append('created_by')
+        if update_fields:
+            update_fields.append('updated_at')
+            agent.save(update_fields=update_fields)
+        if agent.under_employee_id:
+            _set_employee_under_subadmin(agent.under_employee, subadmin)
+        linked_employee_ids = AgentAssignment.objects.filter(agent=agent).values_list('employee_id', flat=True)
+        for employee in User.objects.filter(id__in=linked_employee_ids, role='employee'):
+            _set_employee_under_subadmin(employee, subadmin)
+    return len(desired_ids)
 
 
 def _is_follow_up_pending_loan(loan_obj, related_app=None):
@@ -134,6 +208,42 @@ def _compute_status_breakdown(loans_qs):
         counts['total'] += 1
 
     return counts
+
+
+def _effective_status_key_for_application(app_obj):
+    app_key = APP_STATUS_TO_LOAN_KEY.get(getattr(app_obj, 'status', ''), '')
+    if app_key in ['new_entry', 'waiting'] and _has_revert_marker(getattr(app_obj, 'approval_notes', '')):
+        return 'follow_up_pending'
+    if app_key == 'waiting' and application_has_updated_documents(app_obj):
+        return UPDATED_DOCUMENT_STATUS_KEY
+    return app_key
+
+
+def _compute_application_status_breakdown(apps_qs):
+    counts = {
+        'new_entry': 0,
+        'waiting': 0,
+        'updated_document': 0,
+        'follow_up': 0,
+        'follow_up_pending': 0,
+        'approved': 0,
+        'rejected': 0,
+        'disbursed': 0,
+        'total': 0,
+    }
+
+    for app in apps_qs:
+        status_key = _effective_status_key_for_application(app)
+        if status_key in counts:
+            counts[status_key] += 1
+        counts['total'] += 1
+    return counts
+
+
+def _merge_status_counts(primary_counts, extra_counts):
+    for key, value in extra_counts.items():
+        primary_counts[key] = primary_counts.get(key, 0) + value
+    return primary_counts
 
 
 def _ui_status_label(status_text):
@@ -319,8 +429,17 @@ def admin_dashboard(request):
         auto_move_overdue_to_follow_up()
 
         # Get all Loan counts by status (real-time)
-        all_loans = Loan.objects.all()
+        all_loans = list(Loan.objects.all())
         status_counts = _compute_status_breakdown(all_loans)
+        related_app_ids = {
+            related_app.id
+            for related_app in (find_related_loan_application(loan) for loan in all_loans)
+            if related_app
+        }
+        status_counts = _merge_status_counts(
+            status_counts,
+            _compute_application_status_breakdown(LoanApplication.objects.exclude(id__in=related_app_ids)),
+        )
         follow_up_pending_count = status_counts['follow_up_pending']
         new_entry_count = status_counts['new_entry']
         in_processing_count = status_counts['waiting']
@@ -391,6 +510,18 @@ def admin_all_loans(request):
     # Get search and status filter parameters
     search_query = request.GET.get('q', '').strip()
     status_filter = request.GET.get('status', '').strip()
+    if status_filter == 'all':
+        status_filter = ''
+    agent_filter = request.GET.get('agent', '').strip()
+    employee_filter = request.GET.get('employee', '').strip()
+    date_from = request.GET.get('date_from', '').strip()
+    date_to = request.GET.get('date_to', '').strip()
+    try:
+        per_page = int(request.GET.get('per_page', 10))
+    except (TypeError, ValueError):
+        per_page = 10
+    if per_page not in [10, 25, 50, 100]:
+        per_page = 10
     auto_move_overdue_to_follow_up()
     
     # Start with all loans ordered by creation date (newest first)
@@ -407,6 +538,23 @@ def admin_all_loans(request):
             Q(user_id__icontains=search_query)
         )
 
+    if agent_filter:
+        try:
+            int(agent_filter)
+        except (TypeError, ValueError):
+            agent_filter = ''
+
+    if employee_filter:
+        try:
+            int(employee_filter)
+        except (TypeError, ValueError):
+            employee_filter = ''
+
+    if date_from:
+        loans = loans.filter(created_at__date__gte=date_from)
+    if date_to:
+        loans = loans.filter(created_at__date__lte=date_to)
+
     # Apply coarse DB filter (final status filtering happens after effective-status resolution)
     if status_filter == 'follow_up_pending':
         loans = loans.filter(status__in=['new_entry', 'waiting', 'follow_up'])
@@ -415,8 +563,18 @@ def admin_all_loans(request):
     elif status_filter in ['approved', 'rejected', 'disbursed']:
         loans = loans.filter(status__in=[status_filter, 'follow_up'])
 
-    # Pre-fetch LoanApplications to avoid N+1 query problem
-    apps = LoanApplication.objects.select_related('applicant').all()
+    # Pre-fetch LoanApplications to avoid N+1 query problem and include
+    # workflow-only rows that do not have a matching legacy Loan record.
+    apps = list(
+        LoanApplication.objects.select_related(
+            'applicant',
+            'assigned_by',
+            'assigned_employee',
+            'assigned_agent',
+            'assigned_agent__user',
+            'assigned_agent__created_by',
+        ).all()
+    )
     app_by_email = {a.applicant.email.lower(): a for a in apps if a.applicant and a.applicant.email}
     app_by_mobile = {a.applicant.mobile: a for a in apps if a.applicant and a.applicant.mobile}
     app_by_name = {a.applicant.full_name.lower(): a for a in apps if a.applicant and a.applicant.full_name}
@@ -437,6 +595,7 @@ def admin_all_loans(request):
         )
 
     enriched_loans = []
+    related_app_ids = set()
     for loan in loans:
         # Fast memory lookup instead of DB query
         related_app = None
@@ -449,6 +608,8 @@ def admin_all_loans(request):
 
         if not related_app:
             related_app = find_related_loan_application(loan)
+        if related_app:
+            related_app_ids.add(related_app.id)
 
         effective_status_key = _effective_status_key_for_loan(loan, related_app=related_app)
         follow_up_pending = effective_status_key == 'follow_up_pending'
@@ -463,6 +624,11 @@ def admin_all_loans(request):
                 loan.assigned_employee = related_app.assigned_employee
             if not loan.assigned_agent and related_app.assigned_agent:
                 loan.assigned_agent = related_app.assigned_agent
+
+        if agent_filter and str(loan.assigned_agent_id or '') != agent_filter:
+            continue
+        if employee_filter and str(loan.assigned_employee_id or '') != employee_filter:
+            continue
 
         creator = loan.created_by
         if related_app and not creator and related_app.assigned_by:
@@ -511,13 +677,57 @@ def admin_all_loans(request):
         loan.status_key_display = effective_status_key or loan.status
         loan.status_display_text = _status_key_to_display_text(effective_status_key, fallback_text=loan.get_status_display())
         loan.assigned_by_display = assignment_context.get('assigned_by_display') or 'N/A'
+        loan.entity_type = 'legacy'
         enriched_loans.append(loan)
+
+    def _app_matches_filters(app_obj, status_key):
+        applicant = getattr(app_obj, 'applicant', None)
+        if search_query:
+            haystack = ' '.join([
+                str(getattr(applicant, 'full_name', '') or ''),
+                str(getattr(applicant, 'mobile', '') or ''),
+                str(getattr(applicant, 'email', '') or ''),
+                f"APP-{app_obj.id:06d}",
+            ]).lower()
+            if search_query.lower() not in haystack:
+                return False
+        if status_filter and status_key != status_filter:
+            return False
+        if agent_filter and str(getattr(app_obj, 'assigned_agent_id', '') or '') != agent_filter:
+            return False
+        if employee_filter and str(getattr(app_obj, 'assigned_employee_id', '') or '') != employee_filter:
+            return False
+        if date_from and (not app_obj.created_at or app_obj.created_at.date().isoformat() < date_from):
+            return False
+        if date_to and (not app_obj.created_at or app_obj.created_at.date().isoformat() > date_to):
+            return False
+        return True
+
+    workflow_rows = []
+    for app_obj in apps:
+        if app_obj.id in related_app_ids:
+            continue
+        status_key = application_effective_status_key(app_obj)
+        if not _app_matches_filters(app_obj, status_key):
+            continue
+        workflow_rows.append(build_application_display_row(app_obj, status_key=status_key))
+
+    enriched_loans.extend(workflow_rows)
+    fallback_created_at = datetime.min.replace(tzinfo=datetime_timezone.utc)
+    enriched_loans.sort(key=lambda item: getattr(item, 'created_at', None) or fallback_created_at, reverse=True)
     
     context = {
         'page_title': 'All Loans - Master Database',
         'loans': enriched_loans,
         'search_query': search_query,
         'status_filter': status_filter,
+        'agent_filter': agent_filter,
+        'employee_filter': employee_filter,
+        'date_from': date_from,
+        'date_to': date_to,
+        'per_page': per_page,
+        'agents': Agent.objects.filter(status='active').order_by('name', 'agent_id'),
+        'employees': User.objects.filter(role='employee', is_active=True).order_by('first_name', 'last_name', 'username'),
         'status_filter_display': FOLLOW_UP_PENDING_LABEL if status_filter == 'follow_up_pending' else (status_filter.replace('_', ' ').title() if status_filter else ''),
         'total_loans': len(enriched_loans),
     }
@@ -989,6 +1199,7 @@ def _build_subadmin_management_context(request, page_mode='list'):
         'list': 'All Partners',
     }
     employee_options = User.objects.filter(role='employee', is_active=True).order_by('first_name', 'last_name', 'username')
+    channel_partner_options = Agent.objects.filter(status='active').order_by('agent_id', 'name', 'id')
     return {
         'page_title': titles.get(page_mode, 'Partner Management'),
         'page_mode': page_mode,
@@ -996,6 +1207,7 @@ def _build_subadmin_management_context(request, page_mode='list'):
         'subadmin_count': subadmins.count(),
         'subadmin_rows': subadmin_list,
         'employee_options': employee_options,
+        'channel_partner_options': channel_partner_options,
     }
 
 
@@ -1160,7 +1372,7 @@ def api_admin_subadmin_full_details(request, subadmin_id):
         for agent in managed_agents_qs.order_by('name', 'id'):
             managed_agents.append({
                 'id': agent.id,
-                'agent_id': agent.agent_id or f'EDC-AG-{agent.id:04d}',
+                'agent_id': agent.agent_id or f'EDC-CP-{agent.id:04d}',
                 'name': agent.name or (agent.user.get_full_name() if agent.user else '-') or '-',
                 'email': agent.email or 'N/A',
                 'phone': agent.phone or 'N/A',
@@ -1276,18 +1488,14 @@ def api_create_subadmin(request):
         photo_file = request.FILES.get('photo') if not is_json else None
         if not is_json:
             employee_ids_raw = request.POST.getlist('employee_ids')
+            channel_partner_ids_raw = request.POST.getlist('channel_partner_ids')
         else:
-            raw_ids = data.get('employee_ids') if isinstance(data, dict) else []
-            employee_ids_raw = raw_ids if isinstance(raw_ids, list) else []
-        employee_ids = []
-        for value in employee_ids_raw or []:
-            try:
-                parsed = int(str(value).strip())
-            except (TypeError, ValueError):
-                continue
-            if parsed > 0:
-                employee_ids.append(parsed)
-        employee_ids = sorted(set(employee_ids))
+            raw_employee_ids = data.get('employee_ids') if isinstance(data, dict) else []
+            raw_channel_partner_ids = data.get('channel_partner_ids') if isinstance(data, dict) else []
+            employee_ids_raw = raw_employee_ids if isinstance(raw_employee_ids, list) else []
+            channel_partner_ids_raw = raw_channel_partner_ids if isinstance(raw_channel_partner_ids, list) else []
+        employee_ids = _parse_int_list(employee_ids_raw)
+        channel_partner_ids = _parse_int_list(channel_partner_ids_raw)
 
         if not name:
             name = f"{first_name} {last_name}".strip()
@@ -1321,17 +1529,17 @@ def api_create_subadmin(request):
                 'error': 'Username already exists'
             }, status=400)
         
-        # Check if email exists
-        if User.objects.filter(email=email).exists():
+        # Deleted/inactive partners do not reserve contact details.
+        if User.objects.filter(email__iexact=email, is_active=True).exists():
             return JsonResponse({
                 'success': False,
-                'error': 'Email already exists'
+                'error': 'Email already exists for an active partner'
             }, status=400)
 
-        if User.objects.filter(phone=phone).exists():
+        if User.objects.filter(phone=phone, is_active=True).exists():
             return JsonResponse({
                 'success': False,
-                'error': 'Phone already exists'
+                'error': 'Phone already exists for an active partner'
             }, status=400)
         
         # Create SubAdmin user
@@ -1383,6 +1591,7 @@ def api_create_subadmin(request):
             username=subadmin.username,
             password=password,
             role=subadmin.role,
+            account_id=subadmin.employee_id or partner_unique_id,
         )
 
         onboarding_payload = collect_onboarding_payload_from_source(data) if is_json else collect_onboarding_payload(request)
@@ -1410,12 +1619,14 @@ def api_create_subadmin(request):
 
         assigned_employee_count = 0
         if employee_ids:
-            from .subadmin_views import _mark_employee_under_subadmin
-            for emp_id in employee_ids:
-                employee = User.objects.filter(id=emp_id, role='employee').first()
-                if employee:
-                    _mark_employee_under_subadmin(employee, subadmin)
-                    assigned_employee_count += 1
+            assigned_employee_count = _sync_partner_employees(subadmin, employee_ids)
+        assigned_channel_partner_count = 0
+        if channel_partner_ids:
+            assigned_channel_partner_count = _sync_partner_channel_partners(
+                subadmin,
+                channel_partner_ids,
+                fallback_owner=request.user,
+            )
         
         return JsonResponse({
             'success': True,
@@ -1433,7 +1644,7 @@ def api_create_subadmin(request):
                 'is_active': subadmin.is_active,
                 'date_joined': subadmin.date_joined.strftime('%Y-%m-%d') if subadmin.date_joined else '',
                 'photo_url': subadmin.profile_photo.url if subadmin.profile_photo else '',
-                'total_agents': 0,
+                'total_agents': assigned_channel_partner_count,
                 'total_employees': assigned_employee_count,
                 'total_applications': 0,
                 'running_applications': 0,
@@ -1515,10 +1726,10 @@ def api_update_subadmin(request, subadmin_id):
 
     if User.objects.filter(username=username).exclude(id=subadmin.id).exists():
         return JsonResponse({'success': False, 'error': 'Username already exists'}, status=400)
-    if User.objects.filter(email=email).exclude(id=subadmin.id).exists():
-        return JsonResponse({'success': False, 'error': 'Email already exists'}, status=400)
-    if User.objects.filter(phone=phone).exclude(id=subadmin.id).exists():
-        return JsonResponse({'success': False, 'error': 'Phone already exists'}, status=400)
+    if User.objects.filter(email__iexact=email, is_active=True).exclude(id=subadmin.id).exists():
+        return JsonResponse({'success': False, 'error': 'Email already exists for an active partner'}, status=400)
+    if User.objects.filter(phone=phone, is_active=True).exclude(id=subadmin.id).exists():
+        return JsonResponse({'success': False, 'error': 'Phone already exists for an active partner'}, status=400)
 
     subadmin.username = username
     subadmin.email = email
@@ -1542,6 +1753,32 @@ def api_update_subadmin(request, subadmin_id):
 
     subadmin.save()
 
+    employee_ids = None
+    channel_partner_ids = None
+    if is_json:
+        if isinstance(data, dict) and 'employee_ids' in data:
+            raw_employee_ids = data.get('employee_ids')
+            employee_ids = _parse_int_list(raw_employee_ids if isinstance(raw_employee_ids, list) else [])
+        if isinstance(data, dict) and 'channel_partner_ids' in data:
+            raw_channel_partner_ids = data.get('channel_partner_ids')
+            channel_partner_ids = _parse_int_list(raw_channel_partner_ids if isinstance(raw_channel_partner_ids, list) else [])
+    else:
+        if 'employee_ids' in request.POST:
+            employee_ids = _parse_int_list(request.POST.getlist('employee_ids'))
+        if 'channel_partner_ids' in request.POST:
+            channel_partner_ids = _parse_int_list(request.POST.getlist('channel_partner_ids'))
+
+    assigned_employee_count = None
+    assigned_channel_partner_count = None
+    if employee_ids is not None:
+        assigned_employee_count = _sync_partner_employees(subadmin, employee_ids)
+    if channel_partner_ids is not None:
+        assigned_channel_partner_count = _sync_partner_channel_partners(
+            subadmin,
+            channel_partner_ids,
+            fallback_owner=request.user,
+        )
+
     return JsonResponse({
         'success': True,
         'message': 'Partner updated successfully',
@@ -1554,6 +1791,8 @@ def api_update_subadmin(request, subadmin_id):
             'address': subadmin.address or '',
             'photo_url': subadmin.profile_photo.url if subadmin.profile_photo else '',
             'status': 'Active' if subadmin.is_active else 'Inactive',
+            'total_employees': assigned_employee_count,
+            'total_agents': assigned_channel_partner_count,
         }
     })
 
@@ -1629,9 +1868,19 @@ def add_agent(request):
                 messages.error(request, 'Invalid email address')
                 return render(request, 'core/admin/add_agent.html', context)
             
-            # Check if email already exists
-            if User.objects.filter(email=email).exists():
-                messages.error(request, 'Email already exists')
+            # Deleted/inactive accounts do not reserve contact details.
+            active_email_exists = User.objects.filter(email__iexact=email, is_active=True).exists()
+            if role == 'agent':
+                active_email_exists = active_email_exists or Agent.objects.filter(email__iexact=email, status='active').exists()
+            if active_email_exists:
+                messages.error(request, f'Email already exists for an active {role}')
+                return render(request, 'core/admin/add_agent.html', context)
+
+            active_phone_exists = User.objects.filter(phone=phone, is_active=True).exists()
+            if role == 'agent':
+                active_phone_exists = active_phone_exists or Agent.objects.filter(phone=phone, status='active').exists()
+            if active_phone_exists:
+                messages.error(request, f'Phone number already exists for an active {role}')
                 return render(request, 'core/admin/add_agent.html', context)
             
             # Check phone format
@@ -1689,6 +1938,7 @@ def add_agent(request):
                 user.save()
 
             display_name = user.get_full_name() or user.username
+            account_code = user.employee_id or ''
             
             # If role is agent, create Agent profile
             if role == 'agent':
@@ -1706,6 +1956,7 @@ def add_agent(request):
                     pin_code=pin_code or None,
                     created_by=request.user,
                 )
+                account_code = agent.agent_id or ''
                 if photo:
                     agent.profile_photo = photo
                     agent.save()
@@ -1760,6 +2011,7 @@ def add_agent(request):
                 username=user.username,
                 password=password,
                 role=user.role,
+                account_id=account_code,
             )
             
             if email_sent:
@@ -2469,6 +2721,7 @@ def api_admin_join_request_action(request, application_id):
                 username=user.username,
                 password=temp_password,
                 role=user.role,
+                account_id=getattr(user, 'employee_id', '') or (user.agent_profile.agent_id if hasattr(user, 'agent_profile') else ''),
             )
             response['email_sent'] = email_sent
             response['email_message'] = email_detail

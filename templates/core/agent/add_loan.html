@@ -182,6 +182,153 @@
         z-index: 100;
         box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
+
+    .loan-product-stage {
+        background: #ffffff;
+        border: 1px solid #d1fae5;
+        border-radius: 14px;
+        padding: 22px;
+        margin-bottom: 28px;
+        box-shadow: 0 18px 35px rgba(5, 150, 105, 0.08);
+        overflow: hidden;
+    }
+
+    .loan-product-topbar {
+        display: flex;
+        justify-content: space-between;
+        gap: 18px;
+        align-items: flex-start;
+        margin-bottom: 18px;
+    }
+
+    .loan-product-kicker {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 7px 12px;
+        border-radius: 999px;
+        background: #dcfce7;
+        color: #047857;
+        font-size: 11px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        margin-bottom: 10px;
+    }
+
+    .loan-product-topbar h3 {
+        margin: 0;
+        color: #064e3b;
+        font-size: 26px;
+        font-weight: 800;
+    }
+
+    .loan-product-topbar p {
+        margin: 8px 0 0;
+        color: #475569;
+        font-size: 14px;
+        line-height: 1.7;
+        max-width: 760px;
+    }
+
+    .loan-selection-status {
+        min-width: 220px;
+        border-radius: 14px;
+        padding: 14px 16px;
+        background: #f0fdf4;
+        border: 1px solid #bbf7d0;
+    }
+
+    .loan-selection-status .label {
+        display: block;
+        color: #047857;
+        font-size: 11px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+    }
+
+    .loan-selection-status strong {
+        display: block;
+        margin-top: 8px;
+        color: #064e3b;
+        font-size: 18px;
+        font-weight: 800;
+    }
+
+    .loan-product-track {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 18px;
+    }
+
+    .loan-product-card {
+        background: #ffffff;
+        border: 1px solid #d1fae5;
+        border-radius: 14px;
+        overflow: hidden;
+        box-shadow: 0 16px 30px rgba(15, 23, 42, 0.06);
+        transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+        min-height: 100%;
+    }
+
+    .loan-product-card:hover,
+    .loan-product-card.selected {
+        transform: translateY(-3px);
+        border-color: #10b981;
+        box-shadow: 0 22px 38px rgba(15, 23, 42, 0.12);
+    }
+
+    .loan-product-visual {
+        height: 220px;
+        background: #f8fafc;
+        overflow: hidden;
+    }
+
+    .loan-product-visual img {
+        width: 100%;
+        height: 100%;
+        display: block;
+        object-fit: cover;
+    }
+
+    .loan-product-body {
+        padding: 18px;
+    }
+
+    .loan-product-copy h4 {
+        margin: 0;
+        font-size: 22px;
+        font-weight: 800;
+        color: #0f172a;
+    }
+
+    .loan-product-copy p {
+        margin: 9px 0 16px;
+        color: #64748b;
+        font-size: 13px;
+        line-height: 1.6;
+    }
+
+    .loan-product-btn {
+        width: 100%;
+        min-height: 42px;
+        border: none;
+        border-radius: 10px;
+        background: linear-gradient(135deg, #10b981 0%, #2563eb 100%);
+        color: #ffffff;
+        font-weight: 800;
+    }
+
+    @media (max-width: 768px) {
+        .loan-product-topbar {
+            flex-direction: column;
+        }
+
+        .loan-selection-status {
+            width: 100%;
+        }
+    }
 </style>
 
 <!-- Page Header -->
@@ -208,6 +355,103 @@
         {% endfor %}
     </div>
     {% endif %}
+
+    <section class="loan-product-stage" id="loanProductStage">
+        <div class="loan-product-topbar">
+            <div>
+                <div class="loan-product-kicker">
+                    <i class="bi bi-grid"></i>
+                    Loan Products
+                </div>
+                <h3>Choose Loan Type First</h3>
+                <p>Pick the product and the application form below will be set to the right loan type.</p>
+            </div>
+            <div class="loan-selection-status">
+                <span class="label">Selected Loan Type</span>
+                <strong id="selectedLoanTypeLabel">Not selected</strong>
+            </div>
+        </div>
+
+        <div class="loan-product-track">
+            <article class="loan-product-card" data-loan-type-card="Personal Loan">
+                <div class="loan-product-visual">
+                    <img src="{% static 'cp_loanphoto/Personal_loan.png' %}" alt="Personal Loan">
+                </div>
+                <div class="loan-product-body">
+                    <div class="loan-product-copy">
+                        <h4>Personal Loan</h4>
+                        <p>Quick personal funding with a clean realtime application flow.</p>
+                    </div>
+                    <button type="button" class="loan-product-btn" data-apply-loan-type="Personal Loan">Apply Now</button>
+                </div>
+            </article>
+
+            <article class="loan-product-card" data-loan-type-card="Home Loan">
+                <div class="loan-product-visual">
+                    <img src="{% static 'cp_loanphoto/Home_loan.png' %}" alt="Home Loan">
+                </div>
+                <div class="loan-product-body">
+                    <div class="loan-product-copy">
+                        <h4>Home Loan</h4>
+                        <p>Property purchase or construction applications with guided details.</p>
+                    </div>
+                    <button type="button" class="loan-product-btn" data-apply-loan-type="Home Loan">Apply Now</button>
+                </div>
+            </article>
+
+            <article class="loan-product-card" data-loan-type-card="LAP">
+                <div class="loan-product-visual">
+                    <img src="{% static 'cp_loanphoto/LAP_loan.png' %}" alt="Loan Against Property">
+                </div>
+                <div class="loan-product-body">
+                    <div class="loan-product-copy">
+                        <h4>LAP</h4>
+                        <p>Loan Against Property flow with a dedicated LAP product image.</p>
+                    </div>
+                    <button type="button" class="loan-product-btn" data-apply-loan-type="LAP">Apply Now</button>
+                </div>
+            </article>
+
+            <article class="loan-product-card" data-loan-type-card="Business Loan">
+                <div class="loan-product-visual">
+                    <img src="{% static 'cp_loanphoto/Business_loan.png' %}" alt="Business Loan">
+                </div>
+                <div class="loan-product-body">
+                    <div class="loan-product-copy">
+                        <h4>Business Loan</h4>
+                        <p>Business capital applications for growth, stock, or working capital.</p>
+                    </div>
+                    <button type="button" class="loan-product-btn" data-apply-loan-type="Business Loan">Apply Now</button>
+                </div>
+            </article>
+
+            <article class="loan-product-card" data-loan-type-card="Auto Loan">
+                <div class="loan-product-visual">
+                    <img src="{% static 'cp_loanphoto/Auto_loan.png' %}" alt="Auto Loan">
+                </div>
+                <div class="loan-product-body">
+                    <div class="loan-product-copy">
+                        <h4>Auto Loan</h4>
+                        <p>Vehicle funding applications with the same card size as every product.</p>
+                    </div>
+                    <button type="button" class="loan-product-btn" data-apply-loan-type="Auto Loan">Apply Now</button>
+                </div>
+            </article>
+
+            <article class="loan-product-card" data-loan-type-card="Other">
+                <div class="loan-product-visual">
+                    <img src="{% static 'cp_loanphoto/other_loan.png' %}" alt="Other Loan">
+                </div>
+                <div class="loan-product-body">
+                    <div class="loan-product-copy">
+                        <h4>Other</h4>
+                        <p>Use this when the requested product is outside the listed options.</p>
+                    </div>
+                    <button type="button" class="loan-product-btn" data-apply-loan-type="Other">Apply Now</button>
+                </div>
+            </article>
+        </div>
+    </section>
 
     <form id="loanForm" method="post" enctype="multipart/form-data" novalidate>
         {% csrf_token %}
@@ -946,6 +1190,25 @@
         }
     }
 
+    function applyLoanTypeSelection(loanType) {
+        const serviceSelect = document.querySelector('select[name="service_required"]');
+        const label = document.getElementById('selectedLoanTypeLabel');
+        if (serviceSelect) {
+            serviceSelect.value = loanType;
+            serviceSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        if (label) {
+            label.textContent = loanType || 'Not selected';
+        }
+        document.querySelectorAll('[data-loan-type-card]').forEach((card) => {
+            card.classList.toggle('selected', card.getAttribute('data-loan-type-card') === loanType);
+        });
+        const form = document.getElementById('loanForm');
+        if (form) {
+            form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+
     document.getElementById('loanForm').addEventListener('submit', function(e) {
         e.preventDefault();
 
@@ -965,6 +1228,11 @@
     // Initialize on page load
     document.addEventListener('DOMContentLoaded', function() {
         updateEmploymentSection();
+        document.querySelectorAll('[data-apply-loan-type]').forEach((button) => {
+            button.addEventListener('click', function() {
+                applyLoanTypeSelection(this.getAttribute('data-apply-loan-type'));
+            });
+        });
     });
 </script>
 

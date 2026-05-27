@@ -3,8 +3,248 @@
 
 {% block title %}All Loans - DSA Loan Management System{% endblock %}
 
+{% block extra_css %}
+<style>
+    .employee-loans-page {
+        max-width: 1600px;
+        margin: 0 auto;
+    }
+
+    .loans-command-bar,
+    .loans-filter-card,
+    .loans-table-card {
+        background: #ffffff;
+        border: 1px solid #dbe3ef;
+        border-radius: 16px;
+        box-shadow: 0 16px 34px rgba(15, 23, 42, 0.07);
+    }
+
+    .loans-command-bar {
+        padding: 22px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 16px;
+    }
+
+    .loans-title-kicker {
+        margin: 0 0 6px;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: #0f766e;
+    }
+
+    .loans-command-bar h1 {
+        margin: 0;
+        font-size: 24px;
+        font-weight: 800;
+        color: #0f172a;
+    }
+
+    .loans-command-bar p {
+        margin: 6px 0 0;
+        color: #64748b;
+        font-size: 13px;
+    }
+
+    .loans-back-btn {
+        border: 1px solid #cbd5e1;
+        background: #f8fafc;
+        color: #334155;
+        border-radius: 12px;
+        padding: 9px 14px;
+        font-size: 13px;
+        font-weight: 700;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        white-space: nowrap;
+    }
+
+    .loans-filter-card {
+        padding: 16px;
+        margin-bottom: 16px;
+    }
+
+    .loans-filter-card .form-control,
+    .loans-filter-card .form-select {
+        min-height: 42px;
+        border: 1px solid #cbd5e1;
+        border-radius: 12px;
+        background: #f8fafc;
+        font-size: 13px;
+    }
+
+    .loans-table-card {
+        overflow: hidden;
+    }
+
+    .loans-table-head {
+        padding: 18px 20px;
+        border-bottom: 1px solid #e2e8f0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .loans-table-head h2 {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 800;
+        color: #0f172a;
+    }
+
+    .loans-table-head span {
+        color: #64748b;
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    .employee-loans-table-wrap {
+        overflow: auto;
+    }
+
+    .employee-loans-table {
+        min-width: 980px;
+        width: 100%;
+        border-collapse: collapse;
+        margin: 0;
+        background: #ffffff;
+    }
+
+    .employee-loans-table thead th {
+        background: linear-gradient(135deg, #0f766e 0%, #2563eb 100%);
+        color: #ffffff;
+        padding: 13px 12px;
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        font-size: 11px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        white-space: nowrap;
+    }
+
+    .employee-loans-table tbody td {
+        padding: 12px;
+        border: 1px solid #e2e8f0;
+        color: #1e293b;
+        font-size: 13px;
+        vertical-align: middle;
+        background: #ffffff;
+    }
+
+    .employee-loans-table tbody tr:nth-child(even) td {
+        background: #f8fafc;
+    }
+
+    .employee-loans-table tbody tr:hover td {
+        background: #ecfdf5;
+    }
+
+    .loan-avatar,
+    .loan-avatar-fallback {
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
+        overflow: hidden;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #ccfbf1 0%, #dbeafe 100%);
+        color: #0f766e;
+        font-size: 15px;
+        font-weight: 800;
+        border: 1px solid #99f6e4;
+    }
+
+    .loan-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .loan-type-pill,
+    .loan-status-chip {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        white-space: nowrap;
+        font-weight: 800;
+    }
+
+    .loan-type-pill {
+        padding: 5px 10px;
+        background: #eff6ff;
+        color: #1d4ed8;
+        font-size: 12px;
+    }
+
+    .loan-status-chip {
+        padding: 6px 10px;
+        font-size: 11px;
+    }
+
+    .loan-status-new { background: #dbeafe; color: #1d4ed8; }
+    .loan-status-waiting { background: #fef3c7; color: #92400e; }
+    .loan-status-follow { background: #e0f2fe; color: #0369a1; }
+    .loan-status-approved { background: #dcfce7; color: #166534; }
+    .loan-status-rejected { background: #fee2e2; color: #991b1b; }
+    .loan-status-disbursed { background: #ccfbf1; color: #115e59; }
+
+    .loan-actions {
+        display: flex;
+        gap: 7px;
+        flex-wrap: wrap;
+    }
+
+    .loan-action-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border-radius: 10px;
+        padding: 7px 10px;
+        font-size: 12px;
+        font-weight: 800;
+        text-decoration: none;
+        border: 1px solid transparent;
+        cursor: pointer;
+    }
+
+    .loan-action-btn.view {
+        background: #ecfdf5;
+        color: #047857;
+        border-color: #a7f3d0;
+    }
+
+    .loan-action-btn.edit {
+        background: #fff7ed;
+        color: #c2410c;
+        border-color: #fed7aa;
+    }
+
+    @media (max-width: 768px) {
+        .loans-command-bar,
+        .loans-table-head {
+            align-items: stretch;
+            flex-direction: column;
+        }
+
+        .loans-back-btn {
+            justify-content: center;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container-fluid">
+<div class="employee-loans-page container-fluid py-3 py-lg-4">
     {% if messages %}
     <div class="mb-3">
         {% for message in messages %}
@@ -16,51 +256,56 @@
     </div>
     {% endif %}
 
-    <div class="d-flex flex-wrap align-items-center justify-content-between mb-3">
+    <div class="loans-command-bar">
         <div>
-            <h2 class="h5 fw-bold mb-1">All Loans</h2>
-            <p class="text-muted mb-0" style="font-size: 13px;">View and manage all your assigned loans</p>
+            <p class="loans-title-kicker">Employee Panel</p>
+            <h1>All Loans</h1>
+            <p>View, edit, and track every assigned loan from one clean workspace.</p>
         </div>
-        <a href="{% url 'employee_dashboard' %}" class="btn btn-outline-secondary btn-sm">Back</a>
+        <a href="{% url 'employee_dashboard' %}" class="loans-back-btn">
+            <i class="bi bi-arrow-left"></i>
+            <span>Back</span>
+        </a>
     </div>
-</div>
 
-<!-- Filters -->
-<div class="container-fluid mb-3">
-    <div class="row g-2">
-        <div class="col-md-4">
-            <input id="search-input" class="form-control bg-light border-0 rounded-3"
-                   placeholder="🔍 Search by name or ID" style="font-size: 14px;">
-        </div>
-        <div class="col-md-3">
-            <select id="status-filter" class="form-select bg-light border-0 rounded-3" style="font-size: 14px;">
-                <option value="">📊All Status</option>
-                <option value="waiting">⏳ Waiting</option>
-                <option value="approved">✅ Approved</option>
-                <option value="rejected">❌ Rejected</option>
-                <option value="disbursed">💰 Disbursed</option>
-            </select>
-        </div>
-        <div class="col-md-5 text-end">
-            <button id="reset-filters" class="btn btn-outline-secondary btn-sm fw-semibold rounded-3">
-                <i class="bi bi-arrow-clockwise"></i> Reset
-            </button>
+    <div class="loans-filter-card">
+        <div class="row g-2 align-items-center">
+            <div class="col-lg-5 col-md-6">
+                <input id="search-input" class="form-control" placeholder="Search by applicant name or loan ID">
+            </div>
+            <div class="col-lg-3 col-md-4">
+                <select id="status-filter" class="form-select">
+                    <option value="">All Status</option>
+                    <option value="new_entry">New Application</option>
+                    <option value="waiting">Document Pending</option>
+                    <option value="follow_up">Follow-up</option>
+                    <option value="follow_up_pending">Follow-up Pending</option>
+                    <option value="approved">Approved</option>
+                    <option value="rejected">Rejected</option>
+                    <option value="disbursed">Disbursed</option>
+                </select>
+            </div>
+            <div class="col-lg-4 col-md-2 text-md-end">
+                <button id="reset-filters" class="btn btn-outline-secondary btn-sm fw-semibold rounded-3">
+                    <i class="bi bi-arrow-clockwise"></i> Reset
+                </button>
+            </div>
         </div>
     </div>
-</div>
 
-<!-- Grid Table -->
-<div class="container-fluid">
-    <div id="loans-container" class="text-center py-5">
-        <div class="spinner-border spinner-border-sm"></div>
-        <p class="text-muted mt-2">Loading loans...</p>
-    </div>
+    <section class="loans-table-card">
+        <div id="loans-container" class="text-center py-5">
+            <div class="spinner-border spinner-border-sm"></div>
+            <p class="text-muted mt-2">Loading loans...</p>
+        </div>
+    </section>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
 let ALL_LOANS = [];
+let CURRENT_EDIT_LOAN_ID = null;
 
 function getCookie(name) {
     return document.cookie.split('; ')
@@ -68,41 +313,51 @@ function getCookie(name) {
         ?.split('=')[1];
 }
 
-function confirmDelete(loanId) {
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function setLoanCount(count) {
+    const countLabel = document.getElementById('loan-count-label');
+    if (countLabel) {
+        countLabel.textContent = `${Number(count || 0).toLocaleString('en-IN')} loans`;
+    }
+}
+
+function confirmDelete() {
     return;
 }
 
 async function loadLoans() {
     try {
-        console.log('Fetching loans from /api/employee/all-loans/');
         const res = await fetch('/api/employee/all-loans/', {
             method: 'GET',
-            headers: { 
+            headers: {
                 'X-CSRFToken': getCookie('csrftoken'),
                 'Content-Type': 'application/json'
             },
             credentials: 'include'
         });
 
-        console.log('Response status:', res.status);
         if (!res.ok) {
             const errorData = await res.json().catch(() => ({}));
             throw new Error(`HTTP ${res.status}: ${errorData.error || res.statusText}`);
         }
-        
+
         const data = await res.json();
-        console.log('Data received:', data);
-        
         ALL_LOANS = data.loans || [];
-        
         renderLoansTable(ALL_LOANS);
     } catch (error) {
-        console.error('Error loading loans:', error);
+        setLoanCount(0);
         document.getElementById('loans-container').innerHTML = `
-            <div class="alert alert-danger" role="alert">
-                <strong>❌ Error loading loans!</strong><br/>
-                ${error.message}<br/>
-                <small>Check browser console (F12) for details</small>
+            <div class="alert alert-danger m-3" role="alert">
+                <strong>Error loading loans.</strong><br>
+                ${escapeHtml(error.message)}
             </div>
         `;
     }
@@ -110,6 +365,7 @@ async function loadLoans() {
 
 function renderLoansTable(loans) {
     const container = document.getElementById('loans-container');
+    setLoanCount(loans.length);
 
     if (!loans.length) {
         container.innerHTML = `
@@ -121,108 +377,96 @@ function renderLoansTable(loans) {
         return;
     }
 
-    const statusMap = {
-        'new_entry': 'primary',
-        'waiting': 'warning',
-        'follow_up': 'info',
-        'approved': 'success',
-        'rejected': 'danger',
-        'disbursed': 'success'
+    const statusClassMap = {
+        new_entry: 'loan-status-new',
+        waiting: 'loan-status-waiting',
+        follow_up: 'loan-status-follow',
+        follow_up_pending: 'loan-status-follow',
+        approved: 'loan-status-approved',
+        rejected: 'loan-status-rejected',
+        disbursed: 'loan-status-disbursed'
     };
-    
+
     const statusLabels = {
-        'new_entry': 'New Application',
-        'waiting': 'Document Pending',
-        'follow_up': 'Follow-up',
-        'approved': 'Approved',
-        'rejected': 'Rejected',
-        'disbursed': 'Disbursed'
+        new_entry: 'New Application',
+        waiting: 'Document Pending',
+        follow_up: 'Follow-up',
+        follow_up_pending: 'Follow-up Pending',
+        approved: 'Approved',
+        rejected: 'Rejected',
+        disbursed: 'Disbursed'
     };
 
     container.innerHTML = `
-    <div class="table-responsive">
-            <table class="table table-striped table-hover align-middle mb-0 table-grid" style="border-collapse: collapse;">
-            <thead>
-                <tr style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none;">
-                    <th style="padding: 12px; border: none; font-weight: 600;">Photo</th>
-                    <th style="padding: 12px; border: none; font-weight: 600;">Loan ID</th>
-                    <th style="padding: 12px; border: none; font-weight: 600;">Applicant</th>
-                    <th style="padding: 12px; border: none; font-weight: 600;">Type</th>
-                    <th style="padding: 12px; border: none; font-weight: 600;">Amount</th>
-                    <th style="padding: 12px; border: none; font-weight: 600;">Status</th>
-                    <th style="padding: 12px; border: none; font-weight: 600;">Date</th>
-                    <th style="padding: 12px; border: none; font-weight: 600;">Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${loans.map((l, idx) => {
-                    const initial = (l.applicant_name || 'N').charAt(0).toUpperCase();
-                    const photoCell = l.applicant_photo
-                        ? `<div class="table-avatar"><img src="${l.applicant_photo}" alt="${l.applicant_name || 'Applicant'}"></div>`
-                        : `<div class="table-avatar-fallback">${initial}</div>`;
-
-                    return `
-                    <tr style="border-bottom: 1px solid #e0e0e0; background: ${idx % 2 === 0 ? '#f8f9ff' : 'white'};">
-                        <td style="padding: 12px; border: none;">${photoCell}</td>
-                        <td style="padding: 12px; border: none;"><strong>${l.loan_id || '#' + l.id}</strong></td>
-                        <td style="padding: 12px; border: none;">${l.applicant_name || 'N/A'}</td>
-                        <td style="padding: 12px; border: none;"><span style="background: #e3f2fd; color: #1976d2; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 500;">${l.loan_type || 'N/A'}</span></td>
-                        <td style="padding: 12px; border: none; font-weight: 600;">₹ ${new Intl.NumberFormat('en-IN').format(l.loan_amount || 0)}</td>
-                        <td style="padding: 12px; border: none;">
-                            <span class="badge" style="background: ${statusMap[l.status] === 'warning' ? '#ffc107' : statusMap[l.status] === 'success' ? '#28a745' : statusMap[l.status] === 'danger' ? '#dc3545' : statusMap[l.status] === 'info' ? '#17a2b8' : '#6c757d'}; font-size: 11px; padding: 5px 10px; border-radius: 12px;">
-                                ${statusLabels[l.status] || l.status || 'Unknown'}
-                            </span>
-                        </td>
-                        <td style="padding: 12px; border: none; font-size: 13px;">${l.assigned_date || 'N/A'}</td>
-                        <td style="padding: 12px; border: none;">
-                            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                                 ${l.status === 'follow_up_pending'
-                                     ? `<a href="/employee/loan/${l.id}/detail/" class="btn btn-sm btn-warning" title="Edit follow up">
-                                         <i class="bi bi-pencil-square"></i> Edit
-                                        </a>`
-                                     : (l.status === 'rejected'
-                                         ? `
-                                             <a href="/employee/loan/${l.id}/detail/" class="btn btn-sm btn-success" title="View details">
-                                                 <i class="bi bi-eye"></i> View
-                                             </a>
-                                         `
-                                         : (l.status === 'disbursed'
-                                             ? `
-                                                 <a href="/employee/loan/${l.id}/detail/" class="btn btn-sm btn-success" title="View details">
-                                                     <i class="bi bi-eye"></i> View
-                                                 </a>
-                                             `
-                                             : `
-                                                 <a href="/employee/loan/${l.id}/detail/" class="btn btn-sm btn-success" title="View details">
-                                                     <i class="bi bi-eye"></i> View
-                                                 </a>
-                                                 <button class="btn btn-sm btn-warning" type="button" onclick="openEditLoanModal(${l.id})">
-                                                     <i class="bi bi-pencil-square"></i> Edit
-                                                 </button>
-                                             `
-                                         )
-                                     )
-                                 }
-                             </div>
-                         </td>
-                     </tr>
-                `;
-                }).join('')}
-            </tbody>
-        </table>
-    </div>`;
+        <div class="employee-loans-table-wrap">
+            <table class="employee-loans-table">
+                <thead>
+                    <tr>
+                        <th>Photo</th>
+                        <th>Loan ID</th>
+                        <th>Applicant</th>
+                        <th>Type</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${loans.map((loan) => renderLoanRow(loan, statusClassMap, statusLabels)).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
 }
 
-let CURRENT_EDIT_LOAN_ID = null;
+function renderLoanRow(loan, statusClassMap, statusLabels) {
+    const initial = (loan.applicant_name || 'N').charAt(0).toUpperCase();
+    const photoCell = loan.applicant_photo
+        ? `<span class="loan-avatar"><img src="${escapeHtml(loan.applicant_photo)}" alt="${escapeHtml(loan.applicant_name || 'Applicant')}"></span>`
+        : `<span class="loan-avatar-fallback">${escapeHtml(initial)}</span>`;
+    const statusClass = statusClassMap[loan.status] || 'loan-status-new';
+    const detailUrl = `/employee/loan/${loan.id}/detail/`;
+    const viewButton = `
+        <a href="${detailUrl}" class="loan-action-btn view" title="View details">
+            <i class="bi bi-eye"></i>
+            <span>View</span>
+        </a>`;
+    const editButton = `
+        <button class="loan-action-btn edit" type="button" onclick="openEditLoanModal(${Number(loan.id)})">
+            <i class="bi bi-pencil-square"></i>
+            <span>Edit</span>
+        </button>`;
+    const actions = ['rejected', 'disbursed', 'follow_up_pending'].includes(String(loan.status || ''))
+        ? viewButton
+        : `${viewButton}${editButton}`;
+
+    return `
+        <tr>
+            <td>${photoCell}</td>
+            <td><strong>${escapeHtml(loan.loan_id || '#' + loan.id)}</strong></td>
+            <td>${escapeHtml(loan.applicant_name || 'N/A')}</td>
+            <td><span class="loan-type-pill">${escapeHtml(loan.loan_type || 'N/A')}</span></td>
+            <td class="fw-bold text-nowrap">Rs. ${new Intl.NumberFormat('en-IN').format(loan.loan_amount || 0)}</td>
+            <td>
+                <span class="loan-status-chip ${statusClass}">
+                    ${escapeHtml(statusLabels[loan.status] || loan.status || 'Unknown')}
+                </span>
+            </td>
+            <td class="text-nowrap">${escapeHtml(loan.assigned_date || 'N/A')}</td>
+            <td><div class="loan-actions">${actions}</div></td>
+        </tr>
+    `;
+}
 
 function openEditLoanModal(loanId) {
     CURRENT_EDIT_LOAN_ID = loanId;
-    const loan = ALL_LOANS.find(l => l.id === loanId);
+    const loan = ALL_LOANS.find((item) => Number(item.id) === Number(loanId));
     if (!loan) return;
 
     document.getElementById('editLoanAmount').value = loan.loan_amount || '';
     document.getElementById('editLoanTenure').value = loan.tenure_months || '';
-    document.getElementById('editLoanType').value = (loan.loan_type || '').toLowerCase();
+    document.getElementById('editLoanType').value = String(loan.loan_type || '').toLowerCase();
     document.getElementById('editLoanRemarks').value = loan.remarks || '';
 
     const modal = new bootstrap.Modal(document.getElementById('editLoanModal'));
@@ -261,12 +505,13 @@ function applyFilters() {
     const search = document.getElementById('search-input').value.toLowerCase();
     const status = document.getElementById('status-filter').value;
 
-    const filtered = ALL_LOANS.filter(l => {
-        const name = (l.applicant_name || '').toLowerCase();
-        const id = String(l.id);
+    const filtered = ALL_LOANS.filter((loan) => {
+        const name = (loan.applicant_name || '').toLowerCase();
+        const rowId = String(loan.id || '').toLowerCase();
+        const loanId = String(loan.loan_id || '').toLowerCase();
 
-        return (!search || name.includes(search) || id.includes(search)) &&
-               (!status || l.status === status);
+        return (!search || name.includes(search) || rowId.includes(search) || loanId.includes(search)) &&
+               (!status || loan.status === status);
     });
 
     renderLoansTable(filtered);
@@ -286,7 +531,6 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 
-<!-- Edit Loan Modal -->
 <div class="modal fade" id="editLoanModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
@@ -298,11 +542,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="row g-3">
                     <div class="col-md-4">
                         <label class="form-label">Loan Amount</label>
-                        <input type="number" class="form-control" id="editLoanAmount" />
+                        <input type="number" class="form-control" id="editLoanAmount">
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">Tenure (Months)</label>
-                        <input type="number" class="form-control" id="editLoanTenure" />
+                        <input type="number" class="form-control" id="editLoanTenure">
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">Loan Type</label>
@@ -327,5 +571,4 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
     </div>
 </div>
-
 {% endblock %}

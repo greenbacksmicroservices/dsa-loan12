@@ -48,6 +48,21 @@ def _extract_subadmin_id(notes):
         return None
 
 
+SUBADMIN_TAG_PATTERN = re.compile(r'\[subadmin:\d+\]', flags=re.IGNORECASE)
+
+
+def _set_employee_under_subadmin(employee_user, subadmin_user=None):
+    profile, _ = EmployeeProfile.objects.get_or_create(user=employee_user)
+    notes = SUBADMIN_TAG_PATTERN.sub('', str(profile.notes or '')).strip()
+    notes = re.sub(r'\n{3,}', '\n\n', notes)
+    if subadmin_user:
+        tag = f"[subadmin:{subadmin_user.id}]"
+        notes = f"{notes}\n{tag}".strip() if notes else tag
+    profile.notes = notes
+    profile.save(update_fields=['notes', 'updated_at'])
+    return profile
+
+
 def _resolve_creator_info(user_obj, onboarding_payload=None, employee_profile=None):
     payload = onboarding_payload or {}
     meta = payload.get('_meta') if isinstance(payload, dict) else None
@@ -144,6 +159,18 @@ def _sync_employee_channel_partners(employee_user, channel_partner_ids, assigned
     ]
     if create_rows:
         AgentAssignment.objects.bulk_create(create_rows, ignore_conflicts=True)
+
+    Agent.objects.filter(under_employee=employee_user).exclude(id__in=valid_ids).update(under_employee=None)
+    Agent.objects.filter(id__in=valid_ids).update(under_employee=employee_user)
+
+    profile = getattr(employee_user, 'employee_profile', None)
+    subadmin_id = _extract_subadmin_id(getattr(profile, 'notes', '')) if profile else None
+    if subadmin_id:
+        subadmin = User.objects.filter(id=subadmin_id, role='subadmin', is_active=True).first()
+        if subadmin:
+            Agent.objects.filter(id__in=valid_ids).update(created_by=subadmin)
+    elif assigned_by_user and getattr(assigned_by_user, 'role', '') == 'admin':
+        Agent.objects.filter(id__in=valid_ids).update(created_by=assigned_by_user)
 
 
 @login_required(login_url='admin_login')
@@ -312,11 +339,11 @@ def api_add_employee(request):
                 'error': 'Password must be at least 6 characters'
             }, status=400)
 
-        # Check email uniqueness
-        if User.objects.filter(email=email).exists():
+        # Deleted/inactive employees do not reserve contact details.
+        if User.objects.filter(email__iexact=email, is_active=True).exists():
             return JsonResponse({
                 'success': False,
-                'error': 'Email already registered'
+                'error': 'Email already registered for an active employee'
             }, status=400)
 
         selected_subadmin = None
@@ -333,11 +360,11 @@ def api_add_employee(request):
                     'error': 'Selected partner was not found'
                 }, status=400)
 
-        # Check phone uniqueness
-        if User.objects.filter(phone=phone).exists():
+        # Check phone uniqueness against active records only.
+        if User.objects.filter(phone=phone, is_active=True).exists():
             return JsonResponse({
                 'success': False,
-                'error': 'Phone number already registered'
+                'error': 'Phone number already registered for an active employee'
             }, status=400)
         
         # Validate phone format (basic)
@@ -463,6 +490,7 @@ def api_add_employee(request):
             username=user.username,
             password=password,
             role=user.role,
+            account_id=user.employee_id,
         )
         return JsonResponse({
             'success': True,
@@ -484,6 +512,7 @@ def api_add_employee(request):
                 'pin_code': pin_code or '-',
                 'district': district or '-',
                 'created_under': created_under,
+                'assigned_subadmin_id': selected_subadmin.id if selected_subadmin else '',
                 'assigned_channel_partner_ids': channel_partner_ids,
                 'channel_partner_count': len(channel_partner_ids),
                 'total_applications': 0,
@@ -512,14 +541,34 @@ def api_update_employee(request, employee_id):
             channel_partner_ids = _parse_channel_partner_ids(
                 data.get('channel_partner_ids') if is_json else request.POST.getlist('channel_partner_ids')
             )
+        assigned_subadmin_present = 'assigned_subadmin_id' in data
+        selected_subadmin = None
+        if assigned_subadmin_present:
+            assigned_subadmin_id = str(data.get('assigned_subadmin_id', '') or '').strip()
+            if assigned_subadmin_id:
+                try:
+                    selected_subadmin = User.objects.get(
+                        id=int(assigned_subadmin_id),
+                        role='subadmin',
+                        is_active=True,
+                    )
+                except (TypeError, ValueError, User.DoesNotExist):
+                    return JsonResponse({
+                        'success': False,
+                        'error': 'Selected partner was not found'
+                    }, status=400)
         
         # Update User fields
         if 'email' in data:
             # Check email uniqueness (excluding current user)
-            if User.objects.filter(email=data['email']).exclude(id=user.id).exists():
+            if (
+                User.objects.filter(email__iexact=data['email'], is_active=True)
+                .exclude(id=user.id)
+                .exists()
+            ):
                 return JsonResponse({
                     'success': False,
-                    'error': 'Email already exists'
+                    'error': 'Email already exists for an active employee'
                 }, status=400)
             user.email = data['email']
         
@@ -529,6 +578,11 @@ def api_update_employee(request, employee_id):
             user.last_name = full_name[1] if len(full_name) > 1 else ''
         
         if 'phone' in data:
+            if User.objects.filter(phone=data['phone'], is_active=True).exclude(id=user.id).exists():
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Phone number already exists for an active employee'
+                }, status=400)
             user.phone = data['phone']
         
         if 'address' in data:
@@ -556,6 +610,8 @@ def api_update_employee(request, employee_id):
 
         if channel_partner_ids is not None:
             _sync_employee_channel_partners(user, channel_partner_ids, assigned_by_user=request.user)
+        if assigned_subadmin_present:
+            _set_employee_under_subadmin(user, selected_subadmin)
         
         # Update EmployeeProfile
         try:
@@ -571,6 +627,11 @@ def api_update_employee(request, employee_id):
                 employee_role=data.get('role', 'loan_processor'),
                 notes=data.get('notes', ''),
             )
+
+        if assigned_subadmin_present:
+            _set_employee_under_subadmin(user, selected_subadmin)
+            if channel_partner_ids is not None:
+                _sync_employee_channel_partners(user, channel_partner_ids, assigned_by_user=request.user)
         
         return JsonResponse({
             'success': True,
@@ -761,6 +822,7 @@ def api_get_employee(request, employee_id):
             onboarding = user.onboarding_profile.data or {}
         documents = collect_user_document_payload(user)
         creator_info = _resolve_creator_info(user, onboarding, profile)
+        assigned_subadmin_id = _extract_subadmin_id(getattr(profile, 'notes', '')) if profile else None
         city, pin_code, district = _extract_location(onboarding, user)
         section1 = onboarding.get('section1') if isinstance(onboarding, dict) else {}
         perm = (section1 or {}).get('permanent_address') or {}
@@ -820,6 +882,7 @@ def api_get_employee(request, employee_id):
                 'created_under': creator_info['display'],
                 'created_by_role': creator_info['role'],
                 'created_by_name': creator_info['name'],
+                'assigned_subadmin_id': assigned_subadmin_id or '',
                 'assigned_channel_partners': assigned_channel_partners,
                 'assigned_channel_partner_ids': assigned_channel_partner_ids,
             }

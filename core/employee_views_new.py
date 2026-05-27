@@ -12,7 +12,7 @@ Uses Loan model as single source of truth
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods, require_POST, require_GET
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.urls import reverse
 from django.db.models import Sum, Count, Q, F
 from django.contrib import messages
@@ -22,10 +22,11 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 import json
+import csv
 from decimal import Decimal
 from datetime import timedelta
 
-from .models import User, Loan, LoanApplication, Agent, ActivityLog, LoanDocument
+from .models import User, Loan, LoanApplication, Agent, ActivityLog, LoanDocument, AgentAssignment
 from .followup_utils import auto_move_overdue_to_follow_up
 from .loan_sync import find_related_loan_application
 from .id_utils import generate_agent_sequence_id
@@ -67,25 +68,43 @@ def employee_dashboard_stats(request):
 
         # Get all loans assigned to this employee
         loans = Loan.objects.filter(assigned_employee=request.user)
-        follow_up_pending_marker = 'revert remark '
-
-        def is_follow_up_pending(loan_obj):
-            if loan_obj.status not in ['new_entry', 'waiting']:
-                return False
-            if follow_up_pending_marker in str(loan_obj.remarks or '').lower():
-                return True
-            related_app = find_related_loan_application(loan_obj)
-            return follow_up_pending_marker in str(getattr(related_app, 'approval_notes', '') or '').lower()
+        loans_list = list(loans)
+        effective_statuses = [_employee_effective_status_key(loan) for loan in loans_list]
+        related_app_ids = {
+            related_app.id
+            for related_app in (find_related_loan_application(loan) for loan in loans_list)
+            if related_app
+        }
+        app_status_map = {
+            'New Entry': 'new_entry',
+            'Waiting for Processing': 'waiting',
+            'Required Follow-up': 'follow_up',
+            'Approved': 'approved',
+            'Rejected': 'rejected',
+            'Disbursed': 'disbursed',
+        }
+        app_statuses = []
+        for app in LoanApplication.objects.filter(assigned_employee=request.user).exclude(id__in=related_app_ids):
+            app_key = app_status_map.get(getattr(app, 'status', ''), '')
+            if app_key in ['new_entry', 'waiting'] and FOLLOW_UP_PENDING_MARKER in str(getattr(app, 'approval_notes', '') or '').lower():
+                app_key = 'follow_up_pending'
+            elif app_key == 'waiting' and application_has_updated_documents(app):
+                app_key = UPDATED_DOCUMENT_STATUS_KEY
+            if app_key:
+                app_statuses.append(app_key)
+        effective_statuses.extend(app_statuses)
         
         # Calculate stats
-        total_loans = loans.count()
-        waiting_count = sum(1 for loan in loans if loan.status == 'waiting' and not is_follow_up_pending(loan))
-        follow_up_count = loans.filter(status='follow_up').count()
-        follow_up_pending_count = sum(1 for loan in loans if is_follow_up_pending(loan))
+        total_loans = len(effective_statuses)
+        new_entry_count = effective_statuses.count('new_entry')
+        waiting_count = effective_statuses.count('waiting')
+        updated_document_count = effective_statuses.count(UPDATED_DOCUMENT_STATUS_KEY)
+        follow_up_count = effective_statuses.count('follow_up')
+        follow_up_pending_count = effective_statuses.count('follow_up_pending')
         in_processing = waiting_count + follow_up_count
-        approved = loans.filter(status='approved').count()
-        rejected = loans.filter(status='rejected').count()
-        disbursed = loans.filter(status='disbursed').count()
+        approved = effective_statuses.count('approved')
+        rejected = effective_statuses.count('rejected')
+        disbursed = effective_statuses.count('disbursed')
         
         # Calculate totals
         total_amount = loans.aggregate(Sum('loan_amount'))['loan_amount__sum'] or Decimal('0')
@@ -95,8 +114,10 @@ def employee_dashboard_stats(request):
         return Response({
             'success': True,
             'total_loans': total_loans,
+            'new_entry': new_entry_count,
             'in_processing': in_processing,
             'waiting': waiting_count,
+            'updated_document': updated_document_count,
             'follow_up': follow_up_count,
             'follow_up_pending': follow_up_pending_count,
             'approved': approved,
@@ -831,40 +852,84 @@ def employee_new_entry_requests_api(request):
 # EMPLOYEE LOAN DETAIL PAGE
 # ============================================================
 
-def _employee_has_assigned_loan(user, loan_id):
+def _normalize_detail_source(raw_source):
+    source = str(raw_source or '').strip().lower()
+    if source in ['application', 'loan_application', 'app']:
+        return 'application'
+    if source in ['legacy', 'loan']:
+        return 'legacy'
+    return ''
+
+
+def _employee_has_assigned_loan(user, loan_id, source=''):
     """Check assignment in both LoanApplication and legacy Loan tables."""
-    return (
-        LoanApplication.objects.filter(id=loan_id, assigned_employee=user).exists()
-        or Loan.objects.filter(id=loan_id, assigned_employee=user).exists()
-    )
+    if source == 'application':
+        return LoanApplication.objects.filter(id=loan_id, assigned_employee=user).exists()
+    if source == 'legacy':
+        return Loan.objects.filter(id=loan_id, assigned_employee=user).exists()
+    return _employee_has_assigned_loan(user, loan_id, 'application') or _employee_has_assigned_loan(user, loan_id, 'legacy')
 
 
-def _user_can_open_loan_detail(user, loan_id):
+def _subadmin_has_workflow_application(user, loan_id):
+    try:
+        from .subadmin_views import _subadmin_managed_agents_qs, _subadmin_managed_employees_qs
+
+        managed_employee_ids = list(_subadmin_managed_employees_qs(user).values_list('id', flat=True))
+        managed_agent_ids = list(_subadmin_managed_agents_qs(user).values_list('id', flat=True))
+        filters = Q(assigned_by=user)
+        if managed_employee_ids:
+            filters |= Q(assigned_employee_id__in=managed_employee_ids)
+        if managed_agent_ids:
+            filters |= Q(assigned_agent_id__in=managed_agent_ids)
+        return LoanApplication.objects.filter(filters, id=loan_id).exists()
+    except Exception:
+        return LoanApplication.objects.filter(id=loan_id, assigned_by=user).exists()
+
+
+def _user_can_open_loan_detail(user, loan_id, source=''):
+    source = _normalize_detail_source(source)
     role = getattr(user, 'role', '')
     if role == 'employee':
-        return _employee_has_assigned_loan(user, loan_id)
+        return _employee_has_assigned_loan(user, loan_id, source)
     if role == 'agent':
         try:
             agent_profile = Agent.objects.get(user=user)
         except Agent.DoesNotExist:
             return False
-        return (
-            LoanApplication.objects.filter(id=loan_id, assigned_agent=agent_profile).exists()
-            or Loan.objects.filter(id=loan_id, assigned_agent=agent_profile).exists()
-        )
+        if source == 'application':
+            return LoanApplication.objects.filter(Q(assigned_agent=agent_profile) | Q(assigned_by=user), id=loan_id).exists()
+        if source == 'legacy':
+            return Loan.objects.filter(id=loan_id, assigned_agent=agent_profile).exists()
+        return _user_can_open_loan_detail(user, loan_id, 'application') or _user_can_open_loan_detail(user, loan_id, 'legacy')
     if role == 'admin':
-        return LoanApplication.objects.filter(id=loan_id).exists() or Loan.objects.filter(id=loan_id).exists()
+        if source == 'application':
+            return LoanApplication.objects.filter(id=loan_id).exists()
+        if source == 'legacy':
+            return Loan.objects.filter(id=loan_id).exists()
+        return Loan.objects.filter(id=loan_id).exists() or LoanApplication.objects.filter(id=loan_id).exists()
     if role == 'subadmin':
         try:
             from .subadmin_views import _subadmin_scoped_loans_qs
 
-            return _subadmin_scoped_loans_qs(user).filter(id=loan_id).exists() or LoanApplication.objects.filter(
-                id=loan_id,
-                assigned_by=user,
-            ).exists()
+            if source == 'application':
+                return _subadmin_has_workflow_application(user, loan_id)
+            if source == 'legacy':
+                return _subadmin_scoped_loans_qs(user).filter(id=loan_id).exists()
+            return _subadmin_scoped_loans_qs(user).filter(id=loan_id).exists() or _subadmin_has_workflow_application(user, loan_id)
         except Exception:
             return False
     return False
+
+
+def _resolve_loan_detail_source(user, loan_id, requested_source=''):
+    source = _normalize_detail_source(requested_source)
+    if source and _user_can_open_loan_detail(user, loan_id, source):
+        return source
+    if _user_can_open_loan_detail(user, loan_id, 'legacy'):
+        return 'legacy'
+    if _user_can_open_loan_detail(user, loan_id, 'application'):
+        return 'application'
+    return source
 
 
 def _safe_back_path(raw_path):
@@ -914,7 +979,13 @@ def employee_loan_detail_page(request, loan_id):
     if request.user.role not in ['employee', 'agent', 'admin', 'subadmin']:
         return redirect('dashboard')
 
-    if not _user_can_open_loan_detail(request.user, loan_id):
+    entity_type = _resolve_loan_detail_source(
+        request.user,
+        loan_id,
+        request.GET.get('entity_type') or request.GET.get('source'),
+    )
+
+    if not entity_type or not _user_can_open_loan_detail(request.user, loan_id, entity_type):
         messages.error(request, 'Loan not found or access denied')
         if request.user.role == 'admin':
             return redirect('admin_all_loans')
@@ -926,6 +997,7 @@ def employee_loan_detail_page(request, loan_id):
 
     context = {
         'loan_id': loan_id,
+        'entity_type': entity_type,
         **_loan_detail_layout_context(request),
     }
     return render(request, 'core/employee/loan_detail.html', context)
@@ -938,7 +1010,13 @@ def employee_bank_processing_page(request, loan_id):
     if request.user.role not in ['employee', 'agent', 'admin', 'subadmin']:
         return redirect('dashboard')
 
-    if not _user_can_open_loan_detail(request.user, loan_id):
+    entity_type = _resolve_loan_detail_source(
+        request.user,
+        loan_id,
+        request.GET.get('entity_type') or request.GET.get('source'),
+    )
+
+    if not entity_type or not _user_can_open_loan_detail(request.user, loan_id, entity_type):
         messages.error(request, 'Loan not found or access denied')
         if request.user.role == 'admin':
             return redirect('admin_all_loans')
@@ -950,6 +1028,7 @@ def employee_bank_processing_page(request, loan_id):
 
     context = {
         'loan_id': loan_id,
+        'entity_type': entity_type,
         'is_bank_processing_page': True,
         **_loan_detail_layout_context(request),
     }
@@ -1246,6 +1325,103 @@ def employee_my_agents_page(request):
     return render(request, 'core/employee/my_agents.html')
 
 
+@login_required
+@require_http_methods(["GET"])
+def employee_add_channel_partner_page(request):
+    """Standalone page for employee-created channel partners."""
+    if request.user.role != 'employee':
+        return redirect('dashboard')
+
+    return render(request, 'core/employee/add_channel_partner.html')
+
+
+def _employee_report_queryset(user):
+    return Loan.objects.filter(
+        Q(assigned_employee=user) | Q(created_by=user)
+    ).select_related('assigned_agent', 'assigned_employee', 'created_by').order_by('-updated_at', '-created_at').distinct()
+
+
+def _employee_report_row(loan):
+    status_key = _employee_effective_status_key(loan)
+    return {
+        'id': loan.id,
+        'loan_id': loan.user_id or f'LOAN-{loan.id:06d}',
+        'applicant_name': loan.full_name or '-',
+        'mobile': loan.mobile_number or '-',
+        'email': loan.email or '-',
+        'loan_type': loan.get_loan_type_display() if hasattr(loan, 'get_loan_type_display') else (loan.loan_type or '-'),
+        'loan_amount': float(loan.loan_amount or 0),
+        'status': status_key,
+        'status_display': _employee_status_label(status_key),
+        'channel_partner': loan.assigned_agent.name if loan.assigned_agent else '-',
+        'created_by': _display_user(loan.created_by, 'System'),
+        'created_at': loan.created_at.strftime('%Y-%m-%d %H:%M') if loan.created_at else '-',
+        'updated_at': loan.updated_at.strftime('%Y-%m-%d %H:%M') if loan.updated_at else '-',
+        'view_url': reverse('employee_loan_detail', kwargs={'loan_id': loan.id}),
+    }
+
+
+def _write_employee_report_csv(rows, filename):
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    writer = csv.writer(response)
+    writer.writerow([
+        'Loan ID',
+        'Applicant Name',
+        'Mobile',
+        'Email',
+        'Loan Type',
+        'Loan Amount',
+        'Status',
+        'Channel Partner',
+        'Created By',
+        'Created At',
+        'Updated At',
+    ])
+    for row in rows:
+        writer.writerow([
+            row['loan_id'],
+            row['applicant_name'],
+            row['mobile'],
+            row['email'],
+            row['loan_type'],
+            row['loan_amount'],
+            row['status_display'],
+            row['channel_partner'],
+            row['created_by'],
+            row['created_at'],
+            row['updated_at'],
+        ])
+    return response
+
+
+@login_required
+@require_http_methods(["GET"])
+def employee_reports_page(request):
+    """Employee reports table with row and full-table downloads."""
+    if request.user.role != 'employee':
+        return redirect('dashboard')
+
+    rows = [_employee_report_row(loan) for loan in _employee_report_queryset(request.user)]
+    loan_id = request.GET.get('loan_id')
+    if request.GET.get('download') == 'application' and loan_id:
+        selected_rows = [row for row in rows if str(row['id']) == str(loan_id)]
+        return _write_employee_report_csv(selected_rows, f'employee-application-{loan_id}.csv')
+    if request.GET.get('download') == 'table':
+        return _write_employee_report_csv(rows, 'employee-reports.csv')
+
+    status_summary = {
+        'total': len(rows),
+        'approved': sum(1 for row in rows if row['status'] == 'approved'),
+        'rejected': sum(1 for row in rows if row['status'] == 'rejected'),
+        'disbursed': sum(1 for row in rows if row['status'] == 'disbursed'),
+    }
+    return render(request, 'core/employee/reports.html', {
+        'rows': rows,
+        'status_summary': status_summary,
+    })
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def employee_my_agents_api(request):
@@ -1258,7 +1434,9 @@ def employee_my_agents_api(request):
         status_filter = str(request.GET.get('status') or '').strip().lower()
 
         agents_qs = Agent.objects.filter(
-            Q(created_by=request.user) | Q(under_employee=request.user)
+            Q(created_by=request.user) |
+            Q(under_employee=request.user) |
+            Q(employee_assignments__employee=request.user)
         ).select_related('user', 'created_by', 'under_employee').order_by('-created_at').distinct()
 
         if search_query:
@@ -1342,7 +1520,11 @@ def employee_agent_detail_api(request, agent_id):
     try:
         agent = get_object_or_404(
             Agent.objects.select_related('user', 'created_by', 'under_employee'),
-            Q(id=agent_id) & (Q(created_by=request.user) | Q(under_employee=request.user))
+            Q(id=agent_id) & (
+                Q(created_by=request.user) |
+                Q(under_employee=request.user) |
+                Q(employee_assignments__employee=request.user)
+            )
         )
         payload = _build_employee_agent_payload(request.user, agent, include_customers=True)
         return Response({'success': True, **payload}, status=status.HTTP_200_OK)
@@ -1393,11 +1575,23 @@ def employee_add_agent_api(request):
                 'error': 'Invalid phone number. Must be at least 10 digits'
             }, status=status.HTTP_400_BAD_REQUEST)
         
-        # Check if email already exists
-        if User.objects.filter(email=email).exists():
+        # Reuse contact details from deleted/blocked accounts, but block active duplicates.
+        if (
+            User.objects.filter(email__iexact=email, is_active=True).exists()
+            or Agent.objects.filter(email__iexact=email, status='active').exists()
+        ):
             return Response({
                 'success': False,
-                'error': 'Email already exists'
+                'error': 'Email already exists for an active channel partner'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        if (
+            User.objects.filter(phone=phone, is_active=True).exists()
+            or Agent.objects.filter(phone=phone, status='active').exists()
+        ):
+            return Response({
+                'success': False,
+                'error': 'Phone number already exists for an active channel partner'
             }, status=status.HTTP_400_BAD_REQUEST)
         
         # Create User account for agent
@@ -1426,7 +1620,7 @@ def employee_add_agent_api(request):
             user.save(update_fields=['profile_photo', 'updated_at'])
         
         # Create Agent profile
-        generated_agent_id = generate_agent_sequence_id(is_sub_channel_partner=True)
+        generated_agent_id = generate_agent_sequence_id(is_sub_channel_partner=False)
         agent = Agent.objects.create(
             user=user,
             agent_id=generated_agent_id,
@@ -1443,6 +1637,12 @@ def employee_add_agent_api(request):
             under_employee=request.user,
             profile_photo=photo if photo else None,
         )
+
+        AgentAssignment.objects.get_or_create(
+            agent=agent,
+            employee=request.user,
+            defaults={'assigned_by': request.user},
+        )
         
         # Log activity
         ActivityLog.objects.create(
@@ -1454,7 +1654,7 @@ def employee_add_agent_api(request):
         
         return Response({
             'success': True,
-            'message': f'Agent {name} created successfully',
+            'message': f'Channel partner {name} created successfully',
             'agent_id': agent.id,
             'agent_code': generated_agent_id,
         }, status=status.HTTP_201_CREATED)
@@ -1490,8 +1690,30 @@ def employee_update_agent_api(request, agent_id):
         if name:
             agent.name = name
         if phone:
+            phone_exists = (
+                User.objects.filter(phone=phone, is_active=True)
+                .exclude(id=getattr(agent.user, 'id', None))
+                .exists()
+                or Agent.objects.filter(phone=phone, status='active').exclude(id=agent.id).exists()
+            )
+            if phone_exists:
+                return Response({
+                    'success': False,
+                    'error': 'Phone number already exists for an active channel partner'
+                }, status=status.HTTP_400_BAD_REQUEST)
             agent.phone = phone
         if email:
+            email_exists = (
+                User.objects.filter(email__iexact=email, is_active=True)
+                .exclude(id=getattr(agent.user, 'id', None))
+                .exists()
+                or Agent.objects.filter(email__iexact=email, status='active').exclude(id=agent.id).exists()
+            )
+            if email_exists:
+                return Response({
+                    'success': False,
+                    'error': 'Email already exists for an active channel partner'
+                }, status=status.HTTP_400_BAD_REQUEST)
             agent.email = email
         if status_value:
             agent.status = status_value
@@ -1553,7 +1775,7 @@ def employee_delete_agent_api(request, agent_id):
 
         return Response({
             'success': True,
-            'message': 'Agent removed successfully'
+            'message': 'Channel partner removed successfully'
         }, status=status.HTTP_200_OK)
 
     except Exception as e:
@@ -1681,7 +1903,7 @@ def employee_settings(request):
         return redirect('dashboard')
     
     context = {'user': request.user}
-    return render(request, 'core/employee/settings.html', context)
+    return render(request, 'core/shared/panel_settings.html', context)
 
 
 @api_view(['GET'])

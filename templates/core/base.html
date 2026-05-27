@@ -210,6 +210,23 @@
             box-shadow: 2px 0 12px rgba(15, 23, 42, 0.35);
         }
 
+        body.employee-theme .sidebar::after,
+        body.agent-theme .sidebar::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(circle at 20% 12%, rgba(59, 130, 246, 0.18), transparent 42%),
+                radial-gradient(circle at 85% 85%, rgba(16, 185, 129, 0.12), transparent 46%);
+            pointer-events: none;
+        }
+
+        body.employee-theme .sidebar > *,
+        body.agent-theme .sidebar > * {
+            position: relative;
+            z-index: 1;
+        }
+
         body.employee-theme .sidebar-header {
             padding: 20px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.08);
@@ -586,7 +603,7 @@
             align-items: center;
             gap: 16px;
             position: relative;
-            padding-left: 18px;
+            padding-left: 0;
         }
 
         .topbar-title-wrap {
@@ -606,6 +623,38 @@
             margin-top: 2px;
         }
 
+        .topbar-relations {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 6px;
+        }
+
+        .topbar-relation-chip {
+            display: inline-flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 6px;
+            max-width: 100%;
+            padding: 5px 9px;
+            border-radius: 999px;
+            background: #f0fdfa;
+            border: 1px solid #99f6e4;
+            color: #115e59;
+            font-size: 11px;
+            font-weight: 700;
+            line-height: 1.25;
+        }
+
+        .topbar-relation-chip strong {
+            color: #0f766e;
+        }
+
+        .topbar-relation-chip span {
+            color: #475569;
+        }
+
         .sidebar-toggle-btn {
             border: 1px solid #d1d5db;
             border-radius: 14px;
@@ -618,10 +667,11 @@
             justify-content: center;
             cursor: pointer;
             box-shadow: 0 12px 24px rgba(15, 118, 110, 0.14);
-            position: absolute;
-            left: -46px;
-            top: 50%;
-            transform: translateY(-50%);
+            position: static;
+            left: auto;
+            top: auto;
+            transform: none;
+            flex: 0 0 48px;
             transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease, background 0.25s ease;
         }
 
@@ -658,7 +708,7 @@
         .sidebar-toggle-btn:hover {
             background: linear-gradient(145deg, #f0fdfa 0%, #ccfbf1 100%);
             border-color: #14b8a6;
-            transform: translate(-2px, -50%);
+            transform: translateY(-1px);
             box-shadow: 0 16px 30px rgba(15, 118, 110, 0.22);
         }
 
@@ -854,6 +904,17 @@
 
         body.dark-mode .topbar-menu .dropdown-item:hover {
             background: #111827;
+        }
+
+        body.dark-mode .topbar-relation-chip {
+            background: #0f2f2d;
+            border-color: #115e59;
+            color: #ccfbf1;
+        }
+
+        body.dark-mode .topbar-relation-chip strong,
+        body.dark-mode .topbar-relation-chip span {
+            color: #ccfbf1;
         }
 
         body.dark-mode .notification-item {
@@ -1890,6 +1951,9 @@
     <aside class="sidebar" id="sidebar">
         <!-- Branding Section -->
         <div class="sidebar-header">
+            {% if user.role == 'employee' or user.role == 'agent' %}
+            <div class="brand-badge">DC</div>
+            {% endif %}
             <div class="brand-text">{{ sidebar_brand_text|default:"DREAM CAPITAL" }}</div>
         </div>
 
@@ -1909,10 +1973,8 @@
                             </div>
                         {% endif %}
                     </div>
-                    <a href="{% url 'agent_profile' %}" class="text-decoration-none">
-                        <p class="profile-name mb-1">{{ agent_profile.name }}</p>
-                        <p class="profile-id-number">ID: {{ agent_profile.agent_id|default:"N/A" }}</p>
-                    </a>
+                    <p class="profile-name mb-1">{{ agent_profile.name }}</p>
+                    <p class="profile-id-number">ID: {{ sidebar_user_code|default:agent_profile.agent_id|default:"N/A" }}</p>
                     <p class="profile-role text-muted">{{ sidebar_profile_label|default:"DREAM CAPITAL" }}</p>
                 </div>
             {% elif user.role == 'employee' %}
@@ -1927,6 +1989,7 @@
                     </div>
                     <div class="employee-profile-name">{{ user.get_full_name|default:user.username }}</div>
                     <div class="employee-profile-role">{{ sidebar_profile_label|default:"DREAM CAPITAL" }}</div>
+                    <div class="employee-profile-email">ID: {{ sidebar_user_code|default:"N/A" }}</div>
                     <div class="employee-profile-email">{{ user.email|default:"employee@example.com" }}</div>
                 </div>
             {% else %}
@@ -1937,6 +2000,9 @@
                 <div class="profile-info">
                     <p class="profile-name">{{ user.first_name|default:user.username }}</p>
                     <p class="profile-role">{{ user.get_role_display }}</p>
+                    {% if sidebar_user_code %}
+                    <p class="profile-role">ID: {{ sidebar_user_code }}</p>
+                    {% endif %}
                 </div>
             {% endif %}
         </div>
@@ -2031,13 +2097,6 @@
             </li>
             <li class="sidebar-divider"></li>
             <li>
-                <a href="{% url 'agent_profile' %}" class="{% if request.resolver_match.url_name == 'agent_profile' %}active{% endif %}">
-                    <i class="bi bi-person-circle"></i>
-                    <span>My Profile</span>
-                </a>
-            </li>
-            <li class="sidebar-divider"></li>
-            <li>
                 <a href="{% url 'logout' %}" style="color: #ef4444;">
                     <i class="bi bi-box-arrow-right"></i>
                     <span>Logout</span>
@@ -2068,18 +2127,18 @@
             </li>
             <li class="sidebar-divider"></li>
             <li>
-                <a href="/employee/my-agents/" class="{% if request.resolver_match.url_name == 'employee_my_agents_page' %}active{% endif %}">
+                <a href="/employee/my-agents/" class="{% if request.resolver_match.url_name == 'employee_my_agents_page' or request.resolver_match.url_name == 'employee_add_channel_partner' %}active{% endif %}">
                     <i class="bi bi-people"></i>
                     <span>My Channel Partners</span>
                 </a>
             </li>
-            <li class="sidebar-divider"></li>
             <li>
-                <a href="/employee/profile/" class="{% if request.resolver_match.url_name == 'employee_profile' %}active{% endif %}">
-                    <i class="bi bi-person-circle"></i>
-                    <span>My Profile</span>
+                <a href="{% url 'employee_reports' %}" class="{% if request.resolver_match.url_name == 'employee_reports' %}active{% endif %}">
+                    <i class="bi bi-file-earmark-bar-graph"></i>
+                    <span>Reports</span>
                 </a>
             </li>
+            <li class="sidebar-divider"></li>
             <li>
                 <a href="/employee/settings/" class="{% if request.resolver_match.url_name == 'employee_settings' %}active{% endif %}">
                     <i class="bi bi-gear"></i>
@@ -2162,7 +2221,18 @@
                 <div class="topbar-title-wrap">
                     <div class="topbar-title">{{ sidebar_brand_text|default:"DREAM CAPITAL" }}</div>
                     {% if user.role == 'agent' or user.role == 'employee' %}
-                        {% if panel_hierarchy_line %}
+                        {% if panel_hierarchy_items %}
+                            <div class="topbar-subtitle topbar-relations">
+                                {% for item in panel_hierarchy_items %}
+                                    <span class="topbar-relation-chip">
+                                        <strong>{{ item.label }}:</strong>
+                                        {{ item.name|default:"-" }}
+                                        <span>Phone: {{ item.phone|default:"-" }}</span>
+                                        <span>Mail ID: {{ item.email|default:"-" }}</span>
+                                    </span>
+                                {% endfor %}
+                            </div>
+                        {% elif panel_hierarchy_line %}
                             <div class="topbar-subtitle">{{ panel_hierarchy_line }}</div>
                         {% endif %}
                     {% elif user.role == 'subadmin' %}
@@ -2211,10 +2281,8 @@
                         </li>
                         <li><hr class="dropdown-divider" style="margin: 6px 0;"></li>
                         {% if user.role == 'employee' %}
-                            <li><a class="dropdown-item" href="/employee/profile/"><i class="bi bi-person"></i> My Profile</a></li>
                             <li><a class="dropdown-item" href="/employee/settings/"><i class="bi bi-gear"></i> Settings</a></li>
                         {% elif user.role == 'agent' %}
-                            <li><a class="dropdown-item" href="/agent/profile/"><i class="bi bi-person"></i> My Profile</a></li>
                             <li><a class="dropdown-item" href="/agent/settings/"><i class="bi bi-gear"></i> Settings</a></li>
                         {% else %}
                             <li><a class="dropdown-item" href="/admin/profile/"><i class="bi bi-person"></i> My Profile</a></li>

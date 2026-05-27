@@ -6,7 +6,7 @@ from .models import Agent, User
 
 
 def _next_serial(existing_values, prefix, fallback_serials=None):
-    max_serial = -1
+    max_serial = 0
     for value in existing_values:
         raw = str(value or "").strip().upper()
         if not raw.startswith(prefix):
@@ -18,14 +18,14 @@ def _next_serial(existing_values, prefix, fallback_serials=None):
             serial = int(match.group(1))
         except (TypeError, ValueError):
             continue
-        if serial > max_serial:
+        if serial > 0 and serial > max_serial:
             max_serial = serial
     for serial in fallback_serials or []:
         try:
             parsed = int(serial)
         except (TypeError, ValueError):
             continue
-        if parsed > max_serial:
+        if parsed > 0 and parsed > max_serial:
             max_serial = parsed
     return max_serial + 1
 
@@ -64,7 +64,7 @@ def generate_user_sequence_id(role):
     )
     values = [row.get("employee_id") for row in rows if row.get("employee_id")]
     fallback_serials = [row.get("id") for row in rows if not row.get("employee_id")]
-    serial = _next_serial(values, prefix, fallback_serials=fallback_serials)
+    serial = max(1, _next_serial(values, prefix, fallback_serials=fallback_serials))
     return format_sequence_id(prefix, serial)
 
 
@@ -77,8 +77,8 @@ def generate_agent_sequence_id(is_sub_channel_partner=False):
     )
     values = [row.get("agent_id") for row in rows if row.get("agent_id")]
     if is_sub_channel_partner:
-        fallback_serials = [row.get("id") for row in rows if not row.get("agent_id") and row.get("created_by__role") == "subadmin"]
+        fallback_serials = [row.get("id") for row in rows if not row.get("agent_id") and row.get("created_by__role") == "agent"]
     else:
-        fallback_serials = [row.get("id") for row in rows if not row.get("agent_id") and row.get("created_by__role") != "subadmin"]
-    serial = _next_serial(values, prefix, fallback_serials=fallback_serials)
+        fallback_serials = [row.get("id") for row in rows if not row.get("agent_id") and row.get("created_by__role") != "agent"]
+    serial = max(1, _next_serial(values, prefix, fallback_serials=fallback_serials))
     return format_sequence_id(prefix, serial)

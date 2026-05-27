@@ -303,7 +303,7 @@
             align-items: center;
             gap: 16px;
             position: relative;
-            padding-left: 18px;
+            padding-left: 0;
         }
 
         .sidebar-toggle-btn {
@@ -318,10 +318,11 @@
             justify-content: center;
             cursor: pointer;
             box-shadow: 0 12px 24px rgba(15, 118, 110, 0.14);
-            position: absolute;
-            left: -46px;
-            top: 50%;
-            transform: translateY(-50%);
+            position: static;
+            left: auto;
+            top: auto;
+            transform: none;
+            flex: 0 0 48px;
             transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease, background 0.25s ease;
         }
 
@@ -358,7 +359,7 @@
         .sidebar-toggle-btn:hover {
             background: linear-gradient(145deg, #f0fdfa 0%, #ccfbf1 100%);
             border-color: #14b8a6;
-            transform: translate(-2px, -50%);
+            transform: translateY(-1px);
             box-shadow: 0 16px 30px rgba(15, 118, 110, 0.22);
         }
 
@@ -772,6 +773,7 @@
                 </div>
                 <div class="profile-name">{{ user.get_full_name|default:user.username }}</div>
                 <div class="profile-role">{{ sidebar_profile_label|default:"DREAM CAPITAL" }}</div>
+                <div class="profile-email">ID: {{ sidebar_user_code|default:"N/A" }}</div>
                 <div class="profile-email">{{ user.email|default:"subadmin@gmail.com" }}</div>
             </div>
             

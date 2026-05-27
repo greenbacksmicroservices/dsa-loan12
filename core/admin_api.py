@@ -17,7 +17,7 @@ from rest_framework.response import Response
 import json
 import re
 
-from .models import User, Loan, EmployeeProfile, LoanApplication, Agent, UserOnboardingProfile, UserOnboardingDocument
+from .models import User, Loan, EmployeeProfile, LoanApplication, Agent, AgentAssignment, UserOnboardingProfile, UserOnboardingDocument
 from .decorators import admin_required
 from .onboarding_utils import collect_onboarding_payload, collect_onboarding_documents, collect_user_document_payload
 from .id_utils import generate_agent_sequence_id
@@ -196,10 +196,29 @@ def api_get_user_profile(request):
             'address': user.address or '',
             'gender': user.gender or 'Other',
             'role': user.get_role_display(),
-            'photo_url': user.profile_photo.url if user.profile_photo else '/static/images/default-avatar.png',
+            'role_key': user.role,
+            'profile_code': user.employee_id or '',
+            'photo_url': user.profile_photo.url if user.profile_photo else '/static/images/default-avatar.svg',
             'is_active': user.is_active,
             'created_at': user.created_at.isoformat() if hasattr(user, 'created_at') else None,
         }
+
+        if user.role == 'agent' and hasattr(user, 'agent_profile') and user.agent_profile:
+            agent_profile = user.agent_profile
+            profile_data.update({
+                'profile_code': agent_profile.agent_id or '',
+                'first_name': user.first_name or (agent_profile.name.split(' ', 1)[0] if agent_profile.name else ''),
+                'last_name': user.last_name,
+                'email': user.email or agent_profile.email or '',
+                'phone': user.phone or agent_profile.phone or '',
+                'address': user.address or agent_profile.address or '',
+                'gender': user.gender or agent_profile.gender or 'Other',
+                'photo_url': (
+                    user.profile_photo.url if user.profile_photo else (
+                        agent_profile.profile_photo.url if agent_profile.profile_photo else '/static/images/default-avatar.svg'
+                    )
+                ),
+            })
         
         # Add employee profile info if employee
         if hasattr(user, 'employee_profile') and user.role == 'employee':
@@ -234,13 +253,22 @@ def api_update_user_profile(request):
     try:
         user = request.user
         data = json.loads(request.body)
+        contact_changed = (
+            ('email' in data and str(data.get('email') or '').strip() != (user.email or ''))
+            or ('phone' in data and str(data.get('phone') or '').strip() != (user.phone or ''))
+        )
+        if user.role != 'admin' and contact_changed:
+            return JsonResponse({
+                'success': False,
+                'error': 'Mail ID and phone number can be updated by admin only.'
+            }, status=403)
         
         # Update basic user info
         if 'first_name' in data:
             user.first_name = data['first_name']
         if 'last_name' in data:
             user.last_name = data['last_name']
-        if 'phone' in data:
+        if user.role == 'admin' and 'phone' in data:
             user.phone = data['phone']
         if 'address' in data:
             user.address = data['address']
@@ -248,8 +276,8 @@ def api_update_user_profile(request):
             user.gender = data['gender']
         
         # Email change (check uniqueness)
-        if 'email' in data:
-            if User.objects.filter(email=data['email']).exclude(id=user.id).exists():
+        if user.role == 'admin' and 'email' in data:
+            if User.objects.filter(email__iexact=data['email'], is_active=True).exclude(id=user.id).exists():
                 return JsonResponse({
                     'success': False,
                     'error': 'Email already in use'
@@ -257,6 +285,17 @@ def api_update_user_profile(request):
             user.email = data['email']
         
         user.save()
+
+        if user.role == 'agent' and hasattr(user, 'agent_profile') and user.agent_profile:
+            agent_profile = user.agent_profile
+            full_name = " ".join(part for part in [user.first_name, user.last_name] if part).strip()
+            if full_name:
+                agent_profile.name = full_name
+            agent_profile.email = user.email
+            agent_profile.phone = user.phone or agent_profile.phone
+            agent_profile.address = user.address
+            agent_profile.gender = user.gender
+            agent_profile.save(update_fields=['name', 'email', 'phone', 'address', 'gender', 'updated_at'])
         
         return JsonResponse({
             'success': True,
@@ -374,6 +413,11 @@ def api_upload_profile_photo(request):
         
         user.profile_photo = photo
         user.save()
+
+        if user.role == 'agent' and hasattr(user, 'agent_profile') and user.agent_profile:
+            agent_profile = user.agent_profile
+            agent_profile.profile_photo = user.profile_photo.name
+            agent_profile.save(update_fields=['profile_photo', 'updated_at'])
         
         return JsonResponse({
             'success': True,
@@ -871,11 +915,17 @@ def api_create_employee(request):
                     'error': f'{field} is required'
                 }, status=400)
         
-        # Check if email already exists
-        if User.objects.filter(email=data['email']).exists():
+        # Deleted/inactive accounts do not reserve contact details.
+        if User.objects.filter(email__iexact=data['email'], is_active=True).exists():
             return JsonResponse({
                 'success': False,
-                'error': 'Email already exists'
+                'error': 'Email already exists for an active employee'
+            }, status=400)
+
+        if User.objects.filter(phone=data['phone'], is_active=True).exists():
+            return JsonResponse({
+                'success': False,
+                'error': 'Phone number already exists for an active employee'
             }, status=400)
         
         # Check if username already exists
@@ -945,11 +995,23 @@ def api_create_agent(request):
                     'error': f'{field} is required'
                 }, status=400)
         
-        # Check if email already exists
-        if User.objects.filter(email=data['email']).exists():
+        # Deleted/blocked accounts do not reserve contact details.
+        if (
+            User.objects.filter(email__iexact=data['email'], is_active=True).exists()
+            or Agent.objects.filter(email__iexact=data['email'], status='active').exists()
+        ):
             return JsonResponse({
                 'success': False,
-                'error': 'Email already exists'
+                'error': 'Email already exists for an active channel partner'
+            }, status=400)
+
+        if (
+            User.objects.filter(phone=data['phone'], is_active=True).exists()
+            or Agent.objects.filter(phone=data['phone'], status='active').exists()
+        ):
+            return JsonResponse({
+                'success': False,
+                'error': 'Phone number already exists for an active channel partner'
             }, status=400)
         
         # Check if username already exists
@@ -987,7 +1049,7 @@ def api_create_agent(request):
         
         return JsonResponse({
             'success': True,
-            'message': 'Agent created successfully',
+            'message': 'Channel Partner created successfully',
             'agent_id': agent.agent_id,
             'agent_name': agent_user.get_full_name()
         })
@@ -1047,18 +1109,24 @@ def api_add_agent(request):
                 'error': 'Name, Email, Phone, City, District, PIN Code, and Password are required'
             }, status=400)
 
-        # Check email uniqueness
-        if User.objects.filter(email=email).exists():
+        # Deleted/blocked accounts do not reserve contact details.
+        if (
+            User.objects.filter(email__iexact=email, is_active=True).exists()
+            or Agent.objects.filter(email__iexact=email, status='active').exists()
+        ):
             return JsonResponse({
                 'success': False,
-                'error': 'Email already registered'
+                'error': 'Email already registered for an active channel partner'
             }, status=400)
 
-        # Check phone uniqueness
-        if User.objects.filter(phone=phone).exists() or Agent.objects.filter(phone=phone).exists():
+        # Check phone uniqueness against active records only.
+        if (
+            User.objects.filter(phone=phone, is_active=True).exists()
+            or Agent.objects.filter(phone=phone, status='active').exists()
+        ):
             return JsonResponse({
                 'success': False,
-                'error': 'Phone number already registered'
+                'error': 'Phone number already registered for an active channel partner'
             }, status=400)
 
         # Validate phone format (basic)
@@ -1079,12 +1147,6 @@ def api_add_agent(request):
             return JsonResponse({
                 'success': False,
                 'error': 'PIN code must be 6 digits'
-            }, status=400)
-
-        if assigned_employee_id and assigned_subadmin_id:
-            return JsonResponse({
-                'success': False,
-                'error': 'Select either an Employee or a Partner for assignment, not both'
             }, status=400)
 
         assigned_employee = None
@@ -1154,10 +1216,15 @@ def api_add_agent(request):
             owner_role_label = 'Partner'
             owner_name = assigned_subadmin.get_full_name() or assigned_subadmin.username or 'Partner'
         elif assigned_employee:
-            owner_user = assigned_employee
-            owner_role_label = 'Employee'
-            owner_name = assigned_employee.get_full_name() or assigned_employee.username or 'Employee'
+            owner_user = request.user
+            owner_role_label = 'Admin'
+            owner_name = request.user.get_full_name() or request.user.username or 'System'
+
+        if assigned_employee:
             under_employee = assigned_employee
+            if assigned_subadmin:
+                from .subadmin_views import _mark_employee_under_subadmin
+                _mark_employee_under_subadmin(assigned_employee, assigned_subadmin)
 
         # Create User
         user = User.objects.create_user(
@@ -1209,6 +1276,13 @@ def api_add_agent(request):
             agent.profile_photo = profile_photo
             agent.save()
 
+        if under_employee:
+            AgentAssignment.objects.update_or_create(
+                agent=agent,
+                employee=under_employee,
+                defaults={'assigned_by': request.user},
+            )
+
         onboarding_payload = collect_onboarding_payload(request)
         if isinstance(onboarding_payload, dict):
             onboarding_payload['_meta'] = {
@@ -1244,6 +1318,7 @@ def api_add_agent(request):
             username=user.username,
             password=password,
             role=user.role,
+            account_id=agent.agent_id,
         )
 
         return JsonResponse({
@@ -1266,6 +1341,8 @@ def api_add_agent(request):
                 'created_by': f"{owner_role_label} - {owner_name}",
                 'created_under': f"{owner_role_label} - {owner_name}",
                 'under_employee': under_employee.get_full_name() if under_employee else '',
+                'assigned_employee_id': under_employee.id if under_employee else '',
+                'assigned_subadmin_id': assigned_subadmin.id if assigned_subadmin else '',
                 'total_applications': 0,
                 'running_applications': 0,
             }
@@ -1437,9 +1514,28 @@ def api_get_agent(request, agent_id):
         if getattr(agent, 'created_by', None):
             created_under = f"{role_label_for_user(agent.created_by)} - {agent.created_by.get_full_name() or agent.created_by.username or '-'}"
 
+        latest_assignment = (
+            AgentAssignment.objects.filter(agent=agent)
+            .select_related('employee')
+            .order_by('-assigned_at')
+            .first()
+        )
+        assigned_employee_id = agent.under_employee_id or (latest_assignment.employee_id if latest_assignment else None)
+        assigned_subadmin_id = (
+            agent.created_by_id
+            if getattr(agent, 'created_by', None) and getattr(agent.created_by, 'role', '') == 'subadmin'
+            else None
+        )
+
         reports_to = 'Direct under Admin'
-        if agent.under_employee:
-            reports_to = f"Employee - {agent.under_employee.get_full_name() or agent.under_employee.username or '-'}"
+        reports_employee = agent.under_employee or (latest_assignment.employee if latest_assignment else None)
+        if reports_employee and getattr(agent, 'created_by', None) and getattr(agent.created_by, 'role', '') == 'subadmin':
+            reports_to = (
+                f"Partner - {agent.created_by.get_full_name() or agent.created_by.username or '-'} / "
+                f"Employee - {reports_employee.get_full_name() or reports_employee.username or '-'}"
+            )
+        elif reports_employee:
+            reports_to = f"Employee - {reports_employee.get_full_name() or reports_employee.username or '-'}"
         elif getattr(agent, 'created_by', None) and getattr(agent.created_by, 'role', '') == 'subadmin':
             reports_to = f"Partner - {agent.created_by.get_full_name() or agent.created_by.username or '-'}"
 
@@ -1496,6 +1592,8 @@ def api_get_agent(request, agent_id):
                 'district': district or '',
                 'created_under': created_under,
                 'reports_to': reports_to,
+                'assigned_employee_id': assigned_employee_id or '',
+                'assigned_subadmin_id': assigned_subadmin_id or '',
                 'aadhar_number': str((section6 or {}).get('aadhar_number') or '').strip(),
             },
             'summary': summary,
@@ -1528,6 +1626,36 @@ def api_update_agent(request, agent_id):
         status_val = data.get('status', '').strip().lower()
         if status_val == 'inactive':
             status_val = 'blocked'
+        assignment_fields_present = 'assigned_employee_id' in data or 'assigned_subadmin_id' in data
+        assigned_employee = None
+        assigned_subadmin = None
+        if assignment_fields_present:
+            assigned_employee_id = str(data.get('assigned_employee_id', '') or '').strip()
+            assigned_subadmin_id = str(data.get('assigned_subadmin_id', '') or '').strip()
+            if assigned_employee_id:
+                try:
+                    assigned_employee = User.objects.get(
+                        id=int(assigned_employee_id),
+                        role='employee',
+                        is_active=True,
+                    )
+                except (TypeError, ValueError, User.DoesNotExist):
+                    return JsonResponse({
+                        'success': False,
+                        'error': 'Selected employee was not found'
+                    }, status=400)
+            if assigned_subadmin_id:
+                try:
+                    assigned_subadmin = User.objects.get(
+                        id=int(assigned_subadmin_id),
+                        role='subadmin',
+                        is_active=True,
+                    )
+                except (TypeError, ValueError, User.DoesNotExist):
+                    return JsonResponse({
+                        'success': False,
+                        'error': 'Selected partner was not found'
+                    }, status=400)
 
         # Validate required fields
         if not name or not email or not phone:
@@ -1537,17 +1665,27 @@ def api_update_agent(request, agent_id):
             }, status=400)
 
         # Email uniqueness (exclude current user)
-        if User.objects.filter(email=email).exclude(id=getattr(agent.user, 'id', None)).exists():
+        if (
+            User.objects.filter(email__iexact=email, is_active=True)
+            .exclude(id=getattr(agent.user, 'id', None))
+            .exists()
+            or Agent.objects.filter(email__iexact=email, status='active').exclude(id=agent.id).exists()
+        ):
             return JsonResponse({
                 'success': False,
-                'error': 'Email already exists'
+                'error': 'Email already exists for an active channel partner'
             }, status=400)
 
         # Phone uniqueness
-        if User.objects.filter(phone=phone).exclude(id=getattr(agent.user, 'id', None)).exists():
+        if (
+            User.objects.filter(phone=phone, is_active=True)
+            .exclude(id=getattr(agent.user, 'id', None))
+            .exists()
+            or Agent.objects.filter(phone=phone, status='active').exclude(id=agent.id).exists()
+        ):
             return JsonResponse({
                 'success': False,
-                'error': 'Phone number already exists'
+                'error': 'Phone number already exists for an active channel partner'
             }, status=400)
 
         # Update agent fields
@@ -1567,7 +1705,24 @@ def api_update_agent(request, agent_id):
                     'error': 'Profile photo must be less than 5MB'
                 }, status=400)
             agent.profile_photo = profile_photo
+        if assignment_fields_present:
+            agent.created_by = assigned_subadmin or request.user
+            agent.under_employee = assigned_employee
+            if assigned_employee and assigned_subadmin:
+                from .subadmin_views import _mark_employee_under_subadmin
+                _mark_employee_under_subadmin(assigned_employee, assigned_subadmin)
         agent.save()
+
+        if assignment_fields_present:
+            if assigned_employee:
+                AgentAssignment.objects.update_or_create(
+                    agent=agent,
+                    employee=assigned_employee,
+                    defaults={'assigned_by': request.user},
+                )
+                AgentAssignment.objects.filter(agent=agent).exclude(employee=assigned_employee).delete()
+            else:
+                AgentAssignment.objects.filter(agent=agent).delete()
 
         # Update linked user if exists
         if agent.user:
@@ -1590,6 +1745,12 @@ def api_update_agent(request, agent_id):
             'message': 'Channel Partner updated successfully',
             'status': 'active' if agent.status == 'active' else 'inactive',
             'photo_url': agent.profile_photo.url if agent.profile_photo else '',
+            'assigned_employee_id': agent.under_employee_id or '',
+            'assigned_subadmin_id': (
+                agent.created_by_id
+                if getattr(agent, 'created_by', None) and getattr(agent.created_by, 'role', '') == 'subadmin'
+                else ''
+            ),
         })
     except json.JSONDecodeError:
         return JsonResponse({
@@ -1636,6 +1797,28 @@ def api_upload_user_document(request):
         file = request.FILES.get('file')
         if not document_type or not file:
             return JsonResponse({'success': False, 'error': 'Document type and file are required.'}, status=400)
+
+        fixed_field_map = {
+            'pan_card': 'pan_card_doc',
+            'aadhaar_card': 'aadhar_card_doc',
+            'aadhar_card': 'aadhar_card_doc',
+            'bank_statement': 'bank_details_doc',
+            'bank_details': 'bank_details_doc',
+        }
+        fixed_field = fixed_field_map.get(document_type)
+        if fixed_field:
+            setattr(request.user, fixed_field, file)
+            request.user.save(update_fields=[fixed_field, 'updated_at'])
+            return JsonResponse({
+                'success': True,
+                'message': 'Document uploaded',
+                'document': {
+                    'id': fixed_field,
+                    'type': document_type,
+                    'url': getattr(request.user, fixed_field).url,
+                },
+            })
+
         UserOnboardingDocument.objects.filter(user=request.user, document_type=document_type).delete()
         doc = UserOnboardingDocument.objects.create(user=request.user, document_type=document_type, file=file)
         return JsonResponse({'success': True, 'message': 'Document uploaded', 'document': {'id': doc.id, 'type': doc.document_type, 'url': doc.file.url}})

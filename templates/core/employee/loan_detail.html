@@ -96,6 +96,7 @@
                         <div id="references" class="stack-box"></div>
                     </div>
 
+                    {% if request.user.role != 'agent' %}
                     <div class="section-box">
                         <h6 class="section-title">LEAD RECEIVE</h6>
                         <div class="grid">
@@ -112,6 +113,7 @@
                             <strong id="manualRemark" class="d-block">-</strong>
                         </div>
                     </div>
+                    {% endif %}
 
                     <div class="section-box">
                         <h6 class="section-title">OTHER LEGACY FIELDS (IF PROVIDED)</h6>
@@ -671,6 +673,7 @@
 {% block extra_js %}
 <script>
 const loanId = Number('{{ loan_id|default:"0" }}');
+const initialEntityType = '{{ entity_type|default:"" }}';
 let loan = null;
 let timer = null;
 const currentRole = '{{ request.user.role|default:"employee" }}';
@@ -689,6 +692,7 @@ const money = v => `Rs ${new Intl.NumberFormat('en-IN').format(v || 0)}`;
 const cookie = n => document.cookie.split('; ').find(r => r.startsWith(n + '='))?.split('=')[1];
 const wf = s => {
     if (s === 'Required Follow-up' || s === 'Banking Processing') return 'Required Follow-up';
+    if (s === 'Updated Document' || s === 'Pending Document Cleared') return 'Updated Document';
     if (s === 'Follow Up') return 'Follow Up';
     return s;
 };
@@ -709,12 +713,15 @@ const badge = s => {
     const key = wf(s);
     const label = (s === 'Required Follow-up')
         ? 'Banking Processing'
-        : (s === 'Waiting for Processing' ? 'Document Pending' : (s === 'New Entry' ? 'New Application' : (s || '-')));
+        : (s === 'Waiting for Processing' ? 'Document Pending' : (s === 'Updated Document' ? 'Pending Document Cleared' : (s === 'New Entry' ? 'New Application' : (s || '-'))));
     return `<span class="badge bg-${cls[key] || 'secondary'}">${label}</span>`;
 };
 
 const canManageDocs = (statusText) => {
     const status = wf(statusText);
+    if (currentRole === 'agent') {
+        return status === 'Waiting for Processing';
+    }
     return ['New Entry', 'Waiting for Processing', 'Updated Document', 'Required Follow-up', 'Follow Up'].includes(status);
 };
 
@@ -1347,17 +1354,19 @@ function fill() {
         t.includes('statement')
     );
     const updatedReady = hasPan && hasAadhar && hasBank;
-    const moveToUpdatedDocument = async () => {
-        if (!['employee', 'admin', 'subadmin'].includes(currentRole)) {
-            msg('info', 'Updated Document process actions are available for employee/admin/partner roles.');
+    const moveToUpdatedDocument = async (autoTriggered = false) => {
+        if (!['employee', 'admin', 'subadmin', 'agent'].includes(currentRole)) {
+            msg('info', 'Updated Document process action is not available for this role.');
             return false;
         }
         try {
             await call(`/api/employee/loan/${loanId}/updated-document/`, {
                 entity_type: v?.entity_type || '',
-                remark: 'Updated Document moved from detail page',
+                remark: autoTriggered
+                    ? 'Pending Document Cleared automatically after channel partner document upload'
+                    : 'Updated Document moved from detail page',
             });
-            msg('success', 'Application moved to Updated Document successfully.');
+            msg('success', autoTriggered ? 'Documents uploaded. Pending Document Cleared.' : 'Application moved to Updated Document successfully.');
             setTimeout(load, 250);
             return true;
         } catch (error) {
@@ -1365,6 +1374,7 @@ function fill() {
             return false;
         }
     };
+    window.moveLoanToUpdatedDocument = moveToUpdatedDocument;
     if (docPendingCard && docPendingText && docUpdatedCard) {
         const missing = [
             !hasPan ? 'Pan' : null,
@@ -1401,8 +1411,13 @@ function fill() {
         // Keep pending visible; the "Updated Document" card appears after all are present.
         if (docPendingCard) docPendingCard.style.display = 'block';
         markUpdatedButtons.forEach((markUpdatedDocumentBtn) => {
-            markUpdatedDocumentBtn.style.display = updatedReady ? 'inline-flex' : 'none';
-            markUpdatedDocumentBtn.disabled = !updatedReady;
+            const isPendingButton = markUpdatedDocumentBtn.id === 'markUpdatedDocumentBtnPending';
+            const shouldShow = updatedReady && (currentRole !== 'agent' || isPendingButton);
+            markUpdatedDocumentBtn.style.display = shouldShow ? 'inline-flex' : 'none';
+            markUpdatedDocumentBtn.disabled = !shouldShow;
+            if (currentRole === 'agent' && isPendingButton) {
+                markUpdatedDocumentBtn.innerHTML = '<i class="bi bi-check2-circle me-1"></i> Pending Document Cleared';
+            }
             markUpdatedDocumentBtn.onclick = () => moveToUpdatedDocument();
         });
     }
@@ -1420,7 +1435,7 @@ function fill() {
 
     const s = workflowStatus;
     const isFollowUpPending = !!(v.follow_up_pending || v.follow_up_editable || s === 'Follow Up');
-    const isUpdatedDocumentStage = !!(v.updated_document || s === 'Updated Document');
+    const isUpdatedDocumentStage = !!(v.updated_document || s === 'Updated Document' || s === 'Pending Document Cleared');
     const documentPendingBtn = document.getElementById('documentPendingBtn');
     const updateDocumentBtn = document.getElementById('updateDocumentBtn');
     const bankProcessingBtn = document.getElementById('bankProcessingBtn');
@@ -1475,12 +1490,23 @@ function fill() {
             const el = document.getElementById(id);
             if (el) el.style.display = 'none';
         });
+        if (currentRole === 'agent' && canShowUpdateControl && s === 'Waiting for Processing' && updateDocumentBtn) {
+            updateDocumentBtn.style.display = 'block';
+            updateDocumentBtn.disabled = false;
+            updateDocumentBtn.textContent = 'Pending Document Cleared';
+            updateDocumentBtn.onclick = () => moveToUpdatedDocument();
+        }
     }
 }
 
 async function load() {
     try {
-        const res = await fetch(`/api/employee/loan/${loanId}/detail/`, { headers:{ 'X-CSRFToken': cookie('csrftoken') }, credentials:'same-origin' });
+        const detailParams = new URLSearchParams();
+        const source = initialEntityType || CURRENT_ENTITY_TYPE || '';
+        if (source) {
+            detailParams.set('entity_type', source);
+        }
+        const res = await fetch(`/api/employee/loan/${loanId}/detail/${detailParams.toString() ? `?${detailParams.toString()}` : ''}`, { headers:{ 'X-CSRFToken': cookie('csrftoken') }, credentials:'same-origin' });
         if (isUnauthorizedResponse(res)) {
             handleAuthFailure();
             return;

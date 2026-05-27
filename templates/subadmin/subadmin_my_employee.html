@@ -11,9 +11,9 @@
             <h1 class="text-3xl font-bold text-gray-900">Employee Management</h1>
             <p class="text-gray-600 mt-1">Manage employees working under your subadmin panel.</p>
         </div>
-        <button type="button" id="toggle-employee-form" class="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all hover:shadow-lg flex items-center gap-2">
+        <a href="{% url 'subadmin_add_employee' %}" class="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all hover:shadow-lg flex items-center gap-2">
             <i class="fas fa-plus"></i> Add New Employee
-        </button>
+        </a>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -176,7 +176,6 @@
                                 <div class="flex gap-2">
                                     <a href="{% url 'subadmin_employee_detail' employee.id %}" class="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700">View</a>
                                     <button type="button" class="px-2 py-1 bg-emerald-600 text-white rounded text-xs hover:bg-emerald-700" onclick="openEmployeeModal('edit', {{ employee.id }})">Edit</button>
-                                    <button type="button" class="px-2 py-1 bg-rose-600 text-white rounded text-xs hover:bg-rose-700" onclick="deleteEmployee({{ employee.id }})">Deactivate</button>
                                 </div>
                             </td>
                         </tr>
@@ -209,13 +208,13 @@
 </div>
 
 <div id="employee-modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[92vh] overflow-hidden">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[calc(100vh-2rem)] overflow-hidden flex flex-col">
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
             <h3 id="employee-modal-title" class="text-lg font-semibold text-gray-900">Employee Details</h3>
             <button type="button" class="text-gray-500 hover:text-gray-700" onclick="closeEmployeeModal()"><i class="fas fa-times"></i></button>
         </div>
 
-        <div class="p-6 overflow-y-auto max-h-[80vh] space-y-6">
+        <div class="p-6 overflow-y-auto flex-1 min-h-0 space-y-6">
             <form id="employee-modal-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <input type="hidden" id="employee-modal-id">
                 <div>
@@ -240,13 +239,6 @@
                         <option value="Male">Male</option>
                         <option value="Female">Female</option>
                         <option value="Other">Other</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                    <select id="employee-modal-status" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
-                        <option value="active">Active</option>
-                        <option value="inactive">Inactive</option>
                     </select>
                 </div>
                 <div class="md:col-span-2">
@@ -318,7 +310,7 @@
             </div>
         </div>
 
-        <div class="flex justify-end gap-3 p-4 border-t border-gray-200 bg-gray-50">
+        <div class="flex-shrink-0 flex justify-end gap-3 p-4 border-t border-gray-200 bg-gray-50">
             <button type="button" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg" onclick="closeEmployeeModal()">Close</button>
             <button type="button" id="employee-modal-save" class="px-4 py-2 bg-blue-600 text-white rounded-lg" onclick="saveEmployeeChanges()">Save Changes</button>
         </div>
@@ -329,7 +321,7 @@
 const employeeForm = document.getElementById('employee-form');
 const toggleEmployeeForm = document.getElementById('toggle-employee-form');
 
-if (toggleEmployeeForm) {
+if (toggleEmployeeForm && employeeForm) {
     toggleEmployeeForm.addEventListener('click', () => {
         const isHidden = employeeForm.classList.contains('hidden');
         if (isHidden) {
@@ -419,7 +411,6 @@ function openEmployeeModal(mode, employeeId) {
             document.getElementById('employee-modal-email').value = employee.email || '';
             document.getElementById('employee-modal-phone').value = employee.phone || '';
             document.getElementById('employee-modal-gender').value = employee.gender || 'Other';
-            document.getElementById('employee-modal-status').value = employee.status || 'active';
             document.getElementById('employee-modal-address').value = employee.address || '';
             document.getElementById('employee-modal-password').value = '';
             setMultiSelectValues('employee-modal-channel-partners', employee.assigned_channel_partner_ids || []);
@@ -458,7 +449,6 @@ function setEmployeeModalMode(mode) {
         'employee-modal-email',
         'employee-modal-phone',
         'employee-modal-gender',
-        'employee-modal-status',
         'employee-modal-address',
         'employee-modal-password',
         'employee-modal-photo',
@@ -486,7 +476,6 @@ function saveEmployeeChanges() {
     formData.append('email', document.getElementById('employee-modal-email').value);
     formData.append('phone', document.getElementById('employee-modal-phone').value);
     formData.append('gender', document.getElementById('employee-modal-gender').value);
-    formData.append('status', document.getElementById('employee-modal-status').value);
     formData.append('address', document.getElementById('employee-modal-address').value);
 
     const password = document.getElementById('employee-modal-password').value;
@@ -519,25 +508,6 @@ function saveEmployeeChanges() {
             window.location.reload();
         })
         .catch(() => alert('Failed to update employee'));
-}
-
-function deleteEmployee(employeeId) {
-    if (!confirm('Are you sure you want to deactivate this employee?')) {
-        return;
-    }
-    fetch(`/subadmin/employees/${employeeId}/delete/`, {
-        method: 'POST',
-        headers: { 'X-CSRFToken': csrftoken },
-    })
-        .then(response => response.json())
-        .then(data => {
-            if (!data.success) {
-                alert(data.error || 'Failed to delete employee');
-                return;
-            }
-            window.location.reload();
-        })
-        .catch(() => alert('Failed to delete employee'));
 }
 </script>
 {% endblock %}

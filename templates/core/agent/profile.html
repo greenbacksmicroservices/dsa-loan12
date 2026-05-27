@@ -4,13 +4,13 @@
 {% block title %}My Profile | DSA{% endblock %}
 
 {% block content %}
-<div class="container-fluid mt-4">
-    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+<div class="container-fluid mt-4 agent-profile-page">
+    <div class="profile-hero d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
         <div>
             <h1 class="mb-1"><i class="fas fa-user-circle"></i> My Profile</h1>
             <p class="text-muted mb-0">Profile and settings are available on this single page.</p>
         </div>
-        <a href="{% url 'agent_edit_profile' %}" class="btn btn-primary">
+        <a href="{% url 'agent_edit_profile' %}" class="btn profile-edit-btn">
             <i class="fas fa-edit"></i> Edit Basic Profile
         </a>
     </div>
@@ -26,7 +26,7 @@
 
     <div class="row g-4">
         <div class="col-lg-7">
-            <div class="card shadow-sm border-0 rounded-lg h-100">
+            <div class="card shadow-sm border-0 rounded-lg h-100 profile-panel">
                 <div class="card-header profile-head text-white py-4">
                     <h5 class="mb-0">Channel Partner Information</h5>
                 </div>
@@ -169,7 +169,7 @@
         </div>
 
         <div class="col-lg-5">
-            <div class="card shadow-sm border-0 rounded-lg mb-4">
+            <div class="card shadow-sm border-0 rounded-lg mb-4 profile-panel">
                 <div class="card-header bg-light">
                     <h6 class="mb-0"><i class="fas fa-lock"></i> Change Password</h6>
                 </div>
@@ -198,7 +198,7 @@
                 </div>
             </div>
 
-            <div class="card shadow-sm border-0 rounded-lg">
+            <div class="card shadow-sm border-0 rounded-lg profile-panel">
                 <div class="card-header bg-light">
                     <h6 class="mb-0"><i class="fas fa-bell"></i> Notification Preferences</h6>
                 </div>
@@ -231,8 +231,45 @@
 </div>
 
 <style>
+.agent-profile-page {
+    max-width: 1500px;
+}
+
+.profile-hero,
+.profile-panel {
+    border: 1px solid #dbe3ef !important;
+    border-radius: 18px !important;
+    background: #ffffff;
+    box-shadow: 0 16px 34px rgba(15, 23, 42, 0.08) !important;
+    overflow: hidden;
+}
+
+.profile-hero {
+    padding: 22px 24px;
+    background:
+        radial-gradient(circle at top left, rgba(20, 184, 166, 0.14), transparent 34%),
+        radial-gradient(circle at bottom right, rgba(37, 99, 235, 0.11), transparent 32%),
+        #ffffff;
+}
+
+.profile-edit-btn {
+    min-height: 42px;
+    border: 0;
+    border-radius: 12px;
+    padding: 10px 16px;
+    background: linear-gradient(135deg, #0f766e 0%, #2563eb 100%);
+    color: #ffffff;
+    font-weight: 800;
+    box-shadow: 0 12px 22px rgba(15, 118, 110, 0.2);
+}
+
+.profile-edit-btn:hover {
+    color: #ffffff;
+    transform: translateY(-1px);
+}
+
 .profile-head {
-    background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%);
+    background: linear-gradient(135deg, #0f172a 0%, #2563eb 100%);
 }
 
 .profile-table tr {

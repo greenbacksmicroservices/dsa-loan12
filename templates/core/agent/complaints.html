@@ -4,11 +4,11 @@
 {% block title %}Complaints - Channel Partner{% endblock %}
 
 {% block content %}
-<div class="container-fluid mt-4">
+<div class="container-fluid mt-4 complaints-page">
     <!-- Header -->
     <div class="row mb-4">
         <div class="col-12">
-            <div>
+            <div class="complaints-hero">
                 <h1 class="h3 text-gray-800 mb-0">
                     <i class="bi bi-exclamation-triangle"></i> Complaints
                 </h1>
@@ -20,8 +20,8 @@
     <!-- File New Complaint Form -->
     <div class="row mb-4">
         <div class="col-lg-5">
-            <div class="card shadow">
-                <div class="card-header bg-danger text-white">
+            <div class="card shadow complaint-card">
+                <div class="card-header complaint-card-head danger">
                     <h5 class="mb-0">File New Complaint</h5>
                 </div>
                 <div class="card-body">
@@ -99,7 +99,7 @@
                             </select>
                         </div>
 
-                        <button type="submit" class="btn btn-danger w-100">
+                        <button type="submit" class="btn complaint-submit-btn w-100">
                             <i class="bi bi-send"></i> File Complaint
                         </button>
                     </form>
@@ -109,8 +109,8 @@
 
         <!-- Complaints List -->
         <div class="col-lg-7">
-            <div class="card shadow">
-                <div class="card-header bg-primary text-white">
+            <div class="card shadow complaint-card">
+                <div class="card-header complaint-card-head primary">
                     <h5 class="mb-0">
                         <i class="bi bi-list-ul"></i> My Complaints
                         <span class="badge bg-light text-dark float-end">{{ complaints|length }} complaints</span>
@@ -294,14 +294,69 @@ setInterval(function() {
 </script>
 
 <style>
+.complaints-page {
+    max-width: 1500px;
+}
+
+.complaints-hero,
+.complaint-card {
+    border: 1px solid #dbe3ef;
+    border-radius: 18px;
+    background: #ffffff;
+    box-shadow: 0 16px 34px rgba(15, 23, 42, 0.08);
+    overflow: hidden;
+}
+
+.complaints-hero {
+    padding: 22px 24px;
+    background:
+        radial-gradient(circle at top left, rgba(239, 68, 68, 0.12), transparent 34%),
+        radial-gradient(circle at bottom right, rgba(37, 99, 235, 0.1), transparent 32%),
+        #ffffff;
+}
+
+.complaint-card {
+    border: 0;
+}
+
+.complaint-card-head {
+    padding: 17px 20px;
+    color: #ffffff;
+    border: 0;
+}
+
+.complaint-card-head.danger {
+    background: linear-gradient(135deg, #be123c 0%, #ef4444 100%);
+}
+
+.complaint-card-head.primary {
+    background: linear-gradient(135deg, #0f172a 0%, #2563eb 100%);
+}
+
+.complaint-submit-btn {
+    min-height: 44px;
+    border: 0;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #be123c 0%, #ef4444 100%);
+    color: #ffffff;
+    font-weight: 800;
+    box-shadow: 0 12px 22px rgba(190, 18, 60, 0.2);
+}
+
+.complaint-submit-btn:hover {
+    color: #ffffff;
+    transform: translateY(-1px);
+}
+
 .list-group-item {
     border: 1px solid #e3e6f0;
     transition: all 0.3s ease;
+    padding: 16px 18px;
 }
 
 .list-group-item:hover {
-    background-color: #f8f9fa;
-    border-left: 3px solid #007bff;
+    background-color: #f8fafc;
+    transform: translateX(2px);
 }
 
 .badge {

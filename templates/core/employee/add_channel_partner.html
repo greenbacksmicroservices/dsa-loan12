@@ -1,0 +1,304 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Add Channel Partner{% endblock %}
+
+{% block extra_css %}
+<style>
+    .add-partner-page {
+        max-width: 1180px;
+        margin: 0 auto;
+    }
+
+    .add-partner-shell {
+        background: #ffffff;
+        border: 1px solid #dbe3ef;
+        border-radius: 16px;
+        box-shadow: 0 18px 38px rgba(15, 23, 42, 0.08);
+        overflow: hidden;
+    }
+
+    .add-partner-head {
+        padding: 22px 24px;
+        border-bottom: 1px solid #e2e8f0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        background: #f8fafc;
+    }
+
+    .add-partner-kicker {
+        margin: 0 0 6px;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: #0f766e;
+    }
+
+    .add-partner-head h1 {
+        margin: 0;
+        font-size: 24px;
+        font-weight: 800;
+        color: #0f172a;
+    }
+
+    .add-partner-body {
+        padding: 24px;
+    }
+
+    .partner-form-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+    }
+
+    .partner-field.full {
+        grid-column: 1 / -1;
+    }
+
+    .partner-field label {
+        display: block;
+        margin-bottom: 7px;
+        color: #334155;
+        font-size: 13px;
+        font-weight: 800;
+    }
+
+    .partner-field input,
+    .partner-field select,
+    .partner-field textarea {
+        width: 100%;
+        border: 1px solid #cbd5e1;
+        border-radius: 12px;
+        padding: 11px 13px;
+        min-height: 44px;
+        background: #ffffff;
+        color: #0f172a;
+        font-size: 14px;
+        outline: none;
+    }
+
+    .partner-field textarea {
+        min-height: 96px;
+        resize: vertical;
+    }
+
+    .partner-field input:focus,
+    .partner-field select:focus,
+    .partner-field textarea:focus {
+        border-color: #0f766e;
+        box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
+    }
+
+    .generated-id-box {
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        border: 1px solid #bfdbfe;
+        border-radius: 12px;
+        padding: 11px 13px;
+        background: #eff6ff;
+        color: #1d4ed8;
+        font-size: 13px;
+        font-weight: 800;
+    }
+
+    .form-actions {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 10px;
+        padding-top: 20px;
+        margin-top: 20px;
+        border-top: 1px solid #e2e8f0;
+    }
+
+    .btn-form-primary,
+    .btn-form-secondary {
+        min-height: 42px;
+        border-radius: 12px;
+        padding: 9px 16px;
+        font-size: 13px;
+        font-weight: 800;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        text-decoration: none;
+        border: 1px solid transparent;
+        cursor: pointer;
+    }
+
+    .btn-form-primary {
+        background: linear-gradient(135deg, #0f766e 0%, #2563eb 100%);
+        color: #ffffff;
+    }
+
+    .btn-form-secondary {
+        background: #f8fafc;
+        color: #334155;
+        border-color: #cbd5e1;
+    }
+
+    @media (max-width: 768px) {
+        .add-partner-head,
+        .form-actions {
+            align-items: stretch;
+            flex-direction: column;
+        }
+
+        .partner-form-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="add-partner-page container-fluid py-3 py-lg-4">
+    <div id="add-partner-alert"></div>
+
+    <section class="add-partner-shell">
+        <div class="add-partner-head">
+            <div>
+                <p class="add-partner-kicker">Employee Panel</p>
+                <h1>Add Channel Partner</h1>
+            </div>
+            <a href="{% url 'employee_my_agents_page' %}" class="btn-form-secondary">
+                <i class="bi bi-arrow-left"></i>
+                <span>Back</span>
+            </a>
+        </div>
+
+        <div class="add-partner-body">
+            <form id="employee-add-partner-form" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="partner-form-grid">
+                    <div class="partner-field">
+                        <label for="partner-name">Full Name *</label>
+                        <input id="partner-name" type="text" name="name" required>
+                    </div>
+                    <div class="partner-field">
+                        <label>Channel Partner ID</label>
+                        <div class="generated-id-box">Auto generated as EDC-CP after save</div>
+                    </div>
+                    <div class="partner-field">
+                        <label for="partner-email">Email *</label>
+                        <input id="partner-email" type="email" name="email" required>
+                    </div>
+                    <div class="partner-field">
+                        <label for="partner-phone">Phone *</label>
+                        <input id="partner-phone" type="text" name="phone" required pattern="[0-9]{10,15}">
+                    </div>
+                    <div class="partner-field">
+                        <label for="partner-password">Password *</label>
+                        <input id="partner-password" type="password" name="password" required>
+                    </div>
+                    <div class="partner-field">
+                        <label for="partner-gender">Gender</label>
+                        <select id="partner-gender" name="gender">
+                            <option value="">Select</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="partner-field">
+                        <label for="partner-state">State</label>
+                        <input id="partner-state" type="text" name="state">
+                    </div>
+                    <div class="partner-field">
+                        <label for="partner-city">City</label>
+                        <input id="partner-city" type="text" name="city">
+                    </div>
+                    <div class="partner-field">
+                        <label for="partner-pin">PIN Code</label>
+                        <input id="partner-pin" type="text" name="pin_code">
+                    </div>
+                    <div class="partner-field">
+                        <label for="partner-photo">Profile Photo</label>
+                        <input id="partner-photo" type="file" name="photo" accept="image/*">
+                    </div>
+                    <div class="partner-field full">
+                        <label for="partner-address">Address</label>
+                        <textarea id="partner-address" name="address"></textarea>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <a href="{% url 'employee_my_agents_page' %}" class="btn-form-secondary">Cancel</a>
+                    <button type="submit" class="btn-form-primary" id="employee-add-partner-submit">
+                        <i class="bi bi-person-plus"></i>
+                        <span>Create Channel Partner</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function getCookie(name) {
+    return document.cookie.split('; ')
+        .find(row => row.startsWith(name + '='))
+        ?.split('=')[1];
+}
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function showAddPartnerAlert(type, message) {
+    const box = document.getElementById('add-partner-alert');
+    const cls = type === 'success' ? 'alert-success' : 'alert-danger';
+    box.innerHTML = `
+        <div class="alert ${cls} alert-dismissible fade show" role="alert">
+            ${escapeHtml(message)}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    `;
+}
+
+document.getElementById('employee-add-partner-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    if (!form.reportValidity()) return;
+
+    const submitBtn = document.getElementById('employee-add-partner-submit');
+    const originalHtml = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i><span>Creating...</span>';
+
+    try {
+        const response = await fetch('{% url "api_employee_add_agent" %}', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCookie('csrftoken') },
+            body: new FormData(form),
+            credentials: 'same-origin',
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.success) {
+            throw new Error(data.error || 'Unable to create channel partner');
+        }
+        showAddPartnerAlert('success', data.message || 'Channel partner created successfully.');
+        setTimeout(() => {
+            window.location.href = '{% url "employee_my_agents_page" %}';
+        }, 700);
+    } catch (error) {
+        showAddPartnerAlert('danger', error.message || 'Unable to create channel partner');
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalHtml;
+    }
+});
+</script>
+{% endblock %}

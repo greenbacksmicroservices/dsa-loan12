@@ -1,7 +1,7 @@
 """
-Helpers for "Document Pending -> Updated Document" workflow detection.
+Helpers for "Document Pending -> Pending Document Cleared" workflow detection.
 
-An item is considered "Updated Document" when all required buckets are present:
+An item is considered "Pending Document Cleared" when all required buckets are present:
 - PAN
 - Aadhaar
 - Bank proof (statement / passbook / cancel cheque)
@@ -14,7 +14,7 @@ from typing import Iterable, Optional, Set
 from .models import ApplicantDocument, LoanDocument
 
 UPDATED_DOCUMENT_STATUS_KEY = "updated_document"
-UPDATED_DOCUMENT_LABEL = "Updated Document"
+UPDATED_DOCUMENT_LABEL = "Pending Document Cleared"
 UPDATED_DOCUMENT_MARKER = "Updated Document by"
 DOCUMENT_PENDING_MARKER = "Document Pending by"
 

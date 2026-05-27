@@ -766,7 +766,11 @@ def _build_admin_agents_context(request, page_mode='list'):
             location_parts.append(f"PIN {pin}")
         agent_location_display[agent.id] = " | ".join(location_parts) if location_parts else '-'
 
-        if getattr(agent, 'under_employee', None):
+        if getattr(agent, 'under_employee', None) and getattr(agent, 'created_by', None) and agent.created_by.role == 'subadmin':
+            partner_name = agent.created_by.get_full_name() or agent.created_by.username or 'Partner'
+            employee_name = agent.under_employee.get_full_name() or agent.under_employee.username or 'Employee'
+            agent_created_under_display[agent.id] = f"Partner - {partner_name} / Employee - {employee_name}"
+        elif getattr(agent, 'under_employee', None):
             employee_name = agent.under_employee.get_full_name() or agent.under_employee.username or 'Employee'
             agent_created_under_display[agent.id] = f"Employee - {employee_name}"
         elif getattr(agent, 'created_by', None):
@@ -1004,50 +1008,199 @@ def admin_assign_employee(request, loan_id):
     return redirect('admin_loan_detail', loan_id=loan_id)
 
 
-@login_required
+def _admin_report_has_revert_marker(text):
+    return 'revert remark ' in str(text or '').lower()
+
+
+def _admin_report_effective_status_key(loan):
+    raw_status = str(getattr(loan, 'status', '') or '').strip().lower()
+    if raw_status in ['new_entry', 'waiting']:
+        if _admin_report_has_revert_marker(getattr(loan, 'remarks', '')):
+            return 'follow_up_pending'
+        related_app = find_related_loan_application(loan)
+        if related_app and _admin_report_has_revert_marker(getattr(related_app, 'approval_notes', '')):
+            return 'follow_up_pending'
+    if raw_status == 'waiting' and loan_has_updated_documents(loan):
+        return UPDATED_DOCUMENT_STATUS_KEY
+    return raw_status
+
+
+def _admin_report_status_label(status_key):
+    labels = {
+        'draft': 'Draft',
+        'new_entry': 'New Application',
+        'waiting': 'Document Pending',
+        UPDATED_DOCUMENT_STATUS_KEY: UPDATED_DOCUMENT_LABEL,
+        'follow_up': 'Banking Processing',
+        'follow_up_pending': 'Follow Up',
+        'approved': 'Approved',
+        'rejected': 'Rejected',
+        'disbursed': 'Disbursed',
+        'forclose': 'For Close',
+        'disputed': 'Disputed',
+    }
+    return labels.get(status_key, status_key or '-')
+
+
+def _report_period_bounds(request):
+    period = (request.GET.get('period') or '1month').strip()
+    from_date = (request.GET.get('from_date') or request.GET.get('date_from') or '').strip()
+    to_date = (request.GET.get('to_date') or request.GET.get('date_to') or '').strip()
+    now = timezone.now()
+
+    if from_date and to_date:
+        try:
+            start_date = timezone.make_aware(datetime.strptime(from_date, '%Y-%m-%d'))
+            end_date = timezone.make_aware(datetime.strptime(to_date, '%Y-%m-%d') + timedelta(days=1))
+            return 'custom', from_date, to_date, start_date, end_date
+        except ValueError:
+            from_date = ''
+            to_date = ''
+
+    if period == '6months':
+        return period, from_date, to_date, now - timedelta(days=180), now
+    if period == '1year':
+        return period, from_date, to_date, now - timedelta(days=365), now
+
+    return '1month', from_date, to_date, now - timedelta(days=30), now
+
+
 @login_required
 def admin_reports(request):
-    """Admin Reports page with real data"""
+    """Admin Reports page with real filter/download data."""
     if request.user.role != 'admin':
         return redirect('dashboard')
-    
+
     try:
-        # Get all applications
-        all_apps = LoanApplication.objects.all()
-        total_applications = all_apps.count()
-        
-        # Count by status
-        new_count = all_apps.filter(status='New Entry').count()
-        processing_count = all_apps.filter(status='Waiting for Processing').count()
-        followup_count = all_apps.filter(status='Required Follow-up').count()
-        approved_count = all_apps.filter(status='Approved').count()
-        rejected_count = all_apps.filter(status='Rejected').count()
-        disbursed_count = all_apps.filter(status='Disbursed').count()
-        
-        # Calculate percentages
-        new_percent = int((new_count / total_applications * 100)) if total_applications > 0 else 0
-        processing_percent = int((processing_count / total_applications * 100)) if total_applications > 0 else 0
-        followup_percent = int((followup_count / total_applications * 100)) if total_applications > 0 else 0
-        approved_percent = int((approved_count / total_applications * 100)) if total_applications > 0 else 0
-        rejected_percent = int((rejected_count / total_applications * 100)) if total_applications > 0 else 0
-        disbursed_percent = int((disbursed_count / total_applications * 100)) if total_applications > 0 else 0
-        
-        # Financial data
-        total_amount = all_apps.aggregate(Sum('applicant__loan_amount'))['applicant__loan_amount__sum'] or 0
-        approved_amount = all_apps.filter(status='Approved').aggregate(Sum('applicant__loan_amount'))['applicant__loan_amount__sum'] or 0
-        disbursed_amount = all_apps.filter(status='Disbursed').aggregate(Sum('applicant__loan_amount'))['applicant__loan_amount__sum'] or 0
-        pending_amount = (total_amount - disbursed_amount)
+        period, from_date, to_date, start_date, end_date = _report_period_bounds(request)
+        search_query = (request.GET.get('q') or '').strip()
+        status_filter = (request.GET.get('status') or '').strip()
+        employee_filter = (request.GET.get('employee') or '').strip()
+        partner_filter = (request.GET.get('partner') or request.GET.get('agent') or '').strip()
+        loan_id_filter = (request.GET.get('loan_id') or '').strip()
+
+        status_alias_map = {
+            'processing': 'waiting',
+            'waiting_for_processing': 'waiting',
+            'updated': UPDATED_DOCUMENT_STATUS_KEY,
+            'banking': 'follow_up',
+            'followup_pending': 'follow_up_pending',
+        }
+        status_filter = status_alias_map.get(status_filter, status_filter)
+
+        filtered_loans_qs = Loan.objects.select_related(
+            'created_by',
+            'assigned_employee',
+            'assigned_agent',
+            'assigned_agent__user',
+        ).prefetch_related('documents').filter(
+            created_at__gte=start_date,
+            created_at__lt=end_date,
+        )
+
+        if loan_id_filter:
+            try:
+                filtered_loans_qs = filtered_loans_qs.filter(id=int(loan_id_filter))
+            except (TypeError, ValueError):
+                filtered_loans_qs = filtered_loans_qs.none()
+
+        if search_query:
+            search_filter = (
+                Q(full_name__icontains=search_query) |
+                Q(mobile_number__icontains=search_query) |
+                Q(email__icontains=search_query) |
+                Q(user_id__icontains=search_query)
+            )
+            if search_query.isdigit():
+                search_filter |= Q(id=int(search_query))
+            filtered_loans_qs = filtered_loans_qs.filter(search_filter)
+
+        if employee_filter:
+            filtered_loans_qs = filtered_loans_qs.filter(assigned_employee_id=employee_filter)
+
+        if partner_filter:
+            filtered_loans_qs = filtered_loans_qs.filter(assigned_agent_id=partner_filter)
+
+        if status_filter:
+            matching_ids = [
+                loan.id for loan in filtered_loans_qs
+                if _admin_report_effective_status_key(loan) == status_filter
+            ]
+            filtered_loans_qs = filtered_loans_qs.filter(id__in=matching_ids)
+
+        report_loans = list(filtered_loans_qs.order_by('-created_at'))
+        for loan in report_loans:
+            status_key = _admin_report_effective_status_key(loan)
+            loan.report_status_key = status_key
+            loan.report_status_label = _admin_report_status_label(status_key)
+
+        if request.GET.get('download'):
+            from .report_exports import export_loans_csv, export_loans_excel
+            format_type = (request.GET.get('format') or 'csv').lower()
+            if format_type in ['excel', 'xlsx']:
+                return export_loans_excel(
+                    report_loans,
+                    period,
+                    'admin_loans_report',
+                    _admin_report_effective_status_key,
+                    _admin_report_status_label,
+                )
+            return export_loans_csv(
+                report_loans,
+                period,
+                'admin_loans_report',
+                _admin_report_effective_status_key,
+                _admin_report_status_label,
+            )
+
+        total_applications = len(report_loans)
+        status_counts = {
+            'new_entry': 0,
+            'waiting': 0,
+            UPDATED_DOCUMENT_STATUS_KEY: 0,
+            'follow_up': 0,
+            'follow_up_pending': 0,
+            'approved': 0,
+            'rejected': 0,
+            'disbursed': 0,
+        }
+        for loan in report_loans:
+            status_counts[loan.report_status_key] = status_counts.get(loan.report_status_key, 0) + 1
+
+        new_count = status_counts.get('new_entry', 0)
+        processing_count = status_counts.get('waiting', 0)
+        updated_document_count = status_counts.get(UPDATED_DOCUMENT_STATUS_KEY, 0)
+        followup_count = status_counts.get('follow_up', 0)
+        followup_pending_count = status_counts.get('follow_up_pending', 0)
+        approved_count = status_counts.get('approved', 0)
+        rejected_count = status_counts.get('rejected', 0)
+        disbursed_count = status_counts.get('disbursed', 0)
+
+        def percent(value):
+            return int((value / total_applications * 100)) if total_applications > 0 else 0
+
+        new_percent = percent(new_count)
+        processing_percent = percent(processing_count)
+        followup_percent = percent(followup_count)
+        approved_percent = percent(approved_count)
+        rejected_percent = percent(rejected_count)
+        disbursed_percent = percent(disbursed_count)
+
+        total_amount = sum((loan.loan_amount or 0) for loan in report_loans)
+        approved_amount = sum((loan.loan_amount or 0) for loan in report_loans if loan.report_status_key == 'approved')
+        disbursed_amount = sum((loan.loan_amount or 0) for loan in report_loans if loan.report_status_key == 'disbursed')
+        pending_amount = total_amount - disbursed_amount
         avg_loan_value = (total_amount / total_applications) if total_applications > 0 else 0
-        
+
         # Team data
         employees = User.objects.filter(role='employee')
         total_employees = employees.count()
         active_employees = employees.filter(is_active=True).count()
-        
+
         agents = Agent.objects.all()
         total_agents = agents.count()
         active_agents = agents.filter(status='active').count()
-        
+
         subadmins = User.objects.filter(role='subadmin')
         total_subadmins = subadmins.count()
 
@@ -1122,14 +1275,6 @@ def admin_reports(request):
             if getattr(agent, 'user_id', None)
         }
 
-        report_loans = list(
-            Loan.objects.select_related(
-                'created_by',
-                'assigned_employee',
-                'assigned_agent',
-            ).prefetch_related('documents').order_by('-created_at')
-        )
-
         for partner in partners_qs:
             partner_application_map[partner.id] = []
         for employee in employees_qs:
@@ -1176,7 +1321,9 @@ def admin_reports(request):
             'total_applications': total_applications,
             'new_count': new_count,
             'processing_count': processing_count,
+            'updated_document_count': updated_document_count,
             'followup_count': followup_count,
+            'followup_pending_count': followup_pending_count,
             'approved_count': approved_count,
             'rejected_count': rejected_count,
             'disbursed_count': disbursed_count,
@@ -1197,6 +1344,16 @@ def admin_reports(request):
             'active_agents': active_agents,
             'total_subadmins': total_subadmins,
             'download_people': download_people,
+            'filtered_report_loans': report_loans,
+            'period': period,
+            'from_date': from_date,
+            'to_date': to_date,
+            'search_query': search_query,
+            'status_filter': status_filter,
+            'employee_filter': employee_filter,
+            'partner_filter': partner_filter,
+            'employee_options': employees.order_by('first_name', 'last_name', 'username'),
+            'partner_options': agents.order_by('name', 'id'),
         }
         
         return render(request, 'core/admin/admin_reports_enhanced.html', context)
@@ -1859,12 +2016,24 @@ class ComplaintViewSet(viewsets.ModelViewSet):
     ordering_fields = ['created_at', 'priority']
     
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
+        complaint = serializer.save(created_by=self.request.user)
+        update_fields = []
+        if self.request.user.role == 'employee' and not complaint.filed_by_employee_id:
+            complaint.filed_by_employee = self.request.user
+            update_fields.append('filed_by_employee')
+        elif self.request.user.role == 'agent' and not complaint.filed_by_agent_id:
+            agent = Agent.objects.filter(user=self.request.user).first()
+            if agent:
+                complaint.filed_by_agent = agent
+                update_fields.append('filed_by_agent')
+        if update_fields:
+            update_fields.append('updated_at')
+            complaint.save(update_fields=update_fields)
         ActivityLog.objects.create(
             action='complaint_raised',
-            description=f"New complaint raised: {serializer.instance.complaint_id}",
+            description=f"New complaint raised: {complaint.complaint_id}",
             user=self.request.user,
-            related_complaint=serializer.instance
+            related_complaint=complaint
         )
     
     @action(detail=True, methods=['post'])
@@ -4538,7 +4707,7 @@ def employee_settings(request):
     """Employee settings page"""
     if request.user.role != 'employee':
         return redirect('dashboard')
-    return render(request, 'core/employee/settings.html')
+    return render(request, 'core/shared/panel_settings.html', {'user': request.user})
 
 
 @api_view(['GET'])
@@ -6470,12 +6639,16 @@ def employee_assigned_loan_detail(request, loan_id):
 
     app_lookup_kwargs = {}
     legacy_lookup_kwargs = {}
+    app_lookup_filter = Q()
     if request.user.role == 'employee':
         app_lookup_kwargs = {'assigned_employee': request.user}
+        app_lookup_filter = Q(assigned_employee=request.user)
         legacy_lookup_kwargs = {'assigned_employee': request.user}
     elif request.user.role == 'agent':
         app_lookup_kwargs = {'assigned_agent': agent_profile}
+        app_lookup_filter = Q(assigned_agent=agent_profile) | Q(assigned_by=request.user)
         legacy_lookup_kwargs = {'assigned_agent': agent_profile}
+    preferred_source = _normalize_entity_source(request.query_params)
 
     def _history_status_label(raw_status):
         if not raw_status:
@@ -6595,22 +6768,36 @@ def employee_assigned_loan_detail(request, loan_id):
 
     try:
         try:
+            if preferred_source == 'legacy':
+                raise LoanApplication.DoesNotExist
             loan = LoanApplication.objects.select_related(
                 'applicant', 'assigned_by', 'approved_by', 'rejected_by', 'disbursed_by'
-            ).prefetch_related('documents', 'status_history').get(
+            ).prefetch_related('documents', 'status_history').filter(
+                app_lookup_filter
+            ).get(
                 id=loan_id,
-                **app_lookup_kwargs,
             )
             applicant = loan.applicant
             related_legacy = find_related_loan(loan)
             if request.user.role == 'subadmin':
-                from .subadmin_views import _subadmin_scoped_loans_qs
+                from .subadmin_views import (
+                    _subadmin_managed_agents_qs,
+                    _subadmin_managed_employees_qs,
+                    _subadmin_scoped_loans_qs,
+                )
 
                 if related_legacy:
                     if not _subadmin_scoped_loans_qs(request.user).filter(id=related_legacy.id).exists():
                         raise LoanApplication.DoesNotExist
-                elif loan.assigned_by_id != request.user.id:
-                    raise LoanApplication.DoesNotExist
+                else:
+                    managed_employee_ids = set(_subadmin_managed_employees_qs(request.user).values_list('id', flat=True))
+                    managed_agent_ids = set(_subadmin_managed_agents_qs(request.user).values_list('id', flat=True))
+                    if not (
+                        loan.assigned_by_id == request.user.id
+                        or loan.assigned_employee_id in managed_employee_ids
+                        or loan.assigned_agent_id in managed_agent_ids
+                    ):
+                        raise LoanApplication.DoesNotExist
             legacy_details = _parse_colon_details(related_legacy.remarks) if related_legacy else {}
             assigned_by_name = loan.assigned_by.get_full_name() if loan.assigned_by else 'System'
             assigned_by_role = loan.assigned_by.get_role_display() if loan.assigned_by else 'System'
@@ -6797,6 +6984,8 @@ def employee_assigned_loan_detail(request, loan_id):
             }
             loan_data['full_application_details'] = _build_full_application_details(loan_data, legacy_details)
         except LoanApplication.DoesNotExist:
+            if preferred_source == 'application':
+                raise
             if request.user.role == 'subadmin':
                 from .subadmin_views import _subadmin_scoped_loans_qs
 
@@ -7725,14 +7914,20 @@ def employee_mark_updated_document(request, loan_id):
         def _can_mark_application():
             return (
                 loan_app
-                and _is_authorized_processor(request.user, loan_app)
+                and (
+                    _is_authorized_processor(request.user, loan_app)
+                    or _is_authorized_follow_up_editor(request.user, loan_app=loan_app)
+                )
                 and loan_app.status in ['New Entry', 'Waiting for Processing']
             )
 
         def _can_mark_legacy():
             return (
                 legacy
-                and _is_authorized_processor(request.user, legacy)
+                and (
+                    _is_authorized_processor(request.user, legacy)
+                    or _is_authorized_follow_up_editor(request.user, legacy_loan=legacy)
+                )
                 and legacy.status in ['new_entry', 'waiting']
             )
 
@@ -7804,12 +7999,26 @@ def employee_mark_updated_document(request, loan_id):
                 return _mark_legacy()
 
         for source in _source_order():
-            if source == 'application' and loan_app and _is_authorized_processor(request.user, loan_app):
+            if (
+                source == 'application'
+                and loan_app
+                and (
+                    _is_authorized_processor(request.user, loan_app)
+                    or _is_authorized_follow_up_editor(request.user, loan_app=loan_app)
+                )
+            ):
                 return Response({
                     'success': False,
                     'error': f'Update Document is allowed only in Document Pending. Current status: {loan_app.status}.',
                 }, status=status.HTTP_400_BAD_REQUEST)
-            if source == 'legacy' and legacy and _is_authorized_processor(request.user, legacy):
+            if (
+                source == 'legacy'
+                and legacy
+                and (
+                    _is_authorized_processor(request.user, legacy)
+                    or _is_authorized_follow_up_editor(request.user, legacy_loan=legacy)
+                )
+            ):
                 return Response({
                     'success': False,
                     'error': f'Update Document is allowed only in Document Pending. Current status: {legacy.status}.',

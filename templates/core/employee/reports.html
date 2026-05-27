@@ -1,0 +1,227 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Employee Reports{% endblock %}
+
+{% block content %}
+<div class="employee-reports-page container-fluid py-3 py-lg-4">
+    <div class="reports-head">
+        <div>
+            <h1>Reports</h1>
+            <p>All applications handled under your employee panel.</p>
+        </div>
+        <a class="report-btn primary" href="?download=table">
+            <i class="bi bi-download"></i>
+            <span>Download Table</span>
+        </a>
+    </div>
+
+    <div class="report-summary-grid">
+        <div class="report-summary"><span>Total</span><strong>{{ status_summary.total }}</strong></div>
+        <div class="report-summary accent-green"><span>Approved</span><strong>{{ status_summary.approved }}</strong></div>
+        <div class="report-summary accent-red"><span>Rejected</span><strong>{{ status_summary.rejected }}</strong></div>
+        <div class="report-summary accent-blue"><span>Disbursed</span><strong>{{ status_summary.disbursed }}</strong></div>
+    </div>
+
+    <section class="reports-table-shell">
+        <div class="table-responsive">
+            <table class="table table-grid align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Loan ID</th>
+                        <th>Applicant</th>
+                        <th>Mobile</th>
+                        <th>Loan Type</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                        <th>Channel Partner</th>
+                        <th>Created</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in rows %}
+                    <tr>
+                        <td class="fw-semibold">{{ row.loan_id }}</td>
+                        <td>
+                            <div class="fw-semibold">{{ row.applicant_name }}</div>
+                            <small class="text-muted">{{ row.email }}</small>
+                        </td>
+                        <td>{{ row.mobile }}</td>
+                        <td>{{ row.loan_type }}</td>
+                        <td>Rs. {{ row.loan_amount|floatformat:0 }}</td>
+                        <td><span class="status-pill">{{ row.status_display }}</span></td>
+                        <td>{{ row.channel_partner }}</td>
+                        <td>{{ row.created_at }}</td>
+                        <td>
+                            <div class="table-actions">
+                                <a href="{{ row.view_url }}" class="report-btn small">View</a>
+                                <a href="?download=application&loan_id={{ row.id }}" class="report-btn small download">Download</a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="text-center text-muted py-5">No report records found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+
+<style>
+    .employee-reports-page {
+        max-width: 1600px;
+    }
+
+    .reports-head,
+    .reports-table-shell,
+    .report-summary {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        box-shadow: 0 16px 34px rgba(15, 23, 42, 0.08);
+    }
+
+    .reports-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 22px 24px;
+        margin-bottom: 18px;
+    }
+
+    .reports-head h1 {
+        margin: 0;
+        color: #0f172a;
+        font-size: 26px;
+        font-weight: 800;
+    }
+
+    .reports-head p {
+        margin: 6px 0 0;
+        color: #64748b;
+        font-size: 13px;
+    }
+
+    .report-summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 14px;
+        margin-bottom: 18px;
+    }
+
+    .report-summary {
+        border-top: 4px solid #0f766e;
+        padding: 16px 18px;
+    }
+
+    .report-summary span {
+        color: #64748b;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .report-summary strong {
+        display: block;
+        margin-top: 8px;
+        color: #0f172a;
+        font-size: 30px;
+        line-height: 1;
+    }
+
+    .report-summary.accent-green { border-top-color: #16a34a; }
+    .report-summary.accent-red { border-top-color: #dc2626; }
+    .report-summary.accent-blue { border-top-color: #2563eb; }
+
+    .reports-table-shell {
+        overflow: hidden;
+    }
+
+    .employee-reports-page .table-grid {
+        min-width: 1120px;
+    }
+
+    .employee-reports-page .table-grid thead th {
+        background: linear-gradient(135deg, #0f766e 0%, #2563eb 100%);
+        color: #ffffff;
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        padding: 12px 11px;
+        font-size: 11px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        white-space: nowrap;
+    }
+
+    .employee-reports-page .table-grid tbody td {
+        border: 1px solid #e2e8f0;
+        padding: 11px;
+        color: #1e293b;
+        font-size: 13px;
+        vertical-align: middle;
+    }
+
+    .employee-reports-page .table-grid tbody tr:nth-child(even) td {
+        background: #f8fafc;
+    }
+
+    .status-pill {
+        display: inline-flex;
+        border-radius: 999px;
+        background: #ecfdf5;
+        color: #0f766e;
+        border: 1px solid #bbf7d0;
+        padding: 6px 10px;
+        font-size: 11px;
+        font-weight: 800;
+    }
+
+    .table-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+    }
+
+    .report-btn {
+        border: 1px solid #cbd5e1;
+        background: #ffffff;
+        color: #0f172a;
+        border-radius: 10px;
+        padding: 9px 13px;
+        min-height: 38px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        font-size: 13px;
+        font-weight: 800;
+        text-decoration: none;
+    }
+
+    .report-btn.primary,
+    .report-btn.download {
+        background: linear-gradient(135deg, #0f766e 0%, #2563eb 100%);
+        color: #ffffff;
+        border-color: transparent;
+    }
+
+    .report-btn.small {
+        padding: 7px 10px;
+        min-height: 32px;
+        font-size: 12px;
+    }
+
+    @media (max-width: 768px) {
+        .reports-head {
+            align-items: stretch;
+            flex-direction: column;
+        }
+    }
+</style>
+{% endblock %}

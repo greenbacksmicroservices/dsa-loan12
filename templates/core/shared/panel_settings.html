@@ -1,0 +1,650 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Settings{% endblock %}
+
+{% block content %}
+<div class="panel-settings-page container-fluid py-3 py-lg-4">
+    <div class="settings-hero mb-4">
+        <div>
+            <p class="settings-kicker mb-2">
+                {% if user.role == 'agent' %}Channel Partner Panel{% elif user.role == 'employee' %}Employee Panel{% else %}Panel{% endif %}
+            </p>
+            <h1 class="h4 fw-bold mb-1">Settings & Profile</h1>
+            <p class="text-muted mb-0">Manage profile, security, notifications, and KYC documents.</p>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            {% if user.role == 'agent' %}
+            <a href="{% url 'agent_dashboard' %}" class="btn btn-light border"><i class="bi bi-arrow-left"></i> Dashboard</a>
+            {% elif user.role == 'employee' %}
+            <a href="{% url 'employee_dashboard' %}" class="btn btn-light border"><i class="bi bi-arrow-left"></i> Dashboard</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div id="settingsAlert" class="settings-alert mb-3" role="alert"></div>
+
+    <div class="settings-layout">
+        <aside class="settings-card profile-card">
+            <div class="profile-avatar-wrap">
+                <img id="settingsProfilePhoto" src="{% if user.profile_photo %}{{ user.profile_photo.url }}{% else %}{% static 'images/default-avatar.svg' %}{% endif %}" alt="Profile photo">
+                <label class="photo-upload-btn" for="settingsPhotoInput" title="Upload photo">
+                    <i class="bi bi-camera"></i>
+                </label>
+                <input id="settingsPhotoInput" type="file" accept="image/*" class="d-none">
+            </div>
+            <h2 id="settingsProfileName">{{ user.get_full_name|default:user.username }}</h2>
+            <p id="settingsRoleLabel">{{ user.get_role_display }}</p>
+            <div class="profile-meta-list">
+                <div><span>Email</span><strong id="settingsProfileEmail">{{ user.email|default:"-" }}</strong></div>
+                <div><span>Phone</span><strong id="settingsProfilePhone">{{ user.phone|default:"-" }}</strong></div>
+                <div><span>ID</span><strong id="settingsProfileCode">{{ user.employee_id|default:"-" }}</strong></div>
+                <div><span>Status</span><strong class="text-success">Active</strong></div>
+            </div>
+        </aside>
+
+        <section class="settings-card settings-main-card">
+            <ul class="nav settings-tabs" id="settingsTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="profile-tab" data-bs-toggle="tab" data-bs-target="#profilePane" type="button" role="tab">
+                        <i class="bi bi-person-lines-fill"></i> Profile
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="security-tab" data-bs-toggle="tab" data-bs-target="#securityPane" type="button" role="tab">
+                        <i class="bi bi-shield-lock"></i> Security
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="documents-tab" data-bs-toggle="tab" data-bs-target="#documentsPane" type="button" role="tab">
+                        <i class="bi bi-folder2-open"></i> Documents
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="notifications-tab" data-bs-toggle="tab" data-bs-target="#notificationsPane" type="button" role="tab">
+                        <i class="bi bi-bell"></i> Notifications
+                    </button>
+                </li>
+            </ul>
+
+            <div class="tab-content p-3 p-lg-4">
+                <div class="tab-pane fade show active" id="profilePane" role="tabpanel">
+                    <form id="settingsProfileForm" class="settings-form">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">First Name</label>
+                                <input type="text" id="firstName" class="form-control" name="first_name">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Last Name</label>
+                                <input type="text" id="lastName" class="form-control" name="last_name">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Email</label>
+                                <input type="email" id="email" class="form-control" name="email" readonly>
+                                <div class="contact-lock-note">Only admin can update Mail ID.</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Phone</label>
+                                <input type="tel" id="phone" class="form-control" name="phone" readonly>
+                                <div class="contact-lock-note">Only admin can update phone number.</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Gender</label>
+                                <select id="gender" class="form-select" name="gender">
+                                    <option value="Male">Male</option>
+                                    <option value="Female">Female</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Username</label>
+                                <input type="text" id="username" class="form-control" disabled>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Address</label>
+                                <textarea id="address" class="form-control" rows="3" name="address"></textarea>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-end mt-4">
+                            <button type="submit" class="btn btn-primary" id="saveProfileBtn">
+                                <i class="bi bi-check-circle"></i> Save Profile
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="tab-pane fade" id="securityPane" role="tabpanel">
+                    <form id="settingsPasswordForm" class="settings-form settings-narrow">
+                        <div class="mb-3">
+                            <label class="form-label">Current Password</label>
+                            <input type="password" id="currentPassword" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">New Password</label>
+                            <input type="password" id="newPassword" class="form-control" minlength="8" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Confirm New Password</label>
+                            <input type="password" id="confirmPassword" class="form-control" minlength="8" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary" id="changePasswordBtn">
+                            <i class="bi bi-key"></i> Update Password
+                        </button>
+                    </form>
+                </div>
+
+                <div class="tab-pane fade" id="documentsPane" role="tabpanel">
+                    <div class="doc-upload-grid mb-4">
+                        <button type="button" class="doc-upload-tile" data-doc-type="pan_card">
+                            <i class="bi bi-credit-card-2-front"></i>
+                            <span>PAN Card</span>
+                        </button>
+                        <button type="button" class="doc-upload-tile" data-doc-type="aadhaar_card">
+                            <i class="bi bi-person-vcard"></i>
+                            <span>Aadhaar Card</span>
+                        </button>
+                        <button type="button" class="doc-upload-tile" data-doc-type="bank_statement">
+                            <i class="bi bi-bank"></i>
+                            <span>Passbook / Cheque / Statement</span>
+                        </button>
+                    </div>
+                    <input id="settingsDocumentInput" type="file" class="d-none" accept="image/*,.pdf">
+                    <div class="table-responsive settings-doc-table">
+                        <table class="table align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Document</th>
+                                    <th>Uploaded</th>
+                                    <th>Source</th>
+                                    <th>File</th>
+                                </tr>
+                            </thead>
+                            <tbody id="settingsDocumentsBody">
+                                <tr><td colspan="4" class="text-center text-muted py-4">Loading documents...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="tab-pane fade" id="notificationsPane" role="tabpanel">
+                    <div class="notification-grid">
+                        <label class="notification-row">
+                            <input type="checkbox" class="form-check-input" checked>
+                            <span><strong>Email Alerts</strong><small>Loan assignment and status updates</small></span>
+                        </label>
+                        <label class="notification-row">
+                            <input type="checkbox" class="form-check-input" checked>
+                            <span><strong>Dashboard Live Updates</strong><small>Refresh counters while you work</small></span>
+                        </label>
+                        <label class="notification-row">
+                            <input type="checkbox" class="form-check-input" checked>
+                            <span><strong>Complaint Updates</strong><small>Replies and workflow movement</small></span>
+                        </label>
+                    </div>
+                    <button type="button" class="btn btn-outline-primary mt-3" onclick="showSettingsAlert('Notification preferences saved.', 'success')">
+                        <i class="bi bi-check-circle"></i> Save Preferences
+                    </button>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+
+<style>
+.panel-settings-page {
+    max-width: 1480px;
+}
+
+.settings-hero,
+.settings-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+}
+
+.settings-hero {
+    padding: 20px 22px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.settings-kicker {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    color: #2563eb;
+    text-transform: uppercase;
+}
+
+.settings-layout {
+    display: grid;
+    grid-template-columns: minmax(260px, 340px) 1fr;
+    gap: 20px;
+    align-items: start;
+}
+
+.profile-card {
+    padding: 22px;
+    text-align: center;
+}
+
+.profile-avatar-wrap {
+    width: 132px;
+    height: 132px;
+    margin: 0 auto 16px;
+    position: relative;
+}
+
+.profile-avatar-wrap img {
+    width: 132px;
+    height: 132px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 4px solid #dbeafe;
+    background: #f8fafc;
+}
+
+.photo-upload-btn {
+    position: absolute;
+    right: 4px;
+    bottom: 6px;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #2563eb;
+    color: #ffffff;
+    border: 3px solid #ffffff;
+    cursor: pointer;
+}
+
+.profile-card h2 {
+    font-size: 20px;
+    font-weight: 800;
+    margin-bottom: 4px;
+}
+
+.profile-card p {
+    color: #64748b;
+    font-weight: 700;
+    font-size: 13px;
+}
+
+.profile-meta-list {
+    border-top: 1px solid #e5e7eb;
+    margin-top: 18px;
+    padding-top: 12px;
+    text-align: left;
+}
+
+.profile-meta-list div {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 9px 0;
+    border-bottom: 1px dashed #e5e7eb;
+}
+
+.profile-meta-list span {
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.profile-meta-list strong {
+    color: #0f172a;
+    font-size: 12px;
+    text-align: right;
+    word-break: break-word;
+}
+
+.settings-main-card {
+    overflow: hidden;
+}
+
+.settings-tabs {
+    gap: 4px;
+    padding: 10px 12px 0;
+    border-bottom: 1px solid #e5e7eb;
+    background: #f8fafc;
+}
+
+.settings-tabs .nav-link {
+    color: #475569;
+    border: 0;
+    border-radius: 8px 8px 0 0;
+    font-weight: 800;
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.settings-tabs .nav-link.active {
+    color: #1d4ed8;
+    background: #ffffff;
+    box-shadow: inset 0 3px 0 #2563eb;
+}
+
+.settings-form .form-label {
+    font-size: 13px;
+    font-weight: 800;
+    color: #334155;
+}
+
+.contact-lock-note {
+    margin-top: 5px;
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.settings-form input[readonly] {
+    background: #f8fafc;
+    color: #64748b;
+    cursor: not-allowed;
+}
+
+.settings-narrow {
+    max-width: 560px;
+}
+
+.doc-upload-grid,
+.notification-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+}
+
+.doc-upload-tile,
+.notification-row {
+    border: 1px solid #dbeafe;
+    border-radius: 8px;
+    background: #eff6ff;
+    color: #1e3a8a;
+    padding: 14px;
+}
+
+.doc-upload-tile {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 800;
+    text-align: left;
+}
+
+.doc-upload-tile i {
+    font-size: 22px;
+}
+
+.notification-row {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+.notification-row small {
+    display: block;
+    color: #475569;
+    margin-top: 2px;
+}
+
+.settings-doc-table {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+}
+
+.settings-alert {
+    display: none;
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-weight: 700;
+    font-size: 13px;
+}
+
+.settings-alert.success {
+    display: block;
+    background: #dcfce7;
+    color: #166534;
+    border: 1px solid #86efac;
+}
+
+.settings-alert.error {
+    display: block;
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+}
+
+body.dark-mode .settings-hero,
+body.dark-mode .settings-card,
+body.dark-mode .settings-tabs,
+body.dark-mode .settings-tabs .nav-link.active,
+body.dark-mode .settings-doc-table,
+body.dark-mode .form-control,
+body.dark-mode .form-select {
+    background: #0f172a !important;
+    border-color: #334155 !important;
+    color: #e5e7eb !important;
+}
+
+body.dark-mode .profile-meta-list strong,
+body.dark-mode .profile-card h2,
+body.dark-mode .settings-form .form-label {
+    color: #e5e7eb !important;
+}
+
+@media (max-width: 992px) {
+    .settings-layout {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+<script>
+function getSettingsCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i += 1) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+function escapeSettingsHtml(value) {
+    return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function showSettingsAlert(message, type = 'success') {
+    const box = document.getElementById('settingsAlert');
+    if (!box) return;
+    box.className = `settings-alert ${type === 'error' ? 'error' : 'success'} mb-3`;
+    box.textContent = message;
+    window.clearTimeout(box.hideTimer);
+    box.hideTimer = window.setTimeout(() => {
+        box.className = 'settings-alert mb-3';
+        box.textContent = '';
+    }, 4200);
+}
+
+async function loadSettingsProfile() {
+    const response = await fetch('/api/profile/', { credentials: 'same-origin' });
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Unable to load profile');
+    }
+    const profile = data.profile || {};
+    const displayName = `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.username || 'User';
+    document.getElementById('settingsProfileName').textContent = displayName;
+    document.getElementById('settingsRoleLabel').textContent = profile.role || '';
+    document.getElementById('settingsProfileEmail').textContent = profile.email || '-';
+    document.getElementById('settingsProfilePhone').textContent = profile.phone || '-';
+    document.getElementById('settingsProfileCode').textContent = profile.profile_code || '-';
+    if (profile.photo_url) {
+        document.getElementById('settingsProfilePhoto').src = profile.photo_url;
+    }
+    document.getElementById('firstName').value = profile.first_name || '';
+    document.getElementById('lastName').value = profile.last_name || '';
+    document.getElementById('email').value = profile.email || '';
+    document.getElementById('phone').value = profile.phone || '';
+    document.getElementById('gender').value = profile.gender || 'Other';
+    document.getElementById('username').value = profile.username || '';
+    document.getElementById('address').value = profile.address || '';
+}
+
+async function loadSettingsDocuments() {
+    const tbody = document.getElementById('settingsDocumentsBody');
+    const response = await fetch('/api/profile/documents/', { credentials: 'same-origin' });
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Unable to load documents');
+    }
+    const docs = Array.isArray(data.documents) ? data.documents : [];
+    if (!docs.length) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">No documents uploaded yet.</td></tr>';
+        return;
+    }
+    tbody.innerHTML = docs.map((doc) => `
+        <tr>
+            <td class="fw-semibold">${escapeSettingsHtml(doc.label || doc.type || 'Document')}</td>
+            <td>${escapeSettingsHtml(doc.uploaded_at || '-')}</td>
+            <td>${escapeSettingsHtml(doc.source || '-')}</td>
+            <td>
+                ${doc.url ? `<div class="d-flex gap-2 flex-wrap"><a href="${escapeSettingsHtml(doc.url)}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary">View</a><a href="${escapeSettingsHtml(doc.url)}" download class="btn btn-sm btn-outline-success">Download</a></div>` : '<span class="text-muted">No file</span>'}
+            </td>
+        </tr>
+    `).join('');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadSettingsProfile().catch((error) => showSettingsAlert(error.message, 'error'));
+    loadSettingsDocuments().catch((error) => showSettingsAlert(error.message, 'error'));
+
+    const csrfToken = getSettingsCookie('csrftoken');
+    const profileForm = document.getElementById('settingsProfileForm');
+    const passwordForm = document.getElementById('settingsPasswordForm');
+    const photoInput = document.getElementById('settingsPhotoInput');
+    const documentInput = document.getElementById('settingsDocumentInput');
+    let pendingDocumentType = '';
+
+    profileForm?.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const payload = {
+            first_name: document.getElementById('firstName').value.trim(),
+            last_name: document.getElementById('lastName').value.trim(),
+            address: document.getElementById('address').value.trim(),
+            gender: document.getElementById('gender').value,
+        };
+        try {
+            const response = await fetch('/api/profile/update/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                body: JSON.stringify(payload),
+                credentials: 'same-origin',
+            });
+            const data = await response.json();
+            if (!response.ok || !data.success) throw new Error(data.error || 'Unable to save profile');
+            await loadSettingsProfile();
+            showSettingsAlert(data.message || 'Profile saved successfully');
+        } catch (error) {
+            showSettingsAlert(error.message, 'error');
+        }
+    });
+
+    passwordForm?.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const payload = {
+            current_password: document.getElementById('currentPassword').value,
+            new_password: document.getElementById('newPassword').value,
+            confirm_password: document.getElementById('confirmPassword').value,
+        };
+        try {
+            const response = await fetch('/api/profile/change-password/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                body: JSON.stringify(payload),
+                credentials: 'same-origin',
+            });
+            const data = await response.json();
+            if (!response.ok || !data.success) throw new Error(data.error || 'Unable to update password');
+            passwordForm.reset();
+            showSettingsAlert(data.message || 'Password updated successfully');
+        } catch (error) {
+            showSettingsAlert(error.message, 'error');
+        }
+    });
+
+    photoInput?.addEventListener('change', async () => {
+        const file = photoInput.files?.[0];
+        if (!file) return;
+        const formData = new FormData();
+        formData.append('photo', file);
+        try {
+            const response = await fetch('/api/profile/upload-photo/', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrfToken },
+                body: formData,
+                credentials: 'same-origin',
+            });
+            const data = await response.json();
+            if (!response.ok || !data.success) throw new Error(data.error || 'Unable to upload photo');
+            if (data.photo_url) document.getElementById('settingsProfilePhoto').src = `${data.photo_url}?t=${Date.now()}`;
+            showSettingsAlert(data.message || 'Photo uploaded successfully');
+        } catch (error) {
+            showSettingsAlert(error.message, 'error');
+        } finally {
+            photoInput.value = '';
+        }
+    });
+
+    document.querySelectorAll('[data-doc-type]').forEach((button) => {
+        button.addEventListener('click', () => {
+            pendingDocumentType = button.getAttribute('data-doc-type') || '';
+            documentInput.click();
+        });
+    });
+
+    documentInput?.addEventListener('change', async () => {
+        const file = documentInput.files?.[0];
+        if (!file || !pendingDocumentType) return;
+        const formData = new FormData();
+        formData.append('document_type', pendingDocumentType);
+        formData.append('file', file);
+        try {
+            const response = await fetch('/api/profile/upload-document/', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrfToken },
+                body: formData,
+                credentials: 'same-origin',
+            });
+            const data = await response.json();
+            if (!response.ok || !data.success) throw new Error(data.error || 'Unable to upload document');
+            await loadSettingsDocuments();
+            showSettingsAlert(data.message || 'Document uploaded successfully');
+        } catch (error) {
+            showSettingsAlert(error.message, 'error');
+        } finally {
+            documentInput.value = '';
+            pendingDocumentType = '';
+        }
+    });
+});
+</script>
+{% endblock %}

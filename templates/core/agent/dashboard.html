@@ -1,13 +1,10 @@
 {% extends 'core/base.html' %}
 {% load static %}
 
-{% block title %}Channel Partner Dashboard{% endblock %}
+{% block title %}Channel Partner{% endblock %}
 
 {% block content %}
 <div class="agent-dashboard container-fluid py-3 py-lg-4">
-    
-    </div>
-
     <div class="card-container">
         <a class="insight-card c-new text-decoration-none" href="{% url 'agent_my_applications' %}?status=new_entry">
             <p class="status-title">New Application</p>
@@ -172,7 +169,10 @@ function stageClass(stage) {
 
 function updateTimestamp() {
     const now = new Date();
-    document.getElementById('last-updated').textContent = now.toLocaleTimeString('en-IN');
+    const stamp = document.getElementById('last-updated');
+    if (stamp) {
+        stamp.textContent = now.toLocaleTimeString('en-IN');
+    }
 }
 
 function renderCharts(data) {
@@ -510,6 +510,11 @@ document.addEventListener('DOMContentLoaded', () => {
 .agent-dashboard {
     --panel-bg: #ffffff;
     --panel-border: #e5e7eb;
+    padding-top: 24px !important;
+}
+
+.agent-dashboard .card-container {
+    margin-top: 6px;
 }
 
 .dashboard-topbar {
@@ -522,6 +527,24 @@ document.addEventListener('DOMContentLoaded', () => {
     align-items: center;
     gap: 12px;
     flex-wrap: wrap;
+}
+
+.live-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border-radius: 999px;
+    border: 1px solid #bfdbfe;
+    background: #ffffff;
+    color: #1e3a8a;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.live-pill strong {
+    color: #0f172a;
+    font-weight: 800;
 }
 
 .live-dot {
@@ -592,8 +615,8 @@ document.addEventListener('DOMContentLoaded', () => {
 }
 
 .chart-wrap {
-    height: 178px;
-    padding: 10px 12px 12px;
+    height: 320px;
+    padding: 16px 18px 18px;
 }
 
 .app-table thead th {
@@ -631,7 +654,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 @media (max-width: 768px) {
     .chart-wrap {
-        height: 155px;
+        height: 260px;
     }
 }
 </style>
