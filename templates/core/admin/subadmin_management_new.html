@@ -902,7 +902,7 @@
                                 <button class="btn-action" title="Edit" onclick="editSubadmin({{ subadmin.id }})">
                                     <i class="fas fa-edit"></i> Edit
                                 </button>
-                                <button class="btn-action btn-delete" title="Delete" onclick="deleteSubadmin({{ subadmin.id }}, '{{ subadmin.get_full_name|escapejs }}')">
+                                <button class="btn-action btn-delete" title="Delete" onclick="deleteSubadmin({{ subadmin.id }}, '{{ subadmin.get_full_name|default:subadmin.username|escapejs }}')">
                                     <i class="fas fa-trash"></i> Delete
                                 </button>
                             </div>
@@ -1421,29 +1421,6 @@
     </div>
 </div>
 
-<!-- Delete Partner Modal -->
-<div class="modal-overlay" id="deleteModal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <span style="color: #ef4444;">Delete Partner</span>
-            <button class="modal-close" onclick="closeModal('deleteModal')">&times;</button>
-        </div>
-        <div class="modal-body">
-            <p><strong>Are you sure you want to delete this Partner?</strong></p>
-            <p>Name: <strong id="deleteName"></strong></p>
-            <p style="color: #ef4444; background: #fee2e2; padding: 10px; border-radius: 6px;">
-                <i class="fas fa-exclamation-triangle"></i> This action cannot be undone.
-            </p>
-        </div>
-        <div class="modal-footer">
-            <button class="btn-modal btn-modal-secondary" onclick="closeModal('deleteModal')">Cancel</button>
-            <button class="btn-modal" style="background: #ef4444; color: white;" onclick="confirmDelete()">
-                <i class="fas fa-trash"></i> Delete
-            </button>
-        </div>
-    </div>
-</div>
-
 <script>
     const partnersTableState = {
         allRows: [],
@@ -1615,7 +1592,7 @@
                 <td><div class="action-btns">
                     <button class="btn-action" onclick="viewSubadmin(${partner.id})"><i class="fas fa-eye"></i> View</button>
                     <button class="btn-action" onclick="editSubadmin(${partner.id})"><i class="fas fa-edit"></i> Edit</button>
-                    <button class="btn-action btn-delete" onclick="deleteSubadmin(${partner.id}, '${escapeJsString(name)}')"><i class="fas fa-trash"></i> Delete</button>
+                    <button class="btn-action btn-delete" onclick="deleteSubadmin(${partner.id}, '${escapeJsString(partner.name || partner.username || 'Partner')}')"><i class="fas fa-trash"></i> Delete</button>
                 </div></td>
             </tr>`;
         tbody.insertAdjacentHTML('afterbegin', rowHtml);
@@ -1755,7 +1732,8 @@
     }
 
     function closeModal(id) {
-        document.getElementById(id).classList.remove('active');
+        const modal = document.getElementById(id);
+        if (modal) modal.classList.remove('active');
     }
 
     function closePartnerInlineDetails() {
@@ -1906,7 +1884,7 @@
                 <button type="button" class="partner-stat-btn" data-section="agents" style="text-align:left; border:1px solid #bbf7d0; border-radius:10px; background:#f0fdf4; padding:10px; cursor:pointer;"><div style="font-size:12px;color:#15803d;">Channel Partners</div><div style="font-size:20px;font-weight:700;color:#166534;">${summary.managed_agents || 0}</div></button>
                 <button type="button" class="partner-stat-btn" data-section="approved" style="text-align:left; border:1px solid #bbf7d0; border-radius:10px; background:#ecfdf5; padding:10px; cursor:pointer;"><div style="font-size:12px;color:#047857;">Approved</div><div style="font-size:20px;font-weight:700;color:#065f46;">${summary.approved || 0}</div></button>
                 <button type="button" class="partner-stat-btn" data-section="rejected" style="text-align:left; border:1px solid #fecaca; border-radius:10px; background:#fef2f2; padding:10px; cursor:pointer;"><div style="font-size:12px;color:#b91c1c;">Rejected</div><div style="font-size:20px;font-weight:700;color:#7f1d1d;">${summary.rejected || 0}</div></button>
-                <button type="button" class="partner-stat-btn" data-section="follow_up" style="text-align:left; border:1px solid #fed7aa; border-radius:10px; background:#fff7ed; padding:10px; cursor:pointer;"><div style="font-size:12px;color:#c2410c;">Banking Processing</div><div style="font-size:20px;font-weight:700;color:#9a3412;">${summary.banking_processing || 0}</div></button>
+                <button type="button" class="partner-stat-btn" data-section="follow_up" style="text-align:left; border:1px solid #fed7aa; border-radius:10px; background:#fff7ed; padding:10px; cursor:pointer;"><div style="font-size:12px;color:#c2410c;">Bank Login Process</div><div style="font-size:20px;font-weight:700;color:#9a3412;">${summary.banking_processing || 0}</div></button>
                 <button type="button" class="partner-stat-btn" data-section="customers" style="text-align:left; border:1px solid #e2e8f0; border-radius:10px; background:#f8fafc; padding:10px; cursor:pointer;"><div style="font-size:12px;color:#334155;">Customers</div><div style="font-size:20px;font-weight:700;color:#0f172a;">${summary.total_customers || 0}</div></button>
             </div>
 
@@ -2196,8 +2174,11 @@
 
     function deleteSubadmin(id, name) {
         currentDeleteId = id;
-        document.getElementById('deleteName').textContent = name;
-        viewModal('deleteModal');
+        const label = name || 'this Partner';
+        if (!confirm(`Delete ${label}? This will remove the Partner from admin records.`)) {
+            return;
+        }
+        confirmDelete();
     }
 
     function confirmDelete() {

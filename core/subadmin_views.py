@@ -196,7 +196,7 @@ def _status_label(status_key, follow_up_pending=False):
         'new_entry': 'New Entry',
         'waiting': 'In Processing',
         UPDATED_DOCUMENT_STATUS_KEY: UPDATED_DOCUMENT_LABEL,
-        'follow_up': 'Banking Processing',
+        'follow_up': 'Bank Login Process',
         'follow_up_pending': FOLLOW_UP_PENDING_LABEL,
         'approved': 'Approved',
         'rejected': 'Rejected',

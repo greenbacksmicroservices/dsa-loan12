@@ -320,9 +320,9 @@ def employee_loan_status_list(request, status_key):
             'badge': 'Rejected'
         },
         'follow_up': {
-            'title': 'Banking Processing Loans',
+            'title': 'Bank Login Process Loans',
             'subtitle': 'Loans currently in banking verification stage',
-            'badge': 'Banking Processing'
+            'badge': 'Bank Login Process'
         },
         'follow_up_pending': {
             'title': 'Follow Up Loans',

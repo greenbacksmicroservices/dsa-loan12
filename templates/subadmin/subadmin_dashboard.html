@@ -241,9 +241,9 @@
         </a>
 
         <a href="{% url 'subadmin_all_loans' %}?status=follow_up" class="insight-card c-bank">
-            <p class="status-title">Banking Processing</p>
+            <p class="status-title">Bank Login Process</p>
             <h2 class="main-value" id="stat-banking-processing">0</h2>
-            <p class="description">Banking Processing Queue</p>
+            <p class="description">Bank Login Process Queue</p>
             <span class="view-details">View Details →</span>
         </a>
 
@@ -302,7 +302,7 @@
                     <div class="status-value-wrap"><div id="count-updated-document" class="status-count">0</div><div id="pct-updated-document" class="status-pct">0%</div></div>
                 </div>
                 <div class="status-legend-item">
-                    <div class="status-legend-left"><span class="status-dot" style="background:#7c3aed;"></span><span class="text-sm text-gray-700">Banking Processing</span></div>
+                    <div class="status-legend-left"><span class="status-dot" style="background:#7c3aed;"></span><span class="text-sm text-gray-700">Bank Login Process</span></div>
                     <div class="status-value-wrap"><div id="count-banking-processing" class="status-count">0</div><div id="pct-banking-processing" class="status-pct">0%</div></div>
                 </div>
                 <div class="status-legend-item">
@@ -402,7 +402,7 @@ function updateStatusDistributionChart(newEntry, waiting, updatedDocument, banki
         statusDistributionChart = new Chart(chartElement, {
             type: 'doughnut',
             data: {
-                labels: ['New Application', 'Document Pending', 'Pending Document Cleared', 'Banking Processing', 'Follow Up', 'Approved', 'Rejected', 'Disbursed'],
+                labels: ['New Application', 'Document Pending', 'Pending Document Cleared', 'Bank Login Process', 'Follow Up', 'Approved', 'Rejected', 'Disbursed'],
                 datasets: [{
                     data: values,
                     backgroundColor: ['#2563eb', '#d97706', '#16a34a', '#7c3aed', '#ea580c', '#059669', '#dc2626', '#0891b2'],

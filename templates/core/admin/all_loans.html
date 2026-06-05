@@ -162,6 +162,13 @@
         background: linear-gradient(135deg, #3ca2d1, #2c28a8);
         margin-right: 10px;
         flex-shrink: 0;
+        overflow: hidden;
+    }
+
+    .borrower-photo img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
     }
 
     .borrower-info {
@@ -373,10 +380,40 @@
     }
 
     .loan-detail-modal-card {
+        display: flex;
+        flex-direction: column;
         width: min(1120px, 92vw) !important;
         max-width: 1120px !important;
         max-height: calc(100vh - 52px);
         overflow-y: auto;
+    }
+
+    #loanDetailModal .loan-detail-hidden-section {
+        display: none !important;
+    }
+
+    #loanDetailModal .loan-detail-summary {
+        order: 1;
+    }
+
+    #loanDetailModal #detailLatestSavedSection {
+        order: 2;
+    }
+
+    #loanDetailModal #detailReferenceSection {
+        order: 3;
+    }
+
+    #loanDetailModal #detailLeadReceiveSection {
+        order: 4;
+    }
+
+    #loanDetailModal #detailDocumentsSection {
+        order: 5;
+    }
+
+    #loanDetailModal .loan-detail-actions {
+        order: 6;
     }
 
     .loan-detail-modal-header {
@@ -508,19 +545,19 @@
 
         <div class="search-bar">
             <form method="get" class="row g-3 align-items-end">
-                <div class="col-12 col-lg-3">
+                <div class="col-12 col-lg-2">
                     <label class="form-label small text-muted mb-1">Search</label>
                     <input type="text" name="q" placeholder="Search name, mobile, email, loan ID"
                            value="{{ search_query }}" class="form-control w-100" id="searchInput" onkeyup="filterTable()">
                 </div>
                 <div class="col-12 col-md-6 col-lg-2">
                     <label class="form-label small text-muted mb-1">Status</label>
-                    <select name="status" class="form-select">
+                    <select name="status" class="form-select" id="statusFilterInput">
                         <option value="all" {% if status_filter == 'all' or not status_filter %}selected{% endif %}>All Status</option>
                         <option value="new_entry" {% if status_filter == 'new_entry' %}selected{% endif %}>New Application</option>
                         <option value="waiting" {% if status_filter == 'waiting' %}selected{% endif %}>Document Pending</option>
                         <option value="updated_document" {% if status_filter == 'updated_document' %}selected{% endif %}>Pending Document Cleared</option>
-                        <option value="follow_up" {% if status_filter == 'follow_up' %}selected{% endif %}>Bank Processing</option>
+                        <option value="follow_up" {% if status_filter == 'follow_up' %}selected{% endif %}>Bank Login Process</option>
                         <option value="follow_up_pending" {% if status_filter == 'follow_up_pending' %}selected{% endif %}>Follow Up</option>
                         <option value="approved" {% if status_filter == 'approved' %}selected{% endif %}>Approved</option>
                         <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>Rejected</option>
@@ -528,9 +565,18 @@
                     </select>
                 </div>
                 <div class="col-12 col-md-6 col-lg-2">
-                    <label class="form-label small text-muted mb-1">Agent</label>
-                    <select name="agent" class="form-select">
-                        <option value="">All Agents</option>
+                    <label class="form-label small text-muted mb-1">Partner</label>
+                    <select name="partner" class="form-select" id="partnerFilterInput">
+                        <option value="">All Partners</option>
+                        {% for partner in partners %}
+                        <option value="{{ partner.id }}" {% if partner_filter == partner.id|stringformat:'s' %}selected{% endif %}>{{ partner.get_full_name|default:partner.username }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12 col-md-6 col-lg-2">
+                    <label class="form-label small text-muted mb-1">Channel Partner</label>
+                    <select name="agent" class="form-select" id="channelPartnerFilterInput">
+                        <option value="">All Channel Partners</option>
                         {% for agent in agents %}
                         <option value="{{ agent.id }}" {% if agent_filter == agent.id|stringformat:'s' %}selected{% endif %}>{{ agent.name }}</option>
                         {% endfor %}
@@ -538,7 +584,7 @@
                 </div>
                 <div class="col-12 col-md-6 col-lg-2">
                     <label class="form-label small text-muted mb-1">Employee</label>
-                    <select name="employee" class="form-select">
+                    <select name="employee" class="form-select" id="employeeFilterInput">
                         <option value="">All Employees</option>
                         {% for employee in employees %}
                         <option value="{{ employee.id }}" {% if employee_filter == employee.id|stringformat:'s' %}selected{% endif %}>{{ employee.first_name }} {{ employee.last_name }}</option>
@@ -547,11 +593,11 @@
                 </div>
                 <div class="col-12 col-md-6 col-lg-1">
                     <label class="form-label small text-muted mb-1">From</label>
-                    <input type="date" name="date_from" value="{{ date_from }}" class="form-control">
+                    <input type="date" name="date_from" value="{{ date_from }}" class="form-control" id="dateFromFilterInput">
                 </div>
                 <div class="col-12 col-md-6 col-lg-1">
                     <label class="form-label small text-muted mb-1">To</label>
-                    <input type="date" name="date_to" value="{{ date_to }}" class="form-control">
+                    <input type="date" name="date_to" value="{{ date_to }}" class="form-control" id="dateToFilterInput">
                 </div>
                 
                 <div class="col-12 d-flex gap-2 justify-content-end">
@@ -582,10 +628,15 @@
                 </thead>
                 <tbody>
                     {% for loan in loans %}
-                    <tr data-search="{{ loan.full_name|lower }},{{ loan.email|lower }},{{ loan.mobile_number }},{{ loan.user_id|default:''|lower }}" data-loan-id="{{ loan.id }}" data-entity-type="{{ loan.entity_type|default:'legacy' }}" data-status-key="{{ loan.status_key_display|default:loan.status }}">
+                    <tr data-search="{{ loan.full_name|lower }},{{ loan.email|lower }},{{ loan.mobile_number }},{{ loan.user_id|default:''|lower }},{{ loan.submitted_by_display|default:''|lower }},{{ loan.processed_by_display|default:''|lower }},{{ loan.partner_under_display|default:''|lower }}" data-loan-id="{{ loan.id }}" data-entity-type="{{ loan.entity_type|default:'legacy' }}" data-status-key="{{ loan.status_key_display|default:loan.status }}" data-agent-id="{{ loan.assigned_agent_id|default:'' }}" data-employee-id="{{ loan.assigned_employee_id|default:'' }}" data-partner-id="{{ loan.partner_under_id|default:'' }}" data-created-date="{{ loan.created_at|date:'Y-m-d' }}">
                         <td>
                             <div class="borrower-photo" title="{{ loan.full_name }}">
-                                {{ loan.full_name|first|upper }}
+                                {% if loan.applicant_photo_url %}
+                                    <img src="{{ loan.applicant_photo_url }}" alt="{{ loan.full_name }}" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';">
+                                    <span style="display:none;">{{ loan.full_name|first|upper }}</span>
+                                {% else %}
+                                    <span>{{ loan.full_name|first|upper }}</span>
+                                {% endif %}
                             </div>
                         </td>
                         <td><span class="loan-id">{{ loan.user_id|default:'Pending Manual ID' }}</span></td>
@@ -616,7 +667,7 @@
                                 </a>
                                 {% if loan.status_key_display|default:loan.status != 'rejected' and loan.status_key_display|default:loan.status != 'disbursed' %}
                                     {% if loan.status_key_display|default:loan.status == 'updated_document' %}
-                                    <a href="#" class="btn-action btn-assign" title="Move to Banking Processing" onclick="openEditModalWithAction({{ loan.id }}, 'collect', '{{ loan.entity_type|default:'legacy' }}'); return false;">
+                                    <a href="#" class="btn-action btn-assign" title="Move to Bank Login Process" onclick="openEditModalWithAction({{ loan.id }}, 'collect', '{{ loan.entity_type|default:'legacy' }}'); return false;">
                                         <i class="fas fa-university"></i> Banking
                                     </a>
                                     <a href="#" class="btn-action btn-delete" title="Reject Loan" onclick="openEditModalWithAction({{ loan.id }}, 'reject', '{{ loan.entity_type|default:'legacy' }}'); return false;">
@@ -646,10 +697,10 @@
                                 <a href="#" class="btn-action btn-edit" title="Edit Loan" onclick="editLoan({{ loan.id }}); return false;">
                                     <i class="fas fa-edit"></i> Edit
                                 </a>
+                                {% endif %}
                                 <a href="#" class="btn-action btn-delete" title="Delete Loan" onclick="deleteLoan({{ loan.id }}, '{{ loan.full_name|escapejs }}'); return false;">
                                     <i class="fas fa-trash"></i> Delete
                                 </a>
-                                {% endif %}
                             </div>
                         </td>
                     </tr>
@@ -697,7 +748,7 @@
             </div>
         </div>
 
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 25px; padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px; background: #f8fafc;">
+        <div class="loan-detail-summary" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 25px; padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px; background: #f8fafc;">
             <div>
                 <p style="color: #64748b; font-size: 10px; text-transform: uppercase; margin: 0 0 4px 0;">Loan ID</p>
                 <p style="margin: 0; font-weight: 700; color: #0f172a;" id="detailLoanUid">-</p>
@@ -725,7 +776,7 @@
         </div>
         
         <!-- APPLICANT INFORMATION -->
-        <div style="margin-bottom: 30px;">
+        <div class="loan-detail-hidden-section" style="margin-bottom: 30px;">
             <h3 style="color: #1abc9c; font-size: 16px; font-weight: 700; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid #e5e7eb;">APPLICANT INFORMATION</h3>
             <p style="margin: 0 0 14px 0; color: #475569; font-size: 13px;">Provide accurate personal information. This will be verified during processing.</p>
             <p style="color: #64748b; font-size: 11px; margin: 0 0 12px 0; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Name & Contact Details</p>
@@ -828,7 +879,7 @@
         </div>
         
         <!-- LOAN DETAILS SNAPSHOT -->
-        <div style="margin-bottom: 30px;">
+        <div class="loan-detail-hidden-section" style="margin-bottom: 30px;">
             <h3 style="color: #1abc9c; font-size: 16px; font-weight: 700; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid #e5e7eb;">LOAN DETAILS SNAPSHOT (OPTIONAL LEGACY)</h3>
             <p style="color: #64748b; font-size: 11px; margin: 0 0 12px 0; text-transform: uppercase; font-weight: 700;">Employment Information</p>
             
@@ -863,7 +914,7 @@
         </div>
         
         <!-- SERVICE DOCS / OBLIGATION -->
-        <div style="margin-bottom: 30px;">
+        <div class="loan-detail-hidden-section" style="margin-bottom: 30px;">
             <h3 style="color: #1abc9c; font-size: 16px; font-weight: 700; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid #e5e7eb;">SERVICE REQUIRED / LEGACY OBLIGATION</h3>
             <p style="margin: 0 0 14px 0; color: #475569; font-size: 13px;">Provide details of all existing loan commitments.</p>
             
@@ -873,7 +924,7 @@
         </div>
         
         <!-- LOAN DETAILS -->
-        <div style="margin-bottom: 30px;">
+        <div class="loan-detail-hidden-section" style="margin-bottom: 30px;">
             <h3 style="color: #1abc9c; font-size: 16px; font-weight: 700; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid #e5e7eb;">LOAN DETAILS</h3>
             
             <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 25px;">
@@ -903,7 +954,7 @@
         </div>
         
         <!-- REFERENCE -->
-        <div style="margin-bottom: 30px;">
+        <div id="detailReferenceSection" style="margin-bottom: 30px;">
             <h3 style="color: #1abc9c; font-size: 16px; font-weight: 700; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid #e5e7eb;">REFERENCE</h3>
             <p style="margin: 0 0 14px 0; color: #475569; font-size: 13px;">Provide contact details of two reliable references. They will not be contacted unless necessary.</p>
             
@@ -913,11 +964,11 @@
         </div>
         
         <!-- LEAD RECEIVE / ADDITIONAL FIELDS -->
-        <div style="margin-bottom: 30px;">
+        <div id="detailLeadReceiveSection" style="margin-bottom: 30px;">
             <h3 style="color: #1abc9c; font-size: 16px; font-weight: 700; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid #e5e7eb;">LEAD RECEIVE / ADDITIONAL FIELDS</h3>
-            <p style="margin: 0 0 14px 0; color: #475569; font-size: 13px;">Lead receive, legacy bank fields, and processing metadata.</p>
+            <p class="loan-detail-hidden-section" style="margin: 0 0 14px 0; color: #475569; font-size: 13px;">Lead receive, legacy bank fields, and processing metadata.</p>
             
-            <div style="background: #fffbf0; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #f97316;">
+            <div class="loan-detail-hidden-section" style="background: #fffbf0; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #f97316;">
                 <p style="color: #718096; font-size: 11px; margin: 0 0 8px 0; text-transform: uppercase; font-weight: 700;">Additional Legacy Financial Fields</p>
                 
                 <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 25px; margin-top: 15px;">
@@ -937,28 +988,32 @@
             </div>
             
             <div style="background: #f0f9ff; padding: 15px; border-radius: 8px; border-left: 4px solid #0284c7;">
-                <p style="color: #718096; font-size: 11px; margin: 0 0 8px 0; text-transform: uppercase; font-weight: 700;">Lead Receive + Banking Metadata</p>
+                <p style="color: #718096; font-size: 11px; margin: 0 0 8px 0; text-transform: uppercase; font-weight: 700;">Lead Receive</p>
                 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px; margin-top: 15px;">
-                    <div>
+                    <div class="loan-detail-hidden-section">
                         <p style="color: #718096; font-size: 11px; margin: 0 0 8px 0; text-transform: uppercase; font-weight: 700;">Bank Name</p>
                         <p style="color: #1a202c; font-size: 14px; font-weight: 600; margin: 0;" id="detailBankName">-</p>
                     </div>
-                    <div>
+                    <div class="loan-detail-hidden-section">
                         <p style="color: #718096; font-size: 11px; margin: 0 0 8px 0; text-transform: uppercase; font-weight: 700;">Account Number</p>
                         <p style="color: #1a202c; font-size: 14px; font-weight: 600; margin: 0;" id="detailAccNumber">-</p>
                     </div>
-                    <div>
+                    <div class="loan-detail-hidden-section">
                         <p style="color: #718096; font-size: 11px; margin: 0 0 8px 0; text-transform: uppercase; font-weight: 700;">IFSC Code *</p>
                         <p style="color: #1a202c; font-size: 14px; font-weight: 600; margin: 0;" id="detailIFSC">-</p>
                     </div>
-                    <div>
+                    <div class="loan-detail-hidden-section">
                         <p style="color: #718096; font-size: 11px; margin: 0 0 8px 0; text-transform: uppercase; font-weight: 700;">Bank Type</p>
                         <p style="color: #1a202c; font-size: 14px; font-weight: 600; margin: 0;" id="detailBankType">-</p>
                     </div>
                     <div>
                         <p style="color: #718096; font-size: 11px; margin: 0 0 8px 0; text-transform: uppercase; font-weight: 700;">Channel Partner Name</p>
                         <p style="color: #1a202c; font-size: 14px; font-weight: 600; margin: 0;" id="detailSmName">-</p>
+                    </div>
+                    <div>
+                        <p style="color: #718096; font-size: 11px; margin: 0 0 8px 0; text-transform: uppercase; font-weight: 700;">Employee Name</p>
+                        <p style="color: #1a202c; font-size: 14px; font-weight: 600; margin: 0;" id="detailLeadEmployeeName">-</p>
                     </div>
                     <div>
                         <p style="color: #718096; font-size: 11px; margin: 0 0 8px 0; text-transform: uppercase; font-weight: 700;">Leader Name</p>
@@ -983,11 +1038,11 @@
                 <p style="color: #718096; font-size: 11px; margin: 0 0 8px 0; text-transform: uppercase; font-weight: 700;">Remarks / Suggestions (if any)</p>
                 <p style="color: #1a202c; font-size: 14px; font-weight: 600; margin: 0; background: #f3f4f6; padding: 12px; border-radius: 6px;" id="detailRemarks">-</p>
             </div>
-            <div style="margin-top: 16px;">
+            <div class="loan-detail-hidden-section" style="margin-top: 16px;">
                 <p style="color: #718096; font-size: 11px; margin: 0 0 8px 0; text-transform: uppercase; font-weight: 700;">Processing / Action Notes</p>
                 <pre id="detailProcessingRemarks" style="white-space: pre-wrap; margin: 0; color: #1a202c; font-size: 13px; font-family: inherit; font-weight: 600; background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0;">-</pre>
             </div>
-            <div style="margin-top: 16px;">
+            <div class="loan-detail-hidden-section" style="margin-top: 16px;">
                 <p style="color: #718096; font-size: 11px; margin: 0 0 8px 0; text-transform: uppercase; font-weight: 700;">Disbursement Snapshot</p>
                 <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;">
                     <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px;">
@@ -1011,7 +1066,7 @@
         </div>
         
         <!-- SERVICE REQUIRED BASED DOCUMENTS -->
-        <div style="margin-bottom: 30px;">
+        <div class="loan-detail-hidden-section" style="margin-bottom: 30px;">
             <h3 style="color: #1abc9c; font-size: 16px; font-weight: 700; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid #e5e7eb;">SERVICE REQUIRED BASED DOCUMENTS</h3>
             <p style="margin: 0 0 14px 0; color: #475569; font-size: 13px;">Service aur Occupation ke hisaab se suggested documents auto-open honge. Document upload optional hai.</p>
             <div id="serviceBasedDocumentsContainer">
@@ -1020,7 +1075,7 @@
         </div>
 
         <!-- DOCUMENTS -->
-        <div style="margin-bottom: 30px;">
+        <div id="detailDocumentsSection" style="margin-bottom: 30px;">
             <h3 style="color: #1abc9c; font-size: 16px; font-weight: 700; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid #e5e7eb;">DOCUMENTS</h3>
             <p style="margin: 0 0 14px 0; color: #475569; font-size: 13px;">Each document has two actions: View and Download.</p>
             
@@ -1030,7 +1085,7 @@
         </div>
 
         <!-- LATEST SAVED FIELDS -->
-        <div style="margin-bottom: 30px;">
+        <div id="detailLatestSavedSection" style="margin-bottom: 30px;">
             <h3 style="color: #1abc9c; font-size: 16px; font-weight: 700; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid #e5e7eb;">LATEST SAVED FIELDS (REALTIME)</h3>
             <p style="margin: 0 0 14px 0; color: #475569; font-size: 13px;">This section shows every available field saved for this loan.</p>
 
@@ -1040,17 +1095,16 @@
         </div>
         
         <!-- Declaration -->
-        <div style="background: #ecfdf5; padding: 15px; border-radius: 8px; margin-bottom: 30px; border-left: 4px solid #10b981;">
+        <div class="loan-detail-hidden-section" style="background: #ecfdf5; padding: 15px; border-radius: 8px; margin-bottom: 30px; border-left: 4px solid #10b981;">
             <p style="color: #1a202c; font-size: 13px; margin: 0; font-weight: 600;" id="detailDeclaration">
                 &#10003; I hereby declare that the above information given by me is true and correct.
             </p>
         </div>
         
         <!-- Action Buttons -->
-        <div style="display: flex; gap: 12px; justify-content: flex-end; padding-top: 20px; border-top: 2px solid #e5e7eb; flex-wrap: wrap;">
+        <div class="loan-detail-actions" style="display: flex; gap: 12px; justify-content: flex-end; padding-top: 20px; border-top: 2px solid #e5e7eb; flex-wrap: wrap;">
             <button onclick="closeLoanModal()" style="padding: 12px 24px; background: #e2e8f0; color: #2d3748; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; transition: all 0.2s;">Close</button>
             <button onclick="openEditModal()" style="padding: 12px 24px; background: #0891b2; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; transition: all 0.2s;">Edit</button>
-            <button onclick="deleteLoan()" style="padding: 12px 24px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; transition: all 0.2s;">Delete</button>
         </div>
     </div>
 </div>
@@ -1125,14 +1179,14 @@
                     </div>
                 </div>
 
-                <!-- Move to Banking Processing -->
+                <!-- Move to Bank Login Process -->
                 <div style="border: 2px solid #cffafe; border-radius: 8px; padding: 15px; cursor: pointer; transition: all 0.2s; flex: 1 1 180px; display: none;" onclick="selectAction('collect')" id="collectOption">
                     <div style="display: flex; align-items: center; gap: 12px;">
                         <div style="width: 20px; height: 20px; border: 2px solid #0891b2; border-radius: 50%; display: flex; align-items: center; justify-content: center;" id="collectRadio">
                             <div style="display: none; width: 10px; height: 10px; background: #0891b2; border-radius: 50%;"></div>
                         </div>
                         <div>
-                            <p style="color: #0e7490; font-weight: 700; margin: 0 0 5px 0; font-size: 14px;">Move to Banking Processing</p>
+                            <p style="color: #0e7490; font-weight: 700; margin: 0 0 5px 0; font-size: 14px;">Move to Bank Login Process</p>
                             <p style="color: #666; margin: 0; font-size: 12px;">Move waiting request into banking verification stage</p>
                         </div>
                     </div>
@@ -1261,6 +1315,23 @@
                 <div>
                     <label style="display: block; color: #334155; font-weight: 700; margin-bottom: 6px; font-size: 12px;">Email</label>
                     <input id="editApplicantEmail" type="email" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px;">
+                </div>
+                <div>
+                    <label style="display: block; color: #334155; font-weight: 700; margin-bottom: 6px; font-size: 12px;">Father Name</label>
+                    <input id="editFatherName" type="text" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px;">
+                </div>
+                <div>
+                    <label style="display: block; color: #334155; font-weight: 700; margin-bottom: 6px; font-size: 12px;">Mother Name</label>
+                    <input id="editMotherName" type="text" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px;">
+                </div>
+                <div>
+                    <label style="display: block; color: #334155; font-weight: 700; margin-bottom: 6px; font-size: 12px;">Gender</label>
+                    <select id="editGender" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px;">
+                        <option value="">Select</option>
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                        <option value="other">Other</option>
+                    </select>
                 </div>
                 <div>
                     <label style="display: block; color: #334155; font-weight: 700; margin-bottom: 6px; font-size: 12px;">City</label>
@@ -1516,7 +1587,7 @@ function normalizeStatusKey(value) {
     if (raw === 'waiting for processing') return 'waiting';
     if (raw === 'document pending' || raw === 'in processing') return 'waiting';
     if (raw === 'updated document' || raw === 'pending document cleared') return 'updated_document';
-    if (raw === 'banking processing' || raw === 'required follow-up') return 'follow_up';
+    if (raw === 'banking processing' || raw === 'bank processing' || raw === 'bank login process' || raw === 'required follow-up') return 'follow_up';
     if (raw === 'follow up') return 'follow_up_pending';
     return raw.replace(/\s+/g, '_');
 }
@@ -1539,6 +1610,26 @@ function formatMoney(value) {
     const amount = Number(value);
     if (!Number.isFinite(amount) || amount <= 0) return '-';
     return `Rs ${amount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+}
+
+function firstMeaningfulValue(...values) {
+    for (const value of values) {
+        if (value === null || value === undefined) continue;
+        const text = String(value).trim();
+        if (text && text !== '-') return text;
+    }
+    return '';
+}
+
+function getChannelPartnerName(data = currentLoanDetails || {}) {
+    const payload = data || {};
+    return firstMeaningfulValue(
+        payload.lead_receive_channel_partner_name,
+        payload.submitted_by,
+        payload.assigned_agent_name,
+        document.getElementById('detailAssignedAgent')?.textContent,
+        document.getElementById('detailSmName')?.textContent
+    );
 }
 
 function normalizeLoanTypeKey(value) {
@@ -1648,6 +1739,17 @@ function prefillDisbursedEditFields(data) {
     document.getElementById('editApplicantName').value = payload.full_name && payload.full_name !== '-' ? payload.full_name : '';
     document.getElementById('editApplicantMobile').value = payload.mobile_number && payload.mobile_number !== '-' ? payload.mobile_number : '';
     document.getElementById('editApplicantEmail').value = payload.email && payload.email !== '-' ? payload.email : '';
+    document.getElementById('editFatherName').value = payload.father_name && payload.father_name !== '-' ? payload.father_name : '';
+    document.getElementById('editMotherName').value = payload.mother_name && payload.mother_name !== '-' ? payload.mother_name : '';
+    const genderValue = String(payload.gender || '').trim().toLowerCase();
+    const genderMap = {
+        'male': 'male',
+        'female': 'female',
+        'other': 'other',
+        'm': 'male',
+        'f': 'female',
+    };
+    document.getElementById('editGender').value = genderMap[genderValue] || '';
     document.getElementById('editApplicantCity').value = payload.city && payload.city !== '-' ? payload.city : '';
     document.getElementById('editApplicantState').value = payload.state && payload.state !== '-' ? payload.state : '';
     document.getElementById('editApplicantPin').value = payload.pin_code && payload.pin_code !== '-' ? payload.pin_code : '';
@@ -1725,6 +1827,21 @@ function initTablePagination() {
         });
     }
 
+    [
+        'searchInput',
+        'statusFilterInput',
+        'partnerFilterInput',
+        'channelPartnerFilterInput',
+        'employeeFilterInput',
+        'dateFromFilterInput',
+        'dateToFilterInput',
+    ].forEach((id) => {
+        const control = document.getElementById(id);
+        if (!control || control.dataset.realtimeBound === '1') return;
+        control.dataset.realtimeBound = '1';
+        control.addEventListener(id === 'searchInput' ? 'input' : 'change', () => filterTable(true));
+    });
+
     const prevBtn = document.getElementById('prevPageBtn');
     const nextBtn = document.getElementById('nextPageBtn');
     if (prevBtn) {
@@ -1751,10 +1868,32 @@ function initTablePagination() {
 // Search + pagination functionality
 function filterTable(resetPage = true) {
     const input = (document.getElementById('searchInput')?.value || '').toLowerCase().trim();
+    const selectedStatus = normalizeStatusKey(document.getElementById('statusFilterInput')?.value || ACTIVE_STATUS_FILTER);
+    const activeStatus = selectedStatus === 'all' ? '' : selectedStatus;
+    const selectedPartner = (document.getElementById('partnerFilterInput')?.value || '').trim();
+    const selectedChannelPartner = (document.getElementById('channelPartnerFilterInput')?.value || '').trim();
+    const selectedEmployee = (document.getElementById('employeeFilterInput')?.value || '').trim();
+    const dateFrom = (document.getElementById('dateFromFilterInput')?.value || '').trim();
+    const dateTo = (document.getElementById('dateToFilterInput')?.value || '').trim();
     tableState.filteredRows = tableState.rows.filter((row) => {
         const rowStatus = normalizeStatusKey(row.getAttribute('data-status-key') || '');
-        const activeStatus = normalizeStatusKey(ACTIVE_STATUS_FILTER) === 'all' ? '' : normalizeStatusKey(ACTIVE_STATUS_FILTER);
         if (activeStatus && rowStatus !== activeStatus) {
+            return false;
+        }
+        if (selectedPartner && (row.getAttribute('data-partner-id') || '') !== selectedPartner) {
+            return false;
+        }
+        if (selectedChannelPartner && (row.getAttribute('data-agent-id') || '') !== selectedChannelPartner) {
+            return false;
+        }
+        if (selectedEmployee && (row.getAttribute('data-employee-id') || '') !== selectedEmployee) {
+            return false;
+        }
+        const rowDate = row.getAttribute('data-created-date') || '';
+        if (dateFrom && rowDate && rowDate < dateFrom) {
+            return false;
+        }
+        if (dateTo && rowDate && rowDate > dateTo) {
             return false;
         }
         const searchText = (row.getAttribute('data-search') || '').toLowerCase();
@@ -2154,7 +2293,7 @@ function populateDetailModal(data) {
     setText('detailAadhar', data.aadhar_number || '-');
     setText('detailPAN', data.pan_number || '-');
     setText('detailBankName', data.bank_name || data.bank || '-');
-    setText('detailAccNumber', data.account_number || data.bank_account_number || '-');
+    setText('detailAccNumber', data.loan_account_number || data.account_number || data.bank_account_number || '-');
     const ifscEl = document.getElementById('detailIFSC');
     if (ifscEl) {
         ifscEl.textContent = data.ifsc_code || data.bank_ifsc_code || '-';
@@ -2165,6 +2304,7 @@ function populateDetailModal(data) {
     }
     const processingMeta = splitLeaderNameFromProcessingRemarks(data.processing_remarks || '');
     setText('detailSmName', data.lead_receive_channel_partner_name || data.sm_name || '-');
+    setText('detailLeadEmployeeName', data.lead_receive_employee_name || data.processed_by || data.assigned_employee_name || '-');
     setText('detailLeaderName', data.lead_receive_leader_name || processingMeta.leaderName || '-');
     setText('detailLeadSource', data.lead_receive_source || '-');
     setText('detailLeadDescription', data.lead_receive_description || '-');
@@ -2233,6 +2373,7 @@ function populateDetailModalFallback(name, email, phone, loanType, amount, statu
         serviceDocsContainer.innerHTML = '<p style="color: #999; text-align: center; padding: 20px;">No service-based document list saved</p>';
     }
     setText('detailSmName', '-');
+    setText('detailLeadEmployeeName', '-');
     setText('detailLeaderName', '-');
     setText('detailLeadSource', '-');
     setText('detailLeadDescription', '-');
@@ -2925,16 +3066,29 @@ function resetActionSelection() {
     const currentManualLoanId = (currentLoanDetails?.loan_uid_manual && currentLoanDetails?.loan_uid_manual !== '-')
         ? currentLoanDetails.loan_uid_manual
         : ((currentLoanDetails?.user_id && currentLoanDetails?.user_id !== '-') ? currentLoanDetails.user_id : '');
-    if (collectBankName) collectBankName.value = '';
-    if (collectBankerName) collectBankerName.value = '';
-    if (collectBankerPhone) collectBankerPhone.value = '';
-    if (collectBankerEmail) collectBankerEmail.value = '';
-    if (collectLoanAccountNumber) collectLoanAccountNumber.value = '';
+    const existingBankName = firstMeaningfulValue(currentLoanDetails?.bank_name, currentLoanDetails?.bank);
+    const existingBankerName = firstMeaningfulValue(currentLoanDetails?.banker_name);
+    const existingBankerPhone = firstMeaningfulValue(currentLoanDetails?.banker_phone);
+    const existingBankerEmail = firstMeaningfulValue(currentLoanDetails?.banker_email);
+    const existingLoanAccount = firstMeaningfulValue(
+        currentLoanDetails?.loan_account_number,
+        currentLoanDetails?.account_number,
+        currentLoanDetails?.bank_account_number
+    );
+    const existingVerifiedAmount = firstMeaningfulValue(currentLoanDetails?.verified_loan_amount, currentLoanDetails?.loan_amount);
+    const existingFinalAmount = firstMeaningfulValue(currentLoanDetails?.final_loan_amount, currentLoanDetails?.loan_amount);
+    const existingDsaName = firstMeaningfulValue(currentLoanDetails?.dsa_name, getChannelPartnerName(currentLoanDetails), currentLoanDetails?.sm_name);
+    const existingDescription = firstMeaningfulValue(currentLoanDetails?.banker_description, currentLoanDetails?.description);
+    if (collectBankName) collectBankName.value = existingBankName;
+    if (collectBankerName) collectBankerName.value = existingBankerName;
+    if (collectBankerPhone) collectBankerPhone.value = existingBankerPhone;
+    if (collectBankerEmail) collectBankerEmail.value = existingBankerEmail;
+    if (collectLoanAccountNumber) collectLoanAccountNumber.value = existingLoanAccount;
     if (collectManualLoanId) collectManualLoanId.value = currentManualLoanId;
-    if (collectVerifiedLoanAmount) collectVerifiedLoanAmount.value = '';
-    if (collectFinalLoanAmount) collectFinalLoanAmount.value = '';
-    if (collectDsaName) collectDsaName.value = '';
-    if (collectBankerDescription) collectBankerDescription.value = '';
+    if (collectVerifiedLoanAmount) collectVerifiedLoanAmount.value = existingVerifiedAmount;
+    if (collectFinalLoanAmount) collectFinalLoanAmount.value = existingFinalAmount;
+    if (collectDsaName) collectDsaName.value = existingDsaName;
+    if (collectBankerDescription) collectBankerDescription.value = existingDescription;
     document.getElementById('revertRemark').value = '';
     document.getElementById('disbursementNotes').value = '';
     const disbursementManualLoanId = document.getElementById('disbursementManualLoanId');
@@ -3015,12 +3169,12 @@ function selectAction(action) {
     const collectRemarkLabel = document.getElementById('collectRemarkLabel');
     const collectRemarkInput = document.getElementById('collectRemark');
     if (collectRemarkLabel) {
-        collectRemarkLabel.textContent = action === 'reject' ? 'Rejection Bank Remark' : 'Banking Processing Remark';
+        collectRemarkLabel.textContent = action === 'reject' ? 'Rejection Bank Remark' : 'Bank Login Process Remark';
     }
     if (collectRemarkInput) {
         collectRemarkInput.placeholder = action === 'reject'
             ? 'Add bank remark for rejection...'
-            : 'Add remark before moving to Banking Processing...';
+            : 'Add remark before moving to Bank Login Process...';
     }
     document.getElementById('submitActionBtn').style.display = 'block';
 }
@@ -3038,7 +3192,20 @@ function submitAction() {
     
     if (currentAction === 'approve') {
         endpoint = `/api/employee/loan/${currentLoanId}/approve/`;
-        data = { entity_type: actionEntityType };
+        const d = currentLoanDetails || {};
+        data = {
+            entity_type: actionEntityType,
+            bank_name: firstMeaningfulValue(d.bank_name, d.bank),
+            banker_name: firstMeaningfulValue(d.banker_name),
+            banker_phone: firstMeaningfulValue(d.banker_phone),
+            banker_email: firstMeaningfulValue(d.banker_email),
+            loan_account_number: firstMeaningfulValue(d.loan_account_number, d.account_number, d.bank_account_number),
+            verified_loan_amount: firstMeaningfulValue(d.verified_loan_amount, d.loan_amount),
+            final_loan_amount: firstMeaningfulValue(d.final_loan_amount, d.loan_amount),
+            dsa_name: firstMeaningfulValue(d.dsa_name, getChannelPartnerName(d), d.sm_name),
+            banker_description: firstMeaningfulValue(d.banker_description, d.description),
+            bank_remark: firstMeaningfulValue(d.bank_remark),
+        };
     } else if (currentAction === 'reject') {
         const reason = document.getElementById('rejectionReason').value.trim();
         const bankerName = document.getElementById('collectBankerName')?.value.trim() || '';
@@ -3140,6 +3307,9 @@ function submitAction() {
             full_name: document.getElementById('editApplicantName').value.trim(),
             mobile_number: document.getElementById('editApplicantMobile').value.trim(),
             email: document.getElementById('editApplicantEmail').value.trim(),
+            father_name: document.getElementById('editFatherName').value.trim(),
+            mother_name: document.getElementById('editMotherName').value.trim(),
+            gender: document.getElementById('editGender').value,
             city: document.getElementById('editApplicantCity').value.trim(),
             state: document.getElementById('editApplicantState').value.trim(),
             pin_code: document.getElementById('editApplicantPin').value.trim(),
@@ -3204,7 +3374,7 @@ function submitAction() {
             const actionMessages = {
                 'approve': 'Application approved successfully',
                 'reject': 'Application rejected successfully',
-                'collect': 'Moved to Banking Processing successfully',
+                'collect': 'Moved to Bank Login Process successfully',
                 'revert': 'Moved to Follow Up successfully',
                 'disburse': 'Application disbursed successfully',
                 'update_disbursed': 'Loan details updated successfully'
@@ -3256,6 +3426,7 @@ function editLoan(loanId) {
     }
     currentLoanId = loanId;
     currentEntityType = 'legacy';
+    pendingQuickAction = 'update_disbursed';
     openEditModal();
 }
 
@@ -3327,7 +3498,7 @@ function updateRowAfterAction(result) {
         statusDisplay = statusDisplay || 'Rejected';
     } else if (currentAction === 'collect') {
         statusKey = 'follow_up';
-        statusDisplay = statusDisplay || 'Banking Processing';
+        statusDisplay = statusDisplay || 'Bank Login Process';
     } else if (currentAction === 'revert') {
         statusKey = 'follow_up_pending';
         statusDisplay = statusDisplay || 'Follow Up';

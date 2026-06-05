@@ -7,23 +7,33 @@ django.setup()
 
 from core.models import User
 
-email = 'admin@gmail.com'
-password = '123456789'
+ADMIN_USERNAME = 'admin'
+ADMIN_EMAIL = 'admin@gmail.com'
+ADMIN_PASSWORD = '123456789'
 
-try:
-    # Try to get existing admin user
-    user = User.objects.get(username='admin')
-    user.email = email
-    user.set_password(password)
-    user.save()
-    print(f"✓ Admin password updated successfully!")
-    print(f"  Username: admin")
-    print(f"  Email: {email}")
-    print(f"  Password: {password}")
-except User.DoesNotExist:
-    # Create new admin user
-    user = User.objects.create_superuser('admin', email, password)
-    print(f"✓ Admin user created successfully!")
-    print(f"  Username: admin")
-    print(f"  Email: {email}")
-    print(f"  Password: {password}")
+user, created = User.objects.get_or_create(
+    username=ADMIN_USERNAME,
+    defaults={
+        'email': ADMIN_EMAIL,
+        'first_name': 'Admin',
+        'last_name': 'User',
+        'role': 'admin',
+        'is_staff': True,
+        'is_superuser': True,
+        'is_active': True,
+    },
+)
+
+user.email = ADMIN_EMAIL
+user.role = 'admin'
+user.is_staff = True
+user.is_superuser = True
+user.is_active = True
+user.set_password(ADMIN_PASSWORD)
+user.save()
+
+action = 'created' if created else 'updated'
+print(f"Admin user {action} successfully!")
+print(f"  Username: {user.username}")
+print(f"  Email: {user.email}")
+print(f"  Password: {ADMIN_PASSWORD}")

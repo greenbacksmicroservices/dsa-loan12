@@ -137,7 +137,7 @@ function openBankingActionModal(action, loanId, entityType = '', applicantName =
     const name = document.getElementById('bankingActionApplicant');
     const collectBox = document.getElementById('bankingCollectFields');
     const rejectBox = document.getElementById('bankingRejectFields');
-    if (title) title.textContent = action === 'collect' ? 'Move To Banking Processing' : 'Reject Loan';
+    if (title) title.textContent = action === 'collect' ? 'Move To Bank Login Process' : 'Reject Loan';
     if (name) name.textContent = applicantName ? `Applicant: ${applicantName}` : '';
     if (collectBox) collectBox.style.display = action === 'collect' ? '' : 'none';
     if (rejectBox) rejectBox.style.display = action === 'reject' ? '' : 'none';
@@ -529,7 +529,7 @@ function renderLoansTable(loans) {
         'new_entry': 'New Application',
         'waiting': 'Document Pending',
         'updated_document': 'Pending Document Cleared',
-        'follow_up': 'Banking Processing',
+        'follow_up': 'Bank Login Process',
         'follow_up_pending': 'Follow Up',
         'approved': 'Approved',
         'rejected': 'Rejected',
@@ -577,7 +577,7 @@ function renderLoansTable(loans) {
                                          ? `<button class="btn btn-sm btn-primary" type="button" onclick="openApprovedProcessModal(${l.id}, '${(l.entity_type || '').replace(/'/g, "\\'")}')">Process</button>`
                                          : (l.status === 'updated_document'
                                              ? `
-                                                 <button class="btn btn-sm btn-info text-white" type="button" onclick="openBankingActionModal('collect', ${l.id}, '${(l.entity_type || '').replace(/'/g, "\\'")}', '${(l.applicant_name || '').replace(/'/g, "\\'")}')">Banking Processing</button>
+                                                 <button class="btn btn-sm btn-info text-white" type="button" onclick="openBankingActionModal('collect', ${l.id}, '${(l.entity_type || '').replace(/'/g, "\\'")}', '${(l.applicant_name || '').replace(/'/g, "\\'")}')">Bank Login Process</button>
                                                  <button class="btn btn-sm btn-danger" type="button" onclick="openBankingActionModal('reject', ${l.id}, '${(l.entity_type || '').replace(/'/g, "\\'")}', '${(l.applicant_name || '').replace(/'/g, "\\'")}')">Rejected</button>
                                                  <a href="${employeeDetailHref(l)}" class="btn btn-sm btn-outline-primary">Download</a>
                                              `
@@ -661,11 +661,13 @@ function renderLoansTable(loans) {
 }
 
 let CURRENT_EDIT_LOAN_ID = null;
+let CURRENT_EDIT_ENTITY_TYPE = '';
 
 function openEditLoanModal(loanId) {
     CURRENT_EDIT_LOAN_ID = loanId;
     const loan = ALL_LOANS.find(l => l.id === loanId);
     if (!loan) return;
+    CURRENT_EDIT_ENTITY_TYPE = loan.entity_type || '';
 
     document.getElementById('editLoanAmount').value = loan.loan_amount || '';
     document.getElementById('editLoanTenure').value = loan.tenure_months || '';
@@ -677,7 +679,7 @@ function openEditLoanModal(loanId) {
         const isFollowUp = ['follow_up', 'follow_up_pending'].includes(loan.status);
         followUpSection.style.display = isFollowUp ? 'block' : 'none';
         if (isFollowUp) {
-            loadFollowUpDocChoices(loanId);
+            loadFollowUpDocChoices(loanId, CURRENT_EDIT_ENTITY_TYPE);
         }
         const filesInput = document.getElementById('followUpDocFiles');
         if (filesInput) filesInput.value = '';
@@ -694,7 +696,8 @@ async function submitEditLoan() {
         loan_amount: document.getElementById('editLoanAmount').value,
         tenure_months: document.getElementById('editLoanTenure').value,
         loan_type: document.getElementById('editLoanType').value,
-        remarks: document.getElementById('editLoanRemarks').value
+        remarks: document.getElementById('editLoanRemarks').value,
+        entity_type: CURRENT_EDIT_ENTITY_TYPE
     };
 
     const res = await fetch(`/api/employee/loan/${CURRENT_EDIT_LOAN_ID}/update/`, {
@@ -727,9 +730,12 @@ function populateFollowUpDocTypes(choices) {
     });
 }
 
-async function loadFollowUpDocChoices(loanId) {
+async function loadFollowUpDocChoices(loanId, entityType = '') {
     try {
-        const res = await fetch(`/api/employee/loan/${loanId}/detail/`, {
+        const params = new URLSearchParams();
+        if (entityType) params.set('entity_type', entityType);
+        const detailUrl = `/api/employee/loan/${loanId}/detail/${params.toString() ? `?${params.toString()}` : ''}`;
+        const res = await fetch(detailUrl, {
             method: 'GET',
             headers: {
                 'X-CSRFToken': getCookie('csrftoken'),
@@ -767,6 +773,7 @@ async function uploadFollowUpDocs() {
             const formData = new FormData();
             formData.append('document_type', docType);
             formData.append('document_file', file);
+            formData.append('entity_type', CURRENT_EDIT_ENTITY_TYPE);
             const res = await fetch(`/api/employee/loan/${CURRENT_EDIT_LOAN_ID}/follow-up/document/`, {
                 method: 'POST',
                 headers: { 'X-CSRFToken': getCookie('csrftoken') },

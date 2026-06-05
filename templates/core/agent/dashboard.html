@@ -28,9 +28,9 @@
         </a>
 
         <a class="insight-card c-bank text-decoration-none" href="{% url 'agent_my_applications' %}?status=follow_up">
-            <p class="status-title">Banking Processing</p>
+            <p class="status-title">Bank Login Process</p>
             <h2 class="main-value" id="stat-banking">0</h2>
-            <p class="description">Banking Processing Queue</p>
+            <p class="description">Bank Login Process Queue</p>
             <span class="view-details" style="color:#319795;">View Details &rarr;</span>
         </a>
 
@@ -213,7 +213,7 @@ function renderCharts(data) {
     statusChartInstance = new Chart(pieEl, {
         type: 'doughnut',
         data: {
-            labels: ['New Application', 'Document Pending', 'Updated Document', 'Banking Processing', 'Follow Up', 'Approved', 'Rejected', 'Disbursed'],
+            labels: ['New Application', 'Document Pending', 'Updated Document', 'Bank Login Process', 'Follow Up', 'Approved', 'Rejected', 'Disbursed'],
             datasets: [{
                 data: [
                     data.new_entry || 0,

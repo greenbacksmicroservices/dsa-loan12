@@ -31,12 +31,31 @@ from .followup_utils import auto_move_overdue_to_follow_up
 from .loan_sync import find_related_loan_application
 from .id_utils import generate_agent_sequence_id
 from .onboarding_utils import collect_user_document_payload
+from .remarks_utils import detail_value, sanitize_display_remark, upsert_manual_remark
 from .updated_document_utils import (
     UPDATED_DOCUMENT_LABEL,
     UPDATED_DOCUMENT_STATUS_KEY,
     application_has_updated_documents,
     loan_has_updated_documents,
 )
+
+
+def _is_document_pending_note(raw_text):
+    return 'document pending by' in str(raw_text or '').lower()
+
+
+def _remove_document_pending_lines(raw_text, show_document_pending=False):
+    text = str(raw_text or '').strip()
+    if not text or show_document_pending:
+        return text
+
+    kept_lines = [
+        line.strip()
+        for line in text.splitlines()
+        if line.strip() and not _is_document_pending_note(line)
+    ]
+    return '\n'.join(kept_lines).strip()
+
 
 # ============================================================
 # EMPLOYEE DASHBOARD
@@ -152,6 +171,43 @@ def _partner_under_for(created_by=None, assigned_agent=None):
     return _display_user(partner, 'Partner')
 
 
+def _employee_clean_remark(raw_text, default='-'):
+    return sanitize_display_remark(_remove_document_pending_lines(raw_text, False), default=default)
+
+
+def _employee_channel_partner_name_for_loan(loan):
+    assigned_agent = getattr(loan, 'assigned_agent', None)
+    if assigned_agent:
+        agent_user = getattr(assigned_agent, 'user', None)
+        return (
+            getattr(assigned_agent, 'name', '')
+            or _display_user(agent_user, '')
+            or '-'
+        )
+
+    creator = getattr(loan, 'created_by', None)
+    if getattr(creator, 'role', '') == 'agent':
+        try:
+            creator_agent = Agent.objects.filter(user=creator).only('name').first()
+        except Exception:
+            creator_agent = None
+        return (
+            getattr(creator_agent, 'name', '')
+            or _display_user(creator, '')
+            or '-'
+        )
+
+    return (
+        detail_value(
+            getattr(loan, 'remarks', ''),
+            'lead receive channel partner name',
+            'channel partner name',
+            default='',
+        )
+        or '-'
+    )
+
+
 FOLLOW_UP_PENDING_MARKER = 'revert remark '
 
 
@@ -200,7 +256,7 @@ def _employee_status_label(status_key):
         'new_entry': 'New Application',
         'waiting': 'Document Pending',
         UPDATED_DOCUMENT_STATUS_KEY: 'Pending Document Cleared',
-        'follow_up': 'Banking Processing',
+        'follow_up': 'Bank Login Process',
         'follow_up_pending': 'Follow Up',
         'approved': 'Approved',
         'rejected': 'Rejected',
@@ -257,7 +313,7 @@ def _employee_customer_row_from_loan(loan, source):
         'under_whom': f"{creator_role} - {creator_name}",
         'assigned_by': partner_under if partner_under != '-' else f"{creator_role} - {creator_name}",
         'partner_under': partner_under,
-        'bank_remark': str(loan.remarks or '').strip() or '-',
+        'bank_remark': _employee_clean_remark(loan.remarks, '-'),
         'created_at': loan.created_at.strftime('%Y-%m-%d %H:%M') if loan.created_at else '',
         'detail_url': reverse('employee_loan_detail', kwargs={'loan_id': loan.id}),
     }
@@ -481,7 +537,7 @@ def employee_all_loans_api(request):
                     else (
                         UPDATED_DOCUMENT_LABEL
                         if is_updated_document
-                        else ('Banking Processing' if app.status == 'Required Follow-up' else app.status)
+                        else ('Bank Login Process' if app.status == 'Required Follow-up' else app.status)
                     )
                 )
                 loans_data.append({
@@ -492,7 +548,7 @@ def employee_all_loans_api(request):
                     'loan_type': applicant.loan_type or 'N/A',
                     'loan_amount': float(applicant.loan_amount) if applicant.loan_amount else 0,
                     'tenure_months': applicant.tenure_months or 0,
-                    'remarks': app.approval_notes or app.rejection_reason or '',
+                    'remarks': _employee_clean_remark(app.approval_notes or app.rejection_reason or '', ''),
                     'submitted_by': submitted_by,
                     'processed_by': processed_by,
                     'partner_under': partner_under,
@@ -623,7 +679,7 @@ def employee_all_loans_api(request):
                     'loan_type': applicant.loan_type or 'N/A',
                     'loan_amount': float(applicant.loan_amount) if applicant.loan_amount else 0,
                     'tenure_months': applicant.tenure_months or 0,
-                    'remarks': app.approval_notes or app.rejection_reason or '',
+                    'remarks': _employee_clean_remark(app.approval_notes or app.rejection_reason or '', ''),
                     'submitted_by': submitted_by,
                     'processed_by': processed_by,
                     'partner_under': partner_under,
@@ -637,7 +693,7 @@ def employee_all_loans_api(request):
                         else (
                             UPDATED_DOCUMENT_LABEL
                             if is_updated_document
-                            else ('Banking Processing' if app.status == 'Required Follow-up' else app.status)
+                            else ('Bank Login Process' if app.status == 'Required Follow-up' else app.status)
                         )
                     ),
                     'follow_up_pending': is_follow_up_pending,
@@ -662,7 +718,11 @@ def employee_all_loans_api(request):
             for loan in legacy_loans:
                 submitted_by = 'Unknown'
                 if loan.assigned_agent:
-                    submitted_by = loan.assigned_agent.name or loan.assigned_agent.user.get_full_name() if loan.assigned_agent.user else 'Unknown'
+                    submitted_by = (
+                        loan.assigned_agent.name
+                        or (loan.assigned_agent.user.get_full_name() if loan.assigned_agent.user else '')
+                        or 'Unknown'
+                    )
                 processed_by = _display_user(loan.assigned_employee, '-')
                 partner_under = _partner_under_for(loan.created_by, loan.assigned_agent)
                 is_follow_up_pending = is_follow_up_pending_loan(loan)
@@ -678,7 +738,7 @@ def employee_all_loans_api(request):
                     else (
                         UPDATED_DOCUMENT_LABEL
                         if is_updated_document
-                        else ('Banking Processing' if loan.status == 'follow_up' else loan.get_status_display())
+                        else ('Bank Login Process' if loan.status == 'follow_up' else loan.get_status_display())
                     )
                 )
                 legacy_rows.append({
@@ -689,7 +749,7 @@ def employee_all_loans_api(request):
                     'loan_type': loan.loan_type or 'N/A',
                     'loan_amount': float(loan.loan_amount) if loan.loan_amount else 0,
                     'tenure_months': loan.tenure_months or 0,
-                    'remarks': loan.remarks or '',
+                    'remarks': _employee_clean_remark(loan.remarks, ''),
                     'submitted_by': submitted_by,
                     'processed_by': processed_by,
                     'partner_under': partner_under,
@@ -817,6 +877,7 @@ def employee_new_entry_requests_api(request):
         loans_data = []
         for loan in page_obj:
             hours_pending = loan.get_hours_since_assignment() if hasattr(loan, 'get_hours_since_assignment') else 0
+            status_key = _employee_effective_status_key(loan)
             
             loans_data.append({
                 'id': loan.id,
@@ -826,8 +887,8 @@ def employee_new_entry_requests_api(request):
                 'loan_amount': float(loan.loan_amount) if loan.loan_amount else 0,
                 'assigned_date': loan.assigned_at.strftime('%Y-%m-%d %H:%M') if loan.assigned_at else '-',
                 'hours_pending': hours_pending,
-                'status': loan.status,
-                'status_display': loan.get_status_display(),
+                'status': status_key,
+                'status_display': _employee_status_label(status_key),
             })
         
         return Response({
@@ -1081,6 +1142,7 @@ def employee_loan_detail_api(request, loan_id):
             available_actions = ['disburse']
         
         hours_pending = loan.get_hours_since_assignment() if hasattr(loan, 'get_hours_since_assignment') else 0
+        status_key = _employee_effective_status_key(loan)
         
         return Response({
             'success': True,
@@ -1109,15 +1171,15 @@ def employee_loan_detail_api(request, loan_id):
                     'ifsc_code': loan.bank_ifsc_code,
                     'type': loan.bank_type,
                 },
-                'status': loan.status,
-                'status_display': loan.get_status_display(),
+                'status': status_key,
+                'status_display': _employee_status_label(status_key),
                 'assigned_date': loan.assigned_at.strftime('%Y-%m-%d %H:%M') if loan.assigned_at else '-',
                 'assigned_by_name': loan.created_by.get_full_name() if loan.created_by else 'System',
                 'hours_pending': hours_pending,
                 'agent_name': agent_name,
                 'documents': documents,
                 'available_actions': available_actions,
-                'remarks': loan.remarks,
+                'remarks': _employee_clean_remark(loan.remarks, ''),
             }
         }, status=status.HTTP_200_OK)
     
@@ -1353,7 +1415,7 @@ def _employee_report_row(loan):
         'loan_amount': float(loan.loan_amount or 0),
         'status': status_key,
         'status_display': _employee_status_label(status_key),
-        'channel_partner': loan.assigned_agent.name if loan.assigned_agent else '-',
+        'channel_partner': _employee_channel_partner_name_for_loan(loan),
         'created_by': _display_user(loan.created_by, 'System'),
         'created_at': loan.created_at.strftime('%Y-%m-%d %H:%M') if loan.created_at else '-',
         'updated_at': loan.updated_at.strftime('%Y-%m-%d %H:%M') if loan.updated_at else '-',
@@ -1651,12 +1713,16 @@ def employee_add_agent_api(request):
             user=request.user,
             related_agent=agent
         )
+
+        created_payload = _build_employee_agent_payload(request.user, agent, include_customers=False)
         
         return Response({
             'success': True,
             'message': f'Channel partner {name} created successfully',
             'agent_id': agent.id,
             'agent_code': generated_agent_id,
+            'agent': created_payload.get('agent', {}),
+            'summary': created_payload.get('summary', {}),
         }, status=status.HTTP_201_CREATED)
     
     except Exception as e:
@@ -1815,7 +1881,7 @@ def employee_update_loan_api(request, loan_id):
         if 'loan_type' in data and data.get('loan_type'):
             loan.loan_type = str(data.get('loan_type')).lower()
         if 'remarks' in data:
-            loan.remarks = data.get('remarks') or ''
+            loan.remarks = upsert_manual_remark(loan.remarks, data.get('remarks'))
 
         loan.save()
 

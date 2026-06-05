@@ -1,4 +1,4 @@
-﻿{% extends 'core/admin/admin_base.html' %}
+{% extends 'core/admin/admin_base.html' %}
 {% load static %}
 
 {% block title %}Reports - Admin Dashboard{% endblock %}
@@ -550,80 +550,11 @@
     </div>
 </div>
 
-<div class="download-grid">
-    <a href="?period=1month&format=csv&download=1" class="download-card gradient-blue">
-        <div class="download-card-icon"><i class="bi bi-calendar-month"></i></div>
-        <div>
-            <h2>Last 1 Month</h2>
-            <p>Export the last 30 days in CSV format.</p>
-        </div>
-        <span>Download CSV</span>
-    </a>
-    <a href="?period=6months&format=excel&download=1" class="download-card gradient-emerald">
-        <div class="download-card-icon"><i class="bi bi-calendar2-week"></i></div>
-        <div>
-            <h2>Last 6 Months</h2>
-            <p>Export the last 6 months in Excel format.</p>
-        </div>
-        <span>Download Excel</span>
-    </a>
-    <a href="?period=1year&format=excel&download=1" class="download-card gradient-violet">
-        <div class="download-card-icon"><i class="bi bi-calendar-year"></i></div>
-        <div>
-            <h2>Last 1 Year</h2>
-            <p>Download a yearly business snapshot instantly.</p>
-        </div>
-        <span>Download Excel</span>
-    </a>
-    <button type="button" class="download-card gradient-amber border-0 text-start" data-bs-toggle="collapse" data-bs-target="#customDateForm" aria-expanded="{% if period == 'custom' %}true{% else %}false{% endif %}">
-        <div class="download-card-icon"><i class="bi bi-calendar-range"></i></div>
-        <div>
-            <h2>Custom Date Range</h2>
-            <p>Choose your own date range and export the exact applications you need.</p>
-        </div>
-        <span>Open Custom Export</span>
-    </button>
-</div>
-
-<div id="customDateForm" class="collapse {% if period == 'custom' %}show{% endif %} mb-4">
-    <div class="filter-shell">
-        <div>
-            <h2 class="h5 fw-bold mb-1">Custom Report Export</h2>
-            <p class="text-muted mb-0">Select dates, choose the file format, and download the matching report.</p>
-        </div>
-        <form method="get" class="row g-3 mt-1">
-            <input type="hidden" name="period" value="custom">
-            <input type="hidden" name="download" value="1">
-            <div class="col-md-3">
-                <label class="form-label">From Date</label>
-                <input type="date" name="from_date" class="form-control" value="{{ from_date }}" required>
-            </div>
-            <div class="col-md-3">
-                <label class="form-label">To Date</label>
-                <input type="date" name="to_date" class="form-control" value="{{ to_date }}" required>
-            </div>
-            <div class="col-md-3">
-                <label class="form-label">Format</label>
-                <select name="format" class="form-select" required>
-                    <option value="csv">CSV</option>
-                    <option value="excel">Excel</option>
-                </select>
-            </div>
-            <div class="col-md-3 d-flex align-items-end">
-                <button type="submit" class="btn btn-primary w-100">
-                    <i class="bi bi-download"></i>
-                    <span>Download Report</span>
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
-
 <section class="filter-shell">
     <div class="filter-head">
         <div>
             <h2 class="h5 fw-bold mb-1">Report Filters</h2>
-            <p class="text-muted mb-0">Filter by time, status, employee, channel partner, or customer details.</p>
+            <p class="text-muted mb-0">Filter by time, status, partner, employee, channel partner, or customer details.</p>
         </div>
         <div class="d-flex flex-wrap gap-2">
             <a href="?{{ request.GET.urlencode }}{% if request.GET.urlencode %}&{% endif %}download=1&format=csv" class="btn btn-outline-success btn-sm">
@@ -665,11 +596,20 @@
                 <option value="new_entry" {% if status_filter == 'new_entry' %}selected{% endif %}>New Application</option>
                 <option value="waiting" {% if status_filter == 'waiting' %}selected{% endif %}>Document Pending</option>
                 <option value="updated_document" {% if status_filter == 'updated_document' %}selected{% endif %}>Pending Document Cleared</option>
-                <option value="follow_up" {% if status_filter == 'follow_up' %}selected{% endif %}>Banking Processing</option>
+                <option value="follow_up" {% if status_filter == 'follow_up' %}selected{% endif %}>Bank Login Process</option>
                 <option value="follow_up_pending" {% if status_filter == 'follow_up_pending' %}selected{% endif %}>Follow Up</option>
                 <option value="approved" {% if status_filter == 'approved' %}selected{% endif %}>Approved</option>
                 <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>Rejected</option>
                 <option value="disbursed" {% if status_filter == 'disbursed' %}selected{% endif %}>Disbursed</option>
+            </select>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <label class="form-label">Partner</label>
+            <select name="partner" class="form-select">
+                <option value="">All Partners</option>
+                {% for partner in partner_options %}
+                <option value="{{ partner.id }}" {% if partner_filter == partner.id|stringformat:'s' %}selected{% endif %}>{{ partner.get_full_name|default:partner.username }}</option>
+                {% endfor %}
             </select>
         </div>
         <div class="col-lg-3 col-md-6">
@@ -683,10 +623,10 @@
         </div>
         <div class="col-lg-3 col-md-6">
             <label class="form-label">Channel Partner</label>
-            <select name="partner" class="form-select">
+            <select name="agent" class="form-select">
                 <option value="">All Channel Partners</option>
-                {% for partner in partner_options %}
-                <option value="{{ partner.id }}" {% if partner_filter == partner.id|stringformat:'s' %}selected{% endif %}>{{ partner.name }}</option>
+                {% for partner in agent_options %}
+                <option value="{{ partner.id }}" {% if agent_filter == partner.id|stringformat:'s' %}selected{% endif %}>{{ partner.name }}</option>
                 {% endfor %}
             </select>
         </div>
@@ -729,6 +669,7 @@
                     <th>Loan Type</th>
                     <th>Amount</th>
                     <th>Status</th>
+                    <th>Partner</th>
                     <th>Employee</th>
                     <th>Channel Partner</th>
                     <th>Created</th>
@@ -749,6 +690,7 @@
                     <td>{{ loan.get_loan_type_display|default:loan.loan_type|default:"-" }}</td>
                     <td><strong>&#8377;{{ loan.loan_amount|default:0|floatformat:0 }}</strong></td>
                     <td><span class="loan-status-chip">{{ loan.report_status_label }}</span></td>
+                    <td>{{ loan.report_partner_name|default:"-" }}</td>
                     <td>{{ loan.assigned_employee.get_full_name|default:"Pending" }}</td>
                     <td>{{ loan.assigned_agent.name|default:"-" }}</td>
                     <td>{{ loan.created_at|date:"d M Y, h:i A" }}</td>
@@ -760,7 +702,7 @@
                     </td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="12" style="text-align:center; color:#64748b; padding:28px;">No loan applications found for this filter.</td></tr>
+                <tr><td colspan="13" style="text-align:center; color:#64748b; padding:28px;">No loan applications found for this filter.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
@@ -790,7 +732,7 @@
                 </div>
             </li>
             <li class="report-list-item">
-                <span class="report-list-label">Banking Processing</span>
+                <span class="report-list-label">Bank Login Process</span>
                 <div>
                     <span class="report-list-value">{{ followup_count }}</span>
                     <span class="percentage">{{ followup_percent }}%</span>
@@ -1163,7 +1105,7 @@ function confirmDownloadReport() {
         ['Disbursed Applications', '{{ disbursed_count|default:0 }}'],
         ['New Application', '{{ new_count|default:0 }}'],
         ['Document Pending', '{{ processing_count|default:0 }}'],
-        ['Banking Processing', '{{ followup_count|default:0 }}'],
+        ['Bank Login Process', '{{ followup_count|default:0 }}'],
         ['Total Amount', '{{ total_amount|default:0 }}'],
         ['Approved Amount', '{{ approved_amount|default:0 }}'],
         ['Disbursed Amount', '{{ disbursed_amount|default:0 }}'],

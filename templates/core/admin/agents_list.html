@@ -1,4 +1,4 @@
-﻿{% extends 'core/admin/admin_base.html' %}
+{% extends 'core/admin/admin_base.html' %}
 {% load static %}
 {% load custom_filters %}
 
@@ -1718,7 +1718,7 @@ function renderAgentViewModal(agent, summary, customers, onboarding, documents) 
             <button type="button" class="agent-stat-btn" data-section="channel_partners" style="text-align:left; border:1px solid #bbf7d0; border-radius:10px; background:#f0fdf4; padding:10px; cursor:pointer;"><div style="font-size:12px;color:#15803d;">Channel Partners</div><div style="font-size:20px;font-weight:700;color:#166534;">${summary.channel_partner_count || 0}</div></button>
             <button type="button" class="agent-stat-btn" data-section="approved" style="text-align:left; border:1px solid #bbf7d0; border-radius:10px; background:#ecfdf5; padding:10px; cursor:pointer;"><div style="font-size:12px;color:#047857;">Approved</div><div style="font-size:20px;font-weight:700;color:#065f46;">${summary.approved || 0}</div></button>
             <button type="button" class="agent-stat-btn" data-section="rejected" style="text-align:left; border:1px solid #fecaca; border-radius:10px; background:#fef2f2; padding:10px; cursor:pointer;"><div style="font-size:12px;color:#b91c1c;">Rejected</div><div style="font-size:20px;font-weight:700;color:#7f1d1d;">${summary.rejected || 0}</div></button>
-            <button type="button" class="agent-stat-btn" data-section="follow_up" style="text-align:left; border:1px solid #fed7aa; border-radius:10px; background:#fff7ed; padding:10px; cursor:pointer;"><div style="font-size:12px;color:#c2410c;">Banking Processing</div><div style="font-size:20px;font-weight:700;color:#9a3412;">${summary.banking_processing || 0}</div></button>
+            <button type="button" class="agent-stat-btn" data-section="follow_up" style="text-align:left; border:1px solid #fed7aa; border-radius:10px; background:#fff7ed; padding:10px; cursor:pointer;"><div style="font-size:12px;color:#c2410c;">Bank Login Process</div><div style="font-size:20px;font-weight:700;color:#9a3412;">${summary.banking_processing || 0}</div></button>
             <button type="button" class="agent-stat-btn" data-section="customers" style="text-align:left; border:1px solid #e2e8f0; border-radius:10px; background:#f8fafc; padding:10px; cursor:pointer;"><div style="font-size:12px;color:#334155;">Customers</div><div style="font-size:20px;font-weight:700;color:#0f172a;">${summary.total_customers || 0}</div></button>
         </div>
         <div id="agentSectionBody" style="border:1px solid #e5e7eb; border-radius:10px; background:#ffffff; overflow:auto; max-height:430px;"></div>
@@ -1959,7 +1959,7 @@ if (editAgentForm) {
                     const active = payload.status === 'active';
                     badge.classList.toggle('status-active', active);
                     badge.classList.toggle('status-Inactive', !active);
-                    badge.textContent = active ? '✓ Active' : '✗ Inactive';
+                    badge.textContent = active ? '? Active' : '? Inactive';
                 }
                 const partnerCode = (cells[0]?.textContent || '').trim().toLowerCase();
                 row.setAttribute('data-search', `${partnerCode},${(payload.name || '').toLowerCase()},${(payload.email || '').toLowerCase()},${(payload.phone || '').toLowerCase()}`);

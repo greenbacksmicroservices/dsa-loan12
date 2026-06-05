@@ -256,8 +256,8 @@
                         <i class="fas fa-hourglass-half"></i> Document Pending
                     {% elif status_name == 'Updated Document' %}
                         <i class="fas fa-file-circle-check"></i> Updated Document
-                    {% elif status_name == 'Required Follow-up' or status_name == 'Banking Processing' %}
-                        <i class="fas fa-university"></i> Banking Processing
+                    {% elif status_name == 'Required Follow-up' or status_name == 'Bank Login Process' %}
+                        <i class="fas fa-university"></i> Bank Login Process
                     {% elif status_name == 'Approved' %}
                         <i class="fas fa-check-circle"></i> Approved Applications
                     {% elif status_name == 'Rejected' %}
@@ -307,7 +307,7 @@
                         <th style="padding: 15px 20px; font-weight: 600; color: #2d3748; font-size: 13px; text-transform: uppercase;">Phone</th>
                         <th style="padding: 15px 20px; font-weight: 600; color: #2d3748; font-size: 13px; text-transform: uppercase;">Loan Amount</th>
                         <th style="padding: 15px 20px; font-weight: 600; color: #2d3748; font-size: 13px; text-transform: uppercase;">Date Applied</th>
-                        {% if status_name == 'Waiting for Processing' or status_name == 'Updated Document' or status_name == 'Required Follow-up' or status_name == 'Banking Processing' or status_name == 'Approved' or status_name == 'Rejected' or status_name == 'Disbursed' %}
+                        {% if status_name == 'Waiting for Processing' or status_name == 'Updated Document' or status_name == 'Required Follow-up' or status_name == 'Bank Login Process' or status_name == 'Approved' or status_name == 'Rejected' or status_name == 'Disbursed' %}
                         <th style="padding: 15px 20px; font-weight: 600; color: #2d3748; font-size: 13px; text-transform: uppercase;">Assigned To</th>
                         <th style="padding: 15px 20px; font-weight: 600; color: #2d3748; font-size: 13px; text-transform: uppercase;">Assigned By</th>
                         {% endif %}
@@ -322,7 +322,7 @@
                         <td style="padding: 15px 20px; color: #666;">{{ app.applicant.mobile|default:"-" }}</td>
                         <td style="padding: 15px 20px; font-weight: 600; color: #2d5016;">â‚¹{{ app.applicant.loan_amount|floatformat:0 }}</td>
                         <td style="padding: 15px 20px; color: #666; font-size: 13px;">{{ app.created_at|date:"M d, Y" }}</td>
-                        {% if status_name == 'Waiting for Processing' or status_name == 'Updated Document' or status_name == 'Required Follow-up' or status_name == 'Banking Processing' or status_name == 'Approved' or status_name == 'Rejected' or status_name == 'Disbursed' %}
+                        {% if status_name == 'Waiting for Processing' or status_name == 'Updated Document' or status_name == 'Required Follow-up' or status_name == 'Bank Login Process' or status_name == 'Approved' or status_name == 'Rejected' or status_name == 'Disbursed' %}
                         <td style="padding: 15px 20px; font-weight: 600; color: #374151;">
                             {% if app.assigned_employee %}
                                 {{ app.assigned_employee.first_name }} {{ app.assigned_employee.last_name }}
@@ -368,13 +368,13 @@
                                 {% elif status_name == 'Updated Document' %}
                                 <button type="button" class="action-btn collect"
                                     onclick="openAdminAction('collect', {{ app.id }}, '{{ app.applicant.full_name|escapejs }}')">
-                                    <i class="fas fa-university"></i> Banking Processing
+                                    <i class="fas fa-university"></i> Bank Login Process
                                 </button>
                                 <button type="button" class="action-btn reject"
                                     onclick="openAdminAction('reject', {{ app.id }}, '{{ app.applicant.full_name|escapejs }}')">
                                     <i class="fas fa-times-circle"></i> Rejected
                                 </button>
-                                {% elif status_name == 'Required Follow-up' or status_name == 'Banking Processing' %}
+                                {% elif status_name == 'Required Follow-up' or status_name == 'Bank Login Process' %}
                                 <button type="button" class="action-btn approve"
                                     onclick="openAdminAction('approve', {{ app.id }}, '{{ app.applicant.full_name|escapejs }}')">
                                     <i class="fas fa-check-circle"></i> Approve
@@ -745,11 +745,11 @@ function openAdminAction(action, appId, applicantName) {
             </div>
         `;
     } else if (action === 'collect') {
-        title.textContent = 'Move To Banking Processing';
+        title.textContent = 'Move To Bank Login Process';
         confirmBtn.className = 'action-btn collect';
         confirmBtn.textContent = 'Move';
         body.innerHTML = `
-            <div style="font-size: 13px; color: #374151;">Move <strong>${safeName}</strong> to Banking Processing.</div>
+            <div style="font-size: 13px; color: #374151;">Move <strong>${safeName}</strong> to Bank Login Process.</div>
             <div>
                 <label for="adminBankName">Bank Name *</label>
                 <input id="adminBankName" type="text" placeholder="Enter bank name">

@@ -291,7 +291,11 @@ document.getElementById('employee-add-partner-form').addEventListener('submit', 
         }
         showAddPartnerAlert('success', data.message || 'Channel partner created successfully.');
         setTimeout(() => {
-            window.location.href = '{% url "employee_my_agents_page" %}';
+            const target = new URL('{% url "employee_my_agents_page" %}', window.location.origin);
+            if (data.agent_id) {
+                target.searchParams.set('created_agent', data.agent_id);
+            }
+            window.location.href = target.toString();
         }, 700);
     } catch (error) {
         showAddPartnerAlert('danger', error.message || 'Unable to create channel partner');

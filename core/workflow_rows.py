@@ -88,7 +88,7 @@ def status_label_from_key(status_key, fallback_text=""):
         "new_entry": "New Application",
         "waiting": "Document Pending",
         UPDATED_DOCUMENT_STATUS_KEY: PENDING_DOCUMENT_CLEARED_LABEL,
-        "follow_up": "Banking Processing",
+        "follow_up": "Bank Login Process",
         "follow_up_pending": FOLLOW_UP_PENDING_LABEL,
         "approved": "Approved",
         "rejected": "Rejected",
@@ -132,10 +132,13 @@ def build_application_display_row(app_obj, status_key=None):
     processed_by = user_display(assigned_employee) if assigned_employee else "-"
 
     partner_under = "-"
+    partner_under_id = ""
     if getattr(assigned_by, "role", "") == "subadmin":
         partner_under = user_display(assigned_by)
+        partner_under_id = getattr(assigned_by, "id", "") or ""
     elif assigned_agent and getattr(getattr(assigned_agent, "created_by", None), "role", "") == "subadmin":
         partner_under = user_display(assigned_agent.created_by)
+        partner_under_id = getattr(assigned_agent.created_by, "id", "") or ""
 
     assigned_to = "-"
     if assigned_employee:
@@ -173,6 +176,8 @@ def build_application_display_row(app_obj, status_key=None):
         status_display_text=status_label_from_key(status_key),
         created_under=created_under,
         created_under_display=created_under,
+        assigned_agent_id=getattr(assigned_agent, "id", "") or "",
+        assigned_employee_id=getattr(assigned_employee, "id", "") or "",
         assigned_to=assigned_to,
         assigned_to_display=assigned_to,
         assigned_by=user_display(assigned_by),
@@ -183,6 +188,7 @@ def build_application_display_row(app_obj, status_key=None):
         processed_by_display=processed_by if processed_by != "-" else "N/A",
         partner_under=partner_under,
         partner_under_display=partner_under if partner_under != "-" else "N/A",
+        partner_under_id=partner_under_id,
         agent=agent_display(assigned_agent, "Unassigned"),
         employee=user_display(assigned_employee, "Unassigned"),
     )

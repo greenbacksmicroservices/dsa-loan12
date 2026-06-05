@@ -198,7 +198,7 @@
                                 </span>
                             </td>
                             <td>
-                                <a href="/employee/loan/${loan.id}/detail/" class="btn btn-sm btn-primary">
+                                <a href="/employee/loan/${loan.id}/detail/${loan.entity_type ? '?entity_type=' + encodeURIComponent(loan.entity_type) : ''}" class="btn btn-sm btn-primary">
                                     <i class="bi bi-eye"></i> View
                                 </a>
                             </td>

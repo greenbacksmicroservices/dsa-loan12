@@ -41,9 +41,9 @@ class User(AbstractUser):
 
 
 class Agent(models.Model):
-    """Agent/CP Model"""
+    """Channel Partner model"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True, related_name='agent_profile')
-    agent_id = models.CharField(max_length=50, unique=True, null=True, blank=True, help_text="Manual Agent ID")
+    agent_id = models.CharField(max_length=50, unique=True, null=True, blank=True, help_text="Manual Channel Partner ID")
     name = models.CharField(max_length=100)
     phone = models.CharField(
         max_length=15,
@@ -106,7 +106,7 @@ class Loan(models.Model):
         ('draft', 'Draft'),
         ('new_entry', 'New Entry'),
         ('waiting', 'Waiting for Processing'),
-        ('follow_up', 'Banking Processing'),
+        ('follow_up', 'Bank Login Process'),
         ('approved', 'Approved'),
         ('rejected', 'Rejected'),
         ('disputed', 'Disputed'),
@@ -126,7 +126,7 @@ class Loan(models.Model):
 
     APPLICANT_TYPE_CHOICES = [
         ('employee', 'Employee'),
-        ('agent', 'Agent'),
+        ('agent', 'Channel Partner'),
     ]
 
     BANK_TYPE_CHOICES = [
@@ -371,7 +371,7 @@ class ActivityLog(models.Model):
     ACTION_CHOICES = [
         ('loan_added', 'New Loan Added'),
         ('status_updated', 'Status Updated'),
-        ('agent_registered', 'New Agent Registered'),
+        ('agent_registered', 'New Channel Partner Registered'),
         ('complaint_raised', 'Complaint Raised'),
         ('loan_approved', 'Loan Approved'),
         ('loan_rejected', 'Loan Rejected'),
@@ -398,7 +398,7 @@ class Applicant(models.Model):
     """Applicant Model for Multi-Step Registration"""
     ROLE_CHOICES = [
         ('employee', 'Employee'),
-        ('agent', 'Agent'),
+        ('agent', 'Channel Partner'),
     ]
     
     GENDER_CHOICES = [
@@ -494,7 +494,7 @@ class LoanApplication(models.Model):
     STATUS_CHOICES = [
         ('New Entry', 'New Entry'),
         ('Waiting for Processing', 'Waiting for Processing'),
-        ('Required Follow-up', 'Banking Processing'),
+        ('Required Follow-up', 'Bank Login Process'),
         ('Approved', 'Approved'),
         ('Rejected', 'Rejected'),
         ('Disbursed', 'Disbursed'),
@@ -705,7 +705,7 @@ class LoanStatusHistory(models.Model):
     STATUS_CHOICES = [
         ('new_entry', 'New Entry'),
         ('waiting', 'Waiting for Processing'),
-        ('follow_up', 'Banking Processing'),
+        ('follow_up', 'Bank Login Process'),
         ('approved', 'Approved'),
         ('rejected', 'Rejected'),
         ('disbursed', 'Disbursed'),
@@ -815,7 +815,7 @@ class SubAdminEntry(models.Model):
     STATUS_CHOICES = [
         ('New Entry', 'New Entry'),
         ('Waiting for Processing', 'Waiting for Processing'),
-        ('Required Follow-up', 'Banking Processing'),
+        ('Required Follow-up', 'Bank Login Process'),
         ('Approved', 'Approved'),
         ('Rejected', 'Rejected'),
         ('Disbursed', 'Disbursed'),

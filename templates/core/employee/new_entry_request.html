@@ -302,7 +302,7 @@
                                 <td>${loan.assigned_date || 'N/A'}</td>
                                 <td><span class="badge bg-${hoursColor}">${loan.hours_pending}h</span></td>
                                 <td><span class="status-badge status-${statusClass}">${loan.status_display || statusKey}</span></td>
-                                <td><a href="/employee/loan/${loan.id}/detail/" class="btn btn-sm btn-primary">View</a></td>
+                                <td><a href="/employee/loan/${loan.id}/detail/${loan.entity_type ? '?entity_type=' + encodeURIComponent(loan.entity_type) : ''}" class="btn btn-sm btn-primary">View</a></td>
                             </tr>
                         `;
                     }).join('')}

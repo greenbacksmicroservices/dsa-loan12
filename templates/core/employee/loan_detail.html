@@ -39,6 +39,20 @@
                     </div>
 
                     <div class="section-box">
+                        <h6 class="section-title">APPLICATION SUMMARY</h6>
+                        <div class="grid">
+                            <div><small>Loan ID</small><strong id="compactLoanId">-</strong></div>
+                            <div><small>Name</small><strong id="compactApplicantName">-</strong></div>
+                            <div><small>Status</small><strong id="compactStatus">-</strong></div>
+                        </div>
+                    </div>
+
+                    <div class="section-box">
+                        <h6 class="section-title">LATEST SAVED FIELDS (REALTIME)</h6>
+                        <div id="allCapturedDetails" class="stack-box"></div>
+                    </div>
+
+                    <div class="section-box workflow-detail-expanded">
                         <h6 class="section-title">APPLICANT INFORMATION</h6>
                         <p class="section-note">Provide accurate personal information. This will be verified during processing.</p>
                         <p class="sub-title">Name & Contact Details</p>
@@ -71,7 +85,7 @@
                         </div>
                     </div>
 
-                    <div class="section-box">
+                    <div class="section-box workflow-detail-expanded">
                         <h6 class="section-title">LOAN DETAILS</h6>
                         <div class="grid">
                             <div><small>Loan Type *</small><strong id="loanType">-</strong></div>
@@ -96,11 +110,11 @@
                         <div id="references" class="stack-box"></div>
                     </div>
 
-                    {% if request.user.role != 'agent' %}
                     <div class="section-box">
                         <h6 class="section-title">LEAD RECEIVE</h6>
                         <div class="grid">
                             <div><small>Channel Partner Name</small><strong id="leadChannelPartner">-</strong></div>
+                            <div><small>Employee Name</small><strong id="leadEmployeeName">-</strong></div>
                             <div><small>Leader Name</small><strong id="leadLeaderName">-</strong></div>
                             <div><small>Lead Source</small><strong id="leadSource">-</strong></div>
                         </div>
@@ -113,9 +127,8 @@
                             <strong id="manualRemark" class="d-block">-</strong>
                         </div>
                     </div>
-                    {% endif %}
 
-                    <div class="section-box">
+                    <div class="section-box workflow-detail-expanded">
                         <h6 class="section-title">OTHER LEGACY FIELDS (IF PROVIDED)</h6>
                         <div class="grid">
                             <div><small>CIBIL Score</small><strong id="cibil">-</strong></div>
@@ -131,15 +144,9 @@
                         </div>
                     </div>
 
-                    <div class="section-box">
+                    <div class="section-box workflow-detail-expanded">
                         <h6 class="section-title">Declaration</h6>
                         <strong id="declarationText" class="d-block">I hereby declare that the above information given by me is true and correct.</strong>
-                    </div>
-
-                    <div class="section-box">
-                        <h6 class="section-title">LATEST SAVED FIELDS (REALTIME)</h6>
-                        <p class="section-note">Add New Loan Application form ke latest saved fields yahan realtime show honge.</p>
-                        <div id="allCapturedDetails" class="stack-box"></div>
                     </div>
                 </div>
             </div>
@@ -347,6 +354,7 @@
                 <div class="card-body">
                     <h6 class="sec"><i class="bi bi-sliders"></i> Processing Controls</h6>
                     <div class="mb-2"><small>Status</small><div id="statusBadge"></div></div>
+                    {% if request.user.role == 'admin' %}
                     <div class="meta"><small>Assigned By</small><strong id="assignedBy">-</strong></div>
                     <div class="meta"><small>Assigned Role</small><strong id="assignedRole">-</strong></div>
                     <div class="meta"><small>Assigned Date</small><strong id="assignedDate">-</strong></div>
@@ -354,11 +362,12 @@
                     <div class="meta"><small>Processed By</small><strong id="processedBy">-</strong></div>
                     <div class="meta"><small>Partner Under</small><strong id="partnerUnder">-</strong></div>
                     <div class="meta"><small>Visibility</small><strong id="visibility">-</strong></div>
+                    {% endif %}
 
                     <div class="d-grid gap-2 mt-3">
                         <button id="documentPendingBtn" class="btn btn-outline-secondary" style="display:none;">Move to Document Pending</button>
-                        <button id="updateDocumentBtn" class="btn btn-success" style="display:none;">Update Document</button>
-                        <button id="bankProcessingBtn" class="btn btn-warning" style="display:none;">Move to Banking Processing</button>
+                        <button id="updateDocumentBtn" class="btn btn-success" style="display:none;">Pending Document Cleared</button>
+                        <button id="bankProcessingBtn" class="btn btn-warning" style="display:none;">Move to Bank Login Process</button>
                         <button id="approveBtn" class="btn btn-success" style="display:none;">Approve</button>
                         <button id="rejectBtn" class="btn btn-danger" style="display:none;">Reject</button>
                         <button id="disburseBtn" class="btn btn-primary" style="display:none;">Mark as Disbursed</button>
@@ -408,7 +417,7 @@
 <div class="modal fade" id="bankProcessingModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-lg modal-xl-up">
         <div class="modal-content">
-            <div class="modal-header"><h5 class="modal-title">Move to Banking Processing</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-header"><h5 class="modal-title">Move to Bank Login Process</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
                 <label class="form-label">Bank Name *</label>
                 <input id="processingBankNameInput" class="form-control mb-2" type="text" placeholder="Enter bank name">
@@ -459,6 +468,10 @@
                     <div class="col-md-6">
                         <label class="form-label">Banker Email *</label>
                         <input id="approveBankerEmailInput" class="form-control" type="email" placeholder="Banker email">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Loan Account Number</label>
+                        <input id="approveLoanAccountNumberInput" class="form-control" type="text" placeholder="Loan account number">
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">Verified Loan Amount *</label>
@@ -565,6 +578,7 @@
     .modal-xl-up { max-width: 880px; }
     .sec { font-weight:700; margin-bottom:10px; color:#0f172a; display:flex; align-items:center; gap:6px; }
     .section-box { background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:10px; margin-bottom:12px; }
+    .workflow-detail-expanded { display: none; }
     .section-title { margin:0 0 4px 0; font-size:.9rem; font-weight:800; color:#0f172a; letter-spacing:.2px; }
     .section-note { margin:0 0 8px 0; font-size:.76rem; color:#64748b; }
     .sub-title { margin:0 0 6px 0; font-size:.79rem; font-weight:700; color:#334155; text-transform:uppercase; letter-spacing:.25px; }
@@ -580,6 +594,21 @@
     .stack-grid strong { font-size:.84rem; color:#0f172a; word-break:break-word; }
     .doc-upload-toolbar { background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:10px; margin-bottom:10px; }
     .doc-upload-note { font-size:.74rem; color:#64748b; margin-top:6px; }
+    .doc-pending-alert {
+        display: block;
+        margin-top: 8px;
+        padding: 8px 10px;
+        border: 1px solid #ef4444;
+        border-radius: 8px;
+        background: #fee2e2;
+        color: #991b1b !important;
+        font-weight: 800;
+        animation: docPendingBlink 1s ease-in-out infinite;
+    }
+    @keyframes docPendingBlink {
+        0%, 100% { background: #fee2e2; box-shadow: 0 0 0 rgba(239, 68, 68, 0); }
+        50% { background: #fecaca; box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.14); }
+    }
     .docs { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
     .doc { background:#f8fafc; border:1px solid #dbeafe; border-radius:8px; padding:8px; }
     .doc-name { font-size:.82rem; font-weight:700; color:#0f172a; word-break:break-word; line-height:1.2; }
@@ -691,7 +720,7 @@ const timelineToggle = document.getElementById('timelineToggle');
 const money = v => `Rs ${new Intl.NumberFormat('en-IN').format(v || 0)}`;
 const cookie = n => document.cookie.split('; ').find(r => r.startsWith(n + '='))?.split('=')[1];
 const wf = s => {
-    if (s === 'Required Follow-up' || s === 'Banking Processing') return 'Required Follow-up';
+    if (s === 'Required Follow-up' || s === 'Bank Login Process') return 'Required Follow-up';
     if (s === 'Updated Document' || s === 'Pending Document Cleared') return 'Updated Document';
     if (s === 'Follow Up') return 'Follow Up';
     return s;
@@ -712,7 +741,7 @@ const badge = s => {
     const cls = { 'Waiting for Processing': 'warning text-dark', 'Document Pending': 'warning text-dark', 'Updated Document': 'success', 'Required Follow-up': 'info text-dark', 'Follow Up': 'warning text-dark', 'Approved': 'success', 'Rejected': 'danger', 'Disbursed': 'primary' };
     const key = wf(s);
     const label = (s === 'Required Follow-up')
-        ? 'Banking Processing'
+        ? 'Bank Login Process'
         : (s === 'Waiting for Processing' ? 'Document Pending' : (s === 'Updated Document' ? 'Pending Document Cleared' : (s === 'New Entry' ? 'New Application' : (s || '-'))));
     return `<span class="badge bg-${cls[key] || 'secondary'}">${label}</span>`;
 };
@@ -746,6 +775,7 @@ function parseProcessMeta(v) {
         banker_name: String(v?.banker_name || '').trim(),
         banker_phone: String(v?.banker_phone || '').trim(),
         banker_email: String(v?.banker_email || '').trim(),
+        loan_account_number: String(v?.loan_account_number || '').trim(),
         verified_loan_amount: String(v?.verified_loan_amount || '').trim(),
         final_loan_amount: String(v?.final_loan_amount || '').trim(),
         dsa_name: String(v?.dsa_name || '').trim(),
@@ -758,6 +788,10 @@ function parseProcessMeta(v) {
         'banker name': 'banker_name',
         'banker phone': 'banker_phone',
         'banker email': 'banker_email',
+        'loan account number': 'loan_account_number',
+        'current loan account number': 'loan_account_number',
+        'account number': 'loan_account_number',
+        'bank account number': 'loan_account_number',
         'verified loan amount': 'verified_loan_amount',
         'verified loan ammount': 'verified_loan_amount',
         'final loan amount': 'final_loan_amount',
@@ -798,6 +832,10 @@ function parseProcessMeta(v) {
             'banker name': 'banker_name',
             'banker phone': 'banker_phone',
             'banker email': 'banker_email',
+            'loan account number': 'loan_account_number',
+            'current loan account number': 'loan_account_number',
+            'account number': 'loan_account_number',
+            'bank account number': 'loan_account_number',
             'verified loan amount': 'verified_loan_amount',
             'verified loan ammount': 'verified_loan_amount',
             'final loan amount': 'final_loan_amount',
@@ -822,15 +860,25 @@ function parseProcessMeta(v) {
     return meta;
 }
 
+function channelPartnerName(v) {
+    const candidates = [
+        v?.lead_receive_channel_partner_name,
+        v?.submitted_by,
+        v?.assigned_agent_name,
+    ];
+    return String(candidates.find((item) => item && String(item).trim() && String(item).trim() !== '-') || '').trim();
+}
+
 function prefillBankProcessingModal(v) {
     const meta = parseProcessMeta(v);
     setInputValue('processingBankNameInput', meta.bank_name || v?.bank_name || '');
     setInputValue('bankerNameInput', meta.banker_name);
     setInputValue('bankerPhoneInput', meta.banker_phone);
     setInputValue('bankerEmailInput', meta.banker_email);
+    setInputValue('processingLoanAccountNumberInput', meta.loan_account_number || v?.loan_account_number || v?.account_number || '');
     setInputValue('verifiedLoanAmountInput', meta.verified_loan_amount || v?.loan_amount || '');
     setInputValue('finalLoanAmountInput', meta.final_loan_amount || v?.loan_amount || '');
-    setInputValue('processingDsaNameInput', meta.dsa_name || v?.sm_name || '');
+    setInputValue('processingDsaNameInput', meta.dsa_name || channelPartnerName(v) || v?.sm_name || '');
     setInputValue('bankerDescriptionInput', meta.banker_description);
     setInputValue('bankRemarkInput', meta.bank_remark);
     setInputValue('processingManualLoanIdInput', v?.user_id || '');
@@ -845,9 +893,10 @@ function prefillApproveModal(v, force = false) {
     setInputValue('approveBankerNameInput', meta.banker_name);
     setInputValue('approveBankerPhoneInput', meta.banker_phone);
     setInputValue('approveBankerEmailInput', meta.banker_email);
+    setInputValue('approveLoanAccountNumberInput', meta.loan_account_number || v?.loan_account_number || v?.account_number || '');
     setInputValue('approveVerifiedLoanAmountInput', meta.verified_loan_amount || v?.loan_amount || '');
     setInputValue('approveFinalLoanAmountInput', meta.final_loan_amount || v?.loan_amount || '');
-    setInputValue('approveDsaNameInput', meta.dsa_name || v?.sm_name || '');
+    setInputValue('approveDsaNameInput', meta.dsa_name || channelPartnerName(v) || v?.sm_name || '');
     setInputValue('approveDescriptionInput', meta.banker_description);
     setInputValue('approveRemark', '');
     setInputValue('approveBankDetails', meta.bank_remark);
@@ -861,10 +910,10 @@ function prefillDisburseModal(v) {
     setInputValue('disburseBankerEmailInput', meta.banker_email);
     setInputValue('disburseVerifiedLoanAmountInput', meta.verified_loan_amount || v?.loan_amount || '');
     setInputValue('disburseFinalLoanAmountInput', meta.final_loan_amount || v?.loan_amount || '');
-    setInputValue('disburseDsaNameInput', meta.dsa_name || v?.sm_name || '');
+    setInputValue('disburseDsaNameInput', meta.dsa_name || channelPartnerName(v) || v?.sm_name || '');
     setInputValue('disburseDescriptionInput', meta.banker_description);
     setInputValue('disburseBankNotes', meta.bank_remark);
-    setInputValue('disburseLoanAccountNumber', v?.account_number || '');
+    setInputValue('disburseLoanAccountNumber', meta.loan_account_number || v?.loan_account_number || v?.account_number || '');
     setInputValue('disburseManualLoanIdInput', v?.user_id || '');
     setInputValue('disburseAmount', meta.final_loan_amount || v?.loan_amount || '');
     setInputValue('disburseDate', new Date().toISOString().slice(0, 10));
@@ -1151,6 +1200,9 @@ function fill() {
         return '';
     };
 
+    set('compactLoanId', pick(v.manual_loan_id_display, v.user_id, v.loan_reference, v.loan_application_id, v.loan_id, v.id, loanId) || 'Pending Manual ID');
+    set('compactApplicantName', pick(v.applicant_name, v.full_name));
+    set('compactStatus', pick(v.status_display, v.status));
     set('name', v.applicant_name);
     set('mobile', v.mobile);
     set('altMobile', v.alternate_mobile || fromMap('alternate mobile'));
@@ -1207,6 +1259,10 @@ function fill() {
     set('leadChannelPartner', pick(
         v.lead_receive_channel_partner_name,
         fromMap('lead receive channel partner name', 'channel partner name', 'sm name')
+    ));
+    set('leadEmployeeName', pick(
+        v.lead_receive_employee_name,
+        fromMap('lead receive employee name', 'employee name', 'employee')
     ));
     set('leadLeaderName', pick(
         v.lead_receive_leader_name,
@@ -1353,7 +1409,11 @@ function fill() {
         t.includes('check') ||
         t.includes('statement')
     );
-    const updatedReady = hasPan && hasAadhar && hasBank;
+    const requiredDocsReady = hasPan && hasAadhar && hasBank;
+    const hasUploadedDocuments = docs.length > 0;
+    const isUpdatedDocumentStage = !!(v.updated_document || workflowStatus === 'Updated Document' || workflowStatus === 'Pending Document Cleared');
+    const isDocumentPendingStage = (workflowStatus === 'Waiting for Processing' || workflowStatus === 'Document Pending') && !isUpdatedDocumentStage;
+    const pendingDocumentClearReady = isDocumentPendingStage && hasUploadedDocuments;
     const moveToUpdatedDocument = async (autoTriggered = false) => {
         if (!['employee', 'admin', 'subadmin', 'agent'].includes(currentRole)) {
             msg('info', 'Updated Document process action is not available for this role.');
@@ -1388,31 +1448,33 @@ function fill() {
         const latestUpdatedReason = statusHistory.find((item) =>
             String(item?.reason || '').toLowerCase().includes('updated document by')
         )?.reason;
+        const showPendingRemark = isDocumentPendingStage && !!latestPendingReason;
 
-        if (!updatedReady && latestPendingReason) {
+        docPendingText.classList.toggle('doc-pending-alert', showPendingRemark);
+        if (showPendingRemark) {
             docPendingText.textContent = latestPendingReason;
         } else {
-            docPendingText.textContent = updatedReady
+            docPendingText.textContent = requiredDocsReady
                 ? 'All required documents uploaded.'
-                : `Pending: ${missing.join(', ')}`;
+                : (hasUploadedDocuments ? 'Updated document uploaded for review.' : `Pending: ${missing.join(', ')}`);
         }
 
         const updatedDocText = document.getElementById('docUpdatedText');
         if (updatedDocText) {
-            if (updatedReady && latestUpdatedReason) {
+            if (requiredDocsReady && latestUpdatedReason) {
                 updatedDocText.textContent = latestUpdatedReason;
             } else {
-                updatedDocText.textContent = updatedReady
-                    ? 'All required documents verified. You can move this case from Updated Document section.'
-                    : 'Upload PAN + Aadhar + Passbook/Cancel check/statement to enable Updated Document flow.';
+                updatedDocText.textContent = pendingDocumentClearReady
+                    ? 'Uploaded document is ready to move forward.'
+                    : 'Upload the pending document to continue.';
             }
         }
-        docUpdatedCard.style.display = 'block';
-        // Keep pending visible; the "Updated Document" card appears after all are present.
-        if (docPendingCard) docPendingCard.style.display = 'block';
+        docUpdatedCard.style.display = (isUpdatedDocumentStage || pendingDocumentClearReady) ? 'block' : 'none';
+        if (docPendingCard) docPendingCard.style.display = isDocumentPendingStage ? 'block' : 'none';
         markUpdatedButtons.forEach((markUpdatedDocumentBtn) => {
             const isPendingButton = markUpdatedDocumentBtn.id === 'markUpdatedDocumentBtnPending';
-            const shouldShow = updatedReady && (currentRole !== 'agent' || isPendingButton);
+            const canAgentClearPending = currentRole === 'agent' && isPendingButton && isDocumentPendingStage;
+            const shouldShow = pendingDocumentClearReady && (currentRole !== 'agent' || canAgentClearPending);
             markUpdatedDocumentBtn.style.display = shouldShow ? 'inline-flex' : 'none';
             markUpdatedDocumentBtn.disabled = !shouldShow;
             if (currentRole === 'agent' && isPendingButton) {
@@ -1435,7 +1497,6 @@ function fill() {
 
     const s = workflowStatus;
     const isFollowUpPending = !!(v.follow_up_pending || v.follow_up_editable || s === 'Follow Up');
-    const isUpdatedDocumentStage = !!(v.updated_document || s === 'Updated Document' || s === 'Pending Document Cleared');
     const documentPendingBtn = document.getElementById('documentPendingBtn');
     const updateDocumentBtn = document.getElementById('updateDocumentBtn');
     const bankProcessingBtn = document.getElementById('bankProcessingBtn');
@@ -1457,7 +1518,6 @@ function fill() {
         if (bankProcessingBtn) bankProcessingBtn.style.display = 'block';
         if (rejectBtn) rejectBtn.style.display = 'block';
     } else if (s === 'Waiting for Processing') {
-        if (documentPendingBtn) documentPendingBtn.style.display = 'block';
         if (bankProcessingBtn) bankProcessingBtn.style.display = 'block';
         if (rejectBtn) rejectBtn.style.display = 'block';
     } else if (isFollowUpPending) {
@@ -1473,9 +1533,9 @@ function fill() {
     }
 
     const canShowUpdateControl =
-        updatedReady
+        pendingDocumentClearReady
         && !isUpdatedDocumentStage
-        && ['New Entry', 'Waiting for Processing', 'Follow Up'].includes(s);
+        && s === 'Waiting for Processing';
     if (canShowUpdateControl && updateDocumentBtn) {
         updateDocumentBtn.style.display = 'block';
         updateDocumentBtn.disabled = false;
@@ -1767,7 +1827,7 @@ document.getElementById('confirmBankProcessing').onclick = async () => {
             entity_type: loan?.entity_type || '',
         });
         bankProcessingModal.hide();
-        msg('success', d.message || 'Moved to Banking Processing');
+        msg('success', d.message || 'Moved to Bank Login Process');
         setTimeout(load, 300);
     } catch(e) { msg('danger', e.message); }
 };
@@ -1809,6 +1869,7 @@ document.getElementById('confirmApprove').onclick = async () => {
     const bankerName = document.getElementById('approveBankerNameInput').value.trim();
     const bankerPhone = document.getElementById('approveBankerPhoneInput').value.trim();
     const bankerEmail = document.getElementById('approveBankerEmailInput').value.trim();
+    const loanAccountNumber = document.getElementById('approveLoanAccountNumberInput').value.trim();
     const verifiedLoanAmount = document.getElementById('approveVerifiedLoanAmountInput').value.trim();
     const finalLoanAmount = document.getElementById('approveFinalLoanAmountInput').value.trim();
     const dsaName = document.getElementById('approveDsaNameInput').value.trim();
@@ -1838,12 +1899,14 @@ document.getElementById('confirmApprove').onclick = async () => {
             banker_name: bankerName,
             banker_phone: bankerPhone,
             banker_email: bankerEmail,
+            loan_account_number: loanAccountNumber,
             verified_loan_amount: verifiedLoanAmount,
             final_loan_amount: finalLoanAmount,
             dsa_name: dsaName,
             banker_description: description,
             approval_notes: approvalRemark,
             bank_remark: bankDetailsText,
+            entity_type: loan?.entity_type || '',
         });
         approveModal.hide();
         msg('success', d.message || 'Approved');

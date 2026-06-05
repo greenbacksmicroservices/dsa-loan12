@@ -208,11 +208,13 @@
 
 <script>
     const loanId = {{ loan_id }};
+    const entityType = '{{ entity_type|default:""|escapejs }}';
     let loanData = null;
     
     async function loadLoanDetails() {
         try {
-            const response = await fetch(`/api/employee/loan/${loanId}/detail/`, {
+            const query = entityType ? `?entity_type=${encodeURIComponent(entityType)}` : '';
+            const response = await fetch(`/api/employee/loan/${loanId}/detail/${query}`, {
                 headers: {'X-Requested-With': 'XMLHttpRequest'}
             });
             

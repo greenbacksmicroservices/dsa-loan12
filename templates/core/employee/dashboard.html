@@ -27,9 +27,9 @@
         </a>
 
         <a class="insight-card c-bank" href="{% url 'employee_loans_followup' %}">
-            <p class="status-title">Banking Processing</p>
+            <p class="status-title">Bank Login Process</p>
             <h2 class="main-value" id="stat-banking">0</h2>
-            <p class="description">Banking Processing Queue</p>
+            <p class="description">Bank Login Process Queue</p>
             <span class="view-details" style="color:#319795;">View Details &rarr;</span>
         </a>
 
@@ -828,7 +828,7 @@
                         <small class="text-muted">${loan.created_time || ''}</small>
                     </td>
                     <td style="white-space: nowrap;">
-                        <button class="btn btn-sm ${actionClass}" onclick="viewLoanDetails(${loan.id})" title="${actionTitle}">
+                        <button class="btn btn-sm ${actionClass}" onclick="viewLoanDetails(${loan.id}, '${String(loan.entity_type || '').replace(/'/g, "\\'")}')" title="${actionTitle}">
                             <i class="bi ${actionIcon}"></i> ${actionLabel}
                         </button>
                     </td>
@@ -837,8 +837,9 @@
         }).join('');
     }
 
-    function viewLoanDetails(loanId) {
-        window.location.href = `/employee/loan/${loanId}/detail/`;
+    function viewLoanDetails(loanId, entityType = '') {
+        const query = entityType ? `?entity_type=${encodeURIComponent(entityType)}` : '';
+        window.location.href = `/employee/loan/${loanId}/detail/${query}`;
     }
 
     function formatAmount(amount) {

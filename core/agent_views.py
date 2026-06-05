@@ -618,7 +618,7 @@ def agent_resubmit_reverted_loan(request, loan_id):
     """
     Agent correction form for reverted applications.
     Allows updating key fields, replacing one document, and resubmitting
-    directly into Banking Processing.
+    directly into Bank Login Process.
     """
     agent = Agent.objects.get(user=request.user)
     loan = get_object_or_404(get_agent_loan_queryset(request.user, agent), id=loan_id)
@@ -808,7 +808,7 @@ def agent_resubmit_reverted_loan(request, loan_id):
                 is_auto_triggered=False,
             )
 
-        messages.success(request, 'Application re-submitted to Banking Processing successfully.')
+        messages.success(request, 'Application re-submitted to Bank Login Process successfully.')
         return redirect(f"{reverse('agent_my_applications')}?status=follow_up&loan_id={loan.id}")
 
     documents = LoanDocument.objects.filter(loan=loan).order_by('-uploaded_at')

@@ -5,6 +5,10 @@
 
 {% block content %}
 <style>
+    body:not(.dark-mode) {
+        background: #eef7ff;
+    }
+
     .form-container {
         max-width: 1400px;
         margin: 20px auto;
@@ -25,7 +29,7 @@
     }
 
     .form-section {
-        background: white;
+        background: #e6f2ff;
         border: 1px solid #e5e7eb;
         border-radius: 0 0 8px 8px;
         padding: 25px;
@@ -800,6 +804,341 @@
         font-size: 13px;
         line-height: 1.6;
     }
+
+    .loan-wizard-shell {
+        background: linear-gradient(135deg, #eaf6ff 0%, #f8fbff 55%, #edf7ff 100%);
+        border: 1px solid #cfe8ff;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 24px;
+        box-shadow: 0 16px 36px rgba(14, 80, 126, 0.08);
+    }
+
+    .loan-wizard-top {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        align-items: center;
+        margin-bottom: 18px;
+    }
+
+    .loan-wizard-title {
+        margin: 0;
+        color: #0f2f55;
+        font-size: 22px;
+        font-weight: 800;
+    }
+
+    .loan-wizard-subtitle {
+        margin: 4px 0 0;
+        color: #48647f;
+        font-size: 13px;
+    }
+
+    .loan-wizard-progress {
+        height: 8px;
+        background: #dbeafe;
+        border-radius: 999px;
+        overflow: hidden;
+        margin-bottom: 16px;
+    }
+
+    .loan-wizard-progress-bar {
+        width: 0;
+        height: 100%;
+        background: linear-gradient(135deg, #0ea5e9 0%, #1d4ed8 100%);
+        border-radius: inherit;
+        transition: width 0.28s ease;
+    }
+
+    .loan-wizard-steps {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+    }
+
+    .loan-wizard-step-indicator {
+        border: 1px solid #cfe8ff;
+        background: rgba(255, 255, 255, 0.84);
+        color: #31516f;
+        border-radius: 8px;
+        padding: 10px 12px;
+        font-size: 12px;
+        font-weight: 700;
+        text-align: left;
+        transition: all 0.22s ease;
+    }
+
+    .loan-wizard-step-indicator.active {
+        background: #0f6fb8;
+        border-color: #0f6fb8;
+        color: #ffffff;
+        box-shadow: 0 10px 22px rgba(15, 111, 184, 0.2);
+    }
+
+    .loan-wizard-step-indicator.completed {
+        background: #e0f2fe;
+        border-color: #7dd3fc;
+        color: #075985;
+    }
+
+    .wizard-step {
+        display: none;
+        animation: wizardFadeUp 0.22s ease;
+    }
+
+    .wizard-step.active {
+        display: block;
+    }
+
+    .wizard-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: 18px;
+        padding-top: 18px;
+        border-top: 1px solid #dbeafe;
+    }
+
+    .wizard-actions.between {
+        justify-content: space-between;
+    }
+
+    .review-summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 14px;
+    }
+
+    .review-summary-section {
+        border: 1px solid #dbeafe;
+        border-radius: 8px;
+        background: #ffffff;
+        padding: 14px;
+    }
+
+    .review-summary-section h4 {
+        margin: 0 0 10px;
+        color: #0f2f55;
+        font-size: 14px;
+        font-weight: 800;
+    }
+
+    .review-summary-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        border-bottom: 1px solid #eef6ff;
+        padding: 7px 0;
+        font-size: 12px;
+    }
+
+    .review-summary-row:last-child {
+        border-bottom: 0;
+    }
+
+    .review-summary-row span:first-child {
+        color: #64748b;
+        font-weight: 700;
+    }
+
+    .review-summary-row span:last-child {
+        color: #0f172a;
+        font-weight: 700;
+        text-align: right;
+        overflow-wrap: anywhere;
+    }
+
+    @keyframes wizardFadeUp {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 768px) {
+        .loan-wizard-top {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .loan-wizard-steps {
+            grid-template-columns: 1fr;
+        }
+
+        .wizard-actions,
+        .wizard-actions.between {
+            justify-content: stretch;
+        }
+
+        .wizard-actions button {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+
+    .form-container {
+        max-width: 1280px;
+        padding: 24px clamp(14px, 3vw, 28px) 44px;
+    }
+
+    .loan-wizard-shell {
+        border-radius: 8px;
+        border: 1px solid #cbd5e1;
+        border-left: 4px solid #0f766e;
+        background: #ffffff;
+        box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
+    }
+
+    .loan-wizard-title {
+        color: #0f172a;
+        letter-spacing: 0;
+    }
+
+    .loan-wizard-progress {
+        background: #e2e8f0;
+    }
+
+    .loan-wizard-progress-bar {
+        background: linear-gradient(90deg, #0f766e 0%, #2563eb 62%, #f59e0b 100%);
+    }
+
+    .loan-wizard-step-indicator {
+        min-height: 46px;
+        border-radius: 8px;
+        background: #f8fafc;
+        border-color: #dbe3ef;
+        color: #334155;
+    }
+
+    .loan-wizard-step-indicator.active {
+        background: #0f766e;
+        border-color: #0f766e;
+        color: #ffffff;
+        box-shadow: 0 10px 18px rgba(15, 118, 110, 0.18);
+    }
+
+    .loan-wizard-step-indicator.completed {
+        background: #fff7ed;
+        border-color: #fed7aa;
+        color: #9a3412;
+    }
+
+    .section-header {
+        margin-top: 22px;
+        border-radius: 8px 8px 0 0;
+        background: #102a43;
+        padding: 14px 18px;
+        letter-spacing: 0.02em;
+    }
+
+    .form-section {
+        background: #ffffff;
+        border: 1px solid #dbe3ef;
+        border-top: 0;
+        border-radius: 0 0 8px 8px;
+        box-shadow: 0 12px 26px rgba(15, 23, 42, 0.06);
+        padding: clamp(18px, 2vw, 26px);
+    }
+
+    .sub-section-title {
+        color: #0f172a;
+        border-bottom-color: #cbd5e1;
+        letter-spacing: 0;
+    }
+
+    .form-row {
+        gap: 16px;
+        margin-bottom: 16px;
+    }
+
+    .form-group {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 14px;
+        min-width: 0;
+    }
+
+    .form-group label {
+        color: #1e293b;
+        letter-spacing: 0;
+    }
+
+    .page-header,
+    .loan-wizard-shell {
+        display: none !important;
+    }
+
+    .form-control,
+    .form-select,
+    textarea.form-control {
+        min-height: 44px;
+        border-radius: 8px;
+        border-color: #cbd5e1;
+        background: #ffffff;
+    }
+
+    textarea.form-control {
+        min-height: 92px;
+    }
+
+    .form-control:focus,
+    .form-select:focus,
+    textarea.form-control:focus {
+        border-color: #0f766e;
+        box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.14);
+    }
+
+    .info-alert {
+        background: #ecfeff;
+        border-color: #67e8f9;
+        color: #155e75;
+        border-radius: 8px;
+    }
+
+    .repeatable-item,
+    .document-item,
+    .review-summary-section,
+    .soft-surface {
+        border-radius: 8px;
+        border-color: #dbe3ef;
+        background: #f8fafc;
+    }
+
+    .btn-primary-custom,
+    .btn-secondary-custom,
+    .btn-remove-inline {
+        min-height: 44px;
+        border-radius: 8px;
+        font-weight: 800;
+    }
+
+    .btn-primary-custom {
+        background: #0f766e;
+        box-shadow: 0 10px 20px rgba(15, 118, 110, 0.16);
+    }
+
+    .btn-primary-custom:hover {
+        background: #115e59;
+        box-shadow: 0 12px 24px rgba(15, 118, 110, 0.2);
+    }
+
+    .btn-secondary-custom {
+        background: #ffffff;
+        border-color: #cbd5e1;
+        color: #334155;
+    }
+
+    body.dark-mode .loan-wizard-shell,
+    body.dark-mode .form-section,
+    body.dark-mode .form-group,
+    body.dark-mode .repeatable-item,
+    body.dark-mode .document-item,
+    body.dark-mode .review-summary-section,
+    body.dark-mode .soft-surface {
+        background: #111827 !important;
+        border-color: #334155 !important;
+    }
 </style>
 
 <div class="form-container">
@@ -1000,6 +1339,26 @@
     <form id="loanForm" method="post" enctype="multipart/form-data" novalidate class="{% if request.user.role == 'agent' and not request.GET.loan_type %}loan-form-hidden{% endif %}">
         {% csrf_token %}
 
+        <div class="loan-wizard-shell">
+            <div class="loan-wizard-top">
+                <div>
+                    <h1 class="loan-wizard-title">Add New Loan Application</h1>
+                    <p class="loan-wizard-subtitle">Professional step-wise banking workflow with review before submission.</p>
+                </div>
+                <span class="loan-wizard-subtitle">Step <strong id="wizardCurrentStep">1</strong> of 4</span>
+            </div>
+            <div class="loan-wizard-progress" aria-hidden="true">
+                <div class="loan-wizard-progress-bar" id="wizardProgressBar"></div>
+            </div>
+            <div class="loan-wizard-steps" aria-label="Loan application steps">
+                <button type="button" class="loan-wizard-step-indicator active" data-wizard-indicator="1">Step 1 - Applicant Information</button>
+                <button type="button" class="loan-wizard-step-indicator" data-wizard-indicator="2">Step 2 - Loan Details</button>
+                <button type="button" class="loan-wizard-step-indicator" data-wizard-indicator="3">Step 3 - Reference & Lead</button>
+                <button type="button" class="loan-wizard-step-indicator" data-wizard-indicator="4">Review - Submit</button>
+            </div>
+        </div>
+
+        <section class="wizard-step active" data-step="1">
         <!-- ===================== APPLICANT INFORMATION ===================== -->
         <div class="section-header">
             <i class="bi bi-person-check"></i> APPLICANT INFORMATION
@@ -1136,6 +1495,13 @@
                 </div>
             </div>
         </div>
+
+        <div class="wizard-actions">
+            <button type="button" class="btn-primary-custom" data-wizard-next>
+                Next <i class="bi bi-arrow-right"></i>
+            </button>
+        </div>
+        </section>
 
         {% comment %}
         <!-- ===================== OCCUPATION & INCOME DETAILS ===================== -->
@@ -1302,6 +1668,7 @@
         </div>
         {% endcomment %}
 
+        <section class="wizard-step" data-step="2">
         <!-- ===================== LOAN DETAILS ===================== -->
         <div class="section-header">
             <i class="bi bi-cash-stack"></i> LOAN DETAILS
@@ -1368,7 +1735,7 @@
             <div class="sub-section-title">Service Required Based Documents</div>
             <div class="info-alert">
                 <i class="bi bi-info-circle"></i>
-                Service aur Occupation ke hisaab se suggested documents auto-open honge. Document upload optional hai.
+                Service ke hisaab se suggested documents auto-open honge. Document upload optional hai.
             </div>
             <div class="service-documents-shell">
                 <div id="documents-container"></div>
@@ -1380,9 +1747,20 @@
             </div>
         </div>
 
-        <!-- ===================== REFERENCE ===================== -->
+        <div class="wizard-actions between">
+            <button type="button" class="btn-secondary-custom" data-wizard-back>
+                <i class="bi bi-arrow-left"></i> Back
+            </button>
+            <button type="button" class="btn-primary-custom" data-wizard-next>
+                Next <i class="bi bi-arrow-right"></i>
+            </button>
+        </div>
+        </section>
+
+        <section class="wizard-step" data-step="3">
+        <!-- ===================== REFERENCE & LEAD RECEIVE ===================== -->
         <div class="section-header">
-            <i class="bi bi-person-vcard"></i> REFERENCE
+            <i class="bi bi-person-vcard"></i> REFERENCE & LEAD RECEIVE
         </div>
         <div class="form-section">
             <div class="info-alert">
@@ -1485,12 +1863,14 @@
             <div class="form-row">
                 <div class="form-group">
                     <label>Channel Partner Name</label>
-                    <input type="text" class="form-control" name="lead_receive_channel_partner_name" placeholder="Enter channel partner name">
+                    <input type="text" class="form-control" name="lead_receive_channel_partner_name" value="{{ lead_receive_channel_partner_default|default:'' }}" placeholder="Enter channel partner name">
                 </div>
                 <div class="form-group">
                     <label>Leader Name</label>
-                    <input type="text" class="form-control" name="lead_receive_leader_name" placeholder="Enter leader name">
+                    <input type="text" class="form-control" name="lead_receive_leader_name" value="{{ lead_receive_leader_default|default:'' }}" placeholder="Enter leader name">
                 </div>
+            </div>
+            <div class="form-row">
                 <div class="form-group">
                     <label>Lead Source</label>
                     <select class="form-select" name="lead_receive_source">
@@ -1513,22 +1893,66 @@
                 </div>
             </div>
         </div>
+        {% else %}
+        <input type="hidden" name="lead_receive_channel_partner_name" value="{{ lead_receive_channel_partner_default|default:'' }}">
+        <input type="hidden" name="lead_receive_leader_name" value="{{ lead_receive_leader_default|default:'' }}">
         {% endif %}
 
-        <!-- Form Actions -->
-        <div class="form-row full-width">
-            <div class="button-group">
+        <div class="section-header">
+            <i class="bi bi-chat-left-text"></i> REMARKS & DECLARATION
+        </div>
+        <div class="form-section">
+            <div class="form-row full-width">
+                <div class="form-group">
+                    <label>Remarks</label>
+                    <textarea class="form-control" name="remarks_suggestions" placeholder="Any additional remarks or suggestions"></textarea>
+                </div>
+            </div>
+            <div class="form-row full-width">
+                <div class="form-group">
+                    <div class="soft-surface declaration-box">
+                        <input type="checkbox" id="declaration" name="declaration" required style="margin-right: 10px;">
+                        <label for="declaration" style="margin: 0; display: inline;">
+                            <strong>I hereby declare that the above information given by me is true and correct.</strong>
+                            <span class="required">*</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="wizard-actions between">
+            <button type="button" class="btn-secondary-custom" data-wizard-back>
+                <i class="bi bi-arrow-left"></i> Back
+            </button>
+            <button type="button" class="btn-primary-custom" data-wizard-review>
+                Review <i class="bi bi-clipboard-check"></i>
+            </button>
+        </div>
+        </section>
+
+        <section class="wizard-step" data-step="4">
+        <div class="section-header">
+            <i class="bi bi-clipboard-data"></i> REVIEW APPLICATION
+        </div>
+        <div class="form-section">
+            <div id="loanReviewSummary" class="review-summary-grid"></div>
+        </div>
+
+        <div class="wizard-actions between">
+            <button type="button" class="btn-secondary-custom" data-wizard-back>
+                <i class="bi bi-arrow-left"></i> Back
+            </button>
+            <div class="button-group" style="margin-top:0; padding-top:0; border-top:0;">
+                <button type="button" class="btn-secondary-custom" data-wizard-edit>
+                    <i class="bi bi-pencil-square"></i> Edit Information
+                </button>
                 <button type="submit" class="btn-primary-custom">
-                    <i class="bi bi-plus-circle"></i> Submit Loan Application
-                </button>
-                <button type="reset" class="btn-secondary-custom">
-                    <i class="bi bi-arrow-clockwise"></i> Clear Form
-                </button>
-                <button type="button" class="btn-secondary-custom" onclick="history.back()">
-                    <i class="bi bi-arrow-left"></i> Cancel
+                    <i class="bi bi-send-check"></i> Submit Application
                 </button>
             </div>
         </div>
+        </section>
     </form>
 </div>
 
@@ -1538,6 +1962,164 @@
     let financialDetailCount = 0;
     const MAX_FILE_SIZE_BYTES = 3 * 1024 * 1024;
     const MAX_TOTAL_UPLOAD_BYTES = 50 * 1024 * 1024;
+    let currentWizardStep = 1;
+    const WIZARD_STEP_COUNT = 4;
+
+    function showWizardStep(step, shouldScroll = true) {
+        const nextStep = Math.min(Math.max(Number(step) || 1, 1), WIZARD_STEP_COUNT);
+        currentWizardStep = nextStep;
+
+        document.querySelectorAll('.wizard-step').forEach((panel) => {
+            panel.classList.toggle('active', Number(panel.dataset.step) === nextStep);
+        });
+        document.querySelectorAll('[data-wizard-indicator]').forEach((indicator) => {
+            const indicatorStep = Number(indicator.dataset.wizardIndicator);
+            indicator.classList.toggle('active', indicatorStep === nextStep);
+            indicator.classList.toggle('completed', indicatorStep < nextStep);
+        });
+
+        const progressBar = document.getElementById('wizardProgressBar');
+        if (progressBar) {
+            progressBar.style.width = `${((nextStep - 1) / (WIZARD_STEP_COUNT - 1)) * 100}%`;
+        }
+        const currentStepLabel = document.getElementById('wizardCurrentStep');
+        if (currentStepLabel) {
+            currentStepLabel.textContent = String(nextStep);
+        }
+        if (nextStep === 4) {
+            buildLoanReviewSummary();
+        }
+        if (shouldScroll) {
+            document.getElementById('loanForm')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+
+    function fieldsForWizardStep(step) {
+        const panel = document.querySelector(`.wizard-step[data-step="${step}"]`);
+        if (!panel) return [];
+        return Array.from(panel.querySelectorAll('input, select, textarea')).filter((field) => {
+            const type = (field.type || '').toLowerCase();
+            return !field.disabled && !['button', 'submit', 'reset', 'hidden'].includes(type);
+        });
+    }
+
+    function validateWizardStep(step) {
+        const fields = fieldsForWizardStep(step);
+        for (const field of fields) {
+            if (!field.checkValidity()) {
+                field.reportValidity();
+                field.focus({ preventScroll: false });
+                return false;
+            }
+        }
+        return true;
+    }
+
+    function wizardStepForField(field) {
+        const panel = field?.closest?.('.wizard-step');
+        return Number(panel?.dataset?.step || 1);
+    }
+
+    function labelForField(field) {
+        const label = field.closest('.form-group')?.querySelector('label');
+        if (label) {
+            return label.textContent.replace('*', '').trim();
+        }
+        return (field.name || 'Field').replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+    }
+
+    function valueForField(field) {
+        const type = (field.type || '').toLowerCase();
+        if (type === 'checkbox') {
+            return field.checked ? 'Yes' : 'No';
+        }
+        if (type === 'file') {
+            return Array.from(field.files || []).map((file) => file.name).join(', ');
+        }
+        if (field.tagName === 'SELECT') {
+            return Array.from(field.selectedOptions || []).map((option) => option.textContent.trim()).join(', ');
+        }
+        return String(field.value || '').trim();
+    }
+
+    function wizardEscapeHtml(value) {
+        return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;',
+        }[char]));
+    }
+
+    function buildLoanReviewSummary() {
+        const summary = document.getElementById('loanReviewSummary');
+        const form = document.getElementById('loanForm');
+        if (!summary || !form) return;
+
+        const groups = [
+            { step: 1, title: 'Applicant Information', rows: [] },
+            { step: 2, title: 'Loan Details', rows: [] },
+            { step: 3, title: 'Reference & Lead Information', rows: [] },
+        ];
+        const groupedByStep = new Map(groups.map((group) => [group.step, group]));
+
+        form.querySelectorAll('.wizard-step:not([data-step="4"]) input, .wizard-step:not([data-step="4"]) select, .wizard-step:not([data-step="4"]) textarea').forEach((field) => {
+            const type = (field.type || '').toLowerCase();
+            if (['button', 'submit', 'reset', 'hidden'].includes(type) || field.name === 'csrfmiddlewaretoken' || field.name === 'document_name_expanded[]') {
+                return;
+            }
+            const value = valueForField(field);
+            if (!value && type !== 'checkbox') {
+                return;
+            }
+            const group = groupedByStep.get(wizardStepForField(field));
+            if (!group) return;
+            group.rows.push({ label: labelForField(field), value: value || '-' });
+        });
+
+        summary.innerHTML = groups.map((group) => {
+            const rows = group.rows.length ? group.rows.map((row) => `
+                <div class="review-summary-row">
+                    <span>${wizardEscapeHtml(row.label)}</span>
+                    <span>${wizardEscapeHtml(row.value)}</span>
+                </div>
+            `).join('') : '<div class="review-summary-row"><span>No data</span><span>-</span></div>';
+            return `<div class="review-summary-section"><h4>${wizardEscapeHtml(group.title)}</h4>${rows}</div>`;
+        }).join('');
+    }
+
+    function initLoanWizard() {
+        document.querySelectorAll('[data-wizard-next]').forEach((button) => {
+            button.addEventListener('click', () => {
+                if (validateWizardStep(currentWizardStep)) {
+                    showWizardStep(currentWizardStep + 1);
+                }
+            });
+        });
+        document.querySelectorAll('[data-wizard-back]').forEach((button) => {
+            button.addEventListener('click', () => showWizardStep(currentWizardStep - 1));
+        });
+        document.querySelectorAll('[data-wizard-review]').forEach((button) => {
+            button.addEventListener('click', () => {
+                if (validateWizardStep(currentWizardStep)) {
+                    showWizardStep(4);
+                }
+            });
+        });
+        document.querySelectorAll('[data-wizard-edit]').forEach((button) => {
+            button.addEventListener('click', () => showWizardStep(1));
+        });
+        document.querySelectorAll('[data-wizard-indicator]').forEach((indicator) => {
+            indicator.addEventListener('click', () => {
+                const target = Number(indicator.dataset.wizardIndicator || 1);
+                if (target <= currentWizardStep || validateWizardStep(currentWizardStep)) {
+                    showWizardStep(target);
+                }
+            });
+        });
+        showWizardStep(1, false);
+    }
 
     const SERVICE_DOCUMENT_REQUIREMENTS = {
         lap_salary: [
@@ -2240,7 +2822,13 @@
         }
 
         if (!this.checkValidity()) {
-            this.reportValidity();
+            const firstInvalid = this.querySelector(':invalid');
+            if (firstInvalid) {
+                showWizardStep(wizardStepForField(firstInvalid));
+                setTimeout(() => firstInvalid.reportValidity(), 80);
+            } else {
+                this.reportValidity();
+            }
             return;
         }
 
@@ -2265,6 +2853,7 @@
 
     // Initialize on page load
     document.addEventListener('DOMContentLoaded', function() {
+        initLoanWizard();
         resetRepeatableSections();
         updateEmploymentSection();
         toggleOtherServiceInput();

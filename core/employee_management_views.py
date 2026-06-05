@@ -675,7 +675,7 @@ def api_get_employee(request, employee_id):
         status_map = {
             'new_entry': 'New Entry',
             'waiting': 'Waiting for Processing',
-            'follow_up': 'Banking Processing',
+            'follow_up': 'Bank Login Process',
             'approved': 'Approved',
             'rejected': 'Rejected',
             'disbursed': 'Disbursed',

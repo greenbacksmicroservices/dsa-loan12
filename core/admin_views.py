@@ -72,6 +72,146 @@ def _parse_int_list(raw_values):
     return sorted(set(ids))
 
 
+def _normalize_filter_id(raw_value):
+    value = str(raw_value or '').strip()
+    if not value:
+        return ''
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return ''
+    return str(parsed) if parsed > 0 else ''
+
+
+def _join_registration_filter():
+    """Login-page registrations do not carry loan request fields."""
+    return (
+        Q(applicant__role__in=['employee', 'agent'])
+        & (Q(applicant__loan_type__isnull=True) | Q(applicant__loan_type=''))
+        & Q(applicant__loan_amount__isnull=True)
+    )
+
+
+def _normalize_detail_key(value):
+    text = str(value or '').strip().lower()
+    text = text.replace('_', ' ').replace('-', ' ').replace('/', ' ')
+    return ' '.join(text.split())
+
+
+def _parse_detail_lines(raw_text):
+    parsed = {}
+    for line in str(raw_text or '').replace('\r', '\n').splitlines():
+        if ':' not in line:
+            continue
+        key, value = line.split(':', 1)
+        clean_key = _normalize_detail_key(key)
+        clean_value = str(value or '').strip()
+        if clean_key and clean_value:
+            parsed[clean_key] = clean_value
+    return parsed
+
+
+def _detail_value(parsed_details, *keys, default=''):
+    for key in keys:
+        value = parsed_details.get(_normalize_detail_key(key))
+        if value not in [None, '']:
+            return value
+    return default
+
+
+def _lead_receive_names_from_remarks(raw_text):
+    parsed = _parse_detail_lines(raw_text)
+    return {
+        'channel_partner': _detail_value(
+            parsed,
+            'lead receive channel partner name',
+            'channel partner name',
+            default='',
+        ),
+        'employee': _detail_value(
+            parsed,
+            'lead receive employee name',
+            'employee name',
+            'employee',
+            default='',
+        ),
+        'leader': _detail_value(
+            parsed,
+            'lead receive leader name',
+            'leader name',
+            'partner name',
+            default='',
+        ),
+    }
+
+
+def _non_empty_or_na(value):
+    text = str(value or '').strip()
+    return text if text else 'N/A'
+
+
+def _display_user_name(user_obj, fallback=''):
+    if not user_obj:
+        return fallback
+    return user_obj.get_full_name() or user_obj.username or user_obj.email or fallback
+
+
+def _lead_receive_defaults_for_user(user_obj):
+    defaults = {
+        'lead_receive_channel_partner_name': '',
+        'lead_receive_employee_name': '',
+        'lead_receive_leader_name': '',
+    }
+    role = getattr(user_obj, 'role', '')
+    if role == 'agent':
+        agent_profile = Agent.objects.filter(user=user_obj).select_related('created_by').first()
+        defaults['lead_receive_channel_partner_name'] = (
+            getattr(agent_profile, 'name', '') if agent_profile else ''
+        ) or _display_user_name(user_obj)
+        if agent_profile and getattr(getattr(agent_profile, 'created_by', None), 'role', '') == 'subadmin':
+            defaults['lead_receive_leader_name'] = _display_user_name(agent_profile.created_by)
+    elif role == 'employee':
+        defaults['lead_receive_employee_name'] = _display_user_name(user_obj)
+    elif role == 'subadmin':
+        defaults['lead_receive_leader_name'] = _display_user_name(user_obj)
+    return defaults
+
+
+def _partner_user_for_loan(loan_obj, related_app=None, assignment_context=None):
+    assignment_context = assignment_context or {}
+    assigned_by_user = assignment_context.get('assigned_by_user')
+    if getattr(assigned_by_user, 'role', '') == 'subadmin':
+        return assigned_by_user
+
+    assigned_agent = getattr(loan_obj, 'assigned_agent', None)
+    if assigned_agent and getattr(getattr(assigned_agent, 'created_by', None), 'role', '') == 'subadmin':
+        return assigned_agent.created_by
+
+    if related_app:
+        app_assigned_by = getattr(related_app, 'assigned_by', None)
+        if getattr(app_assigned_by, 'role', '') == 'subadmin':
+            return app_assigned_by
+        app_agent = getattr(related_app, 'assigned_agent', None)
+        if app_agent and getattr(getattr(app_agent, 'created_by', None), 'role', '') == 'subadmin':
+            return app_agent.created_by
+
+    creator = getattr(loan_obj, 'created_by', None)
+    if getattr(creator, 'role', '') == 'subadmin':
+        return creator
+    return None
+
+
+def _partner_user_for_application(app_obj):
+    assigned_by = getattr(app_obj, 'assigned_by', None)
+    if getattr(assigned_by, 'role', '') == 'subadmin':
+        return assigned_by
+
+    assigned_agent = getattr(app_obj, 'assigned_agent', None)
+    if assigned_agent and getattr(getattr(assigned_agent, 'created_by', None), 'role', '') == 'subadmin':
+        return assigned_agent.created_by
+    return None
+
+
 def _set_employee_under_subadmin(employee, subadmin_user=None):
     profile, _ = EmployeeProfile.objects.get_or_create(user=employee)
     notes = SUBADMIN_TAG_PATTERN.sub('', str(profile.notes or '')).strip()
@@ -253,7 +393,7 @@ def _ui_status_label(status_text):
     if normalized in ['waiting for processing', 'in processing', 'waiting', 'processing']:
         return 'Document Pending'
     if normalized in ['required follow-up', 'required follow up']:
-        return 'Banking Processing'
+        return 'Bank Login Process'
     return status_text
 
 
@@ -514,6 +654,7 @@ def admin_all_loans(request):
         status_filter = ''
     agent_filter = request.GET.get('agent', '').strip()
     employee_filter = request.GET.get('employee', '').strip()
+    partner_filter = request.GET.get('partner', '').strip()
     date_from = request.GET.get('date_from', '').strip()
     date_to = request.GET.get('date_to', '').strip()
     try:
@@ -538,17 +679,9 @@ def admin_all_loans(request):
             Q(user_id__icontains=search_query)
         )
 
-    if agent_filter:
-        try:
-            int(agent_filter)
-        except (TypeError, ValueError):
-            agent_filter = ''
-
-    if employee_filter:
-        try:
-            int(employee_filter)
-        except (TypeError, ValueError):
-            employee_filter = ''
+    agent_filter = _normalize_filter_id(agent_filter)
+    employee_filter = _normalize_filter_id(employee_filter)
+    partner_filter = _normalize_filter_id(partner_filter)
 
     if date_from:
         loans = loans.filter(created_at__date__gte=date_from)
@@ -562,6 +695,15 @@ def admin_all_loans(request):
         loans = loans.filter(status__in=['new_entry', 'waiting', 'follow_up'])
     elif status_filter in ['approved', 'rejected', 'disbursed']:
         loans = loans.filter(status__in=[status_filter, 'follow_up'])
+
+    loan_ids_for_photos = list(loans.values_list('id', flat=True))
+    legacy_photo_by_loan_id = {}
+    for doc in LoanDocument.objects.filter(
+        loan_id__in=loan_ids_for_photos,
+        document_type__in=['applicant_photo', 'photo'],
+    ).exclude(file='').order_by('loan_id', 'id'):
+        if doc.loan_id not in legacy_photo_by_loan_id and doc.file:
+            legacy_photo_by_loan_id[doc.loan_id] = doc.file.url
 
     # Pre-fetch LoanApplications to avoid N+1 query problem and include
     # workflow-only rows that do not have a matching legacy Loan record.
@@ -578,6 +720,13 @@ def admin_all_loans(request):
     app_by_email = {a.applicant.email.lower(): a for a in apps if a.applicant and a.applicant.email}
     app_by_mobile = {a.applicant.mobile: a for a in apps if a.applicant and a.applicant.mobile}
     app_by_name = {a.applicant.full_name.lower(): a for a in apps if a.applicant and a.applicant.full_name}
+    app_photo_by_app_id = {}
+    for doc in ApplicantDocument.objects.filter(
+        loan_application_id__in=[app.id for app in apps],
+        document_type__in=['photo', 'applicant_photo'],
+    ).exclude(file='').order_by('loan_application_id', 'id'):
+        if doc.loan_application_id not in app_photo_by_app_id and doc.file:
+            app_photo_by_app_id[doc.loan_application_id] = doc.file.url
 
     def _user_name_or_na(user_obj):
         if not user_obj:
@@ -625,11 +774,6 @@ def admin_all_loans(request):
             if not loan.assigned_agent and related_app.assigned_agent:
                 loan.assigned_agent = related_app.assigned_agent
 
-        if agent_filter and str(loan.assigned_agent_id or '') != agent_filter:
-            continue
-        if employee_filter and str(loan.assigned_employee_id or '') != employee_filter:
-            continue
-
         creator = loan.created_by
         if related_app and not creator and related_app.assigned_by:
             creator = related_app.assigned_by
@@ -642,7 +786,17 @@ def admin_all_loans(request):
             loan.assigned_to_display = f"Channel Partner - {_agent_name_or_na(loan.assigned_agent)}"
         else:
             loan.assigned_to_display = 'N/A'
-        assignment_context = extract_assignment_context(loan)
+        assignment_context = extract_assignment_context(loan, related_app)
+        partner_user = _partner_user_for_loan(loan, related_app=related_app, assignment_context=assignment_context)
+        lead_names = _lead_receive_names_from_remarks(getattr(loan, 'remarks', ''))
+
+        if agent_filter and str(loan.assigned_agent_id or '') != agent_filter:
+            continue
+        if employee_filter and str(loan.assigned_employee_id or '') != employee_filter:
+            continue
+        if partner_filter and str(getattr(partner_user, 'id', '') or '') != partner_filter:
+            continue
+
         submitted_by_display = 'N/A'
         if loan.assigned_agent:
             submitted_by_display = _agent_name_or_na(loan.assigned_agent)
@@ -652,6 +806,8 @@ def admin_all_loans(request):
             submitted_by_display = _user_name_or_na(creator)
         elif related_app and related_app.assigned_by and related_app.assigned_by.role == 'agent':
             submitted_by_display = _user_name_or_na(related_app.assigned_by)
+        if submitted_by_display == 'N/A' and lead_names.get('channel_partner'):
+            submitted_by_display = lead_names['channel_partner']
 
         processed_by_display = 'N/A'
         if loan.assigned_employee:
@@ -660,9 +816,13 @@ def admin_all_loans(request):
             processed_by_display = _user_name_or_na(related_app.assigned_employee)
         elif creator and creator.role == 'employee':
             processed_by_display = _user_name_or_na(creator)
+        if processed_by_display == 'N/A' and lead_names.get('employee'):
+            processed_by_display = lead_names['employee']
 
         partner_under_display = 'N/A'
-        if assignment_context.get('role') == 'subadmin':
+        if partner_user:
+            partner_under_display = _user_name_or_na(partner_user)
+        elif assignment_context.get('role') == 'subadmin':
             partner_under_display = assignment_context.get('assigned_by_name') or 'N/A'
         elif loan.assigned_agent and loan.assigned_agent.created_by and loan.assigned_agent.created_by.role == 'subadmin':
             partner_under_display = _user_name_or_na(loan.assigned_agent.created_by)
@@ -670,14 +830,20 @@ def admin_all_loans(request):
             partner_under_display = _user_name_or_na(related_app.assigned_by)
         elif creator and creator.role == 'subadmin':
             partner_under_display = _user_name_or_na(creator)
+        if partner_under_display == 'N/A' and lead_names.get('leader'):
+            partner_under_display = lead_names['leader']
         loan.submitted_by_display = submitted_by_display
         loan.processed_by_display = processed_by_display
         loan.partner_under_display = partner_under_display
+        loan.partner_under_id = getattr(partner_user, 'id', '') or ''
         loan.follow_up_pending = follow_up_pending
         loan.status_key_display = effective_status_key or loan.status
         loan.status_display_text = _status_key_to_display_text(effective_status_key, fallback_text=loan.get_status_display())
         loan.assigned_by_display = assignment_context.get('assigned_by_display') or 'N/A'
         loan.entity_type = 'legacy'
+        loan.applicant_photo_url = legacy_photo_by_loan_id.get(loan.id) or (
+            app_photo_by_app_id.get(related_app.id) if related_app else ''
+        )
         enriched_loans.append(loan)
 
     def _app_matches_filters(app_obj, status_key):
@@ -697,6 +863,10 @@ def admin_all_loans(request):
             return False
         if employee_filter and str(getattr(app_obj, 'assigned_employee_id', '') or '') != employee_filter:
             return False
+        if partner_filter:
+            partner_user = _partner_user_for_application(app_obj)
+            if str(getattr(partner_user, 'id', '') or '') != partner_filter:
+                return False
         if date_from and (not app_obj.created_at or app_obj.created_at.date().isoformat() < date_from):
             return False
         if date_to and (not app_obj.created_at or app_obj.created_at.date().isoformat() > date_to):
@@ -710,7 +880,11 @@ def admin_all_loans(request):
         status_key = application_effective_status_key(app_obj)
         if not _app_matches_filters(app_obj, status_key):
             continue
-        workflow_rows.append(build_application_display_row(app_obj, status_key=status_key))
+        workflow_row = build_application_display_row(app_obj, status_key=status_key)
+        partner_user = _partner_user_for_application(app_obj)
+        workflow_row.partner_under_id = getattr(partner_user, 'id', '') or ''
+        workflow_row.applicant_photo_url = app_photo_by_app_id.get(app_obj.id, '')
+        workflow_rows.append(workflow_row)
 
     enriched_loans.extend(workflow_rows)
     fallback_created_at = datetime.min.replace(tzinfo=datetime_timezone.utc)
@@ -723,11 +897,13 @@ def admin_all_loans(request):
         'status_filter': status_filter,
         'agent_filter': agent_filter,
         'employee_filter': employee_filter,
+        'partner_filter': partner_filter,
         'date_from': date_from,
         'date_to': date_to,
         'per_page': per_page,
         'agents': Agent.objects.filter(status='active').order_by('name', 'agent_id'),
         'employees': User.objects.filter(role='employee', is_active=True).order_by('first_name', 'last_name', 'username'),
+        'partners': User.objects.filter(role='subadmin', is_active=True).order_by('first_name', 'last_name', 'username'),
         'status_filter_display': FOLLOW_UP_PENDING_LABEL if status_filter == 'follow_up_pending' else (status_filter.replace('_', ' ').title() if status_filter else ''),
         'total_loans': len(enriched_loans),
     }
@@ -1065,10 +1241,18 @@ def api_admin_all_loans(request):
     try:
         status_filter = request.GET.get('status', '').strip()
         search = request.GET.get('search', '').strip()
+        agent_filter = _normalize_filter_id(request.GET.get('agent', '').strip())
+        employee_filter = _normalize_filter_id(request.GET.get('employee', '').strip())
+        partner_filter = _normalize_filter_id(request.GET.get('partner', '').strip())
+        date_from = request.GET.get('date_from', '').strip()
+        date_to = request.GET.get('date_to', '').strip()
         
         query = Loan.objects.all().select_related(
+            'created_by',
             'assigned_employee',
             'assigned_agent',
+            'assigned_agent__user',
+            'assigned_agent__created_by',
         )
         
         # Coarse filter by status (final status decision is computed using related workflow record)
@@ -1087,6 +1271,15 @@ def api_admin_all_loans(request):
                 Q(email__icontains=search) |
                 Q(id__icontains=search)
             )
+
+        if agent_filter:
+            query = query.filter(assigned_agent_id=agent_filter)
+        if employee_filter:
+            query = query.filter(assigned_employee_id=employee_filter)
+        if date_from:
+            query = query.filter(created_at__date__gte=date_from)
+        if date_to:
+            query = query.filter(created_at__date__lte=date_to)
         
         # Get loans data
         loans_data = []
@@ -1102,6 +1295,10 @@ def api_admin_all_loans(request):
             status_key = effective_status_key or loan.status
             status_display = _status_key_to_display_text(effective_status_key, fallback_text=loan.get_status_display())
             assignment_context = extract_assignment_context(loan, related_app)
+            partner_user = _partner_user_for_loan(loan, related_app=related_app, assignment_context=assignment_context)
+            lead_names = _lead_receive_names_from_remarks(getattr(loan, 'remarks', ''))
+            if partner_filter and str(getattr(partner_user, 'id', '') or '') != partner_filter:
+                continue
             submitted_by = '-'
             if loan.assigned_agent:
                 submitted_by = (
@@ -1111,12 +1308,18 @@ def api_admin_all_loans(request):
                 )
             elif loan.created_by and loan.created_by.role == 'agent':
                 submitted_by = loan.created_by.get_full_name() or loan.created_by.username or '-'
+            if submitted_by == '-' and lead_names.get('channel_partner'):
+                submitted_by = lead_names['channel_partner']
             processed_by = (
                 loan.assigned_employee.get_full_name() or loan.assigned_employee.username
                 if loan.assigned_employee else '-'
             )
+            if processed_by == '-' and lead_names.get('employee'):
+                processed_by = lead_names['employee']
             partner_under = '-'
-            if assignment_context.get('role') == 'subadmin':
+            if partner_user:
+                partner_under = partner_user.get_full_name() or partner_user.username or '-'
+            elif assignment_context.get('role') == 'subadmin':
                 partner_under = assignment_context.get('assigned_by_name') or '-'
             elif loan.assigned_agent and loan.assigned_agent.created_by and loan.assigned_agent.created_by.role == 'subadmin':
                 partner_under = (
@@ -1124,6 +1327,8 @@ def api_admin_all_loans(request):
                     or loan.assigned_agent.created_by.username
                     or '-'
                 )
+            if partner_under == '-' and lead_names.get('leader'):
+                partner_under = lead_names['leader']
             loans_data.append({
                 'id': loan.id,
                 'applicant_name': loan.full_name or 'N/A',
@@ -1139,6 +1344,7 @@ def api_admin_all_loans(request):
                 'submitted_by': submitted_by,
                 'processed_by': processed_by,
                 'partner_under': partner_under,
+                'partner_id': getattr(partner_user, 'id', '') or '',
                 'date_applied': loan.created_at.strftime('%Y-%m-%d') if loan.created_at else '-',
             })
         
@@ -2086,7 +2292,6 @@ def admin_add_loan(request):
             raw_loan_type = (request.POST.get('service_required') or request.POST.get('loan_type') or '').strip()
             raw_amount = (request.POST.get('loan_amount_required') or request.POST.get('loan_amount') or '').strip()
             raw_tenure = (request.POST.get('loan_tenure') or request.POST.get('tenure_months') or '').strip()
-            raw_interest = (request.POST.get('interest_rate') or '').strip()
 
             if not applicant_name or not applicant_mobile or not raw_loan_type or not raw_amount:
                 messages.error(request, 'Please fill all required fields (Name, Mobile, Loan Type, Loan Amount).')
@@ -2131,18 +2336,28 @@ def admin_add_loan(request):
                 except (TypeError, ValueError):
                     tenure_months = None
 
-            interest_rate = None
-            if raw_interest:
-                try:
-                    interest_rate = float(raw_interest)
-                except (TypeError, ValueError):
-                    interest_rate = None
-
             permanent_city = (request.POST.get('permanent_city') or '').strip()
             present_city = (request.POST.get('present_city') or '').strip()
             city = permanent_city or present_city
             state = (request.POST.get('permanent_state') or request.POST.get('state') or '').strip()
             pin_code = (request.POST.get('permanent_pin') or request.POST.get('present_pin') or '').strip()
+            lead_receive_defaults = _lead_receive_defaults_for_user(request.user)
+
+            removed_add_loan_fields = {
+                'pan_number',
+                'aadhar_number',
+                'occupation',
+                'company_name',
+                'designation',
+                'other_applicant_information',
+                'bank_name',
+                'product_selection',
+                'interest_rate',
+                'lead_receive_employee_name',
+                'cibil_score',
+                'charges_or_fee',
+                'other_loan_fields',
+            }
 
             remarks_field_map = {
                 'alternate_mobile': 'Alternate Mobile',
@@ -2218,18 +2433,28 @@ def admin_add_loan(request):
                 'ref2_name': 'Reference 2 Name',
                 'ref2_mobile': 'Reference 2 Mobile',
                 'ref2_address': 'Reference 2 Address',
+                'lead_receive_channel_partner_name': 'Channel Partner Name',
+                'lead_receive_leader_name': 'Leader Name',
+                'lead_receive_source': 'Lead Source',
+                'lead_receive_description': 'Lead Description',
                 'remarks_suggestions': 'Remarks/Suggestions',
                 'documents_available': 'Documents Available',
                 'declaration': 'Declaration',
             }
             remarks_lines = []
             for field_name, label in remarks_field_map.items():
-                value = (request.POST.get(field_name) or '').strip()
+                if field_name in removed_add_loan_fields:
+                    continue
+                value = (
+                    request.POST.get(field_name)
+                    or lead_receive_defaults.get(field_name)
+                    or ''
+                ).strip()
                 if value:
                     remarks_lines.append(f"{label}: {value}")
 
             handled_fields = set(remarks_field_map.keys())
-            skip_fields = {
+            skip_fields = removed_add_loan_fields | {
                 'csrfmiddlewaretoken',
                 'name',
                 'applicant_name',
@@ -2281,9 +2506,9 @@ def admin_add_loan(request):
                 loan_type=loan_type,
                 loan_amount=loan_amount,
                 tenure_months=tenure_months,
-                interest_rate=interest_rate,
+                interest_rate=None,
                 loan_purpose=(request.POST.get('loan_purpose') or request.POST.get('remarks_suggestions') or '').strip() or None,
-                bank_name=(request.POST.get('bank_name') or '').strip() or None,
+                bank_name=None,
                 bank_account_number=(request.POST.get('account_number') or '').strip() or None,
                 bank_ifsc_code=(request.POST.get('ifsc_code') or '').strip() or None,
                 status='new_entry',
@@ -2398,11 +2623,15 @@ def admin_add_loan(request):
         'created_date': loan.created_at,
         'status': loan.status,
     } for loan in recent_qs]
+    lead_receive_defaults = _lead_receive_defaults_for_user(request.user)
 
     context = {
         'page_title': 'Add New Loan Application',
         'recent_loans': recent_loans,
         'base_template': 'subadmin/base_subadmin.html' if request.user.role == 'subadmin' else 'core/base.html',
+        'lead_receive_channel_partner_default': lead_receive_defaults.get('lead_receive_channel_partner_name', ''),
+        'lead_receive_employee_default': lead_receive_defaults.get('lead_receive_employee_name', ''),
+        'lead_receive_leader_default': lead_receive_defaults.get('lead_receive_leader_name', ''),
     }
     template_map = {
         'admin': 'core/admin/add_loan.html',
@@ -2422,8 +2651,8 @@ def admin_join_requests(request):
     """
     try:
         pending_count = LoanApplication.objects.filter(
-            applicant__role__in=['employee', 'agent'],
-            status='New Entry'
+            _join_registration_filter(),
+            status='New Entry',
         ).count()
         context = {
             'page_title': 'Join Requests',
@@ -2452,7 +2681,7 @@ def api_admin_join_requests(request):
             'assigned_agent',
             'assigned_by',
         ).prefetch_related('documents').filter(
-            applicant__role__in=['employee', 'agent'],
+            _join_registration_filter(),
             status='New Entry',
         ).order_by('-created_at')
 
@@ -2523,7 +2752,10 @@ def api_admin_join_request_detail(request, application_id):
             'assigned_employee',
             'assigned_agent',
             'assigned_by',
-        ).prefetch_related('documents').get(id=application_id, applicant__role__in=['employee', 'agent'])
+        ).prefetch_related('documents').get(
+            _join_registration_filter(),
+            id=application_id,
+        )
     except LoanApplication.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'Join request not found'}, status=404)
 
@@ -2555,7 +2787,10 @@ def api_admin_join_request_action(request, application_id):
             'assigned_employee',
             'assigned_agent',
             'assigned_by',
-        ).get(id=application_id, applicant__role__in=['employee', 'agent'])
+        ).get(
+            _join_registration_filter(),
+            id=application_id,
+        )
     except LoanApplication.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'Join request not found'}, status=404)
 
@@ -2735,7 +2970,9 @@ def api_admin_join_request_action(request, application_id):
 @admin_required
 def admin_new_entries(request):
     """View New Entry applications"""
-    applications = LoanApplication.objects.filter(status='New Entry').select_related('applicant', 'assigned_employee', 'assigned_agent', 'assigned_by').order_by('-created_at')
+    applications = LoanApplication.objects.filter(status='New Entry').exclude(
+        _join_registration_filter()
+    ).select_related('applicant', 'assigned_employee', 'assigned_agent', 'assigned_by').order_by('-created_at')
     
     context = {
         'page_title': 'New Applications',
@@ -2782,13 +3019,13 @@ def admin_updated_document(request):
 @login_required(login_url='admin_login')
 @admin_required
 def admin_follow_ups(request):
-    """View Banking Processing applications"""
+    """View Bank Login Process applications"""
     applications = LoanApplication.objects.filter(status='Required Follow-up').select_related('applicant', 'assigned_employee', 'assigned_agent', 'assigned_by').order_by('-created_at')
     
     context = {
-        'page_title': 'Banking Processing Applications',
+        'page_title': 'Bank Login Process Applications',
         'applications': applications,
-        'status_name': 'Banking Processing',
+        'status_name': 'Bank Login Process',
     }
     return render(request, 'core/admin/status_detail.html', context)
 

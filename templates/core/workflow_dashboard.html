@@ -1,4 +1,4 @@
-﻿{% extends 'core/base.html' %}
+{% extends 'core/base.html' %}
 {% load static %}
 
 {% block title %}Workflow Dashboard{% endblock %}
@@ -185,7 +185,7 @@
         </div>
         <div class="stat-box">
             <div class="stat-number">{{ stats.follow_up_count }}</div>
-            <div class="stat-label">Banking Processing</div>
+            <div class="stat-label">Bank Login Process</div>
         </div>
         <div class="stat-box">
             <div class="stat-number">{{ stats.approved_count }}</div>
@@ -225,7 +225,7 @@
                     <tr>
                         <td>{{ app.applicant.full_name }}</td>
                         <td>{{ app.applicant.get_loan_type_display }}</td>
-                        <td>â‚¹{{ app.applicant.loan_amount }}</td>
+                        <td>₹{{ app.applicant.loan_amount }}</td>
                         <td><span class="status-badge badge-new">{% if app.status == 'New Entry' %}New Application{% elif app.status == 'Waiting for Processing' %}Document Pending{% else %}{{ app.status }}{% endif %}</span></td>
                         <td>{{ app.created_at|date:"M d, Y" }}</td>
                         <td>
@@ -305,7 +305,7 @@
                                 </a>
                                 {% if item.requires_follow_up %}
                                     <button class="btn btn-sm btn-warning" onclick="triggerFollowUp({{ item.app.applicant.id }})">
-                                        <i class="fas fa-bell"></i> Move to Banking Processing
+                                        <i class="fas fa-bell"></i> Move to Bank Login Process
                                     </button>
                                 {% endif %}
                             </div>
@@ -322,9 +322,9 @@
         </div>
     {% endif %}
     
-    <!-- Banking Processing (Admin Only) -->
+    <!-- Bank Login Process (Admin Only) -->
     <div class="section-header">
-        <span><i class="fas fa-bell"></i> Banking Processing <a href="{% url 'follow_up_applications' %}" class="btn btn-sm btn-light ml-2" style="margin-left: 10px;">View All</a></span>
+        <span><i class="fas fa-bell"></i> Bank Login Process <a href="{% url 'follow_up_applications' %}" class="btn btn-sm btn-light ml-2" style="margin-left: 10px;">View All</a></span>
         <span class="section-count">{{ stats.follow_up_count }}</span>
     </div>
     
@@ -335,7 +335,7 @@
                     <tr>
                         <th>Applicant</th>
                         <th>Assigned To</th>
-                        <th>Banking Processing Triggered</th>
+                        <th>Bank Login Process Triggered</th>
                         <th>Count</th>
                         <th>Status</th>
                         <th>Actions</th>
@@ -361,7 +361,7 @@
                         <td>
                             <span class="badge bg-danger">{{ item.follow_up_count }}x</span>
                         </td>
-                        <td><span class="status-badge badge-follow-up">{% if item.app.status == 'Required Follow-up' %}Banking Processing{% else %}{{ item.app.status }}{% endif %}</span></td>
+                        <td><span class="status-badge badge-follow-up">{% if item.app.status == 'Required Follow-up' %}Bank Login Process{% else %}{{ item.app.status }}{% endif %}</span></td>
                         <td>
                             <div class="action-buttons">
                                 <a href="{% url 'follow_up_details' item.app.applicant.id %}" class="btn btn-sm btn-warning">
@@ -408,7 +408,7 @@
                         <td>{{ app.applicant.full_name }}</td>
                         <td>{{ app.approved_by.first_name }}</td>
                         <td>{{ app.approved_at|date:"M d, Y" }}</td>
-                        <td>â‚¹{{ app.applicant.loan_amount }}</td>
+                        <td>₹{{ app.applicant.loan_amount }}</td>
                         <td><span class="status-badge badge-approved">{{ app.status }}</span></td>
                     </tr>
                     {% endfor %}
@@ -586,7 +586,7 @@ function triggerFollowUp(applicantId) {
 }
 
 function changeStatus(applicantId) {
-    const newStatus = prompt('Enter new status:\n1. Document Pending\n2. Banking Processing\n3. Approved\n4. Rejected\n5. Disbursed');
+    const newStatus = prompt('Enter new status:\n1. Document Pending\n2. Bank Login Process\n3. Approved\n4. Rejected\n5. Disbursed');
     
     const statusMap = {
         '1': 'Waiting for Processing',

@@ -49,7 +49,7 @@ def _build_auto_revert_reason(loan_app=None, legacy_loan=None):
         next_idx = _next_revert_index_from_lines(legacy_loan.remarks)
     else:
         next_idx = 1
-    return f"Revert Remark {next_idx}: Auto follow up after {BANKING_PROCESS_TIMEOUT_HOURS}h in Banking Processing"
+    return f"Revert Remark {next_idx}: Auto follow up after {BANKING_PROCESS_TIMEOUT_HOURS}h in Bank Login Process"
 
 
 def _legacy_banking_anchor(loan_obj):
@@ -66,7 +66,7 @@ def _move_application_waiting_to_banking(app_obj):
     ActivityLog.objects.create(
         action="follow_up_triggered_auto",
         description=(
-            f"Auto moved to Banking Processing after {FOLLOW_UP_TIMEOUT_HOURS}h: "
+            f"Auto moved to Bank Login Process after {FOLLOW_UP_TIMEOUT_HOURS}h: "
             f"{app_obj.applicant.full_name}"
         ),
         user=None,
@@ -90,7 +90,7 @@ def _move_legacy_waiting_to_banking(loan_obj, now):
     )
     ActivityLog.objects.create(
         action="follow_up_triggered_auto",
-        description=f"Auto moved to Banking Processing after {FOLLOW_UP_TIMEOUT_HOURS}h: {loan_obj.full_name}",
+        description=f"Auto moved to Bank Login Process after {FOLLOW_UP_TIMEOUT_HOURS}h: {loan_obj.full_name}",
         user=None,
     )
 
@@ -146,7 +146,7 @@ def _move_application_banking_to_follow_up_pending(app_obj, reason_line, now):
 
     ActivityLog.objects.create(
         action="follow_up_pending_triggered_auto",
-        description=f"Auto moved to Follow Up after {BANKING_PROCESS_TIMEOUT_HOURS}h in Banking Processing: {app_obj.applicant.full_name}",
+        description=f"Auto moved to Follow Up after {BANKING_PROCESS_TIMEOUT_HOURS}h in Bank Login Process: {app_obj.applicant.full_name}",
         user=None,
     )
 
@@ -210,7 +210,7 @@ def _move_legacy_banking_to_follow_up_pending(loan_obj, reason_line, now):
 
     ActivityLog.objects.create(
         action="follow_up_pending_triggered_auto",
-        description=f"Auto moved to Follow Up after {BANKING_PROCESS_TIMEOUT_HOURS}h in Banking Processing: {loan_obj.full_name}",
+        description=f"Auto moved to Follow Up after {BANKING_PROCESS_TIMEOUT_HOURS}h in Bank Login Process: {loan_obj.full_name}",
         user=None,
     )
 
@@ -218,11 +218,11 @@ def _move_legacy_banking_to_follow_up_pending(loan_obj, reason_line, now):
 def auto_move_overdue_to_follow_up():
     """
     Real-time automation:
-    1) Banking Processing -> Follow Up (revert-pending) after 4h
+    1) Bank Login Process -> Follow Up (revert-pending) after 4h
 
     Note:
     Waiting / Document Pending records stay in place until a processor
-    explicitly moves them to Banking Processing.
+    explicitly moves them to Bank Login Process.
     """
     now = timezone.now()
     banking_cutoff = now - timedelta(hours=BANKING_PROCESS_TIMEOUT_HOURS)

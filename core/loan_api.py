@@ -40,7 +40,7 @@ def _ui_status_label(status_text):
     if normalized in ['waiting for processing', 'in processing', 'waiting', 'processing']:
         return 'Document Pending'
     if normalized in ['required follow-up', 'required follow up']:
-        return 'Banking Processing'
+        return 'Bank Login Process'
     return status_text
 
 
@@ -538,6 +538,12 @@ def api_loan_details(request, loan_id):
                 'channel partner name',
                 default='-'
             ),
+            'lead_receive_employee_name': get_extra(
+                'lead receive employee name',
+                'employee name',
+                'employee',
+                default='-'
+            ),
             'lead_receive_leader_name': get_extra(
                 'lead receive leader name',
                 'leader name',
@@ -682,6 +688,12 @@ def api_loan_details(request, loan_id):
 
         if details['assigned_employee_name'] == '-' and assignment_context.get('assigned_employee_name'):
             details['assigned_employee_name'] = assignment_context.get('assigned_employee_name')
+        if details.get('assigned_agent_name') in ['', '-'] and details.get('lead_receive_channel_partner_name') not in ['', '-']:
+            details['assigned_agent_name'] = details['lead_receive_channel_partner_name']
+        if details.get('assigned_employee_name') in ['', '-'] and details.get('lead_receive_employee_name') not in ['', '-']:
+            details['assigned_employee_name'] = details['lead_receive_employee_name']
+        if details.get('assigned_subadmin_name') in ['', '-'] and details.get('lead_receive_leader_name') not in ['', '-']:
+            details['assigned_subadmin_name'] = details['lead_receive_leader_name']
 
         # Build an "all captured fields" list to show every available detail in modal.
         full_application_details = []
@@ -735,6 +747,7 @@ def api_loan_details(request, loan_id):
             ('Loan Purpose', details.get('loan_purpose')),
             ('Charges Applicable', details.get('charges_applicable')),
             ('Channel Partner Name', details.get('lead_receive_channel_partner_name')),
+            ('Employee Name', get_extra('lead receive employee name', 'employee name', 'employee', default='')),
             ('Leader Name', details.get('lead_receive_leader_name')),
             ('Lead Source', details.get('lead_receive_source')),
             ('Lead Description', details.get('lead_receive_description')),
@@ -1099,6 +1112,29 @@ def api_update_disbursed_details(request, loan_id):
                 return False
             return bool(raw_value)
 
+        def normalize_gender(raw_value):
+            if raw_value in [None, '', '-']:
+                return None
+            raw = str(raw_value).strip().lower()
+            mapping = {
+                'male': 'male',
+                'm': 'male',
+                'female': 'female',
+                'f': 'female',
+                'other': 'other',
+            }
+            normalized = mapping.get(raw, raw)
+            if normalized not in {'male', 'female', 'other'}:
+                raise ValueError('Invalid gender')
+            return normalized
+
+        def gender_display(raw_value):
+            return {
+                'male': 'Male',
+                'female': 'Female',
+                'other': 'Other',
+            }.get(raw_value, '')
+
         disbursement_amount = parse_decimal_value(payload.get('disbursement_amount'))
         if disbursement_amount is not None and disbursement_amount < 0:
             raise ValueError('Disbursement amount cannot be negative')
@@ -1112,6 +1148,7 @@ def api_update_disbursed_details(request, loan_id):
         bank_type = normalize_bank_type(payload.get('bank_type'))
         has_co_applicant = normalize_bool(payload.get('has_co_applicant'))
         has_guarantor = normalize_bool(payload.get('has_guarantor'))
+        gender = normalize_gender(payload.get('gender'))
 
         loan_update_fields = []
         if is_disbursed_context and loan.status != 'disbursed':
@@ -1230,17 +1267,45 @@ def api_update_disbursed_details(request, loan_id):
             if loan.remarks != remarks_full_value:
                 loan.remarks = remarks_full_value
                 loan_update_fields.append('remarks')
-        elif 'remarks' in payload:
-            remarks_suggestions_value = str(payload.get('remarks') or '')
-            updated_remarks = upsert_remarks_line(
-                loan.remarks,
-                'Remarks/Suggestions',
-                remarks_suggestions_value,
-                aliases=['Remarks / Suggestions', 'Remarks Suggestions', 'Remark', 'Remarks']
-            )
-            if loan.remarks != updated_remarks:
-                loan.remarks = updated_remarks
-                loan_update_fields.append('remarks')
+        else:
+            detail_line_updates = [
+                ('father_name', 'Father Name', ["Father's Name", 'Fathers Name']),
+                ('mother_name', 'Mother Name', ["Mother's Name", 'Mothers Name']),
+            ]
+            for payload_key, label, aliases in detail_line_updates:
+                if payload_key not in payload:
+                    continue
+                updated_remarks = upsert_remarks_line(
+                    loan.remarks,
+                    label,
+                    str(payload.get(payload_key) or '').strip(),
+                    aliases=aliases,
+                )
+                if loan.remarks != updated_remarks:
+                    loan.remarks = updated_remarks
+                    loan_update_fields.append('remarks')
+
+            if 'gender' in payload:
+                updated_remarks = upsert_remarks_line(
+                    loan.remarks,
+                    'Gender',
+                    gender_display(gender),
+                )
+                if loan.remarks != updated_remarks:
+                    loan.remarks = updated_remarks
+                    loan_update_fields.append('remarks')
+
+            if 'remarks' in payload:
+                remarks_suggestions_value = str(payload.get('remarks') or '')
+                updated_remarks = upsert_remarks_line(
+                    loan.remarks,
+                    'Remarks/Suggestions',
+                    remarks_suggestions_value,
+                    aliases=['Remarks / Suggestions', 'Remarks Suggestions', 'Remark', 'Remarks']
+                )
+                if loan.remarks != updated_remarks:
+                    loan.remarks = updated_remarks
+                    loan_update_fields.append('remarks')
 
         if 'manual_loan_id' in payload:
             if not manual_loan_id:
@@ -1306,6 +1371,9 @@ def api_update_disbursed_details(request, loan_id):
                     if new_value and applicant.email != new_value:
                         applicant.email = new_value
                         applicant_update_fields.append('email')
+                if gender and applicant.gender != gender:
+                    applicant.gender = gender
+                    applicant_update_fields.append('gender')
                 if 'city' in payload:
                     new_value = str(payload.get('city') or '').strip()
                     if new_value and applicant.city != new_value:

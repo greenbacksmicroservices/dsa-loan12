@@ -24,6 +24,25 @@
 
     <div id="partner-page-alert" class="mb-3"></div>
 
+    <section class="partner-overview-grid" aria-label="Channel partner summary">
+        <div class="partner-overview-card accent-blue">
+            <span>Total Channel Partners</span>
+            <strong id="stat-total-agents">0</strong>
+        </div>
+        <div class="partner-overview-card accent-green">
+            <span>Active</span>
+            <strong id="stat-active-agents">0</strong>
+        </div>
+        <div class="partner-overview-card accent-red">
+            <span>Blocked</span>
+            <strong id="stat-blocked-agents">0</strong>
+        </div>
+        <div class="partner-overview-card">
+            <span>Total Applications</span>
+            <strong id="stat-total-applications">0</strong>
+        </div>
+    </section>
+
     <section class="partner-form-card d-none" id="partner-form-card">
         <div class="form-card-head">
             <div>
@@ -252,7 +271,7 @@
                             <strong id="summary-updated">0</strong>
                         </div>
                         <div class="summary-card">
-                            <span>Banking Processing</span>
+                            <span>Bank Login Process</span>
                             <strong id="summary-banking">0</strong>
                         </div>
                         <div class="summary-card">
@@ -874,12 +893,19 @@ const partnerAlert = document.getElementById('partner-page-alert');
 const partnerFormCard = document.getElementById('partner-form-card');
 const partnerCreateForm = document.getElementById('partner-create-form');
 const partnerModalElement = document.getElementById('partnerDetailModal');
-const partnerModal = new bootstrap.Modal(partnerModalElement);
 
 let partnerListRefreshTimer = null;
 let currentModalPartnerId = null;
 let currentModalMode = 'view';
 let currentModalCanManage = false;
+let partnerModal = null;
+
+function getPartnerModal() {
+    if (!partnerModal && partnerModalElement && window.bootstrap?.Modal) {
+        partnerModal = bootstrap.Modal.getOrCreateInstance(partnerModalElement);
+    }
+    return partnerModal;
+}
 
 function getCookie(name) {
     let cookieValue = null;
@@ -948,11 +974,17 @@ function togglePartnerForm(show) {
 }
 
 function renderTopStats(stats) {
+    const normalizedStats = {
+        total_agents: stats.total_agents ?? stats.total ?? 0,
+        active_agents: stats.active_agents ?? 0,
+        blocked_agents: stats.blocked_agents ?? 0,
+        total_applications: stats.total_applications ?? stats.total_loans ?? 0,
+    };
     const statMap = {
-        'stat-total-agents': stats.total_agents || 0,
-        'stat-active-agents': stats.active_agents || 0,
-        'stat-blocked-agents': stats.blocked_agents || 0,
-        'stat-total-applications': stats.total_applications || 0,
+        'stat-total-agents': normalizedStats.total_agents,
+        'stat-active-agents': normalizedStats.active_agents,
+        'stat-blocked-agents': normalizedStats.blocked_agents,
+        'stat-total-applications': normalizedStats.total_applications,
     };
     Object.entries(statMap).forEach(([id, value]) => {
         const node = document.getElementById(id);
@@ -960,6 +992,22 @@ function renderTopStats(stats) {
             node.textContent = Number(value || 0).toLocaleString('en-IN');
         }
     });
+}
+
+function normalizeAgentRow(agent) {
+    const statusValue = typeof agent.is_active === 'boolean'
+        ? (agent.is_active ? 'active' : 'blocked')
+        : (agent.status || 'active');
+    return {
+        ...agent,
+        id: agent.id || agent.pk || '',
+        agent_id: agent.agent_id || agent.code || '-',
+        name: agent.name || agent.agent_name || 'Channel Partner',
+        status: statusValue,
+        total_loans: agent.total_loans ?? agent.total_applications ?? 0,
+        approved_count: agent.approved_count ?? agent.approved_loans ?? 0,
+        can_manage: agent.can_manage ?? !!agent.id,
+    };
 }
 
 function renderDocumentLinks(agent) {
@@ -994,18 +1042,22 @@ function renderStatusChip(statusValue) {
 }
 
 function renderActionButtons(agent) {
+    const id = Number(agent.id || 0);
+    if (!Number.isFinite(id) || id <= 0) {
+        return '<span class="text-muted small">Details unavailable</span>';
+    }
     const actions = [
-        `<button type="button" class="table-action-btn view-link" onclick="openPartnerModal(${agent.id}, 'view')">View</button>`,
+        `<button type="button" class="table-action-btn view-link" data-partner-action="view" data-agent-id="${id}">View</button>`,
     ];
     if (agent.can_manage) {
-        actions.push(`<button type="button" class="table-action-btn edit-link" onclick="openPartnerModal(${agent.id}, 'edit')">Edit</button>`);
-        actions.push(`<button type="button" class="table-action-btn delete-link" onclick="blockChannelPartner(${agent.id}, '${escapeHtml(agent.name || 'Channel Partner')}')">Block</button>`);
+        actions.push(`<button type="button" class="table-action-btn edit-link" data-partner-action="edit" data-agent-id="${id}">Edit</button>`);
     }
     return `<div class="table-actions">${actions.join('')}</div>`;
 }
 
 function renderPartnerRows(agents) {
-    if (!Array.isArray(agents) || !agents.length) {
+    const rows = Array.isArray(agents) ? agents.map(normalizeAgentRow) : [];
+    if (!rows.length) {
         partnerTableBody.innerHTML = `
             <tr>
                 <td colspan="12" class="text-center text-muted py-5">No channel partners found for the current employee scope.</td>
@@ -1014,7 +1066,7 @@ function renderPartnerRows(agents) {
         return;
     }
 
-    partnerTableBody.innerHTML = agents.map((agent) => `
+    partnerTableBody.innerHTML = rows.map((agent) => `
         <tr>
             <td class="fw-semibold text-nowrap">${escapeHtml(agent.agent_id || '-')}</td>
             <td>${renderPartnerPhoto(agent)}</td>
@@ -1165,7 +1217,10 @@ async function loadPartnerDetail(agentId, mode = 'view', showModal = true) {
     currentModalPartnerId = agentId;
     currentModalMode = mode;
     if (showModal) {
-        partnerModal.show();
+        const modal = getPartnerModal();
+        if (modal) {
+            modal.show();
+        }
     }
     document.getElementById('partner-modal-loading').classList.remove('d-none');
     document.getElementById('partner-modal-body').classList.add('d-none');
@@ -1347,6 +1402,23 @@ if (partnerCreateForm) {
     partnerCreateForm.addEventListener('submit', handleCreatePartner);
 }
 document.getElementById('partner-modal-save-btn').addEventListener('click', savePartnerChanges);
+partnerTableBody.addEventListener('click', (event) => {
+    const actionBtn = event.target.closest('[data-partner-action]');
+    if (!actionBtn) {
+        return;
+    }
+    const agentId = Number(actionBtn.dataset.agentId || 0);
+    if (!agentId) {
+        return;
+    }
+    if (actionBtn.dataset.partnerAction === 'view') {
+        openPartnerModal(agentId, 'view');
+    } else if (actionBtn.dataset.partnerAction === 'edit') {
+        openPartnerModal(agentId, 'edit');
+    } else if (actionBtn.dataset.partnerAction === 'block') {
+        blockChannelPartner(agentId, actionBtn.dataset.agentName || 'Channel Partner');
+    }
+});
 partnerSearchInput.addEventListener('input', () => loadChannelPartners(false));
 partnerStatusFilter.addEventListener('change', () => loadChannelPartners(false));
 
@@ -1367,8 +1439,19 @@ partnerModalElement.addEventListener('hidden.bs.modal', () => {
     `;
 });
 
-document.addEventListener('DOMContentLoaded', () => {
-    loadChannelPartners(false);
+document.addEventListener('DOMContentLoaded', async () => {
+    const pageParams = new URLSearchParams(window.location.search);
+    const createdAgentId = pageParams.get('created_agent');
+    if (createdAgentId) {
+        if (partnerSearchInput) partnerSearchInput.value = '';
+        if (partnerStatusFilter) partnerStatusFilter.value = '';
+    }
+
+    await loadChannelPartners(false);
+    if (createdAgentId) {
+        showPageAlert('success', 'Channel partner added and table refreshed.');
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
     schedulePartnerRefresh();
 });
 </script>

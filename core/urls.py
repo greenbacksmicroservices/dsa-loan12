@@ -366,6 +366,7 @@ urlpatterns = [
     path('admin/new-entries/', views.admin_new_entries_list, name='admin_new_entries'),
     # Loan Detail - READ-ONLY form with assignment panel
     path('admin/loan/<int:applicant_id>/readonly/', views.admin_loan_detail_readonly, name='admin_loan_detail_readonly'),
+    path('api/admin/new-entries/<int:applicant_id>/assign-new-entry/', views.api_admin_assign_new_entry, name='api_admin_assign_new_entry'),
     # API Endpoints for new entries
     path('api/admin/new-entries/', admin_api.api_admin_new_entries, name='api_admin_new_entries'),
     path('api/admin/new-entries/<int:applicant_id>/', admin_api.api_admin_new_entry_detail, name='api_admin_new_entry_detail'),

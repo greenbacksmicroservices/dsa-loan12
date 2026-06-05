@@ -4,6 +4,7 @@ from decimal import Decimal
 
 from .models import User
 from .id_utils import display_manual_loan_id
+from .remarks_utils import sanitize_display_remark
 
 
 def _meta_created_by_admin(user_obj, admin_user):
@@ -65,7 +66,7 @@ def _status_label(raw_status):
         'draft': 'Draft',
         'new_entry': 'New Application',
         'waiting': 'Document Pending',
-        'follow_up': 'Banking Processing',
+        'follow_up': 'Bank Login Process',
         'approved': 'Approved',
         'rejected': 'Rejected',
         'disbursed': 'Disbursed',
@@ -173,7 +174,7 @@ def serialize_report_application(loan_obj):
         'created_at': loan_obj.created_at.strftime('%Y-%m-%d %H:%M') if loan_obj.created_at else '',
         'updated_at': loan_obj.updated_at.strftime('%Y-%m-%d %H:%M') if loan_obj.updated_at else '',
         'bank_name': loan_obj.bank_name or '-',
-        'remarks': loan_obj.remarks or '',
+        'remarks': sanitize_display_remark(loan_obj.remarks, default=''),
         'details': details,
         'documents': documents,
         'document_count': len(documents),

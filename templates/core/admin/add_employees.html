@@ -1,0 +1,222 @@
+{% extends 'core/admin/admin_base.html' %}
+{% load static %}
+
+{% block title %}Add New Agent/Employee - Admin{% endblock %}
+
+{% block page_title %}Add New Channel Partner/Employee/Partner{% endblock %}
+
+{% block content %}
+<style>
+    .simple-user-wrap {
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 20px 0;
+    }
+
+    .simple-user-card {
+        background: #ffffff;
+        border-radius: 14px;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
+        padding: 28px;
+    }
+
+    .simple-user-title {
+        margin: 0;
+        font-size: 24px;
+        font-weight: 700;
+        color: #0f172a;
+    }
+
+    .simple-user-subtitle {
+        margin: 8px 0 24px;
+        color: #475569;
+        font-size: 14px;
+    }
+
+    .simple-user-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+    }
+
+    .simple-user-group {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .simple-user-group.full {
+        grid-column: 1 / -1;
+    }
+
+    .simple-user-group label {
+        font-size: 13px;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 6px;
+    }
+
+    .simple-user-group input,
+    .simple-user-group select {
+        border: 1px solid #cbd5e1;
+        border-radius: 10px;
+        padding: 11px 12px;
+        font-size: 14px;
+        color: #0f172a;
+        outline: none;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .simple-user-group input:focus,
+    .simple-user-group select:focus {
+        border-color: #2563eb;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    }
+
+    .simple-user-actions {
+        margin-top: 24px;
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+    }
+
+    .simple-user-actions .btn {
+        border-radius: 10px;
+        padding: 10px 16px;
+        font-weight: 600;
+    }
+
+    .alert {
+        border-radius: 10px;
+        margin-bottom: 16px;
+    }
+
+    @media (max-width: 768px) {
+        .simple-user-card {
+            padding: 18px;
+        }
+
+        .simple-user-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<div class="simple-user-wrap">
+    <div class="simple-user-card">
+        <h2 class="simple-user-title">Applicant Information</h2>
+        <p class="simple-user-subtitle">Add only required details for new account creation.</p>
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags|default:'info' }}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <form id="agentForm" method="post" enctype="multipart/form-data" novalidate>
+            {% csrf_token %}
+
+            <div class="simple-user-grid">
+                <div class="simple-user-group full">
+                    <label>Account Type *</label>
+                    <select name="role" required>
+                        <option value="agent">Channel Partner</option>
+                        <option value="employee">Employee</option>
+                        <option value="subadmin">Partner</option>
+                    </select>
+                </div>
+
+                <div class="simple-user-group">
+                    <label>Name *</label>
+                    <input type="text" name="full_name" placeholder="Full name" required>
+                </div>
+
+                <div class="simple-user-group">
+                    <label>Email *</label>
+                    <input type="email" name="email" placeholder="example@gmail.com" required>
+                </div>
+
+                <div class="simple-user-group">
+                    <label>Phone Number *</label>
+                    <input type="tel" name="phone" placeholder="10-15 digits" minlength="10" maxlength="15" required>
+                </div>
+
+                <div class="simple-user-group">
+                    <label>Gender *</label>
+                    <select name="gender" required>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other" selected>Other</option>
+                    </select>
+                </div>
+
+                <div class="simple-user-group">
+                    <label>City *</label>
+                    <input type="text" name="city" placeholder="City" required>
+                </div>
+
+                <div class="simple-user-group">
+                    <label>District *</label>
+                    <input type="text" name="district" placeholder="District" required>
+                </div>
+
+                <div class="simple-user-group">
+                    <label>PIN Code *</label>
+                    <input type="text" name="pin_code" placeholder="6-digit PIN" pattern="[0-9]{6}" maxlength="6" required>
+                </div>
+
+                <div class="simple-user-group">
+                    <label>Password *</label>
+                    <input type="password" name="password" placeholder="Minimum 6 characters" minlength="6" required>
+                </div>
+            </div>
+
+            <div class="simple-user-actions">
+                <button type="button" class="btn btn-secondary" onclick="window.history.back();">Cancel</button>
+                <button type="submit" class="btn btn-primary">Create Account</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    const agentForm = document.getElementById('agentForm');
+    if (agentForm) {
+        agentForm.addEventListener('submit', function (event) {
+            const fullName = (agentForm.querySelector('[name="full_name"]')?.value || '').trim();
+            const email = (agentForm.querySelector('[name="email"]')?.value || '').trim();
+            const phone = (agentForm.querySelector('[name="phone"]')?.value || '').trim();
+            const city = (agentForm.querySelector('[name="city"]')?.value || '').trim();
+            const district = (agentForm.querySelector('[name="district"]')?.value || '').trim();
+            const pinCode = (agentForm.querySelector('[name="pin_code"]')?.value || '').trim();
+            const password = (agentForm.querySelector('[name="password"]')?.value || '').trim();
+
+            if (!fullName || !email || !phone || !city || !district || !pinCode || !password) {
+                event.preventDefault();
+                alert('Please fill all required fields.');
+                return;
+            }
+
+            if (!/^\d{10,15}$/.test(phone)) {
+                event.preventDefault();
+                alert('Phone number must be 10-15 digits.');
+                return;
+            }
+
+            if (!/^\d{6}$/.test(pinCode)) {
+                event.preventDefault();
+                alert('PIN code must be 6 digits.');
+                return;
+            }
+
+            if (password.length < 6) {
+                event.preventDefault();
+                alert('Password must be at least 6 characters.');
+            }
+        });
+    }
+</script>
+{% endblock %}

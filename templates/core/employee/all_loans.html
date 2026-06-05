@@ -278,8 +278,9 @@
                     <option value="">All Status</option>
                     <option value="new_entry">New Application</option>
                     <option value="waiting">Document Pending</option>
-                    <option value="follow_up">Follow-up</option>
-                    <option value="follow_up_pending">Follow-up Pending</option>
+                    <option value="updated_document">Pending Document Cleared</option>
+                    <option value="follow_up">Bank Login Process</option>
+                    <option value="follow_up_pending">Follow Up</option>
                     <option value="approved">Approved</option>
                     <option value="rejected">Rejected</option>
                     <option value="disbursed">Disbursed</option>
@@ -382,6 +383,7 @@ function renderLoansTable(loans) {
         waiting: 'loan-status-waiting',
         follow_up: 'loan-status-follow',
         follow_up_pending: 'loan-status-follow',
+        updated_document: 'loan-status-approved',
         approved: 'loan-status-approved',
         rejected: 'loan-status-rejected',
         disbursed: 'loan-status-disbursed'
@@ -390,8 +392,9 @@ function renderLoansTable(loans) {
     const statusLabels = {
         new_entry: 'New Application',
         waiting: 'Document Pending',
-        follow_up: 'Follow-up',
-        follow_up_pending: 'Follow-up Pending',
+        updated_document: 'Pending Document Cleared',
+        follow_up: 'Bank Login Process',
+        follow_up_pending: 'Follow Up',
         approved: 'Approved',
         rejected: 'Rejected',
         disbursed: 'Disbursed'
@@ -426,7 +429,8 @@ function renderLoanRow(loan, statusClassMap, statusLabels) {
         ? `<span class="loan-avatar"><img src="${escapeHtml(loan.applicant_photo)}" alt="${escapeHtml(loan.applicant_name || 'Applicant')}"></span>`
         : `<span class="loan-avatar-fallback">${escapeHtml(initial)}</span>`;
     const statusClass = statusClassMap[loan.status] || 'loan-status-new';
-    const detailUrl = `/employee/loan/${loan.id}/detail/`;
+    const entityQuery = loan.entity_type ? `?entity_type=${encodeURIComponent(loan.entity_type)}` : '';
+    const detailUrl = `/employee/loan/${loan.id}/detail/${entityQuery}`;
     const viewButton = `
         <a href="${detailUrl}" class="loan-action-btn view" title="View details">
             <i class="bi bi-eye"></i>

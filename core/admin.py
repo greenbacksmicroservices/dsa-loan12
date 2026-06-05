@@ -32,7 +32,7 @@ class AgentAdmin(admin.ModelAdmin):
     readonly_fields = ['created_at', 'updated_at']
     
     fieldsets = (
-        ('Agent Details', {
+        ('Channel Partner Details', {
             'fields': ('user', 'agent_id', 'name', 'phone', 'email', 'profile_photo')
         }),
         ('Personal Information', {
@@ -51,7 +51,7 @@ class AgentAdmin(admin.ModelAdmin):
     )
     
     add_fieldsets = (
-        ('Agent Details', {
+        ('Channel Partner Details', {
             'fields': ('user', 'agent_id', 'name', 'phone', 'email', 'profile_photo')
         }),
         ('Personal Information', {
