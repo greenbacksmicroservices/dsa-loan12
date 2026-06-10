@@ -387,41 +387,20 @@ def api_delete_loan(request, loan_id):
                 'error': 'Please confirm deletion'
             }, status=400)
         
-        loan = LoanApplication.objects.get(id=loan_id)
-        
-        # Implement soft delete - add a is_deleted field if needed
-        # For now, we can use a different approach
-        # Create an archive by updating status to 'archived' or similar
-        
-        # Option 1: Actually delete (if soft delete not implemented)
-        # Option 2: Mark as deleted via a flag
-        
-        # Using soft delete approach with status
-        original_status = loan.status
-        
-        # Create status history entry
-        LoanStatusHistory.objects.create(
-            loan_application=loan,
-            from_status=original_status,
-            to_status='Archived',  # New status for deleted loans
-            changed_by=request.user,
-            reason=f"Soft deleted by {request.user.get_full_name()}",
-            is_auto_triggered=False
-        )
-        
-        # Actually delete or archive
-        loan.delete()
-        
-        return JsonResponse({
-            'success': True,
-            'message': f'Loan {loan_id} has been deleted successfully'
-        })
-    
-    except LoanApplication.DoesNotExist:
+        from .loan_helpers import delete_loan_by_primary_key
+
+        entity_type = data.get('entity_type') or data.get('source') or ''
+        result = delete_loan_by_primary_key(loan_id, entity_type=entity_type)
+        status_code = result.get('status_code', 200 if result.get('success') else 400)
+        if result.get('success'):
+            return JsonResponse({
+                'success': True,
+                'message': result.get('message') or f'Loan {loan_id} has been deleted successfully',
+            }, status=status_code)
         return JsonResponse({
             'success': False,
-            'error': 'Loan not found'
-        }, status=404)
+            'error': result.get('error') or 'Failed to delete loan.',
+        }, status=status_code)
     except Exception as e:
         logger.error(f"Error deleting loan: {str(e)}")
         return JsonResponse({

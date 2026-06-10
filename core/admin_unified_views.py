@@ -369,12 +369,18 @@ def admin_upload_document(request, applicant_id):
         # Delete existing document of this type
         loan_app.documents.filter(document_type=document_type).delete()
         
-        # Create new document
-        doc = ApplicantDocument.objects.create(
-            loan_application=loan_app,
-            document_type=document_type,
-            file=file
-        )
+        from .loan_helpers import read_document_password_for_save
+
+        doc_password = read_document_password_for_save(request)
+        create_kwargs = {
+            'loan_application': loan_app,
+            'document_type': document_type,
+            'file': file,
+        }
+        if doc_password is not None:
+            create_kwargs['document_password'] = doc_password
+
+        doc = ApplicantDocument.objects.create(**create_kwargs)
         
         messages.success(request, f'{document_type.replace("_", " ").title()} uploaded successfully')
         

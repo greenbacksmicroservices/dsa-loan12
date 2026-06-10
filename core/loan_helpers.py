@@ -430,3 +430,153 @@ def loan_id_api_fields(*, legacy_loan=None, loan_application=None):
         'loan_id': stored,
         'loan_id_display': stored or LOAN_ID_EMPTY_LABEL,
     }
+
+
+def _truthy_flag(value):
+    return str(value or '').strip().lower() in {'1', 'true', 'yes', 'on'}
+
+
+def read_document_password_for_save(request, index=0):
+    """
+    Read document password from a multipart or JSON request.
+
+    Returns:
+        str | None: password to store (empty string clears password)
+        sentinel omitted when password fields were not submitted (preserve on update)
+    """
+    post = getattr(request, 'POST', None) or {}
+    data = getattr(request, 'data', None)
+    data = data if isinstance(data, dict) else {}
+
+    password_lists = (
+        post.getlist('document_password[]')
+        or post.getlist('document_password')
+        or []
+    )
+    enabled_lists = (
+        post.getlist('document_password_enabled[]')
+        or post.getlist('document_password_enabled')
+        or post.getlist('document_has_password[]')
+        or post.getlist('document_has_password')
+        or []
+    )
+
+    password_submitted = bool(
+        password_lists
+        or 'document_password' in post
+        or 'document_password' in data
+    )
+    enabled_submitted = bool(
+        enabled_lists
+        or 'document_password_enabled' in post
+        or 'document_password_enabled' in data
+        or 'document_has_password' in post
+        or 'document_has_password' in data
+    )
+
+    if not password_submitted and not enabled_submitted:
+        return None
+
+    password = ''
+    if password_lists and index < len(password_lists):
+        password = str(password_lists[index] or '').strip()
+    else:
+        password = str(
+            data.get('document_password')
+            or post.get('document_password')
+            or ''
+        ).strip()
+
+    enabled = False
+    if enabled_lists and index < len(enabled_lists):
+        enabled = _truthy_flag(enabled_lists[index])
+    else:
+        enabled = _truthy_flag(
+            data.get('document_password_enabled', post.get('document_password_enabled'))
+            or data.get('document_has_password', post.get('document_has_password'))
+        )
+
+    if enabled or password:
+        return password or None
+    return None
+
+
+def delete_loan_by_primary_key(loan_id, entity_type=None):
+    """
+    Delete a workflow LoanApplication and/or legacy Loan by database primary key.
+
+    Returns dict: success, message, error, status_code
+    """
+    from django.db.models import ProtectedError
+
+    from .loan_sync import find_related_loan
+
+    normalized = str(entity_type or '').strip().lower()
+    prefer_application = normalized in {'application', 'app'}
+    prefer_legacy = normalized in {'legacy', 'loan'}
+
+    loan_app = LoanApplication.objects.select_related('applicant').filter(id=loan_id).first()
+    legacy_loan = Loan.objects.filter(id=loan_id).first()
+
+    if not loan_app and not legacy_loan:
+        return {
+            'success': False,
+            'error': 'Loan already deleted or not found.',
+            'status_code': 404,
+        }
+
+    def _delete_application(app_obj):
+        if str(app_obj.status or '').strip().lower() == 'disbursed':
+            return {
+                'success': False,
+                'error': 'Cannot delete a disbursed loan.',
+                'status_code': 400,
+            }
+        applicant = app_obj.applicant
+        linked_legacy = find_related_loan(app_obj)
+        app_obj.delete()
+        if applicant:
+            applicant.delete()
+        if linked_legacy:
+            linked_legacy.delete()
+        return {
+            'success': True,
+            'message': 'Loan deleted successfully.',
+            'status_code': 200,
+        }
+
+    def _delete_legacy(legacy_obj):
+        if str(legacy_obj.status or '').strip().lower() == 'disbursed':
+            return {
+                'success': False,
+                'error': 'Cannot delete a disbursed loan.',
+                'status_code': 400,
+            }
+        legacy_obj.delete()
+        return {
+            'success': True,
+            'message': 'Loan deleted successfully.',
+            'status_code': 200,
+        }
+
+    try:
+        if prefer_application and loan_app:
+            return _delete_application(loan_app)
+        if prefer_legacy and legacy_loan:
+            return _delete_legacy(legacy_loan)
+        if loan_app:
+            return _delete_application(loan_app)
+        if legacy_loan:
+            return _delete_legacy(legacy_loan)
+    except ProtectedError:
+        return {
+            'success': False,
+            'error': 'This record is linked to other data and cannot be deleted.',
+            'status_code': 400,
+        }
+
+    return {
+        'success': False,
+        'error': 'Loan already deleted or not found.',
+        'status_code': 404,
+    }

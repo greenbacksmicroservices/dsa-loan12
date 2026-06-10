@@ -256,7 +256,7 @@
                         <div class="action-buttons">
                             <button class="btn-sm btn-view" onclick="viewLoan({{ loan.id }})">👁️ View</button>
                             <button class="btn-sm btn-edit" onclick="editLoan({{ loan.id }})">✏️ Edit</button>
-                            <button class="btn-sm btn-delete" onclick="deleteLoan({{ loan.id }})">🗑️ Delete</button>
+                            <button class="btn-sm btn-delete" onclick="deleteLoan({{ loan.id }}, '', '{{ loan.entity_type|default:'legacy' }}')">🗑️ Delete</button>
                         </div>
                     </td>
                 </tr>
@@ -350,10 +350,46 @@ function editLoan(id) {
     alert('Edit Loan #' + id + ' - Coming soon');
 }
 
-function deleteLoan(id) {
-    if (confirm('Are you sure you want to delete Loan #' + id + '?')) {
-        alert('Loan deleted - Coming soon');
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
     }
+    return cookieValue;
+}
+
+function deleteLoan(loanId, borrowerName, entityType) {
+    const row = document.querySelector(`tr[data-loan-id="${loanId}"]`);
+    const resolvedEntityType = entityType || row?.dataset?.entityType || 'legacy';
+    const nameLabel = borrowerName ? ` for ${borrowerName}` : '';
+    if (!confirm(`Are you sure you want to delete this loan${nameLabel}? This action cannot be undone.`)) {
+        return;
+    }
+    fetch(`/api/loan/${loanId}/delete/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({ entity_type: resolvedEntityType })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            if (row) row.remove();
+            else location.reload();
+        } else {
+            alert(result.error || 'Failed to delete loan.');
+        }
+    })
+    .catch(() => alert('Error deleting loan.'));
 }
 
 document.addEventListener('DOMContentLoaded', function() {

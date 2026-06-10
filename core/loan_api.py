@@ -17,6 +17,7 @@ from .models import Loan, LoanStatusHistory, LoanApplication, LoanDocument, Appl
 from .decorators import admin_required
 from .loan_sync import extract_assignment_context, find_related_loan_application
 from .id_utils import normalize_manual_loan_id
+from .loan_helpers import delete_loan_by_primary_key
 
 FOLLOW_UP_PENDING_LABEL = 'Follow Up'
 
@@ -1507,52 +1508,37 @@ def api_update_disbursed_details(request, loan_id):
 
 @login_required(login_url='admin_login')
 @admin_required
-@require_http_methods(['DELETE'])
+@require_http_methods(['DELETE', 'POST'])
 def api_loan_delete(request, loan_id):
-    """
-    API Endpoint: Delete a loan
-    Soft delete or hard delete based on configuration
-    """
+    """Delete a workflow application and/or legacy loan by database primary key."""
     try:
-        loan = get_object_or_404(Loan, id=loan_id)
-        
-        # Check if loan can be deleted (not disbursed)
-        if loan.status == 'disbursed':
+        entity_type = ''
+        if request.body:
+            try:
+                payload = json.loads(request.body.decode('utf-8') or '{}')
+            except (json.JSONDecodeError, UnicodeDecodeError):
+                payload = {}
+            if isinstance(payload, dict):
+                entity_type = payload.get('entity_type') or payload.get('source') or ''
+        if not entity_type:
+            entity_type = request.POST.get('entity_type') or request.POST.get('source') or ''
+
+        result = delete_loan_by_primary_key(loan_id, entity_type=entity_type)
+        status_code = result.get('status_code', 200 if result.get('success') else 400)
+        if result.get('success'):
             return JsonResponse({
-                'success': False,
-                'error': 'Cannot delete a disbursed loan'
-            }, status=400)
-        
-        loan_id_val = loan.id
-        loan_name = loan.full_name
-
-        # Hard delete if no soft-delete fields exist (current Loan model),
-        # otherwise apply soft delete and verify that fields were updated.
-        soft_fields = []
-        if hasattr(loan, 'is_deleted'):
-            loan.is_deleted = True
-            soft_fields.append('is_deleted')
-        if hasattr(loan, 'deleted_at'):
-            loan.deleted_at = timezone.now()
-            soft_fields.append('deleted_at')
-
-        if soft_fields:
-            if hasattr(loan, 'updated_at'):
-                soft_fields.append('updated_at')
-            loan.save(update_fields=soft_fields)
-        else:
-            loan.delete()
-        
+                'success': True,
+                'message': result.get('message') or 'Loan deleted successfully.',
+                'deleted_id': loan_id,
+            }, status=status_code)
         return JsonResponse({
-            'success': True,
-            'message': f'Loan for {loan_name} deleted successfully',
-            'deleted_id': loan_id_val
-        })
-    
+            'success': False,
+            'error': result.get('error') or 'Failed to delete loan.',
+        }, status=status_code)
     except Exception as e:
         return JsonResponse({
             'success': False,
-            'error': str(e)
+            'error': str(e),
         }, status=400)
 
 

@@ -57,6 +57,7 @@ from .loan_helpers import (
     display_loan_id,
     loan_id_api_fields,
     normalize_loan_id,
+    read_document_password_for_save,
     resolve_stored_loan_id,
     strip_banker_fields_for_role,
 )
@@ -4036,19 +4037,27 @@ def api_upload_case_document(request, loan_id):
         existing_qs = ApplicantDocument.objects.filter(loan_application=loan_app)
         created_docs = []
         for idx, uploaded_file in enumerate(files):
+            doc_password = read_document_password_for_save(request, index=idx)
             if idx == 0 and existing_qs.filter(document_type=base_type).exists():
                 doc_obj = existing_qs.filter(document_type=base_type).first()
                 doc_obj.file = uploaded_file
                 doc_obj.is_required = False
-                doc_obj.save(update_fields=['file', 'is_required'])
+                update_fields = ['file', 'is_required']
+                if doc_password is not None:
+                    doc_obj.document_password = doc_password
+                    update_fields.append('document_password')
+                doc_obj.save(update_fields=update_fields)
             else:
                 doc_type = _unique_type(base_type, existing_qs)
-                doc_obj = ApplicantDocument.objects.create(
-                    loan_application=loan_app,
-                    document_type=doc_type,
-                    file=uploaded_file,
-                    is_required=False,
-                )
+                create_kwargs = {
+                    'loan_application': loan_app,
+                    'document_type': doc_type,
+                    'file': uploaded_file,
+                    'is_required': False,
+                }
+                if doc_password is not None:
+                    create_kwargs['document_password'] = doc_password
+                doc_obj = ApplicantDocument.objects.create(**create_kwargs)
             created_docs.append(_serialize(doc_obj, 'application'))
         return Response({'success': True, 'documents': created_docs}, status=status.HTTP_200_OK)
 
@@ -4062,19 +4071,27 @@ def api_upload_case_document(request, loan_id):
         existing_qs = LoanDocument.objects.filter(loan=legacy)
         created_docs = []
         for idx, uploaded_file in enumerate(files):
+            doc_password = read_document_password_for_save(request, index=idx)
             if idx == 0 and existing_qs.filter(document_type=base_type).exists():
                 doc_obj = existing_qs.filter(document_type=base_type).first()
                 doc_obj.file = uploaded_file
                 doc_obj.is_required = False
-                doc_obj.save(update_fields=['file', 'is_required', 'updated_at'])
+                update_fields = ['file', 'is_required', 'updated_at']
+                if doc_password is not None:
+                    doc_obj.document_password = doc_password
+                    update_fields.append('document_password')
+                doc_obj.save(update_fields=update_fields)
             else:
                 doc_type = _unique_type(base_type, existing_qs)
-                doc_obj = LoanDocument.objects.create(
-                    loan=legacy,
-                    document_type=doc_type,
-                    file=uploaded_file,
-                    is_required=False,
-                )
+                create_kwargs = {
+                    'loan': legacy,
+                    'document_type': doc_type,
+                    'file': uploaded_file,
+                    'is_required': False,
+                }
+                if doc_password is not None:
+                    create_kwargs['document_password'] = doc_password
+                doc_obj = LoanDocument.objects.create(**create_kwargs)
             created_docs.append(_serialize(doc_obj, 'legacy'))
         return Response({'success': True, 'documents': created_docs}, status=status.HTTP_200_OK)
 
@@ -7911,23 +7928,32 @@ def employee_upload_follow_up_document(request, loan_id):
                 'error': 'Document name is invalid.',
             }, status=status.HTTP_400_BAD_REQUEST)
 
+        doc_password = read_document_password_for_save(request)
+        defaults = {
+            'file': document_file,
+            'is_required': False,
+        }
+        if doc_password is not None:
+            defaults['document_password'] = doc_password
+
         if is_standard_type:
             doc, _ = ApplicantDocument.objects.update_or_create(
                 loan_application=loan,
                 document_type=resolved_type,
-                defaults={
-                    'file': document_file,
-                    'is_required': False,
-                }
+                defaults=defaults,
             )
         else:
-            doc = ApplicantDocument.objects.create(
-                loan_application=loan,
-                document_type=resolved_type,
-                file=document_file,
-                is_required=False,
-            )
+            create_kwargs = {
+                'loan_application': loan,
+                'document_type': resolved_type,
+                'file': document_file,
+                'is_required': False,
+            }
+            if doc_password is not None:
+                create_kwargs['document_password'] = doc_password
+            doc = ApplicantDocument.objects.create(**create_kwargs)
 
+        doc_password_display = (getattr(doc, 'document_password', None) or '').strip()
         return Response({
             'success': True,
             'message': 'Document uploaded successfully.',
@@ -7937,6 +7963,8 @@ def employee_upload_follow_up_document(request, loan_id):
                 'document_type_display': display_name if not is_standard_type else doc.get_document_type_display(),
                 'file_url': doc.file.url if doc.file else '',
                 'uploaded_at': doc.uploaded_at.strftime('%Y-%m-%d %H:%M') if doc.uploaded_at else '',
+                'document_password': doc_password_display,
+                'has_password': bool(doc_password_display),
             },
         }, status=status.HTTP_200_OK)
 
@@ -7965,23 +7993,32 @@ def employee_upload_follow_up_document(request, loan_id):
                     'error': 'Document name is invalid.',
                 }, status=status.HTTP_400_BAD_REQUEST)
 
+            doc_password = read_document_password_for_save(request)
+            defaults = {
+                'file': document_file,
+                'is_required': False,
+            }
+            if doc_password is not None:
+                defaults['document_password'] = doc_password
+
             if is_standard_type:
                 doc, _ = LoanDocument.objects.update_or_create(
                     loan=legacy,
                     document_type=resolved_type,
-                    defaults={
-                        'file': document_file,
-                        'is_required': False,
-                    }
+                    defaults=defaults,
                 )
             else:
-                doc = LoanDocument.objects.create(
-                    loan=legacy,
-                    document_type=resolved_type,
-                    file=document_file,
-                    is_required=False,
-                )
+                create_kwargs = {
+                    'loan': legacy,
+                    'document_type': resolved_type,
+                    'file': document_file,
+                    'is_required': False,
+                }
+                if doc_password is not None:
+                    create_kwargs['document_password'] = doc_password
+                doc = LoanDocument.objects.create(**create_kwargs)
 
+            doc_password_display = (getattr(doc, 'document_password', None) or '').strip()
             return Response({
                 'success': True,
                 'message': 'Document uploaded successfully.',
@@ -7991,6 +8028,8 @@ def employee_upload_follow_up_document(request, loan_id):
                     'document_type_display': display_name if not is_standard_type else doc.get_document_type_display(),
                     'file_url': doc.file.url if doc.file else '',
                     'uploaded_at': doc.uploaded_at.strftime('%Y-%m-%d %H:%M') if doc.uploaded_at else '',
+                    'document_password': doc_password_display,
+                    'has_password': bool(doc_password_display),
                 },
             }, status=status.HTTP_200_OK)
         except Loan.DoesNotExist:
@@ -9617,12 +9656,7 @@ def reprocess_rejected_loan(request, loan_id):
 
     document_name = str(payload.get('document_name') or request.POST.get('document_name') or '').strip()
     document_file = request.FILES.get('document_file')
-    password_enabled = str(
-        payload.get('document_password_enabled')
-        or request.POST.get('document_password_enabled')
-        or '0'
-    ).strip() in {'1', 'true', 'yes', 'on'}
-    document_password = str(payload.get('document_password') or request.POST.get('document_password') or '').strip()
+    reprocess_doc_password = read_document_password_for_save(request)
     if document_file:
         is_valid, message = validate_loan_document_batch([document_file])
         if not is_valid:
@@ -9641,7 +9675,7 @@ def reprocess_rejected_loan(request, loan_id):
             return
         doc_label = document_name or 'Document'
         doc_type = ' '.join(doc_label.split())[:50]
-        doc_password = document_password if password_enabled and document_password else ''
+        doc_password = reprocess_doc_password if reprocess_doc_password is not None else ''
         existing_qs = ApplicantDocument.objects.filter(loan_application=app_obj)
         if existing_qs.filter(document_type=doc_type).exists():
             doc_obj = existing_qs.filter(document_type=doc_type).first()
@@ -9663,7 +9697,7 @@ def reprocess_rejected_loan(request, loan_id):
             return
         doc_label = document_name or 'Document'
         doc_type = ' '.join(doc_label.split())[:50]
-        doc_password = document_password if password_enabled and document_password else ''
+        doc_password = reprocess_doc_password if reprocess_doc_password is not None else ''
         existing_qs = LoanDocument.objects.filter(loan=loan_obj)
         if existing_qs.filter(document_type=doc_type).exists():
             doc_obj = existing_qs.filter(document_type=doc_type).first()

@@ -1917,28 +1917,62 @@ def employee_delete_loan_api(request, loan_id):
         return Response({'error': 'Only employees can delete loans'}, status=status.HTTP_403_FORBIDDEN)
 
     try:
-        loan = get_object_or_404(Loan, id=loan_id, assigned_employee=request.user)
-        if loan.status == 'rejected':
-            return Response(
-                {'success': False, 'error': 'Rejected loans can only be removed by admin/partner.'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        from .loan_helpers import delete_loan_by_primary_key
+
         reason = request.data.get('reason', '').strip() if isinstance(request.data, dict) else ''
         if not reason:
             reason = 'Deleted by employee'
 
-        deleted_id = loan.id
-        loan.delete()
+        entity_type = ''
+        if isinstance(request.data, dict):
+            entity_type = request.data.get('entity_type') or request.data.get('source') or ''
+
+        loan_app = LoanApplication.objects.filter(
+            id=loan_id,
+            assigned_employee=request.user,
+        ).first()
+        legacy = Loan.objects.filter(
+            id=loan_id,
+            assigned_employee=request.user,
+        ).first()
+
+        if not loan_app and not legacy:
+            return Response(
+                {'success': False, 'error': 'Loan already deleted or not found.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if loan_app and str(loan_app.status or '').strip().lower() == 'rejected':
+            return Response(
+                {'success': False, 'error': 'Rejected loans can only be removed by admin/partner.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if legacy and str(legacy.status or '').strip().lower() == 'rejected':
+            return Response(
+                {'success': False, 'error': 'Rejected loans can only be removed by admin/partner.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        result = delete_loan_by_primary_key(
+            loan_id,
+            entity_type=entity_type or ('application' if loan_app else 'legacy'),
+        )
+        if not result.get('success'):
+            status_code = result.get('status_code', status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {'success': False, 'error': result.get('error') or 'Failed to delete loan.'},
+                status=status_code,
+            )
 
         ActivityLog.objects.create(
             action='status_updated',
-            description=f"Employee {request.user.get_full_name()} deleted loan #{deleted_id}. Reason: {reason}",
-            user=request.user
+            description=f"Employee {request.user.get_full_name()} deleted loan #{loan_id}. Reason: {reason}",
+            user=request.user,
         )
 
         return Response({
             'success': True,
-            'message': 'Loan removed successfully'
+            'message': result.get('message') or 'Loan removed successfully',
         }, status=status.HTTP_200_OK)
 
     except Exception as e:

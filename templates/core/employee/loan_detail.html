@@ -201,6 +201,19 @@
                                 </button>
                             </div>
                         </div>
+                        <div class="document-password-wrap mt-2" id="caseDocPasswordWrap">
+                            <input type="hidden" id="caseDocPasswordEnabled" name="document_password_enabled" value="0">
+                            <label class="document-password-toggle" style="display:flex; align-items:center; gap:8px; font-size:13px; color:#475569; cursor:pointer;">
+                                <input type="checkbox" id="caseDocHasPassword" class="document-has-password" value="1">
+                                <span>This document has password</span>
+                            </label>
+                            <div class="document-password-input-wrap" id="caseDocPasswordInputWrap" style="display:none; margin-top:8px; max-width:420px;">
+                                <div class="input-group input-group-sm">
+                                    <input type="password" id="caseDocPasswordInput" class="form-control document-password-input" name="document_password" placeholder="Enter document password" autocomplete="new-password">
+                                    <button type="button" class="btn btn-outline-secondary document-password-visibility-btn" id="caseDocPasswordToggleBtn" tabindex="-1">Show</button>
+                                </div>
+                            </div>
+                        </div>
                         <div class="doc-upload-note">JPG, PNG, PDF. Aap ek hi baar me multiple files upload kar sakte hain.</div>
                         
                         <!-- Quick buttons (Pan/Aadhaar/Passbook/Cancel check/statement) -->
@@ -1190,19 +1203,39 @@ function buildFollowUpDocRow() {
     wrapper.className = 'follow-up-doc-row';
     wrapper.innerHTML = `
         <div class="row g-2">
-            <div class="col-md-5">
+            <div class="col-md-4">
                 <label class="form-label fw-semibold">Document Name</label>
                 <input class="form-control follow-up-doc-name" type="text" placeholder="e.g. Salary Slip April">
             </div>
-            <div class="col-md-5">
+            <div class="col-md-4">
                 <label class="form-label fw-semibold">Document File</label>
                 <input class="form-control follow-up-doc-file" type="file" accept=".pdf,.jpg,.jpeg,.png,image/jpeg,image/png,application/pdf" multiple>
             </div>
-            <div class="col-md-2 d-flex align-items-end">
+            <div class="col-md-3">
+                <label class="form-label fw-semibold d-block">Password</label>
+                <input type="hidden" class="follow-up-doc-password-enabled" value="0">
+                <label class="d-flex align-items-center gap-2 small text-muted mb-1">
+                    <input type="checkbox" class="follow-up-doc-has-password">
+                    <span>Has password</span>
+                </label>
+                <input class="form-control follow-up-doc-password" type="password" placeholder="Document password" style="display:none;" autocomplete="new-password">
+            </div>
+            <div class="col-md-1 d-flex align-items-end">
                 <button class="btn btn-outline-danger w-100 remove-follow-up-doc-row" type="button">Remove</button>
             </div>
         </div>
     `;
+    const passwordCheckbox = wrapper.querySelector('.follow-up-doc-has-password');
+    const passwordEnabled = wrapper.querySelector('.follow-up-doc-password-enabled');
+    const passwordInput = wrapper.querySelector('.follow-up-doc-password');
+    passwordCheckbox?.addEventListener('change', () => {
+        const show = passwordCheckbox.checked;
+        if (passwordEnabled) passwordEnabled.value = show ? '1' : '0';
+        if (passwordInput) {
+            passwordInput.style.display = show ? 'block' : 'none';
+            if (!show) passwordInput.value = '';
+        }
+    });
     wrapper.querySelector('.remove-follow-up-doc-row')?.addEventListener('click', () => {
         wrapper.remove();
     });
@@ -1491,7 +1524,7 @@ function fill() {
         <div class="doc">
             <div class="doc-name">${escapeHtmlText(d.document_type_display || d.document_type || 'Document')}</div>
             <div class="doc-meta">File: ${escapeHtmlText(d.file_name || '-')}<br>Uploaded: ${escapeHtmlText(d.uploaded_at || '-')}</div>
-            <div class="doc-password small text-muted mt-1">Password: ${escapeHtmlText(d.document_password || 'No Password')}</div>
+            <div class="doc-password small text-muted mt-1">Password: ${escapeHtmlText((d.has_password || d.document_password) ? (d.document_password || '') : 'No Password')}</div>
             <div class="doc-actions">
                 <a class="btn btn-sm btn-outline-primary" target="_blank" href="${d.file_url || d.download_url || '#'}">View</a>
                 <a class="btn btn-sm btn-outline-success" download href="${d.file_url || d.download_url || '#'}">Download</a>
@@ -1747,9 +1780,37 @@ document.getElementById('openEditFormBtn').onclick = () => {
     msg('info', 'Edit section is available at the top of this page.');
 };
 document.getElementById('downloadFormPdfBtn').onclick = () => window.print();
+(function bindCaseDocPasswordToggle() {
+    const checkbox = document.getElementById('caseDocHasPassword');
+    const enabledInput = document.getElementById('caseDocPasswordEnabled');
+    const inputWrap = document.getElementById('caseDocPasswordInputWrap');
+    const passwordInput = document.getElementById('caseDocPasswordInput');
+    const visibilityBtn = document.getElementById('caseDocPasswordToggleBtn');
+    if (!checkbox || !passwordInput) return;
+    checkbox.addEventListener('change', function() {
+        const show = checkbox.checked;
+        if (inputWrap) inputWrap.style.display = show ? 'block' : 'none';
+        if (enabledInput) enabledInput.value = show ? '1' : '0';
+        if (!show) {
+            passwordInput.value = '';
+            passwordInput.type = 'password';
+            if (visibilityBtn) visibilityBtn.textContent = 'Show';
+        }
+    });
+    if (visibilityBtn) {
+        visibilityBtn.addEventListener('click', function() {
+            const isHidden = passwordInput.type === 'password';
+            passwordInput.type = isHidden ? 'text' : 'password';
+            visibilityBtn.textContent = isHidden ? 'Hide' : 'Show';
+        });
+    }
+})();
+
 document.getElementById('uploadCaseDocBtn').onclick = async () => {
     const nameInput = document.getElementById('newDocNameInput');
     const fileInput = document.getElementById('newDocFileInput');
+    const passwordEnabledInput = document.getElementById('caseDocPasswordEnabled');
+    const passwordInput = document.getElementById('caseDocPasswordInput');
     const documentName = nameInput ? nameInput.value.trim() : '';
     const files = fileInput?.files ? Array.from(fileInput.files) : [];
 
@@ -1765,6 +1826,10 @@ document.getElementById('uploadCaseDocBtn').onclick = async () => {
     const formData = new FormData();
     formData.append('document_name', documentName);
     formData.append('source', loan?.entity_type || '');
+    formData.append('document_password_enabled', passwordEnabledInput?.value || '0');
+    if (passwordEnabledInput?.value === '1' && passwordInput?.value) {
+        formData.append('document_password', passwordInput.value.trim());
+    }
     files.forEach(file => formData.append('document_file', file));
 
     const btn = document.getElementById('uploadCaseDocBtn');
@@ -1774,6 +1839,12 @@ document.getElementById('uploadCaseDocBtn').onclick = async () => {
         msg('success', files.length > 1 ? 'Documents uploaded successfully.' : 'Document uploaded successfully.');
         if (nameInput) nameInput.value = '';
         if (fileInput) fileInput.value = '';
+        if (passwordInput) passwordInput.value = '';
+        const passwordCheckbox = document.getElementById('caseDocHasPassword');
+        if (passwordCheckbox) passwordCheckbox.checked = false;
+        if (passwordEnabledInput) passwordEnabledInput.value = '0';
+        const passwordWrap = document.getElementById('caseDocPasswordInputWrap');
+        if (passwordWrap) passwordWrap.style.display = 'none';
         setTimeout(load, 900);
     } catch (e) {
         msg('danger', e.message || 'Document upload failed.');
@@ -1862,7 +1933,9 @@ document.getElementById('uploadFollowUpDocBtn').onclick = async () => {
         const files = row.querySelector('.follow-up-doc-file')?.files
             ? Array.from(row.querySelector('.follow-up-doc-file').files)
             : [];
-        return { name, files };
+        const passwordEnabled = row.querySelector('.follow-up-doc-password-enabled')?.value === '1';
+        const password = row.querySelector('.follow-up-doc-password')?.value.trim() || '';
+        return { name, files, passwordEnabled, password };
     }).filter(item => item.name || item.files.length);
 
     if (!readyRows.length) {
@@ -1883,6 +1956,10 @@ document.getElementById('uploadFollowUpDocBtn').onclick = async () => {
             const formData = new FormData();
             formData.append('document_name', item.name);
             formData.append('source', loan?.entity_type || '');
+            formData.append('document_password_enabled', item.passwordEnabled ? '1' : '0');
+            if (item.passwordEnabled && item.password) {
+                formData.append('document_password', item.password);
+            }
             item.files.forEach(file => formData.append('document_file', file));
             uploadedFiles += item.files.length;
             await callForm(`/api/loan/${loanId}/documents/upload/`, formData);

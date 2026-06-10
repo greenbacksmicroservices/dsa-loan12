@@ -1149,40 +1149,29 @@ def admin_edit_loan(request, loan_id):
 def api_delete_loan(request, loan_id):
     """Delete a loan application and linked legacy loan when present."""
     try:
-        from django.db.models import ProtectedError
-        from .loan_sync import find_related_loan
+        from .loan_helpers import delete_loan_by_primary_key
 
-        loan_app = LoanApplication.objects.select_related('applicant').filter(id=loan_id).first()
-        if loan_app:
-            applicant = loan_app.applicant
-            legacy_loan = find_related_loan(loan_app)
-            loan_app.delete()
-            if applicant:
-                applicant.delete()
-            if legacy_loan:
-                legacy_loan.delete()
-            logger.info(f"Loan application {loan_id} deleted by {request.user.username}")
+        entity_type = request.POST.get('entity_type') or request.POST.get('source') or ''
+        if not entity_type and request.body:
+            try:
+                payload = json.loads(request.body.decode('utf-8') or '{}')
+            except (json.JSONDecodeError, UnicodeDecodeError):
+                payload = {}
+            if isinstance(payload, dict):
+                entity_type = payload.get('entity_type') or payload.get('source') or ''
+
+        result = delete_loan_by_primary_key(loan_id, entity_type=entity_type)
+        status_code = result.get('status_code', 200 if result.get('success') else 400)
+        if result.get('success'):
+            logger.info(f"Loan {loan_id} deleted by {request.user.username}")
             return JsonResponse({
                 'success': True,
-                'message': 'Loan deleted successfully',
-            })
-
-        legacy_loan = get_object_or_404(Loan, id=loan_id)
-        if legacy_loan.status == 'disbursed':
-            return JsonResponse({
-                'success': False,
-                'error': 'Cannot delete a disbursed loan.',
-            }, status=400)
-        legacy_loan.delete()
-        return JsonResponse({
-            'success': True,
-            'message': 'Loan deleted successfully',
-        })
-    except ProtectedError:
+                'message': result.get('message') or 'Loan deleted successfully.',
+            }, status=status_code)
         return JsonResponse({
             'success': False,
-            'error': 'This record is linked to other data and cannot be deleted.',
-        }, status=400)
+            'error': result.get('error') or 'Failed to delete loan.',
+        }, status=status_code)
     except Exception as e:
         logger.error(f"Error deleting loan: {str(e)}")
         return JsonResponse({
