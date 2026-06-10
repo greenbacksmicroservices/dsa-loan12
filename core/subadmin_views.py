@@ -30,6 +30,7 @@ from .models import (
 from .loan_sync import (
     application_status_to_loan_status,
     extract_assignment_context,
+    find_related_loan,
     find_related_loan_application,
     sync_loan_to_application,
 )
@@ -41,6 +42,7 @@ from .updated_document_utils import (
     loan_has_updated_documents,
 )
 from .id_utils import generate_agent_sequence_id, generate_user_sequence_id
+from .loan_helpers import display_loan_id
 from .account_notifications import send_account_credentials_email
 from .onboarding_utils import collect_user_document_payload
 from .workflow_rows import (
@@ -470,7 +472,7 @@ def _serialize_subadmin_loan_details(loan_obj):
         })
 
     ordered_full_rows = [
-        ('Loan ID', loan_obj.user_id or f"LOAN-{loan_obj.id:06d}"),
+        ('Loan ID', display_loan_id(legacy_loan=loan_obj, loan_application=loan_app)),
         ('Status', _status_label(status_key, follow_up_pending=follow_up_pending)),
         ('Created At', loan_obj.created_at.strftime('%Y-%m-%d %H:%M') if loan_obj.created_at else '-'),
         ('Updated At', loan_obj.updated_at.strftime('%Y-%m-%d %H:%M') if loan_obj.updated_at else '-'),
@@ -555,7 +557,7 @@ def _serialize_subadmin_loan_details(loan_obj):
 
     return {
         'id': loan_obj.id,
-        'loan_id': loan_obj.user_id or f"LOAN-{loan_obj.id:06d}",
+        'loan_id': display_loan_id(legacy_loan=loan_obj, loan_application=loan_app),
         'status': status_key,
         'status_raw': loan_obj.status,
         'status_display': _status_label(status_key, follow_up_pending=follow_up_pending),
@@ -1096,7 +1098,7 @@ def api_subadmin_recent_loans(request):
             follow_up_pending = status_key == 'follow_up_pending'
             rows.append({
                 'id': loan.id,
-                'loan_id': loan.user_id or f"LOAN-{loan.id}",
+                'loan_id': display_loan_id(legacy_loan=loan),
                 'full_name': loan.full_name or '-',
                 'mobile_number': loan.mobile_number or '-',
                 'loan_type': loan.get_loan_type_display() if hasattr(loan, 'get_loan_type_display') else (loan.loan_type or '-'),
@@ -1268,7 +1270,7 @@ def subadmin_all_loans(request):
         filtered_rows.append({
             'id': loan.id,
             'entity_type': 'legacy',
-            'loan_id': loan.user_id or f'LOAN-{loan.id:06d}',
+            'loan_id': display_loan_id(legacy_loan=loan),
             'applicant_name': loan.full_name,
             'phone': loan.mobile_number,
             'email': loan.email or '-',
@@ -1297,7 +1299,7 @@ def subadmin_all_loans(request):
                 str(getattr(applicant, 'full_name', '') or ''),
                 str(getattr(applicant, 'mobile', '') or ''),
                 str(getattr(applicant, 'email', '') or ''),
-                f"APP-{app_obj.id:06d}",
+                str(display_loan_id(legacy_loan=find_related_loan(app_obj), loan_application=app_obj)),
             ]).lower()
             if search_query.lower() not in haystack:
                 return False
@@ -2735,7 +2737,7 @@ def subadmin_complaints(request):
             'date': complaint.created_at,
             'created_date': complaint.created_at.strftime('%Y-%m-%d'),
             'loan_id': complaint.loan.id if complaint.loan else None,
-            'loan_display': complaint.loan.user_id or f'LOAN-{complaint.loan.id:06d}' if complaint.loan else '-',
+            'loan_display': display_loan_id(legacy_loan=complaint.loan) if complaint.loan else '-',
         })
     
     context = {

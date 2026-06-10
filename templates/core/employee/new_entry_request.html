@@ -295,14 +295,14 @@
                         return `
                             <tr>
                                 <td>${photoCell}</td>
-                                <td><strong>${loan.loan_id || '#' + loan.id}</strong></td>
+                                <td><strong>${loan.loan_id && loan.loan_id !== 'Not Assigned Yet' ? loan.loan_id : 'Not Assigned Yet'}</strong></td>
                                 <td>${loan.applicant_name || 'N/A'}</td>
                                 <td>${loan.loan_type || 'N/A'}</td>
                                 <td>₹ ${new Intl.NumberFormat('en-IN').format(loan.loan_amount || 0)}</td>
                                 <td>${loan.assigned_date || 'N/A'}</td>
                                 <td><span class="badge bg-${hoursColor}">${loan.hours_pending}h</span></td>
                                 <td><span class="status-badge status-${statusClass}">${loan.status_display || statusKey}</span></td>
-                                <td><a href="/employee/loan/${loan.id}/detail/${loan.entity_type ? '?entity_type=' + encodeURIComponent(loan.entity_type) : ''}" class="btn btn-sm btn-primary">View</a></td>
+                                <td><a href="/employee/loan/${loan.id}/process/${loan.entity_type ? '?entity_type=' + encodeURIComponent(loan.entity_type) : ''}" class="btn btn-sm btn-primary">View Process</a></td>
                             </tr>
                         `;
                     }).join('')}

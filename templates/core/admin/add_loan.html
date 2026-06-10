@@ -1211,6 +1211,7 @@
                     <label>Loan Tenure (Months) <span class="required">*</span></label>
                     <input type="number" class="form-control" name="loan_tenure" placeholder="Repayment period in months" min="1" required>
                 </div>
+                {% include 'includes/business_name_field.html' %}
             </div>
 
             <div class="form-row" id="other-service-row" style="display: none;">
@@ -1357,13 +1358,10 @@
                 Add lead receive details for realtime tracking.
             </div>
             <div class="form-row">
+                {% include 'includes/lead_receive_dropdown.html' %}
                 <div class="form-group">
                     <label>Channel Partner Name</label>
                     <input type="text" class="form-control" name="lead_receive_channel_partner_name" value="{{ lead_receive_channel_partner_default|default:'' }}" placeholder="Enter channel partner name">
-                </div>
-                <div class="form-group">
-                    <label>Leader Name</label>
-                    <input type="text" class="form-control" name="lead_receive_leader_name" value="{{ lead_receive_leader_default|default:'' }}" placeholder="Enter leader name">
                 </div>
             </div>
             <div class="form-row">
@@ -1877,6 +1875,19 @@
                     <label>Upload Document</label>
                     <input type="file" class="form-control document-file" name="document_file[]" accept=".pdf,.jpg,.jpeg,.png,image/jpeg,image/png,application/pdf" multiple>
                     <span class="helper-text">PDF/JPG/PNG. Max 3 MB per file, max 50 MB total per application.</span>
+                    <input type="hidden" class="document-password-enabled" name="document_password_enabled[]" value="0">
+                    <div class="document-password-wrap" style="margin-top:8px;">
+                        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#475569;cursor:pointer;">
+                            <input type="checkbox" class="document-has-password">
+                            <span>This document has password</span>
+                        </label>
+                        <div class="document-password-input-wrap" style="display:none;margin-top:8px;max-width:420px;">
+                            <div class="input-group">
+                                <input type="password" class="form-control document-password-input" name="document_password[]" placeholder="Enter document password" autocomplete="new-password">
+                                <button type="button" class="btn btn-outline-secondary document-password-visibility-btn" tabindex="-1">Show</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
             ${isPresetRow ? '' : `
@@ -2249,19 +2260,71 @@
         toggleOtherServiceInput();
         renderServiceDocuments();
 
+        function toggleBusinessNameField() {
+            const serviceSelect = document.querySelector('select[name="service_required"]');
+            const businessGroup = document.getElementById('business-name-group');
+            const businessInput = document.getElementById('business_name_input');
+            if (!serviceSelect || !businessGroup) return;
+            const isBusiness = String(serviceSelect.value || '').toLowerCase().includes('business');
+            businessGroup.style.display = isBusiness ? '' : 'none';
+            if (!isBusiness && businessInput) businessInput.value = '';
+        }
+
         const serviceSelect = document.querySelector('select[name="service_required"]');
         const occupationSelect = document.querySelector('select[name="occupation"]');
         if (serviceSelect) {
             serviceSelect.addEventListener('change', function() {
+                toggleBusinessNameField();
                 toggleOtherServiceInput();
                 renderServiceDocuments();
             });
+            toggleBusinessNameField();
         }
         if (occupationSelect) {
             occupationSelect.addEventListener('change', function() {
                 updateEmploymentSection();
                 renderServiceDocuments();
             });
+        }
+
+        function bindDocumentPasswordToggle(scope) {
+            (scope || document).querySelectorAll('.document-item, .document-password-wrap').forEach((item) => {
+                const wrap = item.classList.contains('document-password-wrap') ? item : item.querySelector('.document-password-wrap');
+                const root = wrap || item;
+                const checkbox = root.querySelector('.document-has-password');
+                const passwordInput = root.querySelector('.document-password-input');
+                const enabledInput = item.querySelector('.document-password-enabled') || root.querySelector('.document-password-enabled');
+                const inputWrap = root.querySelector('.document-password-input-wrap');
+                const visibilityBtn = root.querySelector('.document-password-visibility-btn');
+                if (!checkbox || !passwordInput || checkbox.dataset.bound === '1') return;
+                checkbox.dataset.bound = '1';
+                checkbox.addEventListener('change', function() {
+                    const show = checkbox.checked;
+                    if (inputWrap) inputWrap.style.display = show ? 'block' : 'none';
+                    else passwordInput.style.display = show ? 'block' : 'none';
+                    if (enabledInput) enabledInput.value = show ? '1' : '0';
+                    if (!show) {
+                        passwordInput.value = '';
+                        passwordInput.type = 'password';
+                        if (visibilityBtn) visibilityBtn.textContent = 'Show';
+                    }
+                });
+                if (visibilityBtn && visibilityBtn.dataset.bound !== '1') {
+                    visibilityBtn.dataset.bound = '1';
+                    visibilityBtn.addEventListener('click', function() {
+                        const isHidden = passwordInput.type === 'password';
+                        passwordInput.type = isHidden ? 'text' : 'password';
+                        visibilityBtn.textContent = isHidden ? 'Hide' : 'Show';
+                    });
+                }
+            });
+        }
+
+        bindDocumentPasswordToggle();
+        const documentsContainer = document.getElementById('documents-container');
+        if (documentsContainer) {
+            const observer = new MutationObserver(() => bindDocumentPasswordToggle(documentsContainer));
+            observer.observe(documentsContainer, { childList: true, subtree: true });
         }
 
         const loanForm = document.getElementById('loanForm');

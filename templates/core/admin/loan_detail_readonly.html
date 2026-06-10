@@ -199,6 +199,9 @@
                                         <small class="text-muted">
                                             {{ doc.uploaded_at|date:"d M Y, h:i A" }}
                                         </small>
+                                        {% if doc.document_password %}
+                                        <div class="small text-muted mt-1">Password: {{ doc.document_password }}</div>
+                                        {% endif %}
                                     </td>
                                     <td class="text-center">
                                         {% if doc.file %}

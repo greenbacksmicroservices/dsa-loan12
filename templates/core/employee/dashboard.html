@@ -797,7 +797,7 @@
             const actionClass = isFollowUpPending ? 'btn-outline-warning' : 'btn-outline-primary';
             const actionLabel = isFollowUpPending ? 'Edit' : 'View';
             const actionIcon = isFollowUpPending ? 'bi-pencil-square' : 'bi-eye';
-            const actionTitle = isFollowUpPending ? 'Edit Follow Up Details' : 'View Details';
+            const actionTitle = 'View Process';
 
             return `
                 <tr style="animation: fadeIn 0.3s ease-in-out;">
@@ -828,8 +828,8 @@
                         <small class="text-muted">${loan.created_time || ''}</small>
                     </td>
                     <td style="white-space: nowrap;">
-                        <button class="btn btn-sm ${actionClass}" onclick="viewLoanDetails(${loan.id}, '${String(loan.entity_type || '').replace(/'/g, "\\'")}')" title="${actionTitle}">
-                            <i class="bi ${actionIcon}"></i> ${actionLabel}
+                        <button class="btn btn-sm btn-primary" onclick="viewLoanDetails(${loan.id}, '${String(loan.entity_type || '').replace(/'/g, "\\'")}')" title="${actionTitle}">
+                            <i class="bi bi-box-arrow-up-right"></i> View Process
                         </button>
                     </td>
                 </tr>
@@ -839,7 +839,7 @@
 
     function viewLoanDetails(loanId, entityType = '') {
         const query = entityType ? `?entity_type=${encodeURIComponent(entityType)}` : '';
-        window.location.href = `/employee/loan/${loanId}/detail/${query}`;
+        window.location.href = `/employee/loan/${loanId}/process/${query}`;
     }
 
     function formatAmount(amount) {

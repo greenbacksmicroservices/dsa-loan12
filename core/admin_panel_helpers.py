@@ -128,7 +128,7 @@ def serialize_report_application(loan_obj):
     assigned_agent = getattr(loan_obj, 'assigned_agent', None)
     created_by = getattr(loan_obj, 'created_by', None)
     details = [
-        {'label': 'Manual Loan ID', 'value': display_manual_loan_id(loan_obj)},
+        {'label': 'Loan ID', 'value': display_manual_loan_id(loan_obj)},
         {'label': 'Customer Name', 'value': loan_obj.full_name or '-'},
         {'label': 'Mobile', 'value': loan_obj.mobile_number or '-'},
         {'label': 'Email', 'value': loan_obj.email or '-'},

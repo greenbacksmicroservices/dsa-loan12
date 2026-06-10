@@ -1,0 +1,13 @@
+<div class="form-group">
+    <label>Lead Receive <span class="required">*</span></label>
+    <select class="form-select" name="lead_received_by" required>
+        <option value="">-- Select Lead Receiver --</option>
+        {% for option in lead_receive_options %}
+        <option value="{{ option.id }}"
+            {% if lead_receive_leader_default and option.name == lead_receive_leader_default %}selected{% endif %}>
+            {{ option.name }}{% if option.role == 'subadmin' %} (Partner){% elif option.role == 'admin' %} (Admin){% endif %}
+        </option>
+        {% endfor %}
+    </select>
+    <span class="helper-text">Select the upper-level leader receiving this lead.</span>
+</div>

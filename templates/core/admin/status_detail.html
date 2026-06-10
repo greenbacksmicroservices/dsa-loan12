@@ -451,6 +451,7 @@ function viewDetails(appId, fullName, email, phone, loanType, loanAmount) {
                             <div style="flex: 1;">
                                 <p style="margin: 0; font-weight: 600; color: #374151; font-size: 13px;">${doc.name}</p>
                                 <p style="margin: 0; font-size: 11px; color: #9ca3af;">Uploaded: ${doc.uploaded}</p>
+                                ${doc.document_password ? `<p style="margin: 2px 0 0; font-size: 11px; color: #6b7280;">Password: ${doc.document_password}</p>` : ''}
                             </div>
                             ${doc.url ? `<a href="${doc.url}" target="_blank" style="padding: 5px 10px; background: #3b82f6; color: white; border-radius: 4px; text-decoration: none; font-size: 11px; font-weight: 600;">View</a>` : ''}
                         </div>
@@ -767,7 +768,7 @@ function openAdminAction(action, appId, applicantName) {
                 <input id="adminBankerEmail" type="email" placeholder="Enter banker email">
             </div>
             <div>
-                <label for="adminLoanAccountNumber">Loan Account Number</label>
+                <label for="adminLoanAccountNumber">Account Number</label>
                 <input id="adminLoanAccountNumber" type="text" placeholder="Enter loan account number">
             </div>
             <div>

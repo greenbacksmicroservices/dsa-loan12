@@ -31,6 +31,7 @@
         <p class="text-muted mt-2">Loading loans...</p>
     </div>
 </div>
+{% include 'includes/reprocess_modal.html' %}
 {% endblock %}
 
 {% block extra_css %}
@@ -185,19 +186,13 @@ async function submitBankingAction() {
                 bank_remark: (document.getElementById('bankingBankRemark')?.value || '').trim()
             });
         } else {
-            const bankerName = (document.getElementById('bankingRejectBankerName')?.value || '').trim();
-            const bankerPhone = (document.getElementById('bankingRejectBankerPhone')?.value || '').trim();
-            const bankerEmail = (document.getElementById('bankingRejectBankerEmail')?.value || '').trim();
             const reason = (document.getElementById('bankingRejectReason')?.value || '').trim();
-            if (!bankerName || !bankerPhone || !bankerEmail) {
-                throw new Error('Banker name, phone and email are required.');
-            }
             if (!reason) throw new Error('Rejection reason is required.');
             await postJson(`/api/employee/loan/${CURRENT_BANKING_LOAN_ID}/reject/`, {
                 entity_type: CURRENT_BANKING_ENTITY_TYPE,
-                banker_name: bankerName,
-                banker_phone: bankerPhone,
-                banker_email: bankerEmail,
+                banker_name: (document.getElementById('bankingRejectBankerName')?.value || '').trim(),
+                banker_phone: (document.getElementById('bankingRejectBankerPhone')?.value || '').trim(),
+                banker_email: (document.getElementById('bankingRejectBankerEmail')?.value || '').trim(),
                 banker_description: (document.getElementById('bankingRejectDescription')?.value || '').trim(),
                 rejection_reason: reason,
                 bank_remark: (document.getElementById('bankingRejectRemark')?.value || '').trim()
@@ -435,7 +430,7 @@ function normalizeStatusLabel(displayValue, statusKey, statusMap) {
 function employeeDetailHref(loan) {
     const entityType = loan?.entity_type || '';
     const query = entityType ? `?entity_type=${encodeURIComponent(entityType)}` : '';
-    return `/employee/loan/${loan.id}/detail/${query}`;
+    return `/employee/loan/${loan.id}/process/${query}`;
 }
 
 async function loadLoans() {
@@ -556,7 +551,7 @@ function renderLoansTable(loans) {
                     ${pageRows.map((l, idx) => `
                         <tr style="background: ${idx % 2 === 0 ? '#f8f9ff' : 'white'};">
                             <td>${(() => { const initial = (l.applicant_name || 'N').charAt(0).toUpperCase(); const photo = l.applicant_photo ? `<div class="table-avatar"><img src="${l.applicant_photo}" alt="${l.applicant_name || 'Applicant'}"></div>` : `<div class="table-avatar-fallback">${initial}</div>`; return photo; })()}</td>
-                            <td><strong>${l.loan_id || '#' + l.id}</strong></td>
+                            <td><strong>${l.loan_id && l.loan_id !== 'Not Assigned Yet' ? l.loan_id : 'Not Assigned Yet'}</strong></td>
                             <td>${l.applicant_name || 'N/A'}</td>
                             <td><span class="badge bg-light text-dark">${l.loan_type || 'N/A'}</span></td>
                             <td><strong>₹ ${new Intl.NumberFormat('en-IN').format(l.loan_amount || 0)}</strong></td>
@@ -572,35 +567,9 @@ function renderLoansTable(loans) {
                             </td>
                             <td style="font-size: 13px;">${l.assigned_date || 'N/A'}</td>
                             <td>
-                                <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                                     ${l.status === 'approved'
-                                         ? `<button class="btn btn-sm btn-primary" type="button" onclick="openApprovedProcessModal(${l.id}, '${(l.entity_type || '').replace(/'/g, "\\'")}')">Process</button>`
-                                         : (l.status === 'updated_document'
-                                             ? `
-                                                 <button class="btn btn-sm btn-info text-white" type="button" onclick="openBankingActionModal('collect', ${l.id}, '${(l.entity_type || '').replace(/'/g, "\\'")}', '${(l.applicant_name || '').replace(/'/g, "\\'")}')">Bank Login Process</button>
-                                                 <button class="btn btn-sm btn-danger" type="button" onclick="openBankingActionModal('reject', ${l.id}, '${(l.entity_type || '').replace(/'/g, "\\'")}', '${(l.applicant_name || '').replace(/'/g, "\\'")}')">Rejected</button>
-                                                 <a href="${employeeDetailHref(l)}" class="btn btn-sm btn-outline-primary">Download</a>
-                                             `
-                                             : (l.status === 'follow_up_pending'
-                                                 ? `<a href="${employeeDetailHref(l)}" class="btn btn-sm btn-warning">Edit</a>`
-                                                 : (l.status === 'rejected'
-                                                     ? `<a href="${employeeDetailHref(l)}" class="btn btn-sm btn-success">View</a>`
-                                                     : (l.status === 'disbursed'
-                                                         ? `
-                                                             <a href="${employeeDetailHref(l)}" class="btn btn-sm btn-success">View</a>
-                                                             <a href="${employeeDetailHref(l)}" class="btn btn-sm btn-outline-primary">Download</a>
-                                                         `
-                                                         : `
-                                                             <a href="${employeeDetailHref(l)}" class="btn btn-sm btn-success">View</a>
-                                                             ${(l.entity_type || 'legacy') === 'legacy' ? `<button class="btn btn-sm btn-warning" type="button" onclick="openEditLoanModal(${l.id})">Edit</button>` : ''}
-                                                             ${l.status === 'waiting' ? `<button class="btn btn-sm btn-primary" type="button" onclick="markUpdatedDocument(${l.id}, '${(l.entity_type || '').replace(/'/g, "\\'")}')">Update Document</button>` : ''}
-                                                             <a href="${employeeDetailHref(l)}" class="btn btn-sm btn-outline-primary">Download</a>
-                                                         `
-                                                     )
-                                                 )
-                                             )
-                                         )
-                                     }
+                                <div class="d-flex flex-wrap gap-1">
+                                    <a href="${employeeDetailHref(l)}" class="btn btn-sm btn-primary">View Process</a>
+                                    ${l.status === 'rejected' ? `<button type="button" class="btn btn-sm btn-warning" onclick="openReprocessModal(${l.id}, '${(l.entity_type || l.source || '').replace(/'/g, "\\'")}', { loan_type: '${String(l.loan_type || '').replace(/'/g, "\\'")}', loan_amount: '${l.loan_amount || ''}', loan_tenure: '${l.loan_tenure || l.tenure_months || ''}', loan_purpose: '${String(l.loan_purpose || '').replace(/'/g, "\\'")}' })">Reprocess</button>` : ''}
                                 </div>
                             </td>
                         </tr>
@@ -1047,7 +1016,7 @@ window.addEventListener('beforeunload', () => refreshTimer && clearInterval(refr
                         <input id="bankingBankerEmail" class="form-control" type="email" placeholder="Enter banker email">
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label">Loan Account Number</label>
+                        <label class="form-label">Account Number</label>
                         <input id="bankingLoanAccountNumber" class="form-control" type="text" placeholder="Enter loan account number">
                     </div>
                     <div class="col-md-4">

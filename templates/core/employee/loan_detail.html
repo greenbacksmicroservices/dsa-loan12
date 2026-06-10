@@ -11,7 +11,7 @@
         <h1><i class="bi bi-bank2" id="pageIcon"></i> <span id="pageTitleText">Loan Details</span></h1>
         <p id="pageSubtitle">Full loan application form, documents, remarks, and workflow actions.</p>
         <div class="small text-muted mt-1">
-            Loan ID/Reference: <span id="loanReferenceText">-</span>
+            Loan ID: <strong id="loanReferenceText">Not Assigned Yet</strong>
         </div>
     </div>
     <a href="{{ back_url|default:employee_back_url }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> {{ back_label|default:'Back' }}</a>
@@ -60,7 +60,6 @@
                             <div><small>Name *</small><strong id="name">-</strong></div>
                             <div><small>Mobile Number *</small><strong id="mobile">-</strong></div>
                             <div><small>Alternate Mobile *</small><strong id="altMobile">-</strong></div>
-                            <div><small>Loan ID (Manual)</small><strong id="loanManualId">-</strong></div>
                             <div><small>Email ID *</small><strong id="email">-</strong></div>
                             <div><small>Father's Name *</small><strong id="fatherName">-</strong></div>
                             <div><small>Mother's Name *</small><strong id="motherName">-</strong></div>
@@ -89,6 +88,7 @@
                         <h6 class="section-title">LOAN DETAILS</h6>
                         <div class="grid">
                             <div><small>Loan Type *</small><strong id="loanType">-</strong></div>
+                            <div id="businessNameRow" style="display:none;"><small>Business Name</small><strong id="businessName">-</strong></div>
                             <div><small>Loan Amount Required *</small><strong id="loanAmount">-</strong></div>
                             <div><small>Loan Tenure (Months) *</small><strong id="tenure">-</strong></div>
                             <div><small>Any Charges or Fee</small><strong id="charges">-</strong></div>
@@ -110,7 +110,7 @@
                         <div id="references" class="stack-box"></div>
                     </div>
 
-                    <div class="section-box">
+                    <div class="section-box" id="leadReceiveSection">
                         <h6 class="section-title">LEAD RECEIVE</h6>
                         <div class="grid">
                             <div><small>Channel Partner Name</small><strong id="leadChannelPartner">-</strong></div>
@@ -134,7 +134,7 @@
                             <div><small>CIBIL Score</small><strong id="cibil">-</strong></div>
                             <div><small>Aadhar Number</small><strong id="aadhar">-</strong></div>
                             <div><small>PAN Number</small><strong id="pan">-</strong></div>
-                            <div><small>Processing Bank Name</small><strong id="bankName">-</strong></div>
+                            <div class="banker-internal-field"><small>Processing Bank Name</small><strong id="bankName">-</strong></div>
                             <div><small>Bank Type</small><strong id="bankType">-</strong></div>
                             <div><small>Additional Income (if any)</small><strong id="additionalIncome">-</strong></div>
                         </div>
@@ -247,8 +247,8 @@
                             <input id="editApplicantEmail" class="form-control" type="email" placeholder="Email">
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label fw-semibold">Manual Loan ID</label>
-                            <input id="editManualLoanId" class="form-control" type="text" placeholder="Enter manual Loan ID">
+                            <label class="form-label fw-semibold">Loan ID</label>
+                            <input id="editManualLoanId" class="form-control" type="text" placeholder="Enter Loan ID">
                         </div>
                         <div class="col-md-4">
                             <label class="form-label fw-semibold">City</label>
@@ -372,6 +372,14 @@
                         <button id="rejectBtn" class="btn btn-danger" style="display:none;">Reject</button>
                         <button id="disburseBtn" class="btn btn-primary" style="display:none;">Mark as Disbursed</button>
                     </div>
+
+                    <div id="approvedProcessingPanel" class="mt-3" style="display:none;">
+                        <div class="d-grid gap-2">
+                            <button type="button" class="btn btn-success btn-lg w-100 mb-2" id="approvedDisburseBtn">Mark as Disbursed</button>
+                            <button type="button" class="btn btn-danger btn-lg w-100 mb-2" id="approvedRejectBtn">Reject</button>
+                            <button type="button" class="btn btn-primary btn-lg w-100 mb-2" id="approvedEditLoanIdBtn">Edit Loan ID</button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -383,18 +391,20 @@
         <div class="modal-content">
             <div class="modal-header"><h5 class="modal-title">Reject Loan</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
-                <label class="form-label">Banker Name *</label>
-                <input id="rejectBankerName" class="form-control mb-2" type="text" placeholder="Enter banker name">
-                <label class="form-label">Banker Phone *</label>
-                <input id="rejectBankerPhone" class="form-control mb-2" type="text" placeholder="Enter banker phone">
-                <label class="form-label">Banker Email *</label>
-                <input id="rejectBankerEmail" class="form-control mb-2" type="email" placeholder="Enter banker email">
-                <label class="form-label">Rejection reason *</label>
-                <textarea id="rejectReason" class="form-control mb-2" rows="4" placeholder="Rejection reason"></textarea>
-                <label class="form-label">Description</label>
-                <textarea id="rejectBankerDescription" class="form-control mb-2" rows="2" placeholder="Reason details"></textarea>
-                <label class="form-label">Internal bank note (optional)</label>
-                <textarea id="rejectBankNote" class="form-control" rows="2" placeholder="Visible in admin timeline"></textarea>
+                <label class="form-label">Rejection Reason *</label>
+                <textarea id="rejectReason" class="form-control mb-2" rows="4" placeholder="Enter rejection reason"></textarea>
+                <div class="banker-internal-field">
+                    <label class="form-label">Banker Name</label>
+                    <input id="rejectBankerName" class="form-control mb-2" type="text" placeholder="Optional">
+                    <label class="form-label">Banker Phone</label>
+                    <input id="rejectBankerPhone" class="form-control mb-2" type="text" placeholder="Optional">
+                    <label class="form-label">Banker Email</label>
+                    <input id="rejectBankerEmail" class="form-control mb-2" type="email" placeholder="Optional">
+                    <label class="form-label">Description</label>
+                    <textarea id="rejectBankerDescription" class="form-control mb-2" rows="2" placeholder="Optional details"></textarea>
+                    <label class="form-label">Internal bank note</label>
+                    <textarea id="rejectBankNote" class="form-control" rows="2" placeholder="Optional"></textarea>
+                </div>
             </div>
             <div class="modal-footer"><button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button><button id="confirmReject" class="btn btn-danger">Reject</button></div>
         </div>
@@ -419,18 +429,18 @@
         <div class="modal-content">
             <div class="modal-header"><h5 class="modal-title">Move to Bank Login Process</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
-                <label class="form-label">Bank Name *</label>
-                <input id="processingBankNameInput" class="form-control mb-2" type="text" placeholder="Enter bank name">
-                <label class="form-label">Banker Name *</label>
-                <input id="bankerNameInput" class="form-control mb-2" type="text" placeholder="Enter banker name">
-                <label class="form-label">Banker Phone *</label>
-                <input id="bankerPhoneInput" class="form-control mb-2" type="text" placeholder="Enter banker phone">
-                <label class="form-label">Banker Email *</label>
-                <input id="bankerEmailInput" class="form-control mb-2" type="email" placeholder="Enter banker email">
-                <label class="form-label">Loan Account Number</label>
-                <input id="processingLoanAccountNumberInput" class="form-control mb-2" type="text" placeholder="Enter loan account number">
-                <label class="form-label">Manual Loan ID *</label>
-                <input id="processingManualLoanIdInput" class="form-control mb-2" type="text" placeholder="Enter manual Loan ID">
+                <label class="form-label banker-internal-field">Bank Name *</label>
+                <input id="processingBankNameInput" class="form-control mb-2 banker-internal-field" type="text" placeholder="Enter bank name">
+                <label class="form-label banker-internal-field">Banker Name *</label>
+                <input id="bankerNameInput" class="form-control mb-2 banker-internal-field" type="text" placeholder="Enter banker name">
+                <label class="form-label banker-internal-field">Banker Phone *</label>
+                <input id="bankerPhoneInput" class="form-control mb-2 banker-internal-field" type="text" placeholder="Enter banker phone">
+                <label class="form-label banker-internal-field">Banker Email *</label>
+                <input id="bankerEmailInput" class="form-control mb-2 banker-internal-field" type="email" placeholder="Enter banker email">
+                <label class="form-label">Account Number</label>
+                <input id="processingLoanAccountNumberInput" class="form-control mb-2" type="text" placeholder="Enter account number">
+                <label class="form-label">Loan ID *</label>
+                <input id="processingManualLoanIdInput" class="form-control mb-2" type="text" name="loan_id" placeholder="Enter Loan ID">
                 <label class="form-label">Verified Loan Amount *</label>
                 <input id="verifiedLoanAmountInput" class="form-control mb-2" type="number" min="0" step="0.01" placeholder="Enter verified loan amount">
                 <label class="form-label">Final Loan Amount *</label>
@@ -453,25 +463,29 @@
             <div class="modal-header"><h5 class="modal-title">Approve Loan</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
                 <div class="row g-2">
-                    <div class="col-md-6">
+                    <div class="col-md-6 banker-internal-field">
                         <label class="form-label">Bank Name *</label>
                         <input id="approveBankNameInput" class="form-control" type="text" placeholder="Bank name">
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-6 banker-internal-field">
                         <label class="form-label">Banker Name *</label>
                         <input id="approveBankerNameInput" class="form-control" type="text" placeholder="Banker name">
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-6 banker-internal-field">
                         <label class="form-label">Banker Phone *</label>
                         <input id="approveBankerPhoneInput" class="form-control" type="text" placeholder="Banker phone">
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-6 banker-internal-field">
                         <label class="form-label">Banker Email *</label>
                         <input id="approveBankerEmailInput" class="form-control" type="email" placeholder="Banker email">
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label">Loan Account Number</label>
-                        <input id="approveLoanAccountNumberInput" class="form-control" type="text" placeholder="Loan account number">
+                        <label class="form-label">Account Number</label>
+                        <input id="approveLoanAccountNumberInput" class="form-control" type="text" placeholder="Account number">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Loan ID</label>
+                        <input id="approveLoanIdInput" class="form-control" type="text" name="loan_id" placeholder="Enter Loan ID">
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">Verified Loan Amount *</label>
@@ -510,19 +524,19 @@
             <div class="modal-header"><h5 class="modal-title">Mark as Disbursed</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
                 <div class="row g-2">
-                    <div class="col-md-6">
+                    <div class="col-md-6 banker-internal-field">
                         <label class="form-label">Bank Name *</label>
                         <input id="disburseBankName" class="form-control" type="text" placeholder="Bank name">
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-6 banker-internal-field">
                         <label class="form-label">Banker Name *</label>
                         <input id="disburseBankerNameInput" class="form-control" type="text" placeholder="Banker name">
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-6 banker-internal-field">
                         <label class="form-label">Banker Phone *</label>
                         <input id="disburseBankerPhoneInput" class="form-control" type="text" placeholder="Banker phone">
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-6 banker-internal-field">
                         <label class="form-label">Banker Email *</label>
                         <input id="disburseBankerEmailInput" class="form-control" type="email" placeholder="Banker email">
                     </div>
@@ -539,12 +553,12 @@
                         <input id="disburseDsaNameInput" class="form-control" type="text" placeholder="DSA name">
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label">Current Loan Account Number</label>
-                        <input id="disburseLoanAccountNumber" class="form-control" type="text" placeholder="Current loan account number">
+                        <label class="form-label">Account Number</label>
+                        <input id="disburseLoanAccountNumber" class="form-control" type="text" placeholder="Account number">
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label">Manual Loan ID</label>
-                        <input id="disburseManualLoanIdInput" class="form-control" type="text" placeholder="Edit manual Loan ID">
+                        <label class="form-label">Loan ID</label>
+                        <input id="disburseManualLoanIdInput" class="form-control" type="text" name="loan_id" placeholder="Enter Loan ID">
                     </div>
                     <div class="col-12">
                         <label class="form-label">Description</label>
@@ -564,7 +578,23 @@
                     </div>
                 </div>
             </div>
-            <div class="modal-footer"><button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button><button id="confirmDisburse" class="btn btn-primary">Confirm</button></div>
+            <div class="modal-footer"><button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button><button id="confirmDisburse" class="btn btn-primary">Confirm Disburse</button></div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="editLoanIdModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Edit Loan ID</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <label class="form-label">Loan ID</label>
+                <input id="editLoanIdModalInput" class="form-control" type="text" placeholder="Enter Loan ID">
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button id="confirmEditLoanId" class="btn btn-primary" type="button">Save Loan ID</button>
+            </div>
         </div>
     </div>
 </div>
@@ -706,10 +736,83 @@ const initialEntityType = '{{ entity_type|default:"" }}';
 let loan = null;
 let timer = null;
 const currentRole = '{{ request.user.role|default:"employee" }}';
+const hideBankerDetails = {{ hide_banker_details|default:False|yesno:"true,false" }};
+const LOAN_ID_EMPTY_LABEL = 'Not Assigned Yet';
+const BANKER_HIDDEN_LABELS = new Set([
+    'bank name',
+    'banker name',
+    'banker phone',
+    'banker email',
+    'processing bank name',
+]);
+const DUPLICATE_LOAN_ID_LABELS = new Set([
+    'loan id manual',
+    'loan uid',
+    'loan reference',
+    'manual loan id',
+    'auto loan id',
+    'application loan id',
+]);
+const LEAD_RECEIVE_HIDDEN_LABELS = new Set([
+    'channel partner name',
+    'employee name',
+    'leader name',
+    'lead source',
+    'lead description',
+    'lead receive channel partner name',
+    'lead receive employee name',
+    'lead receive leader name',
+    'lead receive source',
+    'lead receive description',
+    'lead receive',
+]);
+
+function resolveDisplayLoanId(v) {
+    const stored = String(v?.loan_id || '').trim();
+    if (stored) return stored;
+    const display = String(v?.loan_id_display || '').trim();
+    if (display && display !== LOAN_ID_EMPTY_LABEL) return display;
+    return LOAN_ID_EMPTY_LABEL;
+}
+
+function isDuplicateLoanIdLabel(label) {
+    const key = String(label || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+    return DUPLICATE_LOAN_ID_LABELS.has(key) || key === 'loan id manual';
+}
+
+function isHiddenLeadReceiveLabel(label) {
+    const key = String(label || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+    if (!key) return false;
+    if (LEAD_RECEIVE_HIDDEN_LABELS.has(key)) return true;
+    return key.includes('lead receive') || key.startsWith('lead ');
+}
+
+function escapeHtmlText(value) {
+    return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+function isHiddenBankDetailLabel(label) {
+    const key = String(label || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+    if (!key) return false;
+    if (BANKER_HIDDEN_LABELS.has(key)) return true;
+    return key.includes('banker name') || key.includes('banker phone') || key.includes('banker email');
+}
+
+if (hideBankerDetails) {
+    document.querySelectorAll('.banker-internal-field').forEach((el) => {
+        el.style.display = 'none';
+    });
+}
 let CURRENT_ENTITY_TYPE = null; // 'application' or 'legacy' (depends on which record the API loaded)
 let authRedirectInProgress = false;
 const rejectModal = new bootstrap.Modal(document.getElementById('rejectModal'));
 const disburseModal = new bootstrap.Modal(document.getElementById('disburseModal'));
+const editLoanIdModalEl = document.getElementById('editLoanIdModal');
+const editLoanIdModal = editLoanIdModalEl ? new bootstrap.Modal(editLoanIdModalEl) : null;
 const approveModalEl = document.getElementById('approveModal');
 const approveModal = new bootstrap.Modal(approveModalEl);
 const documentPendingModal = new bootstrap.Modal(document.getElementById('documentPendingModal'));
@@ -860,13 +963,14 @@ function parseProcessMeta(v) {
     return meta;
 }
 
-function channelPartnerName(v) {
+function resolveChannelPartnerName(v) {
     const candidates = [
         v?.lead_receive_channel_partner_name,
         v?.submitted_by,
         v?.assigned_agent_name,
     ];
-    return String(candidates.find((item) => item && String(item).trim() && String(item).trim() !== '-') || '').trim();
+    const found = candidates.find((item) => item && String(item).trim() && String(item).trim() !== '-');
+    return found ? String(found).trim() : '';
 }
 
 function prefillBankProcessingModal(v) {
@@ -878,10 +982,10 @@ function prefillBankProcessingModal(v) {
     setInputValue('processingLoanAccountNumberInput', meta.loan_account_number || v?.loan_account_number || v?.account_number || '');
     setInputValue('verifiedLoanAmountInput', meta.verified_loan_amount || v?.loan_amount || '');
     setInputValue('finalLoanAmountInput', meta.final_loan_amount || v?.loan_amount || '');
-    setInputValue('processingDsaNameInput', meta.dsa_name || channelPartnerName(v) || v?.sm_name || '');
+    setInputValue('processingDsaNameInput', meta.dsa_name || resolveChannelPartnerName(v) || v?.sm_name || '');
     setInputValue('bankerDescriptionInput', meta.banker_description);
     setInputValue('bankRemarkInput', meta.bank_remark);
-    setInputValue('processingManualLoanIdInput', v?.user_id || '');
+    setInputValue('processingManualLoanIdInput', resolveDisplayLoanId(v) === LOAN_ID_EMPTY_LABEL ? '' : resolveDisplayLoanId(v));
 }
 
 function prefillApproveModal(v, force = false) {
@@ -894,9 +998,11 @@ function prefillApproveModal(v, force = false) {
     setInputValue('approveBankerPhoneInput', meta.banker_phone);
     setInputValue('approveBankerEmailInput', meta.banker_email);
     setInputValue('approveLoanAccountNumberInput', meta.loan_account_number || v?.loan_account_number || v?.account_number || '');
+    const currentLoanId = resolveDisplayLoanId(v);
+    setInputValue('approveLoanIdInput', currentLoanId === LOAN_ID_EMPTY_LABEL ? '' : currentLoanId);
     setInputValue('approveVerifiedLoanAmountInput', meta.verified_loan_amount || v?.loan_amount || '');
     setInputValue('approveFinalLoanAmountInput', meta.final_loan_amount || v?.loan_amount || '');
-    setInputValue('approveDsaNameInput', meta.dsa_name || channelPartnerName(v) || v?.sm_name || '');
+    setInputValue('approveDsaNameInput', meta.dsa_name || resolveChannelPartnerName(v) || v?.sm_name || '');
     setInputValue('approveDescriptionInput', meta.banker_description);
     setInputValue('approveRemark', '');
     setInputValue('approveBankDetails', meta.bank_remark);
@@ -910,11 +1016,11 @@ function prefillDisburseModal(v) {
     setInputValue('disburseBankerEmailInput', meta.banker_email);
     setInputValue('disburseVerifiedLoanAmountInput', meta.verified_loan_amount || v?.loan_amount || '');
     setInputValue('disburseFinalLoanAmountInput', meta.final_loan_amount || v?.loan_amount || '');
-    setInputValue('disburseDsaNameInput', meta.dsa_name || channelPartnerName(v) || v?.sm_name || '');
+    setInputValue('disburseDsaNameInput', meta.dsa_name || resolveChannelPartnerName(v) || v?.sm_name || '');
     setInputValue('disburseDescriptionInput', meta.banker_description);
     setInputValue('disburseBankNotes', meta.bank_remark);
     setInputValue('disburseLoanAccountNumber', meta.loan_account_number || v?.loan_account_number || v?.account_number || '');
-    setInputValue('disburseManualLoanIdInput', v?.user_id || '');
+    setInputValue('disburseManualLoanIdInput', resolveDisplayLoanId(v) === LOAN_ID_EMPTY_LABEL ? '' : resolveDisplayLoanId(v));
     setInputValue('disburseAmount', meta.final_loan_amount || v?.loan_amount || '');
     setInputValue('disburseDate', new Date().toISOString().slice(0, 10));
 }
@@ -922,7 +1028,12 @@ function prefillDisburseModal(v) {
 function renderCapturedDetails(fullRows) {
     const container = document.getElementById('allCapturedDetails');
     if (!container) return;
-    const rows = Array.isArray(fullRows) ? fullRows : [];
+    const rows = (Array.isArray(fullRows) ? fullRows : []).filter((row) => {
+        if (isDuplicateLoanIdLabel(row?.label)) return false;
+        if (hideBankerDetails && isHiddenLeadReceiveLabel(row?.label)) return false;
+        if (!hideBankerDetails) return true;
+        return !isHiddenBankDetailLabel(row?.label) && !isHiddenLeadReceiveLabel(row?.label);
+    });
     if (!rows.length) {
         container.innerHTML = '<div class="text-muted small">No captured details available.</div>';
         return;
@@ -932,7 +1043,7 @@ function renderCapturedDetails(fullRows) {
             ${rows.map((row) => `
                 <div class="captured-item">
                     <small>${row.label || '-'}</small>
-                    <strong>${row.value || '-'}</strong>
+                    <strong style="white-space:pre-wrap;word-break:break-word;">${row.value || '-'}</strong>
                 </div>
             `).join('')}
         </div>
@@ -1138,7 +1249,7 @@ function fillFollowUpEditFields(v) {
     setInputValue('editApplicantName', v.applicant_name || '');
     setInputValue('editApplicantMobile', v.mobile || '');
     setInputValue('editApplicantEmail', v.email || '');
-    setInputValue('editManualLoanId', v.user_id || '');
+    setInputValue('editManualLoanId', resolveDisplayLoanId(v) === LOAN_ID_EMPTY_LABEL ? '' : resolveDisplayLoanId(v));
     setInputValue('editCity', v.city || '');
     setInputValue('editState', v.state || '');
     setInputValue('editPinCode', v.pin_code || '');
@@ -1180,7 +1291,12 @@ function fill() {
     renderCapturedDetails(full);
     const normalize = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
     const lookup = {};
+    const leadReceiveSection = document.getElementById('leadReceiveSection');
+    if (leadReceiveSection) leadReceiveSection.style.display = hideBankerDetails ? 'none' : '';
+
     full.forEach(item => {
+        if (isDuplicateLoanIdLabel(item?.label)) return;
+        if (hideBankerDetails && (isHiddenBankDetailLabel(item?.label) || isHiddenLeadReceiveLabel(item?.label))) return;
         const key = normalize(item.label);
         if (key && !lookup[key] && item.value) lookup[key] = item.value;
     });
@@ -1200,13 +1316,13 @@ function fill() {
         return '';
     };
 
-    set('compactLoanId', pick(v.manual_loan_id_display, v.user_id, v.loan_reference, v.loan_application_id, v.loan_id, v.id, loanId) || 'Pending Manual ID');
+    const officialLoanId = resolveDisplayLoanId(v);
+    set('compactLoanId', officialLoanId);
     set('compactApplicantName', pick(v.applicant_name, v.full_name));
     set('compactStatus', pick(v.status_display, v.status));
     set('name', v.applicant_name);
     set('mobile', v.mobile);
     set('altMobile', v.alternate_mobile || fromMap('alternate mobile'));
-    set('loanManualId', pick(v.manual_loan_id_display, v.user_id, fromMap('loan id manual', 'loan uid')) || 'Pending Manual ID');
     set('email', v.email);
     set('fatherName', v.father_name || fromMap('father name'));
     set('motherName', v.mother_name || fromMap('mother name'));
@@ -1245,6 +1361,13 @@ function fill() {
     set('extraIncomeDetails', v.extra_income_details || fromMap('extra income details'));
 
     set('loanType', pick(v.loan_type, fromMap('loan type', 'service required')));
+    const businessNameValue = pick(v.business_name, fromMap('business name', 'name your business'));
+    const businessNameRow = document.getElementById('businessNameRow');
+    if (businessNameRow) {
+        const loanTypeText = String(pick(v.loan_type, fromMap('loan type', 'service required')) || '').toLowerCase();
+        businessNameRow.style.display = loanTypeText.includes('business') ? '' : 'none';
+    }
+    set('businessName', businessNameValue);
     set('loanAmount', money(v.loan_amount));
     set('tenure', v.tenure_months ? `${v.tenure_months} months` : '-');
     set('charges', pick(v.charges_applicable, fromMap('charges fee', 'charges applicable', 'any charges or fee'), 'No charges'));
@@ -1254,7 +1377,9 @@ function fill() {
     set('cibil', v.cibil_score || fromMap('cibil score'));
     set('aadhar', v.aadhar_number || fromMap('aadhar number'));
     set('pan', v.pan_number || fromMap('pan number'));
-    set('bankName', v.bank_name || fromMap('bank name'));
+    if (!hideBankerDetails) {
+        set('bankName', v.bank_name || fromMap('bank name'));
+    }
     set('bankType', v.bank_type || fromMap('bank type'));
     set('leadChannelPartner', pick(
         v.lead_receive_channel_partner_name,
@@ -1357,16 +1482,16 @@ function fill() {
     set('partnerUnder', v.partner_under || '-');
     set('visibility', v.assignment_visibility || 'Visible in Admin panel');
     CURRENT_ENTITY_TYPE = v.entity_type || v.source || '';
-    const loanRefRaw = v.loan_reference || v.loan_application_id || v.loan_id || v.id || loanId;
-    set('loanReferenceText', loanRefRaw ? `#${loanRefRaw}` : '-');
+    set('loanReferenceText', officialLoanId);
 
     const workflowStatus = wf(v.status);
     const docManageAllowed = canManageDocs(workflowStatus);
     const docs = v.documents || [];
     document.getElementById('docs').innerHTML = docs.length ? docs.map(d => `
         <div class="doc">
-            <div class="doc-name">${d.document_type_display || d.document_type || 'Document'}</div>
-            <div class="doc-meta">${d.file_name || '-'}<br>${d.uploaded_at || '-'}</div>
+            <div class="doc-name">${escapeHtmlText(d.document_type_display || d.document_type || 'Document')}</div>
+            <div class="doc-meta">File: ${escapeHtmlText(d.file_name || '-')}<br>Uploaded: ${escapeHtmlText(d.uploaded_at || '-')}</div>
+            <div class="doc-password small text-muted mt-1">Password: ${escapeHtmlText(d.document_password || 'No Password')}</div>
             <div class="doc-actions">
                 <a class="btn btn-sm btn-outline-primary" target="_blank" href="${d.file_url || d.download_url || '#'}">View</a>
                 <a class="btn btn-sm btn-outline-success" download href="${d.file_url || d.download_url || '#'}">Download</a>
@@ -1496,6 +1621,7 @@ function fill() {
     `).join('') : '<div class="text-muted small">No remarks yet.</div>';
 
     const s = workflowStatus;
+    const workflowActionRoles = ['employee', 'admin', 'subadmin'];
     const isFollowUpPending = !!(v.follow_up_pending || v.follow_up_editable || s === 'Follow Up');
     const documentPendingBtn = document.getElementById('documentPendingBtn');
     const updateDocumentBtn = document.getElementById('updateDocumentBtn');
@@ -1507,6 +1633,12 @@ function fill() {
     ['documentPendingBtn', 'updateDocumentBtn', 'bankProcessingBtn', 'approveBtn', 'rejectBtn', 'disburseBtn'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = 'none';
+    });
+    const approvedPanel = document.getElementById('approvedProcessingPanel');
+    if (approvedPanel) approvedPanel.style.display = 'none';
+    ['approvedDisburseBtn', 'approvedRejectBtn', 'approvedEditLoanIdBtn'].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = '';
     });
 
     if (s === 'New Entry') {
@@ -1527,9 +1659,12 @@ function fill() {
         if (documentPendingBtn) documentPendingBtn.style.display = 'block';
         if (approveBtn) approveBtn.style.display = 'block';
         if (rejectBtn) rejectBtn.style.display = 'block';
-    } else if (s === 'Approved') {
-        if (rejectBtn) rejectBtn.style.display = 'block';
-        if (disburseBtn) disburseBtn.style.display = 'block';
+    } else if (s === 'Approved' && workflowActionRoles.includes(currentRole)) {
+        if (approvedPanel) approvedPanel.style.display = 'block';
+    } else if (s === 'Disbursed' && workflowActionRoles.includes(currentRole)) {
+        if (approvedPanel) approvedPanel.style.display = 'none';
+        const editLoanIdBtn = document.getElementById('approvedEditLoanIdBtn');
+        if (editLoanIdBtn) editLoanIdBtn.style.display = 'none';
     }
 
     const canShowUpdateControl =
@@ -1544,12 +1679,12 @@ function fill() {
 
     // Admin/Subadmin can process exactly like employee.
     // Agent/channel partner can upload docs but cannot run workflow actions.
-    const workflowActionRoles = ['employee', 'admin', 'subadmin'];
     if (!workflowActionRoles.includes(currentRole)) {
         ['documentPendingBtn', 'updateDocumentBtn', 'bankProcessingBtn', 'approveBtn', 'rejectBtn', 'disburseBtn'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.style.display = 'none';
         });
+        if (approvedPanel) approvedPanel.style.display = 'none';
         if (currentRole === 'agent' && canShowUpdateControl && s === 'Waiting for Processing' && updateDocumentBtn) {
             updateDocumentBtn.style.display = 'block';
             updateDocumentBtn.disabled = false;
@@ -1708,6 +1843,7 @@ document.getElementById('saveFollowUpEditBtn').onclick = async () => {
         edit_remark: document.getElementById('editFollowUpRemark').value.trim(),
     };
     if (manualLoanId) {
+        payload.loan_id = manualLoanId;
         payload.manual_loan_id = manualLoanId;
     }
     try {
@@ -1791,18 +1927,24 @@ document.getElementById('confirmBankProcessing').onclick = async () => {
     const bankerDescription = document.getElementById('bankerDescriptionInput').value.trim();
     const bankRemark = document.getElementById('bankRemarkInput').value.trim();
 
-    if (!processingBankName || !bankerName || !bankerPhone || !bankerEmail || !manualLoanId || !verifiedLoanAmount || !finalLoanAmount || !processingDsaName) {
-        msg('danger', 'Please fill bank name, banker details, manual Loan ID, verified/final amount, and DSA name.');
+    if (!manualLoanId || !verifiedLoanAmount || !finalLoanAmount || !processingDsaName) {
+        msg('danger', 'Please fill Loan ID, verified/final amount, and DSA name.');
         return;
     }
-    const phoneDigits = bankerPhone.replace(/\D/g, '');
-    if (phoneDigits.length < 10 || phoneDigits.length > 15) {
-        msg('danger', 'Enter a valid banker phone number (10-15 digits).');
-        return;
-    }
-    if (!bankerEmail.includes('@')) {
-        msg('danger', 'Enter a valid banker email.');
-        return;
+    if (!hideBankerDetails) {
+        if (!processingBankName || !bankerName || !bankerPhone || !bankerEmail) {
+            msg('danger', 'Please fill bank name and banker details.');
+            return;
+        }
+        const phoneDigits = bankerPhone.replace(/\D/g, '');
+        if (phoneDigits.length < 10 || phoneDigits.length > 15) {
+            msg('danger', 'Enter a valid banker phone number (10-15 digits).');
+            return;
+        }
+        if (!bankerEmail.includes('@')) {
+            msg('danger', 'Enter a valid banker email.');
+            return;
+        }
     }
     const verifiedAmountNum = Number(verifiedLoanAmount);
     const finalAmountNum = Number(finalLoanAmount);
@@ -1817,6 +1959,7 @@ document.getElementById('confirmBankProcessing').onclick = async () => {
             banker_phone: bankerPhone,
             banker_email: bankerEmail,
             loan_account_number: loanAccountNumber,
+            loan_id: manualLoanId,
             manual_loan_id: manualLoanId,
             bank_name: processingBankName,
             verified_loan_amount: verifiedLoanAmount,
@@ -1832,24 +1975,20 @@ document.getElementById('confirmBankProcessing').onclick = async () => {
     } catch(e) { msg('danger', e.message); }
 };
 document.getElementById('confirmReject').onclick = async () => {
+    const reason = document.getElementById('rejectReason').value.trim();
     const bankerName = document.getElementById('rejectBankerName').value.trim();
     const bankerPhone = document.getElementById('rejectBankerPhone').value.trim();
     const bankerEmail = document.getElementById('rejectBankerEmail').value.trim();
-    const reason = document.getElementById('rejectReason').value.trim();
     const bankerDescription = document.getElementById('rejectBankerDescription').value.trim();
     const bankNote = document.getElementById('rejectBankNote').value.trim();
-    if (!bankerName || !bankerPhone || !bankerEmail) {
-        msg('danger', 'Banker name, phone and email are required.');
-        return;
-    }
     if (!reason) { msg('danger', 'Rejection reason is required.'); return; }
     try {
         const d = await call(`/api/employee/loan/${loanId}/reject/`, {
+            rejection_reason: reason,
             banker_name: bankerName,
             banker_phone: bankerPhone,
             banker_email: bankerEmail,
             banker_description: bankerDescription,
-            rejection_reason: reason,
             bank_remark: bankNote || '',
             entity_type: loan?.entity_type || '',
         });
@@ -1876,25 +2015,32 @@ document.getElementById('confirmApprove').onclick = async () => {
     const description = document.getElementById('approveDescriptionInput').value.trim();
     const approvalRemark = document.getElementById('approveRemark').value.trim();
     const bankDetailsText = document.getElementById('approveBankDetails').value.trim();
-    if (!bankName || !bankerName || !bankerPhone || !bankerEmail || !verifiedLoanAmount || !finalLoanAmount || !dsaName) {
-        msg('danger', 'Banking processing details are required before approval.');
+    if (!verifiedLoanAmount || !finalLoanAmount || !dsaName) {
+        msg('danger', 'Verified amount, final amount, and DSA name are required.');
         return;
     }
-    const phoneDigits = bankerPhone.replace(/\D/g, '');
-    if (phoneDigits.length < 10 || phoneDigits.length > 15) {
-        msg('danger', 'Enter a valid banker phone number (10-15 digits).');
-        return;
-    }
-    if (!bankerEmail.includes('@')) {
-        msg('danger', 'Enter a valid banker email.');
-        return;
+    if (!hideBankerDetails) {
+        if (!bankName || !bankerName || !bankerPhone || !bankerEmail) {
+            msg('danger', 'Bank name and banker details are required before approval.');
+            return;
+        }
+        const phoneDigits = bankerPhone.replace(/\D/g, '');
+        if (phoneDigits.length < 10 || phoneDigits.length > 15) {
+            msg('danger', 'Enter a valid banker phone number (10-15 digits).');
+            return;
+        }
+        if (!bankerEmail.includes('@')) {
+            msg('danger', 'Enter a valid banker email.');
+            return;
+        }
     }
     if (!approvalRemark) {
         msg('danger', 'Approval remark is required.');
         return;
     }
     try {
-        const d = await call(`/api/employee/loan/${loanId}/approve/`, {
+        const approveLoanId = document.getElementById('approveLoanIdInput')?.value.trim() || '';
+        const approvePayload = {
             bank_name: bankName,
             banker_name: bankerName,
             banker_phone: bankerPhone,
@@ -1907,7 +2053,11 @@ document.getElementById('confirmApprove').onclick = async () => {
             approval_notes: approvalRemark,
             bank_remark: bankDetailsText,
             entity_type: loan?.entity_type || '',
-        });
+        };
+        if (approveLoanId) {
+            approvePayload.loan_id = approveLoanId;
+        }
+        const d = await call(`/api/employee/loan/${loanId}/approve/`, approvePayload);
         approveModal.hide();
         msg('success', d.message || 'Approved');
         setTimeout(load, 300);
@@ -1927,21 +2077,27 @@ document.getElementById('confirmDisburse').onclick = async () => {
         const description = document.getElementById('disburseDescriptionInput').value.trim();
         const bankNotes = document.getElementById('disburseBankNotes').value.trim();
 
-        if (!disbursedBankName || !bankerName || !bankerPhone || !bankerEmail || !verifiedLoanAmount || !finalLoanAmount || !dsaName) {
-            msg('danger', 'Banking processing details are required before disbursement.');
+        if (!verifiedLoanAmount || !finalLoanAmount || !dsaName) {
+            msg('danger', 'Verified amount, final amount, and DSA name are required.');
             return;
         }
-        const phoneDigits = bankerPhone.replace(/\D/g, '');
-        if (phoneDigits.length < 10 || phoneDigits.length > 15) {
-            msg('danger', 'Enter a valid banker phone number (10-15 digits).');
-            return;
-        }
-        if (!bankerEmail.includes('@')) {
-            msg('danger', 'Enter a valid banker email.');
-            return;
+        if (!hideBankerDetails) {
+            if (!disbursedBankName || !bankerName || !bankerPhone || !bankerEmail) {
+                msg('danger', 'Bank name and banker details are required before disbursement.');
+                return;
+            }
+            const phoneDigits = bankerPhone.replace(/\D/g, '');
+            if (phoneDigits.length < 10 || phoneDigits.length > 15) {
+                msg('danger', 'Enter a valid banker phone number (10-15 digits).');
+                return;
+            }
+            if (!bankerEmail.includes('@')) {
+                msg('danger', 'Enter a valid banker email.');
+                return;
+            }
         }
 
-        const d = await call(`/api/employee/loan/${loanId}/disburse/`, {
+        const disbursePayload = {
             disbursed_bank_name: disbursedBankName,
             bank_name: disbursedBankName,
             banker_name: bankerName,
@@ -1952,12 +2108,19 @@ document.getElementById('confirmDisburse').onclick = async () => {
             dsa_name: dsaName,
             banker_description: description,
             current_loan_account_number: currentLoanAccountNumber,
-            manual_loan_id: manualLoanId,
+            loan_account_number: currentLoanAccountNumber,
+            account_number: currentLoanAccountNumber,
             disbursement_notes: bankNotes,
+            bank_remark: bankNotes,
             disbursement_amount: document.getElementById('disburseAmount').value || null,
             disbursement_date: document.getElementById('disburseDate').value || null,
             entity_type: loan?.entity_type || '',
-        });
+        };
+        if (manualLoanId) {
+            disbursePayload.loan_id = manualLoanId;
+            disbursePayload.manual_loan_id = manualLoanId;
+        }
+        const d = await call(`/api/employee/loan/${loanId}/disburse/`, disbursePayload);
         disburseModal.hide();
         msg('success', d.message || 'Disbursed');
         setTimeout(load, 300);
@@ -1967,6 +2130,54 @@ document.getElementById('confirmDisburse').onclick = async () => {
 if (timelineCollapseEl && timelineToggle) {
     timelineCollapseEl.addEventListener('shown.bs.collapse', () => { timelineToggle.textContent = 'Hide'; });
     timelineCollapseEl.addEventListener('hidden.bs.collapse', () => { timelineToggle.textContent = 'Show'; });
+}
+
+const approvedDisburseBtn = document.getElementById('approvedDisburseBtn');
+if (approvedDisburseBtn) {
+    approvedDisburseBtn.onclick = () => {
+        prefillDisburseModal(loan || {});
+        disburseModal.show();
+    };
+}
+
+const approvedRejectBtn = document.getElementById('approvedRejectBtn');
+if (approvedRejectBtn) {
+    approvedRejectBtn.onclick = () => {
+        setInputValue('rejectReason', '');
+        rejectModal.show();
+    };
+}
+
+const approvedEditLoanIdBtn = document.getElementById('approvedEditLoanIdBtn');
+if (approvedEditLoanIdBtn && editLoanIdModal) {
+    approvedEditLoanIdBtn.onclick = () => {
+        const current = resolveDisplayLoanId(loan || {});
+        setInputValue('editLoanIdModalInput', current === LOAN_ID_EMPTY_LABEL ? '' : current);
+        editLoanIdModal.show();
+    };
+}
+
+const confirmEditLoanIdBtn = document.getElementById('confirmEditLoanId');
+if (confirmEditLoanIdBtn) {
+    confirmEditLoanIdBtn.onclick = async () => {
+        const loanIdValue = (document.getElementById('editLoanIdModalInput')?.value || '').trim();
+        if (!loanIdValue) {
+            msg('danger', 'Loan ID is required.');
+            return;
+        }
+        try {
+            const d = await call(`/api/employee/loan/${loanId}/sign/`, {
+                loan_id: loanIdValue,
+                is_sm_signed: !!(loan && loan.is_sm_signed),
+                entity_type: loan?.entity_type || '',
+            });
+            if (editLoanIdModal) editLoanIdModal.hide();
+            msg('success', d.message || 'Loan ID updated');
+            setTimeout(load, 300);
+        } catch (e) {
+            msg('danger', e.message);
+        }
+    };
 }
 
 document.addEventListener('DOMContentLoaded', () => {

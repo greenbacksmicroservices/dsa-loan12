@@ -7,6 +7,8 @@ workflow-only records with the same shape as legacy rows.
 
 from types import SimpleNamespace
 
+from .loan_helpers import display_loan_id, resolve_stored_loan_id
+from .loan_sync import find_related_loan
 from .models import Applicant, Loan
 from .updated_document_utils import (
     UPDATED_DOCUMENT_STATUS_KEY,
@@ -149,13 +151,22 @@ def build_application_display_row(app_obj, status_key=None):
     created_under = f"{role_label(assigned_by)} - {user_display(assigned_by)}" if assigned_by else "System"
     loan_type = getattr(applicant, "loan_type", "") or ""
     loan_amount = getattr(applicant, "loan_amount", None) or 0
+    related_legacy = find_related_loan(app_obj)
+    official_loan_id = resolve_stored_loan_id(
+        legacy_loan=related_legacy,
+        loan_application=app_obj,
+    )
 
     return WorkflowApplicationRow(
         id=app_obj.id,
         entity_type="application",
         source="application",
-        user_id=f"APP-{app_obj.id:06d}",
-        loan_id=f"APP-{app_obj.id:06d}",
+        user_id=str(app_obj.id),
+        loan_id=official_loan_id,
+        loan_id_display=display_loan_id(
+            legacy_loan=related_legacy,
+            loan_application=app_obj,
+        ),
         full_name=getattr(applicant, "full_name", "") or "N/A",
         applicant_name=getattr(applicant, "full_name", "") or "N/A",
         email=getattr(applicant, "email", "") or "",

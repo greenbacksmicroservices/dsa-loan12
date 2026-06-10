@@ -532,6 +532,14 @@ def agent_loan_detail(request, loan_id):
     agent = Agent.objects.get(user=request.user)
     source = str(request.GET.get('entity_type') or request.GET.get('source') or '').strip().lower()
 
+    from .employee_views_new import _loan_detail_layout_context
+    from .loan_helpers import is_channel_partner
+
+    layout_context = {
+        'hide_banker_details': is_channel_partner(request.user),
+        **_loan_detail_layout_context(request),
+    }
+
     if source == 'application':
         app = get_object_or_404(
             LoanApplication.objects.filter(Q(assigned_agent=agent) | Q(assigned_by=request.user)),
@@ -540,6 +548,7 @@ def agent_loan_detail(request, loan_id):
         return render(request, 'core/employee/loan_detail.html', {
             'loan_id': app.id,
             'entity_type': 'application',
+            **layout_context,
         })
 
     legacy_qs = get_agent_loan_queryset(request.user, agent)
@@ -548,6 +557,7 @@ def agent_loan_detail(request, loan_id):
         return render(request, 'core/employee/loan_detail.html', {
             'loan_id': loan.id,
             'entity_type': 'legacy',
+            **layout_context,
         })
 
     app = get_object_or_404(
@@ -557,6 +567,7 @@ def agent_loan_detail(request, loan_id):
     return render(request, 'core/employee/loan_detail.html', {
         'loan_id': app.id,
         'entity_type': 'application',
+        **layout_context,
     })
 
 

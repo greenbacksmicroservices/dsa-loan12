@@ -1,0 +1,180 @@
+<div class="modal fade" id="reprocessLoanModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Reprocess Loan Application</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="reprocessLoanForm" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <input type="hidden" id="reprocessLoanId" name="loan_id" value="">
+                    <input type="hidden" id="reprocessEntityType" name="entity_type" value="">
+
+                    <h6 class="fw-bold mb-3">LOAN DETAILS</h6>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Loan Type <span class="text-danger">*</span></label>
+                            <select class="form-select" id="reprocessLoanType" name="loan_type" required>
+                                <option value="">-- Select Service --</option>
+                                <option value="Personal Loan">Personal Loan</option>
+                                <option value="Home Loan">Home Loan</option>
+                                <option value="LAP">LAP (Loan Against Property)</option>
+                                <option value="Business Loan">Business Loan</option>
+                                <option value="Auto Loan">Auto Loan</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Loan Amount Required <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="reprocessLoanAmount" name="loan_amount_required" min="0" step="0.01" placeholder="Amount in rupees" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Loan Tenure (Months) <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="reprocessLoanTenure" name="loan_tenure" min="1" placeholder="Repayment period in months" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Loan Purpose</label>
+                            <input type="text" class="form-control" id="reprocessLoanPurpose" name="loan_purpose" placeholder="Loan purpose">
+                        </div>
+                    </div>
+
+                    <h6 class="fw-bold mb-2">SERVICE REQUIRED BASED DOCUMENTS</h6>
+                    <p class="text-muted small mb-3">Service ke hisaab se suggested documents auto-open honge. Document upload optional hai.</p>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Document Name</label>
+                            <input type="text" class="form-control" id="reprocessDocumentName" name="document_name" placeholder="e.g., Aadhar Card, PAN Card, Bank Statement, etc.">
+                            <div class="form-text">Provide a meaningful name for the document</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Upload Document</label>
+                            <input type="file" class="form-control" id="reprocessDocumentFile" name="document_file" accept=".pdf,.jpg,.jpeg,.png,image/jpeg,image/png,application/pdf">
+                            <div class="form-text">PDF/JPG/PNG. Max 3 MB per file, max 50 MB total per application.</div>
+                        </div>
+                        <div class="col-12">
+                            <input type="hidden" name="document_password_enabled" id="reprocessPasswordEnabled" value="0">
+                            <div class="document-password-wrap">
+                                <label class="d-flex align-items-center gap-2 small text-secondary" style="cursor:pointer;">
+                                    <input type="checkbox" class="document-has-password" id="reprocessHasPassword">
+                                    <span>This document has password</span>
+                                </label>
+                                <div class="document-password-input-wrap" style="display:none; margin-top:8px; max-width:420px;">
+                                    <div class="input-group">
+                                        <input type="password" class="form-control document-password-input" id="reprocessDocumentPassword" name="document_password" placeholder="Enter document password" autocomplete="new-password">
+                                        <button type="button" class="btn btn-outline-secondary document-password-visibility-btn" tabindex="-1">Show</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="reprocessSubmitBtn">Submit Reprocess</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    if (window.__reprocessModalBound) return;
+    window.__reprocessModalBound = true;
+
+    function getCookie(name) {
+        const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+        return match ? decodeURIComponent(match[2]) : '';
+    }
+
+    function bindReprocessPasswordToggle() {
+        const checkbox = document.getElementById('reprocessHasPassword');
+        const passwordInput = document.getElementById('reprocessDocumentPassword');
+        const enabledInput = document.getElementById('reprocessPasswordEnabled');
+        const inputWrap = document.querySelector('#reprocessLoanModal .document-password-input-wrap');
+        const visibilityBtn = document.querySelector('#reprocessLoanModal .document-password-visibility-btn');
+        if (!checkbox || checkbox.dataset.bound === '1') return;
+        checkbox.dataset.bound = '1';
+        checkbox.addEventListener('change', function() {
+            const show = checkbox.checked;
+            if (inputWrap) inputWrap.style.display = show ? 'block' : 'none';
+            if (enabledInput) enabledInput.value = show ? '1' : '0';
+            if (!show && passwordInput) {
+                passwordInput.value = '';
+                passwordInput.type = 'password';
+                if (visibilityBtn) visibilityBtn.textContent = 'Show';
+            }
+        });
+        if (visibilityBtn && passwordInput && visibilityBtn.dataset.bound !== '1') {
+            visibilityBtn.dataset.bound = '1';
+            visibilityBtn.addEventListener('click', function() {
+                const isHidden = passwordInput.type === 'password';
+                passwordInput.type = isHidden ? 'text' : 'password';
+                visibilityBtn.textContent = isHidden ? 'Hide' : 'Show';
+            });
+        }
+    }
+
+    window.openReprocessModal = function(loanId, entityType, preset) {
+        const modalEl = document.getElementById('reprocessLoanModal');
+        if (!modalEl) return;
+        document.getElementById('reprocessLoanId').value = loanId;
+        document.getElementById('reprocessEntityType').value = entityType || '';
+        const data = preset || {};
+        document.getElementById('reprocessLoanType').value = data.loan_type || '';
+        document.getElementById('reprocessLoanAmount').value = data.loan_amount || '';
+        document.getElementById('reprocessLoanTenure').value = data.loan_tenure || data.tenure_months || '';
+        document.getElementById('reprocessLoanPurpose').value = data.loan_purpose || '';
+        document.getElementById('reprocessDocumentName').value = '';
+        document.getElementById('reprocessDocumentFile').value = '';
+        const pwdCheckbox = document.getElementById('reprocessHasPassword');
+        if (pwdCheckbox) {
+            pwdCheckbox.checked = false;
+            pwdCheckbox.dispatchEvent(new Event('change'));
+        }
+        bindReprocessPasswordToggle();
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    };
+
+    document.addEventListener('DOMContentLoaded', function() {
+        bindReprocessPasswordToggle();
+        const form = document.getElementById('reprocessLoanForm');
+        if (!form || form.dataset.bound === '1') return;
+        form.dataset.bound = '1';
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const loanId = document.getElementById('reprocessLoanId').value;
+            const btn = document.getElementById('reprocessSubmitBtn');
+            if (!loanId) return;
+            btn.disabled = true;
+            try {
+                const formData = new FormData(form);
+                const res = await fetch(`/api/employee/loan/${loanId}/reprocess/`, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': getCookie('csrftoken') },
+                    credentials: 'same-origin',
+                    body: formData,
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok || data.success === false) {
+                    throw new Error(data.error || 'Reprocess failed');
+                }
+                bootstrap.Modal.getInstance(document.getElementById('reprocessLoanModal'))?.hide();
+                alert(data.message || 'Loan reprocessed successfully.');
+                if (typeof loadLoans === 'function') {
+                    loadLoans();
+                } else if (typeof window.reloadLoansTable === 'function') {
+                    window.reloadLoansTable();
+                } else {
+                    window.location.reload();
+                }
+            } catch (err) {
+                alert(err.message || 'Reprocess failed');
+            } finally {
+                btn.disabled = false;
+            }
+        });
+    });
+})();
+</script>

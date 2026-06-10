@@ -26,6 +26,7 @@ from .onboarding_utils import (
 from .followup_utils import auto_move_overdue_to_follow_up
 from .upload_limits import validate_loan_document_batch
 from .id_utils import generate_agent_sequence_id, generate_user_sequence_id, normalize_manual_loan_id, display_manual_loan_id
+from .loan_helpers import display_loan_id, get_lead_receive_options, resolve_lead_receive_name, is_password_protected_document_name
 from .updated_document_utils import (
     UPDATED_DOCUMENT_LABEL,
     UPDATED_DOCUMENT_STATUS_KEY,
@@ -853,7 +854,7 @@ def admin_all_loans(request):
                 str(getattr(applicant, 'full_name', '') or ''),
                 str(getattr(applicant, 'mobile', '') or ''),
                 str(getattr(applicant, 'email', '') or ''),
-                f"APP-{app_obj.id:06d}",
+                str(display_loan_id(legacy_loan=find_related_loan(app_obj), loan_application=app_obj)),
             ]).lower()
             if search_query.lower() not in haystack:
                 return False
@@ -1003,7 +1004,7 @@ def api_get_all_loans(request):
             
             loans_data.append({
                 'id': loan.id,
-                'loan_id': loan.user_id or f'LOAN-{loan.id:06d}',
+                'loan_id': display_loan_id(legacy_loan=find_related_loan(loan), loan_application=loan),
                 'applicant_name': loan.applicant.full_name if loan.applicant else 'N/A',
                 'applicant_email': loan.applicant.email if loan.applicant else 'N/A',
                 'loan_type': loan.applicant.loan_type if loan.applicant else 'N/A',
@@ -1146,26 +1147,47 @@ def admin_edit_loan(request, loan_id):
 @admin_required
 @require_POST
 def api_delete_loan(request, loan_id):
-    """
-    Soft delete a loan
-    """
+    """Delete a loan application and linked legacy loan when present."""
     try:
-        loan = get_object_or_404(LoanApplication, id=loan_id)
-        loan.is_deleted = True
-        loan.deleted_at = timezone.now()
-        loan.save()
-        
-        logger.info(f"Loan {loan_id} soft deleted by {request.user.username}")
+        from django.db.models import ProtectedError
+        from .loan_sync import find_related_loan
+
+        loan_app = LoanApplication.objects.select_related('applicant').filter(id=loan_id).first()
+        if loan_app:
+            applicant = loan_app.applicant
+            legacy_loan = find_related_loan(loan_app)
+            loan_app.delete()
+            if applicant:
+                applicant.delete()
+            if legacy_loan:
+                legacy_loan.delete()
+            logger.info(f"Loan application {loan_id} deleted by {request.user.username}")
+            return JsonResponse({
+                'success': True,
+                'message': 'Loan deleted successfully',
+            })
+
+        legacy_loan = get_object_or_404(Loan, id=loan_id)
+        if legacy_loan.status == 'disbursed':
+            return JsonResponse({
+                'success': False,
+                'error': 'Cannot delete a disbursed loan.',
+            }, status=400)
+        legacy_loan.delete()
         return JsonResponse({
             'success': True,
-            'message': 'Loan deleted successfully'
+            'message': 'Loan deleted successfully',
         })
-    
+    except ProtectedError:
+        return JsonResponse({
+            'success': False,
+            'error': 'This record is linked to other data and cannot be deleted.',
+        }, status=400)
     except Exception as e:
         logger.error(f"Error deleting loan: {str(e)}")
         return JsonResponse({
             'success': False,
-            'error': str(e)
+            'error': str(e),
         }, status=500)
 
 
@@ -1519,7 +1541,7 @@ def api_admin_subadmin_full_details(request, subadmin_id):
 
             customers.append({
                 'loan_id': loan.id,
-                'loan_uid': loan.user_id or 'Pending Manual ID',
+                'loan_uid': display_loan_id(legacy_loan=loan),
                 'customer_name': loan.full_name or '-',
                 'mobile': loan.mobile_number or '-',
                 'email': loan.email or '-',
@@ -2342,6 +2364,15 @@ def admin_add_loan(request):
             state = (request.POST.get('permanent_state') or request.POST.get('state') or '').strip()
             pin_code = (request.POST.get('permanent_pin') or request.POST.get('present_pin') or '').strip()
             lead_receive_defaults = _lead_receive_defaults_for_user(request.user)
+            lead_receive_options = get_lead_receive_options(request.user)
+            lead_received_by_id = (request.POST.get('lead_received_by') or '').strip()
+            if request.user.role == 'agent' and not lead_received_by_id and lead_receive_options:
+                lead_received_by_id = str(lead_receive_options[0]['id'])
+            resolved_leader_name = resolve_lead_receive_name(
+                lead_received_by_id,
+                request.POST.get('lead_receive_leader_name')
+                or lead_receive_defaults.get('lead_receive_leader_name', ''),
+            )
 
             removed_add_loan_fields = {
                 'pan_number',
@@ -2433,6 +2464,7 @@ def admin_add_loan(request):
                 'ref2_name': 'Reference 2 Name',
                 'ref2_mobile': 'Reference 2 Mobile',
                 'ref2_address': 'Reference 2 Address',
+                'business_name': 'Business Name',
                 'lead_receive_channel_partner_name': 'Channel Partner Name',
                 'lead_receive_leader_name': 'Leader Name',
                 'lead_receive_source': 'Lead Source',
@@ -2445,11 +2477,14 @@ def admin_add_loan(request):
             for field_name, label in remarks_field_map.items():
                 if field_name in removed_add_loan_fields:
                     continue
-                value = (
-                    request.POST.get(field_name)
-                    or lead_receive_defaults.get(field_name)
-                    or ''
-                ).strip()
+                if field_name == 'lead_receive_leader_name':
+                    value = resolved_leader_name
+                else:
+                    value = (
+                        request.POST.get(field_name)
+                        or lead_receive_defaults.get(field_name)
+                        or ''
+                    ).strip()
                 if value:
                     remarks_lines.append(f"{label}: {value}")
 
@@ -2508,6 +2543,7 @@ def admin_add_loan(request):
                 tenure_months=tenure_months,
                 interest_rate=None,
                 loan_purpose=(request.POST.get('loan_purpose') or request.POST.get('remarks_suggestions') or '').strip() or None,
+                business_name=(request.POST.get('business_name') or '').strip() or None,
                 bank_name=None,
                 bank_account_number=(request.POST.get('account_number') or '').strip() or None,
                 bank_ifsc_code=(request.POST.get('ifsc_code') or '').strip() or None,
@@ -2569,6 +2605,8 @@ def admin_add_loan(request):
                 messages.error(request, upload_error)
                 return redirect(self_add_loan_route)
             document_name_sequence = expanded_document_names if len(expanded_document_names) >= len(documents_files) else document_names
+            password_enabled_flags = request.POST.getlist('document_password_enabled[]')
+            password_values = request.POST.getlist('document_password[]')
             for idx, uploaded_file in enumerate(documents_files, start=1):
                 if not uploaded_file:
                     continue
@@ -2582,11 +2620,21 @@ def admin_add_loan(request):
                 if LoanDocument.objects.filter(loan=loan, document_type=document_type).exists():
                     document_type = f"{document_type}_{idx}"
 
+                doc_password = None
+                flag_index = idx - 1
+                password_enabled = (
+                    flag_index < len(password_enabled_flags)
+                    and str(password_enabled_flags[flag_index]).strip() == '1'
+                )
+                if password_enabled and flag_index < len(password_values):
+                    doc_password = (password_values[flag_index] or '').strip() or None
+
                 LoanDocument.objects.create(
                     loan=loan,
                     document_type=document_type[:50],
                     file=uploaded_file,
                     is_required=False,
+                    document_password=doc_password,
                 )
 
             manual_label = display_manual_loan_id(loan)
@@ -2624,6 +2672,8 @@ def admin_add_loan(request):
         'status': loan.status,
     } for loan in recent_qs]
     lead_receive_defaults = _lead_receive_defaults_for_user(request.user)
+    lead_receive_options = get_lead_receive_options(request.user)
+    auto_lead_received_by_id = str(lead_receive_options[0]['id']) if lead_receive_options else ''
 
     context = {
         'page_title': 'Add New Loan Application',
@@ -2632,6 +2682,8 @@ def admin_add_loan(request):
         'lead_receive_channel_partner_default': lead_receive_defaults.get('lead_receive_channel_partner_name', ''),
         'lead_receive_employee_default': lead_receive_defaults.get('lead_receive_employee_name', ''),
         'lead_receive_leader_default': lead_receive_defaults.get('lead_receive_leader_name', ''),
+        'lead_receive_options': lead_receive_options,
+        'auto_lead_received_by_id': auto_lead_received_by_id,
     }
     template_map = {
         'admin': 'core/admin/add_loan.html',
@@ -3184,10 +3236,13 @@ def api_get_application_details(request, app_id):
         try:
             documents = ApplicantDocument.objects.filter(applicant=applicant)
             for doc in documents:
+                doc_password = (getattr(doc, 'document_password', None) or '').strip()
                 data['documents'].append({
                     'name': doc.document_type or 'Document',
                     'url': doc.file.url if doc.file else '',
-                    'uploaded': doc.uploaded_at.strftime('%Y-%m-%d') if doc.uploaded_at else ''
+                    'uploaded': doc.uploaded_at.strftime('%Y-%m-%d') if doc.uploaded_at else '',
+                    'document_password': doc_password,
+                    'has_password': bool(doc_password),
                 })
         except:
             pass

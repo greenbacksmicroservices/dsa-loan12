@@ -138,7 +138,14 @@ class Loan(models.Model):
     
     # Applicant Details
     full_name = models.CharField(max_length=100)
-    user_id = models.CharField(max_length=20, unique=True, blank=True, null=True)  # Auto-generated
+    user_id = models.CharField(max_length=20, unique=True, blank=True, null=True)  # Legacy; use loan_id
+    loan_id = models.CharField(
+        max_length=50,
+        unique=True,
+        blank=True,
+        null=True,
+        help_text='Official manual Loan ID assigned during bank processing',
+    )
     username = models.CharField(max_length=50, blank=True, null=True)
     password = models.CharField(max_length=255, blank=True, null=True)
     mobile_number = models.CharField(
@@ -159,6 +166,7 @@ class Loan(models.Model):
     interest_rate = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True)
     emi = models.DecimalField(max_digits=15, decimal_places=2, blank=True, null=True)  # Auto-calculated
     loan_purpose = models.CharField(max_length=200, blank=True, null=True)
+    business_name = models.CharField(max_length=255, blank=True, null=True)
     
     # Bank Details
     bank_name = models.CharField(max_length=100, blank=True, null=True)
@@ -282,6 +290,7 @@ class LoanDocument(models.Model):
     document_type = models.CharField(max_length=50, choices=DOCUMENT_TYPE_CHOICES)
     file = models.FileField(upload_to='loan_documents/%Y/%m/%d/')
     is_required = models.BooleanField(default=False)
+    document_password = models.CharField(max_length=255, blank=True, null=True)
     uploaded_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -447,6 +456,7 @@ class Applicant(models.Model):
     interest_rate = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True)
     emi = models.DecimalField(max_digits=15, decimal_places=2, blank=True, null=True)
     loan_purpose = models.TextField(blank=True, null=True)
+    business_name = models.CharField(max_length=255, blank=True, null=True)
     
     # Bank Details
     bank_name = models.CharField(max_length=200, blank=True, null=True)
@@ -501,6 +511,12 @@ class LoanApplication(models.Model):
     ]
     
     applicant = models.OneToOneField(Applicant, on_delete=models.CASCADE, related_name='loan_application')
+    loan_id = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        help_text='Official manual Loan ID (synced with linked legacy loan)',
+    )
     status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='New Entry')
     
     # Assignment Fields
@@ -508,6 +524,14 @@ class LoanApplication(models.Model):
     assigned_employee = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, limit_choices_to={'role': 'employee'}, related_name='assigned_loan_applications')
     assigned_at = models.DateTimeField(null=True, blank=True)
     assigned_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='assignments_made')
+    lead_received_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='lead_received_applications',
+        help_text='Upper-level lead receiver selected at application creation',
+    )
     
     # Approval Fields
     approved_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_loans')
@@ -616,6 +640,7 @@ class ApplicantDocument(models.Model):
     document_type = models.CharField(max_length=50, choices=DOCUMENT_TYPE_CHOICES)
     file = models.FileField(upload_to='applicant_documents/%Y/%m/%d/')
     is_required = models.BooleanField(default=True)
+    document_password = models.CharField(max_length=255, blank=True, null=True)
     uploaded_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:

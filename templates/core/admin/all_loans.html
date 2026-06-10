@@ -639,7 +639,7 @@
                                 {% endif %}
                             </div>
                         </td>
-                        <td><span class="loan-id">{{ loan.user_id|default:'Pending Manual ID' }}</span></td>
+                        <td><span class="loan-id">{% if loan.loan_id %}{{ loan.loan_id }}{% else %}Not Assigned Yet{% endif %}</span></td>
                         <td><span class="borrower-name">{{ loan.full_name }}</span></td>
                         <td>
                             <span class="loan-type-badge type-{{ loan.get_loan_type_display|lower|cut:' ' }}">
@@ -665,6 +665,11 @@
                                 <a href="#" class="btn-action btn-view" title="View Loan Details" onclick="viewLoanDetail({{ loan.id }}, '{{ loan.full_name|escapejs }}', '{{ loan.email|default:''|escapejs }}', '{{ loan.mobile_number|default:''|escapejs }}', '{{ loan.loan_type|default:''|escapejs }}', '{{ loan.loan_amount|default:'0'|escapejs }}', '{{ loan.status_display_text|default:''|escapejs }}', '{{ loan.entity_type|default:'legacy' }}'); return false;">
                                     <i class="fas fa-eye"></i> View
                                 </a>
+                                {% if loan.status_key_display|default:loan.status == 'rejected' %}
+                                <a href="#" class="btn-action btn-edit" title="Reprocess Loan" onclick="openReprocessModal({{ loan.id }}, '{{ loan.entity_type|default:'legacy' }}', { loan_type: '{{ loan.loan_type|default:''|escapejs }}', loan_amount: '{{ loan.loan_amount|default:0 }}', loan_tenure: '', loan_purpose: '' }); return false;">
+                                    <i class="fas fa-redo"></i> Reprocess
+                                </a>
+                                {% endif %}
                                 {% if loan.status_key_display|default:loan.status != 'rejected' and loan.status_key_display|default:loan.status != 'disbursed' %}
                                     {% if loan.status_key_display|default:loan.status == 'updated_document' %}
                                     <a href="#" class="btn-action btn-assign" title="Move to Bank Login Process" onclick="openEditModalWithAction({{ loan.id }}, 'collect', '{{ loan.entity_type|default:'legacy' }}'); return false;">
@@ -1258,7 +1263,7 @@
                     <input id="collectBankerEmail" type="email" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px;" placeholder="Enter banker email">
                 </div>
                 <div>
-                    <label style="display: block; color: #1a202c; font-weight: 700; margin-bottom: 8px; font-size: 13px;">Loan Account Number</label>
+                    <label style="display: block; color: #1a202c; font-weight: 700; margin-bottom: 8px; font-size: 13px;">Account Number</label>
                     <input id="collectLoanAccountNumber" type="text" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px;" placeholder="Enter loan account number">
                 </div>
                 <div>
@@ -2218,7 +2223,7 @@ function populateDetailModal(data) {
         downloadBtn.disabled = false;
         downloadBtn.textContent = 'Download Full Application';
     }
-    setText('detailLoanUid', (data.loan_uid_manual && data.loan_uid_manual !== '-') ? data.loan_uid_manual : (data.manual_loan_id_display || data.loan_reference || 'Pending Manual ID'));
+    setText('detailLoanUid', data.loan_id_display || data.loan_id || 'Not Assigned Yet');
     setText('detailStatusText', data.status_display || data.status || '-');
     setText('detailCreatedBy', data.created_by_display || data.assigned_by_name || '-');
     setText('detailAssignedEmployee', data.assigned_employee_name || data.processed_by || '-');
@@ -2593,7 +2598,10 @@ function generateDocumentsHtml(documents) {
                 <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px; background: #f3f4f6; border-radius: 6px; border: 1px solid #e5e7eb;">
                     <div style="display: flex; align-items: center; gap: 10px; min-width: 0;">
                         <i class="fas fa-file-alt" style="color: #1abc9c;"></i>
-                        <span style="font-weight: 600; color: #1f2937; overflow-wrap: anywhere;">${doc.document_type || doc.type || 'Document'}</span>
+                        <div>
+                            <span style="font-weight: 600; color: #1f2937; overflow-wrap: anywhere;">${doc.document_type || doc.type || 'Document'}</span>
+                            ${doc.document_password ? `<div style="font-size: 12px; color: #6b7280; margin-top: 2px;">Password: ${escapeHtml(doc.document_password)}</div>` : ''}
+                        </div>
                     </div>
                     <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
                         <a href="${doc.file || doc.file_url || '#'}" target="_blank" style="padding: 6px 10px; border-radius: 6px; border: 1px solid #3b82f6; color: #2563eb; font-size: 12px; font-weight: 600; text-decoration: none; background: #eff6ff;">View</a>
@@ -2685,7 +2693,7 @@ function downloadLoanDetailsA4() {
 
     const documentRows = documents.length ? documents.map((doc) => `
         <tr>
-            <td>${printableValue(doc.document_type || doc.type || doc.name || 'Document')}</td>
+            <td>${printableValue(doc.document_type || doc.type || doc.name || 'Document')}${doc.document_password ? `<div style="font-size:11px;color:#6b7280;">Password: ${printableValue(doc.document_password)}</div>` : ''}</td>
             <td>${printableValue(doc.uploaded_at || '-')}</td>
             <td>${doc.file || doc.file_url ? `<a href="${escapeHtml(doc.file || doc.file_url)}" target="_blank">Open</a>` : '-'}</td>
         </tr>
@@ -2823,7 +2831,7 @@ function downloadLoanDetailsA4() {
                     <div class="print-header">
                         <div>
                             <h1>Loan Application Details</h1>
-                            <p class="print-subtitle">${escapeHtml(d.full_name || '-')} | Loan ID: ${escapeHtml((d.loan_uid_manual && d.loan_uid_manual !== '-') ? d.loan_uid_manual : 'Pending Manual ID')}</p>
+                            <p class="print-subtitle">${escapeHtml(d.full_name || '-')} | Loan ID: ${escapeHtml(d.loan_id_display || d.loan_id || 'Not Assigned Yet')}</p>
                         </div>
                         <div class="print-badges">
                             <div><strong>Status:</strong> ${escapeHtml(d.status_display || d.status || '-')}</div>
@@ -3598,4 +3606,5 @@ document.head.appendChild(style);
 document.getElementById('loan-details-download-btn')?.addEventListener('click', downloadLoanDetailsA4);
 </script>
 
+{% include 'includes/reprocess_modal.html' %}
 {% endblock %}

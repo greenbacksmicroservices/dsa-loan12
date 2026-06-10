@@ -87,8 +87,8 @@ urlpatterns = [
     path('admin/disbursed/', admin_views.admin_disbursed, name='admin_disbursed'),
     path('admin/assign-application/<int:app_id>/', admin_views.assign_application, name='assign_application'),
     path('api/admin/application/<int:app_id>/details/', admin_views.api_get_application_details, name='api_application_details'),
-    path('admin/loan/<int:loan_id>/detail/', views.admin_loan_detail, name='admin_loan_detail'),
-    path('admin/loan/<int:loan_id>/assign-employee/', views.admin_assign_employee, name='admin_assign_employee'),
+    path('admin/loan/<int:pk>/detail/', admin_unified_views.admin_loan_detail_resolver, name='admin_loan_detail'),
+    path('admin/loan/<int:loan_id>/assign-employee/', views.admin_assign_employee, name='admin_legacy_assign_employee'),
     path('admin/reports/', views.admin_reports, name='admin_reports'),
     path('admin/complaints/', views.admin_complaints, name='admin_complaints'),
     path('admin/settings/', views.admin_settings, name='admin_settings'),
@@ -175,6 +175,7 @@ urlpatterns = [
     path('employee/loans/disbursed/', employee_views.employee_loan_status_list, {'status_key': 'disbursed'}, name='employee_loans_disbursed'),
     path('employee/bank-processing/', views.employee_bank_processing_queue, name='employee_bank_processing'),
     path('employee/loan/<int:loan_id>/detail/', employee_views_new.employee_loan_detail_page, name='employee_loan_detail'),
+    path('employee/loan/<int:loan_id>/process/', employee_views_new.employee_loan_detail_page, name='employee_loan_process'),
     path('employee/loan/<int:loan_id>/bank-processing/', employee_views_new.employee_bank_processing_page, name='employee_bank_processing_detail'),
     path('employee/my-agents/', employee_views_new.employee_my_agents_page, name='employee_my_agents_page'),
     path('employee/my-agents/add/', employee_views_new.employee_add_channel_partner_page, name='employee_add_channel_partner'),
@@ -198,6 +199,7 @@ urlpatterns = [
     path('api/employee/loan/<int:loan_id>/approve/', views.employee_approve_loan, name='api_employee_approve_loan'),
     path('api/employee/loan/<int:loan_id>/reject/', views.employee_reject_loan, name='api_employee_reject_loan'),
     path('api/employee/loan/<int:loan_id>/disburse/', views.employee_disburse_loan, name='api_employee_disburse_loan'),
+    path('api/employee/loan/<int:loan_id>/reprocess/', views.reprocess_rejected_loan, name='api_employee_reprocess_loan'),
     path('api/employee/upload-profile-photo/', employee_views_new.employee_upload_profile_photo, name='api_employee_upload_profile_photo'),
     
     # New Entries Management
@@ -380,8 +382,7 @@ urlpatterns = [
     path('api/admin/agents/<int:agent_id>/update/', admin_api.api_update_agent, name='api_update_agent'),
     path('api/admin/agents/<int:agent_id>/delete/', admin_api.api_delete_agent, name='api_delete_agent'),
     
-    # LEGACY UNIFIED SYSTEM - Keep for backward compatibility
-    path('admin/loan/<int:applicant_id>/detail/', admin_unified_views.admin_loan_detail, name='admin_loan_detail'),
+    # Unified loan detail + assignment (applicant id based)
     path('admin/loan/<int:applicant_id>/assign/', admin_unified_views.admin_assign_employee, name='admin_assign_employee'),
     path('admin/loan/<int:applicant_id>/edit/', admin_unified_views.admin_edit_application, name='admin_edit_application'),
     path('admin/loan/<int:applicant_id>/update/', admin_unified_views.admin_update_application, name='admin_update_application'),

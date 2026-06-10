@@ -6,6 +6,13 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 
+from . import error_handlers
+
+handler400 = error_handlers.handler400
+handler403 = error_handlers.handler403
+handler404 = error_handlers.handler404
+handler500 = error_handlers.handler500
+
 urlpatterns = [
     # Custom admin views & API routes (MUST come before Django admin panel)
     path('', include('core.urls')),

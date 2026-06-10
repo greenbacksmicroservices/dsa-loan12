@@ -22,6 +22,7 @@ from .decorators import admin_required
 from .onboarding_utils import collect_onboarding_payload, collect_onboarding_documents, collect_user_document_payload
 from .id_utils import generate_agent_sequence_id
 from .account_notifications import send_account_credentials_email
+from .loan_helpers import display_loan_id
 
 
 # ============= PROCESSING REQUESTS / ASSIGN / APPLICATIONS =============
@@ -565,7 +566,7 @@ def api_admin_new_entries(request):
             
             apps_list.append({
                 'id': app.id,
-                'loan_id': app.loan_id or f'LOAN-{app.id}',
+                'loan_id': display_loan_id(loan_application=app),
                 'applicant_name': app.full_name,
                 'applicant_phone': app.mobile_number,
                 'applicant_email': app.email or 'N/A',
@@ -610,7 +611,7 @@ def api_admin_new_entry_detail(request, applicant_id):
             'success': True,
             'application': {
                 'id': app.id,
-                'loan_id': app.loan_id or f'LOAN-{app.id}',
+                'loan_id': display_loan_id(loan_application=app),
                 'applicant_name': app.full_name,
                 'applicant_phone': app.mobile_number,
                 'applicant_email': app.email or 'N/A',
@@ -736,7 +737,7 @@ def api_employee_assigned_loans(request):
         for loan in page_obj:
             loans_list.append({
                 'id': loan.id,
-                'loan_id': loan.loan_id or f'LOAN-{loan.id}',
+                'loan_id': display_loan_id(legacy_loan=loan),
                 'applicant_name': loan.full_name,
                 'applicant_phone': loan.mobile_number,
                 'applicant_email': loan.email or 'N/A',
@@ -946,13 +947,12 @@ def api_create_employee(request):
             is_active=True
         )
         
-        # Create employee profile
-        EmployeeProfile.objects.create(
-            user=employee,
-            phone=data.get('phone', ''),
-            employee_id=data.get('employee_id', ''),
-            department=data.get('department', 'General')
-        )
+        employee.phone = data.get('phone', '')
+        employee.employee_id = data.get('employee_id', '')
+        employee.is_active = True
+        employee.save(update_fields=['phone', 'employee_id', 'is_active', 'updated_at'])
+
+        EmployeeProfile.objects.get_or_create(user=employee)
         
         return JsonResponse({
             'success': True,
@@ -1470,7 +1470,7 @@ def api_get_agent(request, agent_id):
 
             customers.append({
                 'loan_id': loan.id,
-                'loan_uid': loan.user_id or 'Pending Manual ID',
+                'loan_uid': display_loan_id(legacy_loan=loan),
                 'customer_name': loan.full_name or '-',
                 'mobile': loan.mobile_number or '-',
                 'email': loan.email or '-',

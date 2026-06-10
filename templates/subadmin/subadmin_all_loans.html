@@ -91,7 +91,7 @@
                     {% if loans %}
                         {% for loan in loans %}
                         <tr class="hover:bg-gray-50">
-                            <td class="px-4 py-3 text-sm font-semibold text-gray-900">{{ loan.loan_id }}</td>
+                            <td class="px-4 py-3 text-sm font-semibold text-gray-900">{% if loan.loan_id %}{{ loan.loan_id }}{% else %}Not Assigned Yet{% endif %}</td>
                             <td class="px-4 py-3 text-sm text-gray-800">{{ loan.applicant_name }}</td>
                             <td class="px-4 py-3 text-sm text-gray-700">
                                 <div>{{ loan.phone|default:'-' }}</div>
@@ -131,6 +131,9 @@
                             <td class="px-4 py-3 text-sm">
                                 <div class="flex flex-wrap gap-2">
                                     <button type="button" onclick="openLoanDetailsModal({{ loan.id }}, '{{ loan.entity_type|default:'legacy' }}')" class="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700">View</button>
+                                    {% if loan.status_key == 'rejected' %}
+                                    <button type="button" onclick="openReprocessModal({{ loan.id }}, '{{ loan.entity_type|default:'legacy' }}', { loan_type: '{{ loan.loan_type|default:''|escapejs }}', loan_amount: '{{ loan.amount|default:0 }}' })" class="px-2 py-1 bg-amber-600 text-white rounded text-xs hover:bg-amber-700">Reprocess</button>
+                                    {% endif %}
                                     {% if loan.status_key != 'rejected' and loan.status_key != 'disbursed' %}
                                         {% if loan.status_key == 'updated_document' %}
                                         <button type="button" onclick="openPartnerBankingAction('collect', {{ loan.id }}, '{{ loan.applicant_name|escapejs }}', '{{ loan.entity_type|default:'legacy' }}')" class="px-2 py-1 bg-cyan-600 text-white rounded text-xs hover:bg-cyan-700">Bank Login Process</button>
@@ -265,7 +268,7 @@
                 <input id="partner-banker-email" class="w-full px-3 py-2 border border-gray-300 rounded-lg" type="email" placeholder="Enter banker email">
             </div>
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Loan Account Number</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Account Number</label>
                 <input id="partner-loan-account-number" class="w-full px-3 py-2 border border-gray-300 rounded-lg" type="text" placeholder="Enter loan account number">
             </div>
             <div>
@@ -727,7 +730,7 @@ function normalizeSharedLoanDetail(payload) {
     if (payload && payload.loan) {
         const loan = payload.loan || {};
         return {
-            loan_id: loan.manual_loan_id_display || loan.loan_reference || loan.user_id || `APP-${String(loan.id || '').padStart(6, '0')}`,
+            loan_id: loan.loan_id_display || loan.loan_id || 'Not Assigned Yet',
             status_display: loan.status_display || loan.status || '-',
             created_under: loan.assigned_by_role && loan.assigned_by_name ? `${loan.assigned_by_role} - ${loan.assigned_by_name}` : (loan.assigned_by_name || '-'),
             assigned_employee: loan.processed_by || '-',
@@ -771,6 +774,7 @@ function normalizeSharedLoanDetail(payload) {
                 source: doc.source || loan.entity_type || '-',
                 uploaded_at: doc.uploaded_at || '-',
                 url: doc.file_url || doc.download_url || '#',
+                document_password: doc.document_password || '',
             })),
             status_timeline: (loan.status_history || []).map(row => ({
                 from_status: row.from_status_display || row.from_status || '-',
@@ -812,7 +816,7 @@ function openLoanDetailsModal(loanId, entityType = 'legacy') {
             const serviceDocsHtml = generateServiceBasedDocsHtml(extraDetails, docs);
 
             const docsHtml = docs.length
-                ? `<div class="overflow-x-auto"><table class="w-full text-sm border border-gray-200"><thead class="bg-gray-50"><tr><th class="px-3 py-2 text-left">Document</th><th class="px-3 py-2 text-left">Source</th><th class="px-3 py-2 text-left">Uploaded</th><th class="px-3 py-2 text-left">File</th></tr></thead><tbody>${docs.map(doc => `<tr class="border-t border-gray-200"><td class="px-3 py-2">${doc.name || '-'}</td><td class="px-3 py-2">${doc.source || '-'}</td><td class="px-3 py-2">${doc.uploaded_at || '-'}</td><td class="px-3 py-2"><div class="flex items-center gap-2"><a href="${doc.url}" target="_blank" class="text-blue-600 hover:text-blue-800 font-semibold">View</a><a href="${doc.url}" download class="text-green-600 hover:text-green-800 font-semibold">Download</a></div></td></tr>`).join('')}</tbody></table></div>`
+                ? `<div class="overflow-x-auto"><table class="w-full text-sm border border-gray-200"><thead class="bg-gray-50"><tr><th class="px-3 py-2 text-left">Document</th><th class="px-3 py-2 text-left">Source</th><th class="px-3 py-2 text-left">Uploaded</th><th class="px-3 py-2 text-left">File</th></tr></thead><tbody>${docs.map(doc => `<tr class="border-t border-gray-200"><td class="px-3 py-2">${doc.name || '-'}${doc.document_password ? `<div class="text-xs text-gray-500 mt-1">Password: ${doc.document_password}</div>` : ''}</td><td class="px-3 py-2">${doc.source || '-'}</td><td class="px-3 py-2">${doc.uploaded_at || '-'}</td><td class="px-3 py-2"><div class="flex items-center gap-2"><a href="${doc.url}" target="_blank" class="text-blue-600 hover:text-blue-800 font-semibold">View</a><a href="${doc.url}" download class="text-green-600 hover:text-green-800 font-semibold">Download</a></div></td></tr>`).join('')}</tbody></table></div>`
                 : '<p class="text-sm text-gray-500">No documents uploaded.</p>';
 
             const historyHtml = history.length
@@ -927,7 +931,7 @@ function downloadLoanDetailsA4() {
 
     const documentRows = docs.length ? docs.map((doc) => `
         <tr>
-            <td>${printableValue(doc.name || doc.document_type || doc.type || 'Document')}</td>
+            <td>${printableValue(doc.name || doc.document_type || doc.type || 'Document')}${doc.document_password ? `<div style="font-size:11px;color:#6b7280;">Password: ${printableValue(doc.document_password)}</div>` : ''}</td>
             <td>${printableValue(doc.source || '-')}</td>
             <td>${printableValue(doc.uploaded_at || '-')}</td>
             <td>${doc.url ? `<a href="${escapeHtml(doc.url)}" target="_blank">Open</a>` : '-'}</td>
@@ -1167,4 +1171,5 @@ function closeLoanDetailsModal() {
 
 document.getElementById('loan-details-download-btn')?.addEventListener('click', downloadLoanDetailsA4);
 </script>
+{% include 'includes/reprocess_modal.html' %}
 {% endblock %}

@@ -430,25 +430,17 @@ function renderLoanRow(loan, statusClassMap, statusLabels) {
         : `<span class="loan-avatar-fallback">${escapeHtml(initial)}</span>`;
     const statusClass = statusClassMap[loan.status] || 'loan-status-new';
     const entityQuery = loan.entity_type ? `?entity_type=${encodeURIComponent(loan.entity_type)}` : '';
-    const detailUrl = `/employee/loan/${loan.id}/detail/${entityQuery}`;
-    const viewButton = `
-        <a href="${detailUrl}" class="loan-action-btn view" title="View details">
-            <i class="bi bi-eye"></i>
-            <span>View</span>
+    const detailUrl = `/employee/loan/${loan.id}/process/${entityQuery}`;
+    const actions = `
+        <a href="${detailUrl}" class="loan-action-btn view" title="View process">
+            <i class="bi bi-sliders"></i>
+            <span>View Process</span>
         </a>`;
-    const editButton = `
-        <button class="loan-action-btn edit" type="button" onclick="openEditLoanModal(${Number(loan.id)})">
-            <i class="bi bi-pencil-square"></i>
-            <span>Edit</span>
-        </button>`;
-    const actions = ['rejected', 'disbursed', 'follow_up_pending'].includes(String(loan.status || ''))
-        ? viewButton
-        : `${viewButton}${editButton}`;
 
     return `
         <tr>
             <td>${photoCell}</td>
-            <td><strong>${escapeHtml(loan.loan_id || '#' + loan.id)}</strong></td>
+            <td><strong>${escapeHtml(loan.loan_id && loan.loan_id !== 'Not Assigned Yet' ? loan.loan_id : 'Not Assigned Yet')}</strong></td>
             <td>${escapeHtml(loan.applicant_name || 'N/A')}</td>
             <td><span class="loan-type-pill">${escapeHtml(loan.loan_type || 'N/A')}</span></td>
             <td class="fw-bold text-nowrap">Rs. ${new Intl.NumberFormat('en-IN').format(loan.loan_amount || 0)}</td>

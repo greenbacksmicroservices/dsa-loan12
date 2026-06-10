@@ -41,9 +41,10 @@ def normalize_manual_loan_id(raw_value):
     return re.sub(r"\s+", "", value).upper()
 
 
-def display_manual_loan_id(loan_obj, empty_label="Pending Manual ID"):
-    value = normalize_manual_loan_id(getattr(loan_obj, "user_id", ""))
-    return value or empty_label
+def display_manual_loan_id(loan_obj, empty_label="Not Assigned Yet"):
+    from .loan_helpers import display_loan_id
+
+    return display_loan_id(legacy_loan=loan_obj, empty_label=empty_label)
 
 
 @transaction.atomic

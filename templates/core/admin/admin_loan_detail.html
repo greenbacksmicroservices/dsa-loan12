@@ -199,6 +199,9 @@
                                         <small class="text-muted">
                                             {{ doc.uploaded_at|date:"d M Y, h:i A" }}
                                         </small>
+                                        {% if doc.document_password %}
+                                        <div class="small text-muted mt-1">Password: {{ doc.document_password }}</div>
+                                        {% endif %}
                                     </td>
                                     <td class="text-center">
                                         {% if doc.file %}
@@ -339,6 +342,7 @@ function assignApplication() {
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Assigning...';
 
     // Send assignment request
+    {% if applicant %}
     fetch('{% url "api_admin_assign_new_entry" applicant.id %}', {
         method: 'POST',
         headers: {
@@ -377,6 +381,11 @@ function assignApplication() {
         btn.disabled = false;
         btn.innerHTML = originalText;
     });
+    {% else %}
+    alert('Assignment is not available for this legacy loan record.');
+    btn.disabled = false;
+    btn.innerHTML = originalText;
+    {% endif %}
 }
 </script>
 {% endblock %}

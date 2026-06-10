@@ -27,8 +27,9 @@ from decimal import Decimal
 from datetime import timedelta
 
 from .models import User, Loan, LoanApplication, Agent, ActivityLog, LoanDocument, AgentAssignment
+from .loan_helpers import display_loan_id, is_channel_partner
 from .followup_utils import auto_move_overdue_to_follow_up
-from .loan_sync import find_related_loan_application
+from .loan_sync import find_related_loan, find_related_loan_application
 from .id_utils import generate_agent_sequence_id
 from .onboarding_utils import collect_user_document_payload
 from .remarks_utils import detail_value, sanitize_display_remark, upsert_manual_remark
@@ -298,8 +299,9 @@ def _employee_customer_row_from_loan(loan, source):
         assigned_to = '-'
 
     return {
-        'loan_id': loan.id,
-        'loan_uid': loan.user_id or f'LOAN-{loan.id:06d}',
+        'id': loan.id,
+        'loan_id': display_loan_id(legacy_loan=loan),
+        'loan_uid': display_loan_id(legacy_loan=loan),
         'customer_name': loan.full_name or '-',
         'mobile': loan.mobile_number or '-',
         'email': loan.email or '-',
@@ -540,9 +542,10 @@ def employee_all_loans_api(request):
                         else ('Bank Login Process' if app.status == 'Required Follow-up' else app.status)
                     )
                 )
+                related_legacy = find_related_loan(app)
                 loans_data.append({
                     'id': app.id,
-                    'loan_id': f'APP-{app.id:06d}',
+                    'loan_id': display_loan_id(legacy_loan=related_legacy, loan_application=app),
                     'applicant_name': applicant.full_name or 'N/A',
                     'mobile': applicant.mobile or '',
                     'loan_type': applicant.loan_type or 'N/A',
@@ -621,7 +624,8 @@ def employee_all_loans_api(request):
             follow_up_pending_marker = follow_up_pending_text.lower()
             for app in workflow_only_qs:
                 applicant = app.applicant
-                loan_identifier = f'APP-{app.id:06d}'
+                related_legacy = find_related_loan(app)
+                loan_identifier = display_loan_id(legacy_loan=related_legacy, loan_application=app)
                 name_value = applicant.full_name or ''
                 mobile_value = applicant.mobile or ''
                 email_value = applicant.email or ''
@@ -743,7 +747,7 @@ def employee_all_loans_api(request):
                 )
                 legacy_rows.append({
                     'id': loan.id,
-                    'loan_id': loan.user_id or f'LOAN-{loan.id:06d}',
+                    'loan_id': display_loan_id(legacy_loan=loan),
                     'applicant_name': loan.full_name or 'N/A',
                     'mobile': loan.mobile_number or '',
                     'loan_type': loan.loan_type or 'N/A',
@@ -881,7 +885,7 @@ def employee_new_entry_requests_api(request):
             
             loans_data.append({
                 'id': loan.id,
-                    'loan_id': loan.user_id or f'LOAN-{loan.id:06d}',
+                    'loan_id': display_loan_id(legacy_loan=loan),
                 'applicant_name': loan.full_name or 'N/A',
                 'loan_type': loan.loan_type or 'N/A',
                 'loan_amount': float(loan.loan_amount) if loan.loan_amount else 0,
@@ -1059,6 +1063,7 @@ def employee_loan_detail_page(request, loan_id):
     context = {
         'loan_id': loan_id,
         'entity_type': entity_type,
+        'hide_banker_details': is_channel_partner(request.user),
         **_loan_detail_layout_context(request),
     }
     return render(request, 'core/employee/loan_detail.html', context)
@@ -1148,7 +1153,7 @@ def employee_loan_detail_api(request, loan_id):
             'success': True,
             'loan': {
                 'id': loan.id,
-                'loan_id': loan.user_id or f'LOAN-{loan.id:06d}',
+                'loan_id': display_loan_id(legacy_loan=loan),
                 'applicant': {
                     'full_name': loan.full_name,
                     'mobile_number': loan.mobile_number,
@@ -1407,7 +1412,7 @@ def _employee_report_row(loan):
     status_key = _employee_effective_status_key(loan)
     return {
         'id': loan.id,
-        'loan_id': loan.user_id or f'LOAN-{loan.id:06d}',
+        'loan_id': display_loan_id(legacy_loan=loan),
         'applicant_name': loan.full_name or '-',
         'mobile': loan.mobile_number or '-',
         'email': loan.email or '-',

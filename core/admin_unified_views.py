@@ -18,8 +18,36 @@ def get_status_css_class(status_string):
     return re.sub(r'[^a-z0-9]+', '-', status_string.lower()).strip('-')
 from django.views.decorators.http import require_POST, require_http_methods
 from datetime import timedelta
-from .models import Applicant, LoanApplication, ApplicantDocument, Agent, User
+from .models import Applicant, LoanApplication, ApplicantDocument, Agent, User, Loan
 from .decorators import admin_required
+from .loan_sync import find_related_loan_application
+
+
+@admin_required
+def admin_loan_detail_resolver(request, pk):
+    """Resolve legacy loan id or applicant id to the unified detail page."""
+    applicant = Applicant.objects.filter(id=pk).select_related('loan_application').first()
+    if applicant:
+        return admin_loan_detail(request, applicant.id)
+
+    legacy_loan = Loan.objects.filter(id=pk).first()
+    if legacy_loan:
+        related_app = find_related_loan_application(legacy_loan)
+        if related_app and related_app.applicant_id:
+            return admin_loan_detail(request, related_app.applicant_id)
+
+        documents = legacy_loan.documents.all()
+        employees = User.objects.filter(role='employee', is_active=True)
+        return render(request, 'core/admin/admin_loan_detail.html', {
+            'loan': legacy_loan,
+            'applicant': None,
+            'legacy_only': True,
+            'documents': documents,
+            'employees': employees,
+        })
+
+    messages.error(request, 'Loan application not found.')
+    return redirect('admin_dashboard')
 
 
 @admin_required

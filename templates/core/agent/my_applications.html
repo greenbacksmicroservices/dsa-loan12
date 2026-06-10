@@ -270,7 +270,7 @@
                                 {% for loan in loans %}
                                 <tr id="loan-row-{{ loan.id }}" class="status-{{ loan.status }} {% if focus_loan_id and focus_loan_id == loan.id|stringformat:'s' %}focus-row{% endif %}" data-status="{% if loan.has_revert_pending %}follow_up_pending{% else %}{{ loan.status }}{% endif %}">
                                     <td class="fw-600 align-middle">{{ loan.full_name }}</td>
-                                    <td class="align-middle"><span class="badge bg-light text-dark">#{{ loan.loan_id|default:loan.id }}</span></td>
+                                    <td class="align-middle"><span class="badge bg-light text-dark">{% if loan.loan_id %}{{ loan.loan_id }}{% else %}Not Assigned Yet{% endif %}</span></td>
                                     <td class="align-middle"><a href="tel:{{ loan.mobile_number }}">{{ loan.mobile_number }}</a></td>
                                     <td class="fw-bold align-middle text-primary">&#8377;{{ loan.loan_amount|floatformat:0|default:"0" }}</td>
                                     <td class="align-middle">
@@ -333,7 +333,7 @@
                                             <i class="bi bi-eye"></i> View
                                         </a>
                                         {% if loan.entity_type|default:'legacy' == 'legacy' %}
-                                        <button class="btn btn-sm btn-outline-success" onclick="downloadLoanDetails({{ loan.id }}, '{{ loan.full_name|escapejs }}')" title="Download Full Loan Application Form">
+                                        <button class="btn btn-sm btn-outline-success" onclick="downloadLoanDetails({{ loan.id }}, '{{ loan.full_name|escapejs }}', '{{ loan.entity_type|default:"legacy"|escapejs }}')" title="Download Full Loan Application Form">
                                             <i class="bi bi-download"></i> Download
                                         </button>
                                         {% endif %}
@@ -517,6 +517,25 @@ function findMatchingUploadedDocument(requiredName, uploadedDocuments) {
     return bestMatch;
 }
 
+const BANKER_HIDDEN_LABELS = new Set([
+    'bank name',
+    'banker name',
+    'banker phone',
+    'banker email',
+    'processing bank name',
+]);
+
+function isHiddenBankDetailLabel(label) {
+    const key = String(label || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+    if (!key) return false;
+    if (BANKER_HIDDEN_LABELS.has(key)) return true;
+    return key.includes('banker name') || key.includes('banker phone') || key.includes('banker email');
+}
+
+function filterBankerDetailRows(rows) {
+    return (Array.isArray(rows) ? rows : []).filter((row) => !isHiddenBankDetailLabel(row?.label));
+}
+
 function buildServiceDocumentRows(fullDetails, uploadedDocuments) {
     const requiredDocs = extractServiceBasedDocumentNames(fullDetails, uploadedDocuments);
     if (!requiredDocs.length) {
@@ -528,10 +547,11 @@ function buildServiceDocumentRows(fullDetails, uploadedDocuments) {
         const matchedDoc = findMatchingUploadedDocument(docName, docs);
         const fileUrl = matchedDoc ? getDocumentUrl(matchedDoc) : '';
         const uploadedAt = matchedDoc?.uploaded_at || '-';
+        const docPassword = matchedDoc?.document_password ? String(matchedDoc.document_password).trim() : '';
         return `
             <tr>
                 <td class="fw-semibold">Document ${index + 1}</td>
-                <td>${docName || '-'}</td>
+                <td>${docName || '-'}${docPassword ? `<div class="small text-muted mt-1">Password: ${docPassword}</div>` : ''}</td>
                 <td>${uploadedAt}</td>
                 <td>
                     ${fileUrl
@@ -545,10 +565,13 @@ function buildServiceDocumentRows(fullDetails, uploadedDocuments) {
     }).join('');
 }
 
-function viewLoanDetails(loanId, loanName) {
+function viewLoanDetails(loanId, loanName, entityType = '') {
     const modal = new bootstrap.Modal(document.getElementById('loanDetailsModal'));
     const body = document.getElementById('loan-details-body');
-    fetch(`/api/loan/${loanId}/details/`, {
+    const detailParams = new URLSearchParams();
+    if (entityType) detailParams.set('entity_type', entityType);
+    const detailQuery = detailParams.toString() ? `?${detailParams.toString()}` : '';
+    fetch(`/api/employee/loan/${loanId}/detail/${detailQuery}`, {
         headers: { 'X-CSRFToken': getCookie('csrftoken') },
         credentials: 'same-origin'
     })
@@ -557,7 +580,7 @@ function viewLoanDetails(loanId, loanName) {
         if (!response.ok || payload.success === false) {
             throw new Error(payload.error || 'Failed to load loan details');
         }
-        return payload.data || payload;
+        return payload.loan || payload.data || payload;
     })
     .then((loan) => {
         const statusColor = {
@@ -570,7 +593,7 @@ function viewLoanDetails(loanId, loanName) {
             'disbursed': 'primary'
         }[String(loan.status_key || '').toLowerCase()] || 'secondary';
 
-        const details = Array.isArray(loan.full_application_details) ? loan.full_application_details : [];
+        const details = filterBankerDetailRows(loan.full_application_details);
         const documents = Array.isArray(loan.documents) ? loan.documents : [];
         const detailsHtml = details.length
             ? details.map((item) => `<tr><td class="fw-semibold">${item.label || '-'}</td><td>${item.value || '-'}</td></tr>`).join('')
@@ -581,7 +604,7 @@ function viewLoanDetails(loanId, loanName) {
             <div class="row">
                 <div class="col-md-6 mb-3">
                     <label class="form-label small text-muted">Loan ID</label>
-                    <p class="form-control-plaintext fw-bold">${loan.loan_id || loan.user_id || '#' + loan.id}</p>
+                    <p class="form-control-plaintext fw-bold">${loan.loan_id_display || loan.loan_id || 'Not Assigned Yet'}</p>
                 </div>
                 <div class="col-md-6 mb-3">
                     <label class="form-label small text-muted">Applicant Name</label>
@@ -667,8 +690,11 @@ function viewLoanDetails(loanId, loanName) {
     modal.show();
 }
 
-function downloadLoanDetails(loanId, loanName) {
-    fetch(`/api/loan/${loanId}/details/`, {
+function downloadLoanDetails(loanId, loanName, entityType = 'legacy') {
+    const detailParams = new URLSearchParams();
+    if (entityType) detailParams.set('entity_type', entityType);
+    const detailQuery = detailParams.toString() ? `?${detailParams.toString()}` : '';
+    fetch(`/api/employee/loan/${loanId}/detail/${detailQuery}`, {
         headers: { 'X-CSRFToken': getCookie('csrftoken') },
         credentials: 'same-origin'
     })
@@ -677,7 +703,7 @@ function downloadLoanDetails(loanId, loanName) {
         if (!response.ok || payload.success === false) {
             throw new Error(payload.error || 'Failed to load loan details');
         }
-        return payload.data || payload;
+        return payload.loan || payload.data || payload;
     })
     .then((loan) => {
         const printWindow = window.open('', '_blank');
@@ -685,7 +711,7 @@ function downloadLoanDetails(loanId, loanName) {
             alert('Please allow popups to download A4 print.');
             return;
         }
-        const details = Array.isArray(loan.full_application_details) ? loan.full_application_details : [];
+        const details = filterBankerDetailRows(loan.full_application_details);
         const detailRows = details.length
             ? details.map((item) => `<div class="row full"><span class="label">${item.label || '-'}</span> ${item.value || '-'}</div>`).join('')
             : '<div class="row full"><span class="label">Form Details:</span> No additional details found.</div>';
@@ -706,7 +732,7 @@ function downloadLoanDetails(loanId, loanName) {
                 <body>
                     <h2>Loan Full Details</h2>
                     <div class="grid">
-                        <div class="row"><span class="label">Loan ID:</span> ${loan.loan_id || loan.id || '-'}</div>
+                        <div class="row"><span class="label">Loan ID:</span> ${loan.loan_id_display || loan.loan_id || 'Not Assigned Yet'}</div>
                         <div class="row"><span class="label">Applicant:</span> ${loan.full_name || '-'}</div>
                         <div class="row"><span class="label">Phone:</span> ${loan.mobile_number || '-'}</div>
                         <div class="row"><span class="label">Email:</span> ${loan.email || '-'}</div>

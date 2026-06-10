@@ -701,7 +701,7 @@
                 <input id="collect-banker-email" type="email" placeholder="Enter banker email" required>
             </div>
             <div class="form-group">
-                <label for="collect-loan-account-number">Loan Account Number</label>
+                <label for="collect-loan-account-number">Account Number</label>
                 <input id="collect-loan-account-number" type="text" placeholder="Enter loan account number">
             </div>
             <div class="form-group">
@@ -951,13 +951,10 @@
             const daysAgo = Math.floor((new Date() - new Date(loan.assigned_date)) / (1000 * 60 * 60 * 24));
             const safeApplicantName = JSON.stringify(loan.applicant_name || '');
             const safeEntityType = JSON.stringify(loan.entity_type || loan.source || '');
-            const isFollowUpRow = loan.status === 'Follow Up';
-            const actionButtons = isFollowUpRow
-                ? `<button class="btn-action btn-process" onclick="openProcessPage(${loan.id}, ${safeEntityType})">Edit</button>`
-                : `
-                    <button class="btn-action btn-view" onclick="viewLoan(${loan.id}, ${safeApplicantName}, ${safeEntityType})">View</button>
-                    <button class="btn-action btn-process" onclick="openProcessPage(${loan.id}, ${safeEntityType})">${PAGE_MODE === 'bank_processing' ? 'Open' : 'Process'}</button>
-                `;
+            const entityQuery = (loan.entity_type || loan.source)
+                ? `?entity_type=${encodeURIComponent(loan.entity_type || loan.source || '')}`
+                : '';
+            const actionButtons = `<a class="btn-action btn-process" href="/employee/loan/${loan.id}/process/${entityQuery}">View Process</a>`;
 
             row.innerHTML = `
                 <td>
@@ -1176,7 +1173,7 @@
     function openProcessPage(loanId, entityType = '') {
         currentEntityType = entityType || '';
         const query = currentEntityType ? `?entity_type=${encodeURIComponent(currentEntityType)}` : '';
-        window.location.href = `/employee/loan/${loanId}/bank-processing/${query}`;
+        window.location.href = `/employee/loan/${loanId}/process/${query}`;
     }
 
     function openApprovalModal(loanId, applicantName, entityType = '') {
