@@ -2299,12 +2299,14 @@
     <!-- Main Content -->
     <main class="main-content{% if not user.is_authenticated %} no-auth{% endif %}">
         {% if messages %}
+        <div id="django-message-container">
             {% for message in messages %}
-                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show django-message" role="alert">
                     {{ message }}
                     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
             {% endfor %}
+        </div>
         {% endif %}
 
         {% block content %}{% endblock %}
@@ -2593,6 +2595,29 @@
     </script>
     
     <script src="/static/js/panel-labels.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            setTimeout(function () {
+                document.querySelectorAll('.django-message').forEach(function (alert) {
+                    alert.classList.remove('show');
+                    setTimeout(function () {
+                        alert.remove();
+                    }, 300);
+                });
+            }, 5000);
+        });
+        document.addEventListener('submit', function (event) {
+            const form = event.target;
+            if (!(form instanceof HTMLFormElement)) return;
+            const submitBtn = form.querySelector('button[type="submit"], input[type="submit"]');
+            if (!submitBtn || submitBtn.disabled) return;
+            submitBtn.disabled = true;
+            if (submitBtn.tagName === 'BUTTON') {
+                submitBtn.dataset.originalText = submitBtn.innerHTML;
+                submitBtn.innerHTML = 'Submitting...';
+            }
+        });
+    </script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>

@@ -898,8 +898,9 @@
             <!-- PAGE CONTENT -->
             <main class="page-content">
                 {% if messages %}
+                <div id="django-message-container">
                     {% for message in messages %}
-                        <div style="margin-bottom: 16px; padding: 16px; border-radius: 8px; background-color: {% if message.tags %}
+                        <div class="django-message" style="margin-bottom: 16px; padding: 16px; border-radius: 8px; background-color: {% if message.tags %}
                             {% if 'error' in message.tags %}#fee2e2{% elif 'success' in message.tags %}#dcfce7{% elif 'warning' in message.tags %}#fef3c7{% else %}#dbeafe{% endif %}
                         {% else %}#dbeafe{% endif %}; color: {% if message.tags %}
                             {% if 'error' in message.tags %}#991b1b{% elif 'success' in message.tags %}#15803d{% elif 'warning' in message.tags %}#92400e{% else %}#1e40af{% endif %}
@@ -907,6 +908,7 @@
                             {{ message }}
                         </div>
                     {% endfor %}
+                </div>
                 {% endif %}
                 
                 {% block content %}{% endblock %}
@@ -1117,6 +1119,30 @@
         });
     </script>
     <script src="{% static 'js/panel-labels.js' %}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            setTimeout(function () {
+                document.querySelectorAll('.django-message').forEach(function (alert) {
+                    alert.style.transition = 'opacity 0.3s ease';
+                    alert.style.opacity = '0';
+                    setTimeout(function () {
+                        alert.remove();
+                    }, 300);
+                });
+            }, 5000);
+        });
+        document.addEventListener('submit', function (event) {
+            const form = event.target;
+            if (!(form instanceof HTMLFormElement)) return;
+            const submitBtn = form.querySelector('button[type="submit"], input[type="submit"]');
+            if (!submitBtn || submitBtn.disabled) return;
+            submitBtn.disabled = true;
+            if (submitBtn.tagName === 'BUTTON') {
+                submitBtn.dataset.originalText = submitBtn.innerHTML;
+                submitBtn.innerHTML = 'Submitting...';
+            }
+        });
+    </script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>

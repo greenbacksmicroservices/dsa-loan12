@@ -169,6 +169,7 @@
     .action-btn.revert { background: #f97316; }
     .action-btn.sign { background: #059669; }
     .action-btn.disburse { background: #2563eb; }
+    .action-btn.delete { background: #b91c1c; }
 
     .admin-action-modal {
         position: fixed;
@@ -388,6 +389,16 @@
                                     onclick="openAdminAction('disburse', {{ app.id }}, '{{ app.applicant.full_name|escapejs }}')">
                                     <i class="fas fa-money-bill-wave"></i> Disburse
                                 </button>
+                                {% endif %}
+                                {% if status_name != 'Disbursed' %}
+                                <form method="POST" action="{% url 'delete_loan' app.id %}" class="d-inline"
+                                      onsubmit="return confirm('Are you sure you want to delete this loan for {{ app.applicant.full_name|escapejs }}? This action cannot be undone.');">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="entity_type" value="application">
+                                    <button type="submit" class="action-btn delete" title="Delete Loan">
+                                        <i class="fas fa-trash"></i> Delete
+                                    </button>
+                                </form>
                                 {% endif %}
                             </div>
                         </td>

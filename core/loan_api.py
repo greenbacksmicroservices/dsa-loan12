@@ -1507,10 +1507,12 @@ def api_update_disbursed_details(request, loan_id):
 
 
 @login_required(login_url='admin_login')
-@admin_required
 @require_http_methods(['DELETE', 'POST'])
 def api_loan_delete(request, loan_id):
     """Delete a workflow application and/or legacy loan by database primary key."""
+    if getattr(request.user, 'role', None) not in ('admin', 'subadmin'):
+        return JsonResponse({'success': False, 'error': 'Unauthorized access.'}, status=403)
+
     try:
         entity_type = ''
         if request.body:

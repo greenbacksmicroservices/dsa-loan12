@@ -6517,7 +6517,10 @@ def _append_uploaded_document_rows(rows, documents):
             value_parts.append(f'File: {file_name}')
         if uploaded:
             value_parts.append(f'Uploaded: {uploaded}')
-        value_parts.append(f'Password: {password or "No Password"}')
+        if password:
+            value_parts.append(f'Password: {password}')
+        else:
+            value_parts.append('Password: No Password')
         value = '\n'.join(value_parts)
 
         key = _normalize_detail_key(label)

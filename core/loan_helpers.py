@@ -546,13 +546,21 @@ def delete_loan_by_primary_key(loan_id, entity_type=None):
         }
 
     def _delete_legacy(legacy_obj):
+        from .loan_sync import find_related_loan_application
+
         if str(legacy_obj.status or '').strip().lower() == 'disbursed':
             return {
                 'success': False,
                 'error': 'Cannot delete a disbursed loan.',
                 'status_code': 400,
             }
+        related_app = find_related_loan_application(legacy_obj)
+        applicant = related_app.applicant if related_app else None
         legacy_obj.delete()
+        if related_app:
+            related_app.delete()
+        if applicant:
+            applicant.delete()
         return {
             'success': True,
             'message': 'Loan deleted successfully.',
@@ -574,9 +582,38 @@ def delete_loan_by_primary_key(loan_id, entity_type=None):
             'error': 'This record is linked to other data and cannot be deleted.',
             'status_code': 400,
         }
+    except Exception as exc:
+        return {
+            'success': False,
+            'error': str(exc) or 'Failed to delete loan.',
+            'status_code': 400,
+        }
 
     return {
         'success': False,
         'error': 'Loan already deleted or not found.',
         'status_code': 404,
     }
+
+
+def mirror_legacy_documents_to_application(legacy_loan, loan_application=None):
+    """Copy legacy LoanDocument rows onto the linked LoanApplication."""
+    from .models import ApplicantDocument, LoanDocument
+    from .loan_sync import find_related_loan_application
+
+    if not legacy_loan:
+        return
+    loan_app = loan_application or find_related_loan_application(legacy_loan)
+    if not loan_app:
+        return
+
+    for loan_doc in LoanDocument.objects.filter(loan=legacy_loan):
+        ApplicantDocument.objects.update_or_create(
+            loan_application=loan_app,
+            document_type=str(loan_doc.document_type or 'other')[:50],
+            defaults={
+                'file': loan_doc.file,
+                'is_required': loan_doc.is_required,
+                'document_password': loan_doc.document_password,
+            },
+        )

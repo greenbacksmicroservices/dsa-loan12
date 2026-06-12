@@ -1144,6 +1144,32 @@ def admin_edit_loan(request, loan_id):
 
 
 @login_required(login_url='admin_login')
+@require_POST
+def delete_loan(request, loan_id):
+    """Delete a loan from admin/partner tables using POST + redirect."""
+    if request.user.role not in ('admin', 'subadmin'):
+        messages.error(request, 'Unauthorized access.')
+        return redirect(request.META.get('HTTP_REFERER', 'admin_all_loans'))
+
+    from .loan_helpers import delete_loan_by_primary_key
+
+    entity_type = request.POST.get('entity_type') or request.POST.get('source') or ''
+    result = delete_loan_by_primary_key(loan_id, entity_type=entity_type)
+    referer = request.META.get('HTTP_REFERER')
+
+    if result.get('success'):
+        messages.success(request, result.get('message') or 'Loan deleted successfully.')
+    else:
+        messages.error(request, result.get('error') or 'Failed to delete loan.')
+
+    if referer:
+        return redirect(referer)
+    if request.user.role == 'subadmin':
+        return redirect('subadmin_all_loans')
+    return redirect('admin_all_loans')
+
+
+@login_required(login_url='admin_login')
 @admin_required
 @require_POST
 def api_delete_loan(request, loan_id):
@@ -2611,12 +2637,14 @@ def admin_add_loan(request):
 
                 doc_password = None
                 flag_index = idx - 1
-                password_enabled = (
-                    flag_index < len(password_enabled_flags)
-                    and str(password_enabled_flags[flag_index]).strip() == '1'
-                )
-                if password_enabled and flag_index < len(password_values):
-                    doc_password = (password_values[flag_index] or '').strip() or None
+                if flag_index < len(password_values):
+                    raw_password = (password_values[flag_index] or '').strip()
+                    if raw_password:
+                        doc_password = raw_password
+                if doc_password is None and flag_index < len(password_enabled_flags):
+                    password_enabled = str(password_enabled_flags[flag_index]).strip() == '1'
+                    if password_enabled and flag_index < len(password_values):
+                        doc_password = (password_values[flag_index] or '').strip() or None
 
                 LoanDocument.objects.create(
                     loan=loan,
@@ -2625,6 +2653,9 @@ def admin_add_loan(request):
                     is_required=False,
                     document_password=doc_password,
                 )
+
+            from .loan_helpers import mirror_legacy_documents_to_application
+            mirror_legacy_documents_to_application(loan)
 
             manual_label = display_manual_loan_id(loan)
 
@@ -3223,7 +3254,19 @@ def api_get_application_details(request, app_id):
         
         # Get documents
         try:
-            documents = ApplicantDocument.objects.filter(applicant=applicant)
+            documents = ApplicantDocument.objects.filter(loan_application=application)
+            related_legacy = find_related_loan(application)
+            if related_legacy:
+                from .models import LoanDocument
+                for loan_doc in LoanDocument.objects.filter(loan=related_legacy):
+                    doc_password = (getattr(loan_doc, 'document_password', None) or '').strip()
+                    data['documents'].append({
+                        'name': loan_doc.get_document_type_display() if hasattr(loan_doc, 'get_document_type_display') else (loan_doc.document_type or 'Document'),
+                        'url': loan_doc.file.url if loan_doc.file else '',
+                        'uploaded': loan_doc.uploaded_at.strftime('%Y-%m-%d') if loan_doc.uploaded_at else '',
+                        'document_password': doc_password,
+                        'has_password': bool(doc_password),
+                    })
             for doc in documents:
                 doc_password = (getattr(doc, 'document_password', None) or '').strip()
                 data['documents'].append({
