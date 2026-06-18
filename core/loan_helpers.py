@@ -6,7 +6,7 @@ import re
 
 from django.db.models import Q
 
-from .models import Agent, Loan, LoanApplication, User
+from .models import Agent, Applicant, Loan, LoanApplication, User
 
 PASSWORD_PROTECTED_DOC_KEYWORDS = (
     'salary slip',
@@ -553,22 +553,41 @@ def read_document_password_for_save(request, index=0):
     return None
 
 
-def delete_loan_by_primary_key(loan_id, entity_type=None):
+def _sanitize_delete_error_message(error_text):
+    """Return a user-safe delete error without raw ORM exceptions."""
+    message = str(error_text or '').strip() or 'Failed to delete loan.'
+    lowered = message.lower()
+    if 'no loan matches' in lowered or 'doesnotexist' in lowered or 'does not exist' in lowered:
+        return 'Loan already deleted or not found.'
+    return message
+
+
+def delete_loan_by_primary_key(loan_id, entity_type=None, allow_disbursed=False):
     """
     Delete a workflow LoanApplication and/or legacy Loan by database primary key.
 
     Returns dict: success, message, error, status_code
     """
+    from django.db import transaction
     from django.db.models import ProtectedError
 
-    from .loan_sync import find_related_loan
+    from .loan_sync import find_related_loan, find_related_loan_application
+
+    try:
+        loan_pk = int(loan_id)
+    except (TypeError, ValueError):
+        return {
+            'success': False,
+            'error': 'Invalid loan identifier.',
+            'status_code': 400,
+        }
 
     normalized = str(entity_type or '').strip().lower()
     prefer_application = normalized in {'application', 'app'}
     prefer_legacy = normalized in {'legacy', 'loan'}
 
-    loan_app = LoanApplication.objects.select_related('applicant').filter(id=loan_id).first()
-    legacy_loan = Loan.objects.filter(id=loan_id).first()
+    loan_app = LoanApplication.objects.select_related('applicant').filter(id=loan_pk).first()
+    legacy_loan = Loan.objects.filter(id=loan_pk).first()
 
     if not loan_app and not legacy_loan:
         return {
@@ -577,8 +596,11 @@ def delete_loan_by_primary_key(loan_id, entity_type=None):
             'status_code': 404,
         }
 
+    def _is_disbursed_status(raw_status):
+        return str(raw_status or '').strip().lower() == 'disbursed'
+
     def _delete_application(app_obj):
-        if str(app_obj.status or '').strip().lower() == 'disbursed':
+        if not allow_disbursed and _is_disbursed_status(app_obj.status):
             return {
                 'success': False,
                 'error': 'Cannot delete a disbursed loan.',
@@ -586,11 +608,12 @@ def delete_loan_by_primary_key(loan_id, entity_type=None):
             }
         applicant = app_obj.applicant
         linked_legacy = find_related_loan(app_obj)
-        app_obj.delete()
-        if applicant:
-            applicant.delete()
-        if linked_legacy:
-            linked_legacy.delete()
+        with transaction.atomic():
+            app_obj.delete()
+            if linked_legacy:
+                Loan.objects.filter(pk=linked_legacy.pk).delete()
+            if applicant:
+                Applicant.objects.filter(pk=applicant.pk).delete()
         return {
             'success': True,
             'message': 'Loan deleted successfully.',
@@ -598,9 +621,7 @@ def delete_loan_by_primary_key(loan_id, entity_type=None):
         }
 
     def _delete_legacy(legacy_obj):
-        from .loan_sync import find_related_loan_application
-
-        if str(legacy_obj.status or '').strip().lower() == 'disbursed':
+        if not allow_disbursed and _is_disbursed_status(legacy_obj.status):
             return {
                 'success': False,
                 'error': 'Cannot delete a disbursed loan.',
@@ -608,11 +629,12 @@ def delete_loan_by_primary_key(loan_id, entity_type=None):
             }
         related_app = find_related_loan_application(legacy_obj)
         applicant = related_app.applicant if related_app else None
-        legacy_obj.delete()
-        if related_app:
-            related_app.delete()
-        if applicant:
-            applicant.delete()
+        with transaction.atomic():
+            legacy_obj.delete()
+            if related_app:
+                LoanApplication.objects.filter(pk=related_app.pk).delete()
+            if applicant:
+                Applicant.objects.filter(pk=applicant.pk).delete()
         return {
             'success': True,
             'message': 'Loan deleted successfully.',
@@ -637,7 +659,7 @@ def delete_loan_by_primary_key(loan_id, entity_type=None):
     except Exception as exc:
         return {
             'success': False,
-            'error': str(exc) or 'Failed to delete loan.',
+            'error': _sanitize_delete_error_message(exc),
             'status_code': 400,
         }
 

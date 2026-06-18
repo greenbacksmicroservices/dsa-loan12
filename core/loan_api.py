@@ -1525,22 +1525,28 @@ def api_loan_delete(request, loan_id):
         if not entity_type:
             entity_type = request.POST.get('entity_type') or request.POST.get('source') or ''
 
-        result = delete_loan_by_primary_key(loan_id, entity_type=entity_type)
+        result = delete_loan_by_primary_key(
+            loan_id,
+            entity_type=entity_type,
+            allow_disbursed=True,
+        )
         status_code = result.get('status_code', 200 if result.get('success') else 400)
         if result.get('success'):
             return JsonResponse({
                 'success': True,
-                'message': result.get('message') or 'Loan deleted successfully.',
+                'message': 'Loan deleted successfully.',
                 'deleted_id': loan_id,
             }, status=status_code)
+        from .loan_helpers import _sanitize_delete_error_message
         return JsonResponse({
             'success': False,
-            'error': result.get('error') or 'Failed to delete loan.',
+            'error': _sanitize_delete_error_message(result.get('error')),
         }, status=status_code)
     except Exception as e:
+        from .loan_helpers import _sanitize_delete_error_message
         return JsonResponse({
             'success': False,
-            'error': str(e),
+            'error': _sanitize_delete_error_message(e),
         }, status=400)
 
 

@@ -5,6 +5,7 @@ from django.views.decorators.http import require_http_methods, require_POST, req
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.shortcuts import render, redirect, get_object_or_404
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.db import transaction
 from django.db.models import Q, Sum, Count, F, Prefetch
 from django.core.paginator import Paginator
@@ -1143,30 +1144,49 @@ def admin_edit_loan(request, loan_id):
     return render(request, 'core/admin/all_loans_edit.html', context)
 
 
+def _redirect_after_loan_delete(request, fallback_name='admin_all_loans'):
+    """Redirect back to the same filtered list when possible."""
+    candidates = [
+        (request.POST.get('next') or '').strip(),
+        (request.META.get('HTTP_REFERER') or '').strip(),
+    ]
+    for candidate in candidates:
+        if candidate and url_has_allowed_host_and_scheme(
+            url=candidate,
+            allowed_hosts={request.get_host()},
+            require_https=request.is_secure(),
+        ):
+            return redirect(candidate)
+    if request.user.role == 'subadmin':
+        return redirect('subadmin_all_loans')
+    return redirect(fallback_name)
+
+
 @login_required(login_url='admin_login')
 @require_POST
 def delete_loan(request, loan_id):
     """Delete a loan from admin/partner tables using POST + redirect."""
+    from .loan_helpers import delete_loan_by_primary_key, _sanitize_delete_error_message
+
     if request.user.role not in ('admin', 'subadmin'):
         messages.error(request, 'Unauthorized access.')
-        return redirect(request.META.get('HTTP_REFERER', 'admin_all_loans'))
-
-    from .loan_helpers import delete_loan_by_primary_key
+        return _redirect_after_loan_delete(request)
 
     entity_type = request.POST.get('entity_type') or request.POST.get('source') or ''
-    result = delete_loan_by_primary_key(loan_id, entity_type=entity_type)
-    referer = request.META.get('HTTP_REFERER')
+    result = delete_loan_by_primary_key(
+        loan_id,
+        entity_type=entity_type,
+        allow_disbursed=True,
+    )
 
     if result.get('success'):
-        messages.success(request, result.get('message') or 'Loan deleted successfully.')
+        messages.success(request, 'Loan deleted successfully.')
+        logger.info('Loan %s deleted by %s', loan_id, request.user.username)
     else:
-        messages.error(request, result.get('error') or 'Failed to delete loan.')
+        error_text = _sanitize_delete_error_message(result.get('error'))
+        messages.error(request, f'Unable to delete loan: {error_text}')
 
-    if referer:
-        return redirect(referer)
-    if request.user.role == 'subadmin':
-        return redirect('subadmin_all_loans')
-    return redirect('admin_all_loans')
+    return _redirect_after_loan_delete(request)
 
 
 @login_required(login_url='admin_login')
@@ -1186,17 +1206,22 @@ def api_delete_loan(request, loan_id):
             if isinstance(payload, dict):
                 entity_type = payload.get('entity_type') or payload.get('source') or ''
 
-        result = delete_loan_by_primary_key(loan_id, entity_type=entity_type)
+        result = delete_loan_by_primary_key(
+            loan_id,
+            entity_type=entity_type,
+            allow_disbursed=True,
+        )
         status_code = result.get('status_code', 200 if result.get('success') else 400)
         if result.get('success'):
             logger.info(f"Loan {loan_id} deleted by {request.user.username}")
             return JsonResponse({
                 'success': True,
-                'message': result.get('message') or 'Loan deleted successfully.',
+                'message': 'Loan deleted successfully.',
             }, status=status_code)
+        from .loan_helpers import _sanitize_delete_error_message
         return JsonResponse({
             'success': False,
-            'error': result.get('error') or 'Failed to delete loan.',
+            'error': _sanitize_delete_error_message(result.get('error')),
         }, status=status_code)
     except Exception as e:
         logger.error(f"Error deleting loan: {str(e)}")

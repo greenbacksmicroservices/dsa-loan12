@@ -2084,6 +2084,23 @@
                 submitBtn.innerHTML = 'Submitting...';
             }
         });
+
+        document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('.delete-loan-form').forEach(function (form) {
+                form.addEventListener('submit', function (event) {
+                    if (!confirm('Are you sure you want to delete this loan? This action cannot be undone.')) {
+                        event.preventDefault();
+                        const submitBtn = form.querySelector('button[type="submit"], input[type="submit"]');
+                        if (submitBtn) {
+                            submitBtn.disabled = false;
+                            if (submitBtn.dataset.originalText) {
+                                submitBtn.innerHTML = submitBtn.dataset.originalText;
+                            }
+                        }
+                    }
+                });
+            });
+        });
     </script>
     {% block extra_js %}{% endblock %}
 </body>
