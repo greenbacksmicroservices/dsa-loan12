@@ -55,6 +55,7 @@ from .loan_helpers import (
     apply_official_loan_id,
     apply_official_loan_id_from_payload,
     display_loan_id,
+    display_user_name,
     loan_id_api_fields,
     normalize_loan_id,
     read_document_password_for_save,
@@ -6339,6 +6340,25 @@ def _normalize_detail_key(value):
     return ' '.join(text.split())
 
 
+def _document_labels_match(row_label, doc_label):
+    """Match remark rows like 'Document 1: Property Documents' to doc display names."""
+    row_text = str(row_label or '').strip()
+    doc_text = str(doc_label or '').strip()
+    if not row_text or not doc_text:
+        return False
+    row_key = _normalize_detail_key(row_text)
+    doc_key = _normalize_detail_key(doc_text)
+    if row_key == doc_key or row_key in doc_key or doc_key in row_key:
+        return True
+    row_match = re.match(r'^document\s*\d+\s*:\s*(.+)$', row_text, flags=re.IGNORECASE)
+    if row_match and _normalize_detail_key(row_match.group(1)) == doc_key:
+        return True
+    doc_match = re.match(r'^document\s*\d+\s*:\s*(.+)$', doc_text, flags=re.IGNORECASE)
+    if doc_match and _normalize_detail_key(doc_match.group(1)) == row_key:
+        return True
+    return False
+
+
 def _parse_colon_details(raw_text):
     details = {}
     for line in str(raw_text or '').splitlines():
@@ -6525,6 +6545,11 @@ def _append_uploaded_document_rows(rows, documents):
 
         key = _normalize_detail_key(label)
         existing = label_index.get(key)
+        if not existing:
+            for row in rows:
+                if _document_labels_match(row.get('label'), label):
+                    existing = row
+                    break
         if existing:
             existing['value'] = value
         else:
@@ -7072,7 +7097,12 @@ def employee_assigned_loan_detail(request, loan_id):
             if preferred_source == 'legacy':
                 raise LoanApplication.DoesNotExist
             loan = LoanApplication.objects.select_related(
-                'applicant', 'assigned_by', 'approved_by', 'rejected_by', 'disbursed_by'
+                'applicant',
+                'assigned_by',
+                'approved_by',
+                'rejected_by',
+                'disbursed_by',
+                'lead_received_by',
             ).prefetch_related('documents', 'status_history').filter(
                 app_lookup_filter
             ).get(
@@ -7313,6 +7343,8 @@ def employee_assigned_loan_detail(request, loan_id):
                 loan_data['processed_by'] = lead_names['employee']
             if loan_data.get('partner_under') in ['', '-'] and lead_names.get('leader'):
                 loan_data['partner_under'] = lead_names['leader']
+            if not str(loan_data.get('lead_receive_leader_name') or '').strip() and getattr(loan, 'lead_received_by', None):
+                loan_data['lead_receive_leader_name'] = display_user_name(loan.lead_received_by)
             loan_data = _attach_official_loan_id(loan_data, legacy_loan=related_legacy, loan_application=loan)
             loan_data['full_application_details'] = _append_uploaded_document_rows(
                 _build_full_application_details(loan_data, legacy_details),

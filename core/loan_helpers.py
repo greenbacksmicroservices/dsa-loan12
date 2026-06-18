@@ -43,10 +43,67 @@ def _extract_subadmin_id(notes):
 
 
 def _first_active_admin(exclude_id=None):
-    qs = User.objects.filter(role='admin', is_active=True).order_by('id')
+    qs = get_active_admins()
     if exclude_id:
         qs = qs.exclude(id=exclude_id)
     return qs.first()
+
+
+def normalize_user_role(role):
+    return str(role or '').strip().lower().replace(' ', '_')
+
+
+def is_admin_role(role):
+    return normalize_user_role(role) in {'admin'}
+
+
+def is_partner_role(role):
+    return normalize_user_role(role) in {'subadmin', 'partner'}
+
+
+def is_employee_role(role):
+    return normalize_user_role(role) in {'employee'}
+
+
+def is_channel_partner_role(role):
+    normalized = normalize_user_role(role)
+    return normalized in CHANNEL_PARTNER_ROLE_ALIASES or normalized in {
+        'agent',
+        'channel_partner',
+        'channelpartner',
+        'cp',
+        'sub_channel_partner',
+        'subchannelpartner',
+    }
+
+
+def get_active_admins():
+    return User.objects.filter(is_active=True, role__iexact='admin').order_by(
+        'first_name',
+        'last_name',
+        'username',
+    )
+
+
+def get_employee_partner(user):
+    profile = getattr(user, 'employee_profile', None)
+    partner_id = _extract_subadmin_id(getattr(profile, 'notes', '')) if profile else None
+    if not partner_id:
+        return None
+    return User.objects.filter(
+        id=partner_id,
+        is_active=True,
+    ).filter(
+        Q(role__iexact='subadmin') | Q(role__iexact='partner'),
+    ).first()
+
+
+def get_channel_partner_partner(user):
+    agent_profile = Agent.objects.filter(user=user).select_related('created_by').first()
+    created_by = getattr(agent_profile, 'created_by', None)
+    if created_by and is_partner_role(getattr(created_by, 'role', '')) and created_by.is_active:
+        return created_by
+    return None
 
 
 def get_lead_receive_options(user):
@@ -56,7 +113,7 @@ def get_lead_receive_options(user):
     """
     options = []
     seen = set()
-    role = getattr(user, 'role', '')
+    role = normalize_user_role(getattr(user, 'role', ''))
 
     def add_user(candidate):
         if not candidate or not candidate.is_active:
@@ -67,35 +124,30 @@ def get_lead_receive_options(user):
         options.append({
             'id': candidate.id,
             'name': display_user_name(candidate),
-            'role': candidate.role,
+            'role': normalize_user_role(candidate.role),
         })
 
-    if role == 'admin':
-        add_user(user)
-        for admin_user in User.objects.filter(role='admin', is_active=True).order_by('first_name', 'username'):
+    def add_all_admins():
+        for admin_user in get_active_admins():
             add_user(admin_user)
-    elif role == 'employee':
-        profile = getattr(user, 'employee_profile', None)
-        partner_id = _extract_subadmin_id(getattr(profile, 'notes', '')) if profile else None
-        partner = None
-        if partner_id:
-            partner = User.objects.filter(id=partner_id, role='subadmin', is_active=True).first()
+
+    if is_admin_role(role):
+        add_all_admins()
+    elif is_partner_role(role):
+        add_all_admins()
+        add_user(user)
+    elif is_employee_role(role):
+        partner = get_employee_partner(user)
         if partner:
             add_user(partner)
-        else:
-            add_user(_first_active_admin())
-    elif role == 'agent':
-        agent_profile = Agent.objects.filter(user=user).select_related('created_by').first()
-        created_by = getattr(agent_profile, 'created_by', None)
-        if getattr(created_by, 'role', '') == 'subadmin':
-            add_user(created_by)
-        else:
-            add_user(_first_active_admin())
-    elif role == 'subadmin':
-        add_user(_first_active_admin())
-        add_user(user)
+        add_all_admins()
+    elif is_channel_partner_role(role):
+        partner = get_channel_partner_partner(user)
+        if partner:
+            add_user(partner)
+        add_all_admins()
     else:
-        add_user(_first_active_admin())
+        add_all_admins()
 
     return options
 

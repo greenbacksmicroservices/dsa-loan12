@@ -2620,7 +2620,7 @@ def admin_add_loan(request):
                 messages.error(request, upload_error)
                 return redirect(self_add_loan_route)
             document_name_sequence = expanded_document_names if len(expanded_document_names) >= len(documents_files) else document_names
-            password_enabled_flags = request.POST.getlist('document_password_enabled[]')
+            password_expanded = request.POST.getlist('document_password_expanded[]')
             password_values = request.POST.getlist('document_password[]')
             for idx, uploaded_file in enumerate(documents_files, start=1):
                 if not uploaded_file:
@@ -2637,14 +2637,14 @@ def admin_add_loan(request):
 
                 doc_password = None
                 flag_index = idx - 1
-                if flag_index < len(password_values):
+                if flag_index < len(password_expanded):
+                    raw_password = (password_expanded[flag_index] or '').strip()
+                    if raw_password:
+                        doc_password = raw_password
+                if doc_password is None and flag_index < len(password_values):
                     raw_password = (password_values[flag_index] or '').strip()
                     if raw_password:
                         doc_password = raw_password
-                if doc_password is None and flag_index < len(password_enabled_flags):
-                    password_enabled = str(password_enabled_flags[flag_index]).strip() == '1'
-                    if password_enabled and flag_index < len(password_values):
-                        doc_password = (password_values[flag_index] or '').strip() or None
 
                 LoanDocument.objects.create(
                     loan=loan,
@@ -2655,7 +2655,18 @@ def admin_add_loan(request):
                 )
 
             from .loan_helpers import mirror_legacy_documents_to_application
+            from .loan_sync import find_related_loan_application
+
             mirror_legacy_documents_to_application(loan)
+            related_app = find_related_loan_application(loan)
+            if related_app and lead_received_by_id:
+                try:
+                    receiver = User.objects.filter(id=int(lead_received_by_id), is_active=True).first()
+                except (TypeError, ValueError):
+                    receiver = None
+                if receiver:
+                    related_app.lead_received_by = receiver
+                    related_app.save(update_fields=['lead_received_by'])
 
             manual_label = display_manual_loan_id(loan)
 
