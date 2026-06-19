@@ -1678,6 +1678,8 @@ def api_admin_subadmin_full_details(request, subadmin_id):
         perm = (section1 or {}).get('permanent_address') or {}
         section6 = onboarding.get('section6') if isinstance(onboarding, dict) else {}
 
+        from .admin_relationship_helpers import build_partner_relationship_view
+
         return JsonResponse({
             'success': True,
             'subadmin': {
@@ -1701,6 +1703,7 @@ def api_admin_subadmin_full_details(request, subadmin_id):
             'customers': customers,
             'managed_employees': managed_employees,
             'managed_agents': managed_agents,
+            'relationships': build_partner_relationship_view(subadmin),
             'onboarding': onboarding,
             'documents': documents,
         })

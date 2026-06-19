@@ -109,47 +109,50 @@ def get_channel_partner_partner(user):
 def get_lead_receive_options(user):
     """
     Return lead-receiver dropdown options for the current user.
+
+    Rules:
+    - User under a Partner sees only that Partner.
+    - User without a Partner above sees only one Admin.
+    - Admin sees only themselves (or the primary active admin).
     Each option: {'id': int, 'name': str, 'role': str}
     """
-    options = []
-    seen = set()
     role = normalize_user_role(getattr(user, 'role', ''))
 
-    def add_user(candidate):
+    def single_option(candidate):
         if not candidate or not candidate.is_active:
-            return
-        if candidate.id in seen:
-            return
-        seen.add(candidate.id)
-        options.append({
+            return []
+        return [{
             'id': candidate.id,
             'name': display_user_name(candidate),
             'role': normalize_user_role(candidate.role),
-        })
+        }]
 
-    def add_all_admins():
-        for admin_user in get_active_admins():
-            add_user(admin_user)
-
-    if is_admin_role(role):
-        add_all_admins()
-    elif is_partner_role(role):
-        add_all_admins()
-        add_user(user)
-    elif is_employee_role(role):
+    if is_employee_role(role):
         partner = get_employee_partner(user)
         if partner:
-            add_user(partner)
-        add_all_admins()
-    elif is_channel_partner_role(role):
+            return single_option(partner)
+        admin_user = _first_active_admin()
+        return single_option(admin_user)
+
+    if is_channel_partner_role(role):
         partner = get_channel_partner_partner(user)
         if partner:
-            add_user(partner)
-        add_all_admins()
-    else:
-        add_all_admins()
+            return single_option(partner)
+        admin_user = _first_active_admin()
+        return single_option(admin_user)
 
-    return options
+    if is_partner_role(role):
+        admin_user = _first_active_admin()
+        return single_option(admin_user)
+
+    if is_admin_role(role):
+        if user.is_active:
+            return single_option(user)
+        admin_user = _first_active_admin()
+        return single_option(admin_user)
+
+    admin_user = _first_active_admin()
+    return single_option(admin_user)
 
 
 def resolve_lead_receive_name(user_id, fallback_name=''):

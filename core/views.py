@@ -1098,88 +1098,50 @@ def admin_reports(request):
         }
         status_filter = status_alias_map.get(status_filter, status_filter)
 
-        filtered_loans_qs = Loan.objects.select_related(
-            'created_by',
-            'assigned_employee',
-            'assigned_agent',
-            'assigned_agent__user',
-        ).prefetch_related('documents').filter(
-            created_at__gte=start_date,
-            created_at__lt=end_date,
+        from .admin_panel_helpers import (
+            build_admin_filtered_report_loans,
+            build_agent_report_rows,
+            build_employee_report_rows,
+            build_partner_report_rows,
+            report_effective_status_key,
+            report_status_label,
         )
 
-        if loan_id_filter:
-            try:
-                filtered_loans_qs = filtered_loans_qs.filter(id=int(loan_id_filter))
-            except (TypeError, ValueError):
-                filtered_loans_qs = filtered_loans_qs.none()
-
-        if search_query:
-            search_filter = (
-                Q(full_name__icontains=search_query) |
-                Q(mobile_number__icontains=search_query) |
-                Q(email__icontains=search_query) |
-                Q(user_id__icontains=search_query)
-            )
-            if search_query.isdigit():
-                search_filter |= Q(id=int(search_query))
-            filtered_loans_qs = filtered_loans_qs.filter(search_filter)
-
-        if employee_filter:
-            filtered_loans_qs = filtered_loans_qs.filter(assigned_employee_id=employee_filter)
-
-        if partner_filter:
-            filtered_loans_qs = filtered_loans_qs.filter(
-                Q(created_by_id=partner_filter) |
-                Q(assigned_agent__created_by_id=partner_filter)
-            )
-
-        if agent_filter:
-            filtered_loans_qs = filtered_loans_qs.filter(assigned_agent_id=agent_filter)
-
-        if status_filter:
-            matching_ids = [
-                loan.id for loan in filtered_loans_qs
-                if _admin_report_effective_status_key(loan) == status_filter
-            ]
-            filtered_loans_qs = filtered_loans_qs.filter(id__in=matching_ids)
-
-        report_loans = list(filtered_loans_qs.order_by('-created_at'))
-
-        def _report_partner_name(loan):
-            creator = getattr(loan, 'created_by', None)
-            assigned_agent = getattr(loan, 'assigned_agent', None)
-            if creator and getattr(creator, 'role', '') == 'subadmin':
-                return creator.get_full_name() or creator.username or '-'
-            if assigned_agent and getattr(assigned_agent, 'created_by', None):
-                owner = assigned_agent.created_by
-                if getattr(owner, 'role', '') == 'subadmin':
-                    return owner.get_full_name() or owner.username or '-'
-            return '-'
-
-        for loan in report_loans:
-            status_key = _admin_report_effective_status_key(loan)
-            loan.report_status_key = status_key
-            loan.report_status_label = _admin_report_status_label(status_key)
-            loan.report_partner_name = _report_partner_name(loan)
+        report_loans = build_admin_filtered_report_loans(
+            start_date=start_date,
+            end_date=end_date,
+            search_query=search_query,
+            status_filter=status_filter,
+            employee_filter=employee_filter,
+            partner_filter=partner_filter,
+            agent_filter=agent_filter,
+            loan_id_filter=loan_id_filter,
+        )
 
         if request.GET.get('download'):
             from .report_exports import export_loans_csv, export_loans_excel
             format_type = (request.GET.get('format') or 'csv').lower()
+
+            def _report_status_key_getter(row):
+                return getattr(row, 'report_status_key', None) or report_effective_status_key(
+                    loan_obj=getattr(row, '_legacy_loan', row),
+                    loan_app=getattr(row, '_related_app', None),
+                )
+
             if format_type in ['excel', 'xlsx']:
                 return export_loans_excel(
                     report_loans,
                     period,
                     'admin_loans_report',
-                    _admin_report_effective_status_key,
-                    _admin_report_status_label,
+                    _report_status_key_getter,
+                    report_status_label,
                 )
             return export_loans_csv(
                 report_loans,
                 period,
                 'admin_loans_report',
-                _admin_report_effective_status_key,
-                _admin_report_status_label,
+                _report_status_key_getter,
+                report_status_label,
             )
 
         total_applications = len(report_loans)
@@ -1217,7 +1179,11 @@ def admin_reports(request):
 
         total_amount = sum((loan.loan_amount or 0) for loan in report_loans)
         approved_amount = sum((loan.loan_amount or 0) for loan in report_loans if loan.report_status_key == 'approved')
-        disbursed_amount = sum((loan.loan_amount or 0) for loan in report_loans if loan.report_status_key == 'disbursed')
+        disbursed_amount = sum(
+            (getattr(loan, 'report_disbursed_amount', 0) or 0)
+            for loan in report_loans
+            if getattr(loan, 'report_status_key', '') == 'disbursed'
+        )
         pending_amount = total_amount - disbursed_amount
         avg_loan_value = (total_amount / total_applications) if total_applications > 0 else 0
 
@@ -1261,12 +1227,6 @@ def admin_reports(request):
 
         download_people.sort(key=lambda person: (person['name'].lower(), person['role']))
 
-        from .admin_panel_helpers import (
-            build_partner_report_rows,
-            build_employee_report_rows,
-            build_agent_report_rows,
-        )
-
         partners_qs = User.objects.filter(role='subadmin').order_by('-date_joined')
         employees_qs = User.objects.filter(role='employee').select_related(
             'onboarding_profile', 'employee_profile'
@@ -1298,11 +1258,6 @@ def admin_reports(request):
         partner_application_map = {}
         employee_application_map = {}
         agent_application_map = {}
-        agent_user_map = {
-            agent.user_id: agent.id
-            for agent in agents_qs
-            if getattr(agent, 'user_id', None)
-        }
 
         for partner in partners_qs:
             partner_application_map[partner.id] = []
@@ -1311,23 +1266,30 @@ def admin_reports(request):
         for agent in agents_qs:
             agent_application_map[agent.id] = []
 
+        from .admin_panel_helpers import (
+            _resolve_report_channel_partner,
+            _resolve_report_employee_user,
+            _resolve_report_partner_user,
+        )
+
         seen_agent_loan_ids = {agent.id: set() for agent in agents_qs}
         for loan in report_loans:
-            creator = getattr(loan, 'created_by', None)
-            if creator and creator.role == 'subadmin' and creator.id in partner_application_map:
-                partner_application_map[creator.id].append(loan)
-            if creator and creator.role == 'employee' and creator.id in employee_application_map:
-                employee_application_map[creator.id].append(loan)
+            legacy_loan = getattr(loan, '_legacy_loan', loan)
+            related_app = getattr(loan, '_related_app', None)
 
-            agent_target_id = None
-            if creator and creator.role == 'agent':
-                agent_target_id = agent_user_map.get(creator.id)
-            if not agent_target_id and loan.assigned_agent_id in agent_application_map:
-                agent_target_id = loan.assigned_agent_id
-            if agent_target_id and agent_target_id in agent_application_map:
-                if loan.id not in seen_agent_loan_ids[agent_target_id]:
-                    agent_application_map[agent_target_id].append(loan)
-                    seen_agent_loan_ids[agent_target_id].add(loan.id)
+            partner_user = _resolve_report_partner_user(loan_obj=legacy_loan, loan_app=related_app)
+            if partner_user and partner_user.id in partner_application_map:
+                partner_application_map[partner_user.id].append(loan)
+
+            employee_user = _resolve_report_employee_user(loan_obj=legacy_loan, loan_app=related_app)
+            if employee_user and employee_user.id in employee_application_map:
+                employee_application_map[employee_user.id].append(loan)
+
+            channel_partner = _resolve_report_channel_partner(loan_obj=legacy_loan, loan_app=related_app)
+            if channel_partner and channel_partner.id in agent_application_map:
+                if loan.id not in seen_agent_loan_ids[channel_partner.id]:
+                    agent_application_map[channel_partner.id].append(loan)
+                    seen_agent_loan_ids[channel_partner.id].add(loan.id)
 
         partner_rows = build_partner_report_rows(partners_qs, partner_application_map)
         employee_rows = build_employee_report_rows(
@@ -1385,9 +1347,13 @@ def admin_reports(request):
             'employee_options': employees.order_by('first_name', 'last_name', 'username'),
             'partner_options': subadmins.order_by('first_name', 'last_name', 'username'),
             'agent_options': agents.order_by('name', 'id'),
+            'report_refreshed_at': timezone.now(),
         }
         
-        return render(request, 'core/admin/admin_reports_enhanced.html', context)
+        response = render(request, 'core/admin/admin_reports_enhanced.html', context)
+        response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        response['Pragma'] = 'no-cache'
+        return response
     except Exception as e:
         logger.error(f"Error loading reports: {str(e)}")
         context = {

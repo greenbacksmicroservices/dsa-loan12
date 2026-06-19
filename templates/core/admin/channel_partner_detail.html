@@ -279,6 +279,43 @@
         font-weight: 700;
         text-decoration: none;
     }
+
+    .relationship-panel {
+        margin-bottom: 14px;
+        background: #ffffff;
+        border: 1px solid #dbeafe;
+        border-radius: 12px;
+        padding: 14px 16px;
+    }
+
+    .relationship-panel h3 {
+        margin: 0 0 4px;
+        color: #0f172a;
+        font-size: 16px;
+        font-weight: 700;
+    }
+
+    .relationship-panel p {
+        margin: 0 0 12px;
+        color: #64748b;
+        font-size: 12px;
+    }
+
+    .relationship-lines {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .relationship-line {
+        padding: 10px 12px;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        background: #f8fafc;
+        color: #0f172a;
+        font-size: 14px;
+        font-weight: 600;
+    }
 </style>
 
 <div class="detail-shell">
@@ -291,6 +328,11 @@
     </div>
 
     <div id="agentSummaryGrid" class="summary-grid"></div>
+    <div class="relationship-panel">
+        <h3>Team Relationships</h3>
+        <p>Live partner and employee assignments from the database. Updates when assignments change.</p>
+        <div id="agentRelationshipLines" class="relationship-lines"></div>
+    </div>
     <div id="agentStatGrid" class="stat-grid"></div>
     <div class="status-control-box">
         <div>
@@ -338,6 +380,7 @@ let agentData = {
     agent: {},
     summary: {},
     customers: [],
+    relationships: {},
     documents: []
 };
 
@@ -570,17 +613,30 @@ function renderAgentCards() {
     `).join('');
 }
 
+function renderAgentRelationships() {
+    const container = document.getElementById('agentRelationshipLines');
+    if (!container) return;
+    const lines = Array.isArray((agentData.relationships || {}).lines)
+        ? agentData.relationships.lines
+        : [];
+    if (!lines.length) {
+        container.innerHTML = '<div class="relationship-line">Relationship data unavailable.</div>';
+        return;
+    }
+    container.innerHTML = lines.map((line) => `
+        <div class="relationship-line">${escapeHtml(line.full_text || '-')}</div>
+    `).join('');
+}
+
 function renderAgentSummary() {
     const agent = agentData.agent || {};
     document.getElementById('agentName').textContent = agent.name || '{{ agent.name|default:"Channel Partner" }}';
-    document.getElementById('agentMeta').textContent = `${agent.email || '-'} | ${agent.phone || '-'} | Status: ${agent.status || '-'} | Reports To: ${agent.reports_to || 'Direct under Admin'}`;
+    document.getElementById('agentMeta').textContent = `${agent.email || '-'} | ${agent.phone || '-'} | Status: ${agent.status || '-'}`;
     document.getElementById('agentStatusSelect').value = String(agent.status || '').toLowerCase() === 'blocked' ? 'inactive' : 'active';
     document.getElementById('agentSummaryGrid').innerHTML = `
         <div class="summary-item"><strong>Channel Partner ID:</strong> ${escapeHtml(agent.agent_id || '-')}</div>
         <div class="summary-item"><strong>Username:</strong> ${escapeHtml(agent.username || '-')}</div>
         <div class="summary-item"><strong>Joined:</strong> ${escapeHtml(agent.joined_on || '-')}</div>
-        <div class="summary-item"><strong>Created Under:</strong> ${escapeHtml(agent.created_under || 'Admin - System')}</div>
-        <div class="summary-item"><strong>Reports To:</strong> ${escapeHtml(agent.reports_to || 'Direct under Admin')}</div>
         <div class="summary-item"><strong>Gender:</strong> ${escapeHtml(agent.gender || 'Other')}</div>
         <div class="summary-item"><strong>City:</strong> ${escapeHtml(agent.city || '-')}</div>
         <div class="summary-item"><strong>District:</strong> ${escapeHtml(agent.district || '-')}</div>
@@ -634,6 +690,7 @@ async function loadAgentDetails() {
         }
         agentData = data;
         renderAgentSummary();
+        renderAgentRelationships();
         renderAgentCards();
         renderAgentDocuments();
     } catch (error) {
@@ -646,6 +703,7 @@ async function loadAgentDetails() {
 
 document.addEventListener('DOMContentLoaded', function () {
     loadAgentDetails();
+    window.setInterval(loadAgentDetails, 30000);
 
     document.getElementById('agentStatGrid').addEventListener('click', function (event) {
         const button = event.target.closest('[data-agent-stat]');

@@ -1361,7 +1361,10 @@ def api_add_agent(request):
 def api_get_agent(request, agent_id):
     """API Endpoint: Get single agent details"""
     try:
-        agent = get_object_or_404(Agent, id=agent_id)
+        agent = get_object_or_404(
+            Agent.objects.select_related('created_by', 'under_employee', 'user'),
+            id=agent_id,
+        )
 
         agent_user = agent.user
         submitted_qs = Loan.objects.none()
@@ -1570,6 +1573,8 @@ def api_get_agent(request, agent_id):
                 if match:
                     district = match.group(1).strip()
 
+        from .admin_relationship_helpers import build_channel_partner_relationship_view
+
         return JsonResponse({
             'success': True,
             'agent': {
@@ -1598,6 +1603,7 @@ def api_get_agent(request, agent_id):
             },
             'summary': summary,
             'customers': customers,
+            'relationships': build_channel_partner_relationship_view(agent),
             'onboarding': onboarding,
             'documents': documents,
         })

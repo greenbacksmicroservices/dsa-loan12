@@ -40,7 +40,9 @@ def loan_report_headers():
         'Email',
         'Loan Type',
         'Loan Amount',
+        'Disbursed Amount',
         'Status',
+        'Partner',
         'Assigned Employee',
         'Channel Partner',
         'Created By',
@@ -58,13 +60,17 @@ def loan_report_headers():
 
 def loan_report_row(loan, status_key_getter=None, status_label_getter=None):
     raw_status = str(getattr(loan, 'status', '') or '').strip()
-    status_key = status_key_getter(loan) if status_key_getter else raw_status
-    status_label = status_label_getter(status_key) if status_label_getter else (status_key or raw_status)
+    status_key = status_key_getter(loan) if status_key_getter else getattr(loan, 'report_status_key', raw_status)
+    status_label = status_label_getter(status_key) if status_label_getter else (getattr(loan, 'report_status_label', None) or status_key or raw_status)
     loan_type = (
         loan.get_loan_type_display()
         if hasattr(loan, 'get_loan_type_display')
         else (getattr(loan, 'loan_type', '') or '')
     )
+    disbursed_amount = getattr(loan, 'report_disbursed_amount', None)
+    if disbursed_amount is None:
+        disbursed_amount = getattr(loan, 'loan_amount', '') if status_key == 'disbursed' else 0
+    legacy_loan = getattr(loan, '_legacy_loan', loan)
     return [
         getattr(loan, 'user_id', '') or getattr(loan, 'id', ''),
         getattr(loan, 'full_name', '') or '',
@@ -72,19 +78,21 @@ def loan_report_row(loan, status_key_getter=None, status_label_getter=None):
         getattr(loan, 'email', '') or '',
         loan_type,
         getattr(loan, 'loan_amount', '') or 0,
+        disbursed_amount or 0,
         status_label,
-        _display_user_name(getattr(loan, 'assigned_employee', None)),
-        _display_agent_name(getattr(loan, 'assigned_agent', None)),
-        _display_user_name(getattr(loan, 'created_by', None)),
+        getattr(loan, 'report_partner_name', '-') or '-',
+        getattr(loan, 'report_employee_name', '') or _display_user_name(getattr(loan, 'assigned_employee', None)),
+        getattr(loan, 'report_channel_partner_name', '') or _display_agent_name(getattr(loan, 'assigned_agent', None)),
+        _display_user_name(getattr(legacy_loan, 'created_by', None) if legacy_loan else getattr(loan, 'created_by', None)),
         _format_datetime(getattr(loan, 'created_at', None)),
         _format_datetime(getattr(loan, 'updated_at', None)),
-        _format_datetime(getattr(loan, 'assigned_at', None)),
-        _format_datetime(getattr(loan, 'action_taken_at', None)),
-        getattr(loan, 'bank_name', '') or '',
-        getattr(loan, 'bank_account_number', '') or '',
-        getattr(loan, 'bank_ifsc_code', '') or '',
-        getattr(loan, 'sm_name', '') or '',
-        getattr(loan, 'remarks', '') or '',
+        _format_datetime(getattr(legacy_loan, 'assigned_at', None) if legacy_loan else None),
+        _format_datetime(getattr(legacy_loan, 'action_taken_at', None) if legacy_loan else None),
+        (getattr(legacy_loan, 'bank_name', '') or '') if legacy_loan else '',
+        (getattr(legacy_loan, 'bank_account_number', '') or '') if legacy_loan else '',
+        (getattr(legacy_loan, 'bank_ifsc_code', '') or '') if legacy_loan else '',
+        (getattr(legacy_loan, 'sm_name', '') or '') if legacy_loan else '',
+        (getattr(legacy_loan, 'remarks', '') or '') if legacy_loan else '',
     ]
 
 

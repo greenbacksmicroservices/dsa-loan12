@@ -334,6 +334,43 @@
         font-size: 13px;
     }
 
+    .relationship-panel {
+        margin-bottom: 14px;
+        background: #ffffff;
+        border: 1px solid #dbeafe;
+        border-radius: 12px;
+        padding: 14px 16px;
+    }
+
+    .relationship-panel h3 {
+        margin: 0 0 4px;
+        color: #0f172a;
+        font-size: 16px;
+        font-weight: 700;
+    }
+
+    .relationship-panel p {
+        margin: 0 0 12px;
+        color: #64748b;
+        font-size: 12px;
+    }
+
+    .relationship-lines {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .relationship-line {
+        padding: 10px 12px;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        background: #f8fafc;
+        color: #0f172a;
+        font-size: 14px;
+        font-weight: 600;
+    }
+
     @media (max-width: 980px) {
         .detail-sections {
             grid-template-columns: 1fr;
@@ -351,6 +388,11 @@
     </div>
 
     <div id="employeeSummaryGrid" class="summary-grid"></div>
+    <div class="relationship-panel">
+        <h3>Team Relationships</h3>
+        <p>Live partner and channel partner assignments from the database. Updates when assignments change.</p>
+        <div id="employeeRelationshipLines" class="relationship-lines"></div>
+    </div>
     <div id="employeeStatGrid" class="stat-grid"></div>
     <div class="status-control-box">
         <div>
@@ -407,6 +449,7 @@ let employeeData = {
     summary: {},
     customers: [],
     assigned_channel_partners: [],
+    relationships: {},
     onboarding: {},
     documents: []
 };
@@ -650,6 +693,21 @@ function renderEmployeeCards() {
     `).join('');
 }
 
+function renderEmployeeRelationships() {
+    const container = document.getElementById('employeeRelationshipLines');
+    if (!container) return;
+    const lines = Array.isArray((employeeData.relationships || {}).lines)
+        ? employeeData.relationships.lines
+        : [];
+    if (!lines.length) {
+        container.innerHTML = '<div class="relationship-line">Relationship data unavailable.</div>';
+        return;
+    }
+    container.innerHTML = lines.map((line) => `
+        <div class="relationship-line">${escapeHtml(line.full_text || '-')}</div>
+    `).join('');
+}
+
 function renderEmployeeSummary() {
     const employee = employeeData.employee || {};
     const fullName = `${employee.first_name || ''} ${employee.last_name || ''}`.trim() || '{{ employee.get_full_name|default:employee.username }}';
@@ -663,7 +721,6 @@ function renderEmployeeSummary() {
         <div class="summary-item"><strong>State:</strong> ${escapeHtml(employee.state || '-')}</div>
         <div class="summary-item"><strong>PIN:</strong> ${escapeHtml(employee.pin_code || '-')}</div>
         <div class="summary-item"><strong>Aadhaar:</strong> ${escapeHtml(employee.aadhar_number || '-')}</div>
-        <div class="summary-item"><strong>Created Under:</strong> ${escapeHtml(employee.created_under || '-')}</div>
         <div class="summary-item"><strong>Assigned Applications:</strong> ${escapeHtml((employeeData.summary || {}).total_assigned_applications || 0)}</div>
     `;
 }
@@ -817,6 +874,7 @@ async function loadEmployeeDetails() {
         }
         employeeData = data;
         renderEmployeeSummary();
+        renderEmployeeRelationships();
         renderEmployeeCards();
         renderEmployeeDetailsPanels();
         renderEmployeeDocuments();

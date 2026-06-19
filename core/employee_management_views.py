@@ -827,31 +827,31 @@ def api_get_employee(request, employee_id):
         section1 = onboarding.get('section1') if isinstance(onboarding, dict) else {}
         perm = (section1 or {}).get('permanent_address') or {}
         section6 = onboarding.get('section6') if isinstance(onboarding, dict) else {}
-        assigned_partner_links = list(
-            AgentAssignment.objects.filter(employee=user)
-            .select_related('agent')
-            .order_by('-assigned_at')
+        from .admin_relationship_helpers import (
+            build_employee_relationship_view,
+            get_channel_partners_under_employee,
         )
+
         assigned_channel_partners = []
         seen_channel_partner_ids = set()
-        for link in assigned_partner_links:
-            if not link.agent_id or link.agent_id in seen_channel_partner_ids:
+        for agent in get_channel_partners_under_employee(user):
+            if agent.id in seen_channel_partner_ids:
                 continue
-            seen_channel_partner_ids.add(link.agent_id)
-            agent = link.agent
+            seen_channel_partner_ids.add(agent.id)
             assigned_channel_partners.append({
-                'id': link.agent_id,
-                'name': (agent.name if agent else '-') or '-',
-                'email': (agent.email if agent else '') or 'N/A',
-                'phone': (agent.phone if agent else '') or 'N/A',
-                'photo_url': agent.profile_photo.url if agent and agent.profile_photo else (
-                    agent.user.profile_photo.url if agent and agent.user and agent.user.profile_photo else ''
+                'id': agent.id,
+                'name': agent.name or '-',
+                'email': agent.email or 'N/A',
+                'phone': agent.phone or 'N/A',
+                'photo_url': agent.profile_photo.url if agent.profile_photo else (
+                    agent.user.profile_photo.url if agent.user and agent.user.profile_photo else ''
                 ),
-                'status': str((agent.status if agent else 'active') or 'active').title(),
-                'application_count': channel_partner_loans_counter.get(link.agent_id, 0),
+                'status': str(agent.status or 'active').title(),
+                'application_count': channel_partner_loans_counter.get(agent.id, 0),
             })
         assigned_channel_partner_ids = [item['id'] for item in assigned_channel_partners]
         summary['channel_partner_count'] = len(assigned_channel_partners)
+        relationships = build_employee_relationship_view(user)
 
         return JsonResponse({
             'success': True,
@@ -889,6 +889,7 @@ def api_get_employee(request, employee_id):
             ,
             'summary': summary,
             'customers': customers,
+            'relationships': relationships,
             'onboarding': onboarding,
             'documents': documents,
         })

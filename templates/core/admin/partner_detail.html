@@ -279,6 +279,43 @@
         font-weight: 700;
         text-decoration: none;
     }
+
+    .relationship-panel {
+        margin-bottom: 14px;
+        background: #ffffff;
+        border: 1px solid #dbeafe;
+        border-radius: 12px;
+        padding: 14px 16px;
+    }
+
+    .relationship-panel h3 {
+        margin: 0 0 4px;
+        color: #0f172a;
+        font-size: 16px;
+        font-weight: 700;
+    }
+
+    .relationship-panel p {
+        margin: 0 0 12px;
+        color: #64748b;
+        font-size: 12px;
+    }
+
+    .relationship-lines {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .relationship-line {
+        padding: 10px 12px;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        background: #f8fafc;
+        color: #0f172a;
+        font-size: 14px;
+        font-weight: 600;
+    }
 </style>
 
 <div class="detail-shell">
@@ -291,6 +328,11 @@
     </div>
 
     <div id="partnerSummaryGrid" class="summary-grid"></div>
+    <div class="relationship-panel">
+        <h3>Team Relationships</h3>
+        <p>Live partner hierarchy from the database. Updates when assignments change.</p>
+        <div id="partnerRelationshipLines" class="relationship-lines"></div>
+    </div>
     <div id="partnerStatGrid" class="stat-grid"></div>
     <div class="status-control-box">
         <div>
@@ -340,6 +382,7 @@ let partnerData = {
     customers: [],
     managed_employees: [],
     managed_agents: [],
+    relationships: {},
     documents: []
 };
 
@@ -644,6 +687,21 @@ function renderPartnerCards() {
     `).join('');
 }
 
+function renderPartnerRelationships() {
+    const container = document.getElementById('partnerRelationshipLines');
+    if (!container) return;
+    const lines = Array.isArray((partnerData.relationships || {}).lines)
+        ? partnerData.relationships.lines
+        : [];
+    if (!lines.length) {
+        container.innerHTML = '<div class="relationship-line">Relationship data unavailable.</div>';
+        return;
+    }
+    container.innerHTML = lines.map((line) => `
+        <div class="relationship-line">${escapeHtml(line.full_text || '-')}</div>
+    `).join('');
+}
+
 function renderPartnerSummary() {
     const partner = partnerData.subadmin || {};
     document.getElementById('partnerName').textContent = partner.name || '{{ partner.get_full_name|default:partner.username }}';
@@ -706,6 +764,7 @@ async function loadPartnerDetails() {
         }
         partnerData = data;
         renderPartnerSummary();
+        renderPartnerRelationships();
         renderPartnerCards();
         renderPartnerDocuments();
     } catch (error) {
@@ -718,6 +777,7 @@ async function loadPartnerDetails() {
 
 document.addEventListener('DOMContentLoaded', function () {
     loadPartnerDetails();
+    window.setInterval(loadPartnerDetails, 30000);
 
     document.getElementById('partnerStatGrid').addEventListener('click', function (event) {
         const button = event.target.closest('[data-partner-stat]');

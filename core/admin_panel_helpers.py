@@ -1,10 +1,23 @@
 """Helpers for admin panel list filtering and reports."""
 
 from decimal import Decimal
+from types import SimpleNamespace
 
-from .models import User
+from django.db.models import Q
+
+from .loan_helpers import display_loan_id, display_user_name
+from .loan_sync import extract_assignment_context, find_related_loan, find_related_loan_application
+from .models import Agent, ApplicantDocument, Loan, LoanApplication, User
 from .id_utils import display_manual_loan_id
 from .remarks_utils import sanitize_display_remark
+from .updated_document_utils import (
+    UPDATED_DOCUMENT_STATUS_KEY,
+    application_has_updated_documents,
+    loan_has_updated_documents,
+)
+from .workflow_rows import application_effective_status_key, build_application_display_row, loan_type_display
+
+NOT_ASSIGNED = 'Not Assigned'
 
 
 def _meta_created_by_admin(user_obj, admin_user):
@@ -101,7 +114,11 @@ def _parse_detail_rows(raw_text):
 
 def _serialize_documents(loan_obj):
     docs = []
-    for doc in getattr(loan_obj, 'documents', []).all():
+    document_source = getattr(loan_obj, 'documents', None)
+    if document_source is None:
+        return docs
+    document_iter = document_source.all() if hasattr(document_source, 'all') else document_source
+    for doc in document_iter:
         if not getattr(doc, 'file', None):
             continue
         docs.append({
@@ -123,58 +140,409 @@ def _decimal_to_float(value):
         return 0.0
 
 
+def _report_has_revert_marker(text):
+    return 'revert remark' in str(text or '').lower()
+
+
+def report_effective_status_key(loan_obj=None, loan_app=None):
+    """Resolve the dashboard/report status key from legacy loan and/or application."""
+    if loan_app:
+        return application_effective_status_key(loan_app)
+
+    if not loan_obj:
+        return ''
+
+    raw_status = str(getattr(loan_obj, 'status', '') or '').strip().lower()
+    related_app = find_related_loan_application(loan_obj)
+
+    if raw_status in ['new_entry', 'waiting']:
+        if _report_has_revert_marker(getattr(loan_obj, 'remarks', '')):
+            return 'follow_up_pending'
+        if related_app and _report_has_revert_marker(getattr(related_app, 'approval_notes', '')):
+            return 'follow_up_pending'
+    if raw_status == 'waiting' and loan_has_updated_documents(loan_obj, related_app=related_app):
+        return UPDATED_DOCUMENT_STATUS_KEY
+    if related_app:
+        return application_effective_status_key(related_app)
+    return raw_status
+
+
+def report_status_label(status_key):
+    labels = {
+        'draft': 'Draft',
+        'new_entry': 'New Application',
+        'waiting': 'Document Pending',
+        UPDATED_DOCUMENT_STATUS_KEY: 'Pending Document Cleared',
+        'follow_up': 'Bank Login Process',
+        'follow_up_pending': 'Follow Up',
+        'approved': 'Approved',
+        'rejected': 'Rejected',
+        'disbursed': 'Disbursed',
+        'forclose': 'For Close',
+        'disputed': 'Disputed',
+    }
+    return labels.get(str(status_key or '').strip().lower(), status_key or '-')
+
+
+def _resolve_report_partner_user(loan_obj=None, loan_app=None):
+    assignment_context = extract_assignment_context(loan_obj, loan_app) if loan_obj else extract_assignment_context(None, loan_app)
+    assigned_by_user = assignment_context.get('assigned_by_user')
+
+    if loan_app and getattr(loan_app, 'lead_received_by', None):
+        receiver = loan_app.lead_received_by
+        if str(getattr(receiver, 'role', '') or '').strip().lower() in {'subadmin', 'partner'}:
+            return receiver
+
+    if getattr(assigned_by_user, 'role', '') == 'subadmin':
+        return assigned_by_user
+
+    for source in (
+        getattr(loan_app, 'assigned_by', None) if loan_app else None,
+        getattr(loan_obj, 'created_by', None) if loan_obj else None,
+    ):
+        if getattr(source, 'role', '') == 'subadmin':
+            return source
+
+    for source in (
+        getattr(loan_app, 'assigned_agent', None) if loan_app else None,
+        getattr(loan_obj, 'assigned_agent', None) if loan_obj else None,
+    ):
+        created_by = getattr(source, 'created_by', None)
+        if getattr(created_by, 'role', '') == 'subadmin':
+            return created_by
+
+    return None
+
+
+def _resolve_report_employee_user(loan_obj=None, loan_app=None):
+    if loan_app and loan_app.assigned_employee:
+        return loan_app.assigned_employee
+    if loan_obj and loan_obj.assigned_employee:
+        return loan_obj.assigned_employee
+    if loan_app and getattr(loan_app, 'lead_received_by', None):
+        receiver = loan_app.lead_received_by
+        if str(getattr(receiver, 'role', '') or '').strip().lower() == 'employee':
+            return receiver
+    return None
+
+
+def _resolve_report_channel_partner(loan_obj=None, loan_app=None):
+    if loan_app and loan_app.assigned_agent:
+        return loan_app.assigned_agent
+    if loan_obj and loan_obj.assigned_agent:
+        return loan_obj.assigned_agent
+    return None
+
+
+def _resolve_report_disbursement_amount(loan_obj=None, loan_app=None, status_key=''):
+    status_key = str(status_key or '').strip().lower()
+    if loan_app and loan_app.disbursement_amount is not None:
+        return _decimal_to_float(loan_app.disbursement_amount)
+    if status_key == 'disbursed':
+        if loan_obj and loan_obj.loan_amount is not None:
+            return _decimal_to_float(loan_obj.loan_amount)
+        if loan_app and getattr(getattr(loan_app, 'applicant', None), 'loan_amount', None) is not None:
+            return _decimal_to_float(loan_app.applicant.loan_amount)
+    return 0.0
+
+
+def format_report_currency(amount):
+    value = _decimal_to_float(amount)
+    if value <= 0:
+        return '-'
+    return f'₹{value:,.0f}'
+
+
+def enrich_admin_report_row(row, loan_obj=None, loan_app=None):
+    """Attach latest report display fields to a legacy loan or workflow row."""
+    if loan_obj and not loan_app:
+        loan_app = find_related_loan_application(loan_obj)
+    if loan_app and not loan_obj:
+        loan_obj = find_related_loan(loan_app)
+
+    status_key = report_effective_status_key(loan_obj=loan_obj, loan_app=loan_app)
+    partner_user = _resolve_report_partner_user(loan_obj=loan_obj, loan_app=loan_app)
+    employee_user = _resolve_report_employee_user(loan_obj=loan_obj, loan_app=loan_app)
+    channel_partner = _resolve_report_channel_partner(loan_obj=loan_obj, loan_app=loan_app)
+    disbursed_amount = _resolve_report_disbursement_amount(
+        loan_obj=loan_obj,
+        loan_app=loan_app,
+        status_key=status_key,
+    )
+
+    row.report_status_key = status_key
+    row.report_status_label = report_status_label(status_key)
+    row.report_partner_name = display_user_name(partner_user) if partner_user else '-'
+    row.report_employee_name = display_user_name(employee_user) if employee_user else NOT_ASSIGNED
+    row.report_channel_partner_name = (
+        channel_partner.name
+        or display_user_name(getattr(channel_partner, 'user', None))
+        if channel_partner else '-'
+    )
+    row.report_disbursed_amount = disbursed_amount
+    row.report_disbursed_amount_display = format_report_currency(disbursed_amount)
+    row._related_app = loan_app
+    row._legacy_loan = loan_obj
+    return row
+
+
+def _application_report_documents(loan_app):
+    return ApplicantDocument.objects.filter(loan_application=loan_app)
+
+
+class ApplicationReportRow(SimpleNamespace):
+    def get_loan_type_display(self):
+        return loan_type_display(getattr(self, 'loan_type', ''))
+
+
+def application_to_report_row(loan_app):
+    applicant = getattr(loan_app, 'applicant', None)
+    row = ApplicationReportRow(
+        id=loan_app.id,
+        entity_type='application',
+        user_id=display_loan_id(legacy_loan=find_related_loan(loan_app), loan_application=loan_app) or str(loan_app.id),
+        full_name=getattr(applicant, 'full_name', '') or '-',
+        email=getattr(applicant, 'email', '') or '',
+        mobile_number=getattr(applicant, 'mobile', '') or '',
+        loan_type=getattr(applicant, 'loan_type', '') or '',
+        loan_amount=getattr(applicant, 'loan_amount', 0) or 0,
+        created_at=loan_app.created_at,
+        updated_at=loan_app.updated_at,
+        assigned_employee=loan_app.assigned_employee,
+        assigned_agent=loan_app.assigned_agent,
+        created_by=loan_app.assigned_by,
+        status=application_effective_status_key(loan_app),
+        documents=_application_report_documents(loan_app),
+    )
+    return enrich_admin_report_row(row, loan_app=loan_app)
+
+
+def build_admin_filtered_report_loans(
+    *,
+    start_date,
+    end_date,
+    search_query='',
+    status_filter='',
+    employee_filter='',
+    partner_filter='',
+    agent_filter='',
+    loan_id_filter='',
+):
+    """Build enriched report rows from legacy loans and workflow-only applications."""
+    loans_qs = Loan.objects.select_related(
+        'created_by',
+        'assigned_employee',
+        'assigned_agent',
+        'assigned_agent__created_by',
+        'assigned_agent__user',
+    ).prefetch_related('documents').filter(
+        created_at__gte=start_date,
+        created_at__lt=end_date,
+    )
+
+    if loan_id_filter:
+        try:
+            loans_qs = loans_qs.filter(id=int(loan_id_filter))
+        except (TypeError, ValueError):
+            loans_qs = loans_qs.none()
+
+    if search_query:
+        search_filter = (
+            Q(full_name__icontains=search_query)
+            | Q(mobile_number__icontains=search_query)
+            | Q(email__icontains=search_query)
+            | Q(user_id__icontains=search_query)
+        )
+        if search_query.isdigit():
+            search_filter |= Q(id=int(search_query))
+        loans_qs = loans_qs.filter(search_filter)
+
+    apps_qs = LoanApplication.objects.select_related(
+        'applicant',
+        'assigned_employee',
+        'assigned_agent',
+        'assigned_agent__created_by',
+        'assigned_agent__user',
+        'assigned_by',
+        'lead_received_by',
+    ).filter(
+        created_at__gte=start_date,
+        created_at__lt=end_date,
+    )
+
+    related_app_ids = set()
+    enriched_rows = []
+
+    for loan in loans_qs.order_by('-created_at'):
+        related_app = find_related_loan_application(loan)
+        if related_app:
+            related_app_ids.add(related_app.id)
+
+        if not _matches_employee_filter(loan, related_app, employee_filter):
+            continue
+        if not _matches_partner_filter(loan, related_app, partner_filter):
+            continue
+        if not _matches_agent_filter(loan, related_app, agent_filter):
+            continue
+
+        status_key = report_effective_status_key(loan_obj=loan, loan_app=related_app)
+        if status_filter and status_key != status_filter:
+            continue
+
+        enriched_rows.append(enrich_admin_report_row(loan, loan_obj=loan, loan_app=related_app))
+
+    for loan_app in apps_qs.order_by('-created_at'):
+        if loan_app.id in related_app_ids:
+            continue
+
+        if loan_id_filter:
+            try:
+                if loan_app.id != int(loan_id_filter):
+                    continue
+            except (TypeError, ValueError):
+                continue
+
+        applicant = getattr(loan_app, 'applicant', None)
+        if search_query:
+            haystack = ' '.join([
+                str(getattr(applicant, 'full_name', '') or ''),
+                str(getattr(applicant, 'mobile', '') or ''),
+                str(getattr(applicant, 'email', '') or ''),
+                str(loan_app.id),
+            ]).lower()
+            if search_query.lower() not in haystack:
+                continue
+
+        if not _matches_employee_filter(None, loan_app, employee_filter):
+            continue
+        if not _matches_partner_filter(None, loan_app, partner_filter):
+            continue
+        if not _matches_agent_filter(None, loan_app, agent_filter):
+            continue
+
+        status_key = report_effective_status_key(loan_app=loan_app)
+        if status_filter and status_key != status_filter:
+            continue
+
+        enriched_rows.append(application_to_report_row(loan_app))
+
+    enriched_rows.sort(
+        key=lambda item: getattr(item, 'created_at', None) or start_date,
+        reverse=True,
+    )
+    return enriched_rows
+
+
+def _matches_employee_filter(loan_obj, loan_app, employee_filter):
+    if not employee_filter:
+        return True
+    target = str(employee_filter)
+    if loan_app and str(loan_app.assigned_employee_id or '') == target:
+        return True
+    if loan_obj and str(loan_obj.assigned_employee_id or '') == target:
+        return True
+    return False
+
+
+def _matches_partner_filter(loan_obj, loan_app, partner_filter):
+    if not partner_filter:
+        return True
+    partner_user = _resolve_report_partner_user(loan_obj=loan_obj, loan_app=loan_app)
+    return str(getattr(partner_user, 'id', '') or '') == str(partner_filter)
+
+
+def _matches_agent_filter(loan_obj, loan_app, agent_filter):
+    if not agent_filter:
+        return True
+    channel_partner = _resolve_report_channel_partner(loan_obj=loan_obj, loan_app=loan_app)
+    return str(getattr(channel_partner, 'id', '') or '') == str(agent_filter)
+
+
 def serialize_report_application(loan_obj):
-    assigned_employee = getattr(loan_obj, 'assigned_employee', None)
-    assigned_agent = getattr(loan_obj, 'assigned_agent', None)
-    created_by = getattr(loan_obj, 'created_by', None)
+    related_app = getattr(loan_obj, '_related_app', None) or find_related_loan_application(loan_obj)
+    legacy_loan = getattr(loan_obj, '_legacy_loan', None) or (
+        loan_obj if isinstance(loan_obj, Loan) else find_related_loan(related_app)
+    )
+    enrich_admin_report_row(loan_obj, loan_obj=legacy_loan, loan_app=related_app)
+
+    assigned_employee = _resolve_report_employee_user(loan_obj=legacy_loan, loan_app=related_app)
+    assigned_agent = _resolve_report_channel_partner(loan_obj=legacy_loan, loan_app=related_app)
+    partner_user = _resolve_report_partner_user(loan_obj=legacy_loan, loan_app=related_app)
+    created_by = getattr(legacy_loan, 'created_by', None) if legacy_loan else getattr(related_app, 'assigned_by', None)
+    status_key = getattr(loan_obj, 'report_status_key', None) or report_effective_status_key(
+        loan_obj=legacy_loan,
+        loan_app=related_app,
+    )
+    disbursed_amount = getattr(loan_obj, 'report_disbursed_amount', None)
+    if disbursed_amount is None:
+        disbursed_amount = _resolve_report_disbursement_amount(
+            loan_obj=legacy_loan,
+            loan_app=related_app,
+            status_key=status_key,
+        )
+
+    loan_type_value = (
+        loan_obj.get_loan_type_display()
+        if hasattr(loan_obj, 'get_loan_type_display')
+        else (getattr(loan_obj, 'loan_type', '') or '-')
+    )
     details = [
-        {'label': 'Loan ID', 'value': display_manual_loan_id(loan_obj)},
-        {'label': 'Customer Name', 'value': loan_obj.full_name or '-'},
-        {'label': 'Mobile', 'value': loan_obj.mobile_number or '-'},
-        {'label': 'Email', 'value': loan_obj.email or '-'},
-        {'label': 'City', 'value': loan_obj.city or '-'},
-        {'label': 'State', 'value': loan_obj.state or '-'},
-        {'label': 'PIN Code', 'value': loan_obj.pin_code or '-'},
-        {'label': 'Loan Type', 'value': loan_obj.get_loan_type_display() if hasattr(loan_obj, 'get_loan_type_display') else (loan_obj.loan_type or '-')},
-        {'label': 'Loan Amount', 'value': f"{_decimal_to_float(loan_obj.loan_amount):.2f}"},
-        {'label': 'Tenure (Months)', 'value': loan_obj.tenure_months or '-'},
-        {'label': 'Interest Rate', 'value': loan_obj.interest_rate or '-'},
-        {'label': 'Loan Purpose', 'value': loan_obj.loan_purpose or '-'},
-        {'label': 'Bank Name', 'value': loan_obj.bank_name or '-'},
-        {'label': 'Account Number', 'value': loan_obj.bank_account_number or '-'},
-        {'label': 'IFSC Code', 'value': loan_obj.bank_ifsc_code or '-'},
-        {'label': 'Status', 'value': _status_label(loan_obj.status)},
+        {'label': 'Loan ID', 'value': display_loan_id(legacy_loan=legacy_loan, loan_application=related_app) or '-'},
+        {'label': 'Customer Name', 'value': getattr(loan_obj, 'full_name', '') or '-'},
+        {'label': 'Mobile', 'value': getattr(loan_obj, 'mobile_number', '') or '-'},
+        {'label': 'Email', 'value': getattr(loan_obj, 'email', '') or '-'},
+        {'label': 'City', 'value': getattr(legacy_loan, 'city', '-') if legacy_loan else '-'},
+        {'label': 'State', 'value': getattr(legacy_loan, 'state', '-') if legacy_loan else '-'},
+        {'label': 'PIN Code', 'value': getattr(legacy_loan, 'pin_code', '-') if legacy_loan else '-'},
+        {'label': 'Loan Type', 'value': loan_type_value},
+        {'label': 'Loan Amount', 'value': f"{_decimal_to_float(getattr(loan_obj, 'loan_amount', 0)):.2f}"},
+        {'label': 'Disbursed Amount', 'value': f"{_decimal_to_float(disbursed_amount):.2f}"},
+        {'label': 'Tenure (Months)', 'value': getattr(legacy_loan, 'tenure_months', '-') if legacy_loan else '-'},
+        {'label': 'Interest Rate', 'value': getattr(legacy_loan, 'interest_rate', '-') if legacy_loan else '-'},
+        {'label': 'Loan Purpose', 'value': getattr(legacy_loan, 'loan_purpose', '-') if legacy_loan else '-'},
+        {'label': 'Bank Name', 'value': getattr(legacy_loan, 'bank_name', '-') if legacy_loan else '-'},
+        {'label': 'Account Number', 'value': getattr(legacy_loan, 'bank_account_number', '-') if legacy_loan else '-'},
+        {'label': 'IFSC Code', 'value': getattr(legacy_loan, 'bank_ifsc_code', '-') if legacy_loan else '-'},
+        {'label': 'Status', 'value': report_status_label(status_key)},
+        {'label': 'Partner', 'value': display_user_name(partner_user) if partner_user else '-'},
         {'label': 'Created By', 'value': (created_by.get_full_name() or created_by.username) if created_by else 'System'},
-        {'label': 'Assigned Employee', 'value': (assigned_employee.get_full_name() or assigned_employee.username) if assigned_employee else '-'},
-        {'label': 'Assigned Channel Partner', 'value': assigned_agent.name if assigned_agent else '-'},
-        {'label': 'Created At', 'value': loan_obj.created_at.strftime('%Y-%m-%d %H:%M') if loan_obj.created_at else '-'},
-        {'label': 'Updated At', 'value': loan_obj.updated_at.strftime('%Y-%m-%d %H:%M') if loan_obj.updated_at else '-'},
+        {'label': 'Assigned Employee', 'value': display_user_name(assigned_employee) if assigned_employee else NOT_ASSIGNED},
+        {'label': 'Assigned Channel Partner', 'value': (
+            assigned_agent.name or display_user_name(getattr(assigned_agent, 'user', None))
+        ) if assigned_agent else '-'},
+        {'label': 'Created At', 'value': loan_obj.created_at.strftime('%Y-%m-%d %H:%M') if getattr(loan_obj, 'created_at', None) else '-'},
+        {'label': 'Updated At', 'value': loan_obj.updated_at.strftime('%Y-%m-%d %H:%M') if getattr(loan_obj, 'updated_at', None) else '-'},
     ]
-    details.extend(_parse_detail_rows(getattr(loan_obj, 'remarks', '')))
+    if legacy_loan:
+        details.extend(_parse_detail_rows(getattr(legacy_loan, 'remarks', '')))
     documents = _serialize_documents(loan_obj)
-    status_key = str(getattr(loan_obj, 'status', '') or '').strip().lower()
     loan_amount = _decimal_to_float(getattr(loan_obj, 'loan_amount', 0))
     approved_amount = loan_amount if status_key in ['approved', 'disbursed'] else 0.0
-    disbursed_amount = loan_amount if status_key == 'disbursed' else 0.0
+    disbursed_total = _decimal_to_float(disbursed_amount) if status_key == 'disbursed' else 0.0
     return {
-        'id': loan_obj.id,
-        'loan_id': display_manual_loan_id(loan_obj),
-        'reference_id': f'REF-{loan_obj.id:06d}',
-        'customer_name': loan_obj.full_name or '-',
-        'mobile': loan_obj.mobile_number or '-',
-        'email': loan_obj.email or '-',
-        'city': loan_obj.city or '-',
-        'state': loan_obj.state or '-',
-        'loan_type': loan_obj.get_loan_type_display() if hasattr(loan_obj, 'get_loan_type_display') else (loan_obj.loan_type or '-'),
+        'id': getattr(loan_obj, 'id', ''),
+        'loan_id': display_loan_id(legacy_loan=legacy_loan, loan_application=related_app) or '-',
+        'reference_id': f'REF-{getattr(loan_obj, "id", 0):06d}',
+        'customer_name': getattr(loan_obj, 'full_name', '') or '-',
+        'mobile': getattr(loan_obj, 'mobile_number', '') or '-',
+        'email': getattr(loan_obj, 'email', '') or '-',
+        'city': getattr(legacy_loan, 'city', '-') if legacy_loan else '-',
+        'state': getattr(legacy_loan, 'state', '-') if legacy_loan else '-',
+        'loan_type': loan_type_value,
         'loan_amount': loan_amount,
         'approved_amount': approved_amount,
-        'disbursed_amount': disbursed_amount,
+        'disbursed_amount': disbursed_total,
         'status': status_key,
-        'status_display': _status_label(loan_obj.status),
-        'created_at': loan_obj.created_at.strftime('%Y-%m-%d %H:%M') if loan_obj.created_at else '',
-        'updated_at': loan_obj.updated_at.strftime('%Y-%m-%d %H:%M') if loan_obj.updated_at else '',
-        'bank_name': loan_obj.bank_name or '-',
-        'remarks': sanitize_display_remark(loan_obj.remarks, default=''),
+        'status_display': report_status_label(status_key),
+        'partner_name': display_user_name(partner_user) if partner_user else '-',
+        'employee_name': display_user_name(assigned_employee) if assigned_employee else NOT_ASSIGNED,
+        'channel_partner_name': (
+            assigned_agent.name or display_user_name(getattr(assigned_agent, 'user', None))
+        ) if assigned_agent else '-',
+        'created_at': loan_obj.created_at.strftime('%Y-%m-%d %H:%M') if getattr(loan_obj, 'created_at', None) else '',
+        'updated_at': loan_obj.updated_at.strftime('%Y-%m-%d %H:%M') if getattr(loan_obj, 'updated_at', None) else '',
+        'bank_name': getattr(legacy_loan, 'bank_name', '-') if legacy_loan else '-',
+        'remarks': sanitize_display_remark(getattr(legacy_loan, 'remarks', ''), default='') if legacy_loan else '',
         'details': details,
         'documents': documents,
         'document_count': len(documents),

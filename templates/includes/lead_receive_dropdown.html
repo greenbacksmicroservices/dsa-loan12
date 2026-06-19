@@ -5,7 +5,7 @@
         {% for option in lead_receive_options %}
         <option value="{{ option.id }}"
             {% if lead_receive_leader_default and option.name == lead_receive_leader_default %}selected{% elif auto_lead_received_by_id and option.id|stringformat:"s" == auto_lead_received_by_id %}selected{% endif %}>
-            {{ option.name }}{% if option.role == 'subadmin' or option.role == 'partner' %} (Partner){% elif option.role == 'admin' %} (Admin){% endif %}
+            {{ option.name }}
         </option>
         {% endfor %}
     </select>

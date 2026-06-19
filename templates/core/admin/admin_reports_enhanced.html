@@ -655,9 +655,12 @@
     <div class="filtered-loans-head">
         <div>
             <h2 class="h5 fw-bold mb-1">Filtered Loan Applications</h2>
-            <p class="text-muted mb-0">This table follows the filters above. Downloads use the same result set.</p>
+            <p class="text-muted mb-0">This table follows the filters above. Downloads use the same result set. Last updated: {{ report_refreshed_at|date:"d M Y, h:i A" }}</p>
         </div>
-        <span class="percentage">{{ filtered_report_loans|length }} Records</span>
+        <div class="d-flex align-items-center gap-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="window.location.reload()">Refresh</button>
+            <span class="percentage">{{ filtered_report_loans|length }} Records</span>
+        </div>
     </div>
     <div class="table-responsive">
         <table class="filtered-loans-table">
@@ -668,6 +671,7 @@
                     <th>Contact</th>
                     <th>Loan Type</th>
                     <th>Amount</th>
+                    <th>Disbursed Amount</th>
                     <th>Status</th>
                     <th>Partner</th>
                     <th>Employee</th>
@@ -689,10 +693,11 @@
                     <td>{{ loan.mobile_number|default:"-" }}</td>
                     <td>{{ loan.get_loan_type_display|default:loan.loan_type|default:"-" }}</td>
                     <td><strong>&#8377;{{ loan.loan_amount|default:0|floatformat:0 }}</strong></td>
+                    <td><strong>{{ loan.report_disbursed_amount_display|default:"-" }}</strong></td>
                     <td><span class="loan-status-chip">{{ loan.report_status_label }}</span></td>
                     <td>{{ loan.report_partner_name|default:"-" }}</td>
-                    <td>{{ loan.assigned_employee.get_full_name|default:"Pending" }}</td>
-                    <td>{{ loan.assigned_agent.name|default:"-" }}</td>
+                    <td>{{ loan.report_employee_name|default:"Not Assigned" }}</td>
+                    <td>{{ loan.report_channel_partner_name|default:"-" }}</td>
                     <td>{{ loan.created_at|date:"d M Y, h:i A" }}</td>
                     <td>{{ loan.updated_at|date:"d M Y, h:i A" }}</td>
                     <td>{{ loan.documents.all|length }}</td>
@@ -702,7 +707,7 @@
                     </td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="13" style="text-align:center; color:#64748b; padding:28px;">No loan applications found for this filter.</td></tr>
+                <tr><td colspan="14" style="text-align:center; color:#64748b; padding:28px;">No loan applications found for this filter.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
