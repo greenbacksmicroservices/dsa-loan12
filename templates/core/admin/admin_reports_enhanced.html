@@ -698,7 +698,7 @@
                         <div style="font-size:12px; color:#64748b;">{{ loan.email|default:"No email" }}</div>
                     </td>
                     <td>{{ loan.mobile_number|default:"-" }}</td>
-                    <td>{{ loan.get_loan_type_display|default:loan.loan_type|default:"-" }}</td>
+                    <td>{% if loan.get_loan_type_display %}{{ loan.get_loan_type_display|default:loan.loan_type|default:"-" }}{% else %}{{ loan.loan_type|default:"-" }}{% endif %}</td>
                     <td><strong>&#8377;{{ loan.loan_amount|default:0|floatformat:0 }}</strong></td>
                     <td><strong>{{ loan.report_disbursed_amount_display|default:"-" }}</strong></td>
                     <td><span class="loan-status-chip">{{ loan.report_status_label }}</span></td>
@@ -962,9 +962,9 @@
     </div>
 </div>
 
-{{ report_partner_rows|json_script:"reportPartnersData" }}
-{{ report_employee_rows|json_script:"reportEmployeesData" }}
-{{ report_agent_rows|json_script:"reportAgentsData" }}
+<script id="reportPartnersData" type="application/json">{{ report_partner_rows_json|default:"[]"|safe }}</script>
+<script id="reportEmployeesData" type="application/json">{{ report_employee_rows_json|default:"[]"|safe }}</script>
+<script id="reportAgentsData" type="application/json">{{ report_agent_rows_json|default:"[]"|safe }}</script>
 
 {{ download_people|json_script:"downloadPeopleData" }}
 

@@ -1057,10 +1057,15 @@ def _report_period_bounds(request):
     to_date = (request.GET.get('to_date') or request.GET.get('date_to') or '').strip()
     now = timezone.now()
 
+    def _aware_datetime(naive_dt):
+        if timezone.is_aware(naive_dt):
+            return naive_dt
+        return timezone.make_aware(naive_dt, timezone.get_current_timezone())
+
     if from_date and to_date:
         try:
-            start_date = timezone.make_aware(datetime.strptime(from_date, '%Y-%m-%d'))
-            end_date = timezone.make_aware(datetime.strptime(to_date, '%Y-%m-%d') + timedelta(days=1))
+            start_date = _aware_datetime(datetime.strptime(from_date, '%Y-%m-%d'))
+            end_date = _aware_datetime(datetime.strptime(to_date, '%Y-%m-%d') + timedelta(days=1))
             return 'custom', from_date, to_date, start_date, end_date
         except ValueError:
             from_date = ''
@@ -1071,9 +1076,19 @@ def _report_period_bounds(request):
     if period == '1year':
         return period, from_date, to_date, now - timedelta(days=365), now
     if period == 'all':
-        return period, from_date, to_date, timezone.make_aware(datetime(2000, 1, 1)), now + timedelta(days=1)
+        return period, from_date, to_date, _aware_datetime(datetime(2000, 1, 1)), now + timedelta(days=1)
 
     return '1year', from_date, to_date, now - timedelta(days=365), now
+
+
+def _render_admin_reports_page(request, context):
+    from .admin_panel_helpers import attach_admin_report_json_fields
+
+    attach_admin_report_json_fields(context)
+    response = render(request, 'core/admin/admin_reports_enhanced.html', context)
+    response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    response['Pragma'] = 'no-cache'
+    return response
 
 
 @login_required
@@ -1082,6 +1097,21 @@ def admin_reports(request):
     if request.user.role != 'admin':
         return redirect('dashboard')
 
+    try:
+        return _admin_reports_response(request)
+    except Exception as exc:
+        logger.exception('Admin reports page failed: %s', exc)
+        from .admin_panel_helpers import build_admin_reports_empty_context
+        context = build_admin_reports_empty_context(
+            report_error=(
+                'Reports could not be loaded. Please refresh the page. '
+                'If this continues on the live server, run: python manage.py migrate'
+            ),
+        )
+        return _render_admin_reports_page(request, context)
+
+
+def _admin_reports_response(request):
     period, from_date, to_date, start_date, end_date = _report_period_bounds(request)
     search_query = (request.GET.get('q') or '').strip()
     status_filter = (request.GET.get('status') or '').strip()
@@ -1171,10 +1201,7 @@ def admin_reports(request):
             agent_filter=agent_filter,
             report_error=report_error,
         )
-        response = render(request, 'core/admin/admin_reports_enhanced.html', context)
-        response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
-        response['Pragma'] = 'no-cache'
-        return response
+        return _render_admin_reports_page(request, context)
 
     total_applications = len(report_loans)
     status_counts = {
@@ -1188,7 +1215,8 @@ def admin_reports(request):
         'disbursed': 0,
     }
     for loan in report_loans:
-        status_counts[loan.report_status_key] = status_counts.get(loan.report_status_key, 0) + 1
+        status_key = getattr(loan, 'report_status_key', None) or ''
+        status_counts[status_key] = status_counts.get(status_key, 0) + 1
 
     new_count = status_counts.get('new_entry', 0)
     processing_count = status_counts.get('waiting', 0)
@@ -1209,8 +1237,12 @@ def admin_reports(request):
     rejected_percent = percent(rejected_count)
     disbursed_percent = percent(disbursed_count)
 
-    total_amount = sum((loan.loan_amount or 0) for loan in report_loans)
-    approved_amount = sum((loan.loan_amount or 0) for loan in report_loans if loan.report_status_key == 'approved')
+    total_amount = sum((getattr(loan, 'loan_amount', 0) or 0) for loan in report_loans)
+    approved_amount = sum(
+        (getattr(loan, 'loan_amount', 0) or 0)
+        for loan in report_loans
+        if getattr(loan, 'report_status_key', '') == 'approved'
+    )
     disbursed_amount = sum(
         (getattr(loan, 'report_disbursed_amount', 0) or 0)
         for loan in report_loans
@@ -1383,10 +1415,7 @@ def admin_reports(request):
         'report_error': report_error,
     }
 
-    response = render(request, 'core/admin/admin_reports_enhanced.html', context)
-    response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
-    response['Pragma'] = 'no-cache'
-    return response
+    return _render_admin_reports_page(request, context)
 
 
 @login_required

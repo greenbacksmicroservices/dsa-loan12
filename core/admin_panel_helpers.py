@@ -2,7 +2,10 @@
 
 from decimal import Decimal
 from types import SimpleNamespace
+import json
+import logging
 
+from django.core.serializers.json import DjangoJSONEncoder
 from django.db.models import Q
 from django.utils import timezone
 
@@ -19,6 +22,57 @@ from .updated_document_utils import (
 from .workflow_rows import application_effective_status_key, build_application_display_row, loan_type_display
 
 NOT_ASSIGNED = 'Not Assigned'
+_report_logger = logging.getLogger(__name__)
+_LEAD_RECEIVED_BY_SUPPORTED = None
+
+
+def _lead_received_by_supported():
+    global _LEAD_RECEIVED_BY_SUPPORTED
+    if _LEAD_RECEIVED_BY_SUPPORTED is not None:
+        return _LEAD_RECEIVED_BY_SUPPORTED
+    try:
+        list(LoanApplication.objects.values_list('lead_received_by_id', flat=True)[:1])
+        _LEAD_RECEIVED_BY_SUPPORTED = True
+    except Exception:
+        _LEAD_RECEIVED_BY_SUPPORTED = False
+    return _LEAD_RECEIVED_BY_SUPPORTED
+
+
+def _lead_receiver_user(loan_app):
+    if not loan_app or not _lead_received_by_supported():
+        return None
+    try:
+        receiver_id = getattr(loan_app, 'lead_received_by_id', None)
+        if not receiver_id:
+            return None
+        cached = getattr(loan_app, '_lead_received_by_cache', None)
+        if cached is not None:
+            return cached
+        receiver = User.objects.filter(id=receiver_id).only(
+            'id', 'role', 'first_name', 'last_name', 'username', 'is_active'
+        ).first()
+        loan_app._lead_received_by_cache = receiver
+        return receiver
+    except Exception:
+        return None
+
+
+def encode_admin_report_json(data):
+    """JSON safe for embedding in a script tag."""
+    try:
+        payload = json.dumps(data or [], cls=DjangoJSONEncoder)
+    except Exception:
+        _report_logger.exception('Failed to encode admin report JSON payload')
+        payload = '[]'
+    return payload.replace('<', '\\u003c').replace('>', '\\u003e')
+
+
+def attach_admin_report_json_fields(context):
+    context['report_partner_rows_json'] = encode_admin_report_json(context.get('report_partner_rows'))
+    context['report_employee_rows_json'] = encode_admin_report_json(context.get('report_employee_rows'))
+    context['report_agent_rows_json'] = encode_admin_report_json(context.get('report_agent_rows'))
+    context['download_people_json'] = encode_admin_report_json(context.get('download_people'))
+    return context
 
 
 def _meta_created_by_admin(user_obj, admin_user):
@@ -122,9 +176,13 @@ def _serialize_documents(loan_obj):
     for doc in document_iter:
         if not getattr(doc, 'file', None):
             continue
+        try:
+            file_url = doc.file.url
+        except Exception:
+            file_url = ''
         docs.append({
             'name': doc.get_document_type_display() if hasattr(doc, 'get_document_type_display') else str(doc.document_type or 'Document'),
-            'url': doc.file.url,
+            'url': file_url,
             'uploaded_at': doc.uploaded_at.strftime('%Y-%m-%d %H:%M') if doc.uploaded_at else '',
         })
     return docs
@@ -189,10 +247,9 @@ def _resolve_report_partner_user(loan_obj=None, loan_app=None):
     assignment_context = extract_assignment_context(loan_obj, loan_app) if loan_obj else extract_assignment_context(None, loan_app)
     assigned_by_user = assignment_context.get('assigned_by_user')
 
-    if loan_app and getattr(loan_app, 'lead_received_by', None):
-        receiver = loan_app.lead_received_by
-        if str(getattr(receiver, 'role', '') or '').strip().lower() in {'subadmin', 'partner'}:
-            return receiver
+    receiver = _lead_receiver_user(loan_app)
+    if receiver and str(getattr(receiver, 'role', '') or '').strip().lower() in {'subadmin', 'partner'}:
+        return receiver
 
     if getattr(assigned_by_user, 'role', '') == 'subadmin':
         return assigned_by_user
@@ -220,10 +277,9 @@ def _resolve_report_employee_user(loan_obj=None, loan_app=None):
         return loan_app.assigned_employee
     if loan_obj and loan_obj.assigned_employee:
         return loan_obj.assigned_employee
-    if loan_app and getattr(loan_app, 'lead_received_by', None):
-        receiver = loan_app.lead_received_by
-        if str(getattr(receiver, 'role', '') or '').strip().lower() == 'employee':
-            return receiver
+    receiver = _lead_receiver_user(loan_app)
+    if receiver and str(getattr(receiver, 'role', '') or '').strip().lower() == 'employee':
+        return receiver
     return None
 
 
@@ -336,6 +392,23 @@ def application_to_report_row(loan_app):
     return enrich_admin_report_row(row, loan_app=loan_app)
 
 
+def _loan_applications_report_queryset(start_date, end_date):
+    related_fields = [
+        'applicant',
+        'assigned_employee',
+        'assigned_agent',
+        'assigned_agent__created_by',
+        'assigned_agent__user',
+        'assigned_by',
+    ]
+    if _lead_received_by_supported():
+        related_fields.append('lead_received_by')
+    return LoanApplication.objects.select_related(*related_fields).filter(
+        created_at__gte=start_date,
+        created_at__lt=end_date,
+    )
+
+
 def build_admin_filtered_report_loans(
     *,
     start_date,
@@ -348,9 +421,6 @@ def build_admin_filtered_report_loans(
     loan_id_filter='',
 ):
     """Build enriched report rows from legacy loans and workflow-only applications."""
-    import logging
-
-    report_logger = logging.getLogger(__name__)
     related_app_ids = set()
     enriched_rows = []
 
@@ -366,7 +436,7 @@ def build_admin_filtered_report_loans(
             created_at__lt=end_date,
         )
     except Exception:
-        report_logger.exception('Failed to query legacy loans for admin reports')
+        _report_logger.exception('Failed to query legacy loans for admin reports')
         loans_qs = Loan.objects.none()
 
     if loan_id_filter:
@@ -387,86 +457,71 @@ def build_admin_filtered_report_loans(
         loans_qs = loans_qs.filter(search_filter)
 
     try:
-        apps_qs = LoanApplication.objects.select_related(
-            'applicant',
-            'assigned_employee',
-            'assigned_agent',
-            'assigned_agent__created_by',
-            'assigned_agent__user',
-            'assigned_by',
-            'lead_received_by',
-        ).filter(
-            created_at__gte=start_date,
-            created_at__lt=end_date,
-        )
+        loans_iterator = loans_qs.order_by('-created_at')
+        for loan in loans_iterator:
+            related_app = find_related_loan_application(loan)
+            if related_app:
+                related_app_ids.add(related_app.id)
+
+            if not _matches_employee_filter(loan, related_app, employee_filter):
+                continue
+            if not _matches_partner_filter(loan, related_app, partner_filter):
+                continue
+            if not _matches_agent_filter(loan, related_app, agent_filter):
+                continue
+
+            status_key = report_effective_status_key(loan_obj=loan, loan_app=related_app)
+            if status_filter and status_key != status_filter:
+                continue
+
+            try:
+                enriched_rows.append(enrich_admin_report_row(loan, loan_obj=loan, loan_app=related_app))
+            except Exception:
+                _report_logger.exception('Failed to enrich legacy loan %s for reports', getattr(loan, 'id', '?'))
     except Exception:
-        report_logger.exception('Failed to query loan applications for admin reports')
-        apps_qs = LoanApplication.objects.none()
-
-    for loan in loans_qs.order_by('-created_at'):
-        related_app = find_related_loan_application(loan)
-        if related_app:
-            related_app_ids.add(related_app.id)
-
-        if not _matches_employee_filter(loan, related_app, employee_filter):
-            continue
-        if not _matches_partner_filter(loan, related_app, partner_filter):
-            continue
-        if not _matches_agent_filter(loan, related_app, agent_filter):
-            continue
-
-        status_key = report_effective_status_key(loan_obj=loan, loan_app=related_app)
-        if status_filter and status_key != status_filter:
-            continue
-
-        try:
-            enriched_rows.append(enrich_admin_report_row(loan, loan_obj=loan, loan_app=related_app))
-        except Exception:
-            report_logger.exception('Failed to enrich legacy loan %s for reports', getattr(loan, 'id', '?'))
+        _report_logger.exception('Failed while iterating legacy loans for admin reports')
 
     try:
-        app_iterator = apps_qs.order_by('-created_at')
-    except Exception:
-        report_logger.exception('Failed to iterate loan applications for admin reports')
-        app_iterator = []
+        apps_qs = _loan_applications_report_queryset(start_date, end_date)
+        for loan_app in apps_qs.order_by('-created_at'):
+            if loan_app.id in related_app_ids:
+                continue
 
-    for loan_app in app_iterator:
-        if loan_app.id in related_app_ids:
-            continue
-
-        if loan_id_filter:
-            try:
-                if loan_app.id != int(loan_id_filter):
+            if loan_id_filter:
+                try:
+                    if loan_app.id != int(loan_id_filter):
+                        continue
+                except (TypeError, ValueError):
                     continue
-            except (TypeError, ValueError):
+
+            applicant = getattr(loan_app, 'applicant', None)
+            if search_query:
+                haystack = ' '.join([
+                    str(getattr(applicant, 'full_name', '') or ''),
+                    str(getattr(applicant, 'mobile', '') or ''),
+                    str(getattr(applicant, 'email', '') or ''),
+                    str(loan_app.id),
+                ]).lower()
+                if search_query.lower() not in haystack:
+                    continue
+
+            if not _matches_employee_filter(None, loan_app, employee_filter):
+                continue
+            if not _matches_partner_filter(None, loan_app, partner_filter):
+                continue
+            if not _matches_agent_filter(None, loan_app, agent_filter):
                 continue
 
-        applicant = getattr(loan_app, 'applicant', None)
-        if search_query:
-            haystack = ' '.join([
-                str(getattr(applicant, 'full_name', '') or ''),
-                str(getattr(applicant, 'mobile', '') or ''),
-                str(getattr(applicant, 'email', '') or ''),
-                str(loan_app.id),
-            ]).lower()
-            if search_query.lower() not in haystack:
+            status_key = report_effective_status_key(loan_app=loan_app)
+            if status_filter and status_key != status_filter:
                 continue
 
-        if not _matches_employee_filter(None, loan_app, employee_filter):
-            continue
-        if not _matches_partner_filter(None, loan_app, partner_filter):
-            continue
-        if not _matches_agent_filter(None, loan_app, agent_filter):
-            continue
-
-        status_key = report_effective_status_key(loan_app=loan_app)
-        if status_filter and status_key != status_filter:
-            continue
-
-        try:
-            enriched_rows.append(application_to_report_row(loan_app))
-        except Exception:
-            report_logger.exception('Failed to enrich application %s for reports', getattr(loan_app, 'id', '?'))
+            try:
+                enriched_rows.append(application_to_report_row(loan_app))
+            except Exception:
+                _report_logger.exception('Failed to enrich application %s for reports', getattr(loan_app, 'id', '?'))
+    except Exception:
+        _report_logger.exception('Failed while iterating loan applications for admin reports')
 
     enriched_rows.sort(
         key=lambda item: getattr(item, 'created_at', None) or start_date,
@@ -760,4 +815,8 @@ def build_admin_reports_empty_context(
         'agent_options': agents,
         'report_refreshed_at': timezone.now(),
         'report_error': report_error,
+        'report_partner_rows_json': '[]',
+        'report_employee_rows_json': '[]',
+        'report_agent_rows_json': '[]',
+        'download_people_json': '[]',
     }
