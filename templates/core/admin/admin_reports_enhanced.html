@@ -523,6 +523,12 @@
     </button>
 </div>
 
+{% if report_error %}
+<div class="alert alert-warning" role="alert" style="margin-bottom: 20px; border-radius: 10px;">
+    <strong>Reports notice:</strong> {{ report_error }}
+</div>
+{% endif %}
+
 <!-- Summary Statistics -->
 <div class="stats-grid">
     <div class="stat-card blue">
@@ -578,6 +584,7 @@
                 <option value="1month" {% if period == '1month' %}selected{% endif %}>Last 1 Month</option>
                 <option value="6months" {% if period == '6months' %}selected{% endif %}>Last 6 Months</option>
                 <option value="1year" {% if period == '1year' %}selected{% endif %}>Last 1 Year</option>
+                <option value="all" {% if period == 'all' %}selected{% endif %}>All Time</option>
                 <option value="custom" {% if period == 'custom' %}selected{% endif %}>Custom</option>
             </select>
         </div>
@@ -700,14 +707,14 @@
                     <td>{{ loan.report_channel_partner_name|default:"-" }}</td>
                     <td>{{ loan.created_at|date:"d M Y, h:i A" }}</td>
                     <td>{{ loan.updated_at|date:"d M Y, h:i A" }}</td>
-                    <td>{{ loan.documents.all|length }}</td>
+                    <td>{{ loan.report_document_count|default:0 }}</td>
                     <td style="white-space:nowrap;">
                         <a href="{% url 'admin_loan_detail' loan.id %}" class="report-action-btn view">View</a>
                         <a href="?{{ request.GET.urlencode }}{% if request.GET.urlencode %}&{% endif %}loan_id={{ loan.id }}&download=1&format=excel" class="report-action-btn download">Download</a>
                     </td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="14" style="text-align:center; color:#64748b; padding:28px;">No loan applications found for this filter.</td></tr>
+                <tr><td colspan="14" style="text-align:center; color:#64748b; padding:28px;">No loan applications found.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
@@ -1026,15 +1033,18 @@ const downloadPeopleRaw = (() => {
 const reportRowsData = {
     partners: (() => {
         const el = document.getElementById('reportPartnersData');
-        return el ? JSON.parse(el.textContent || '[]') : [];
+        if (!el) return [];
+        try { return JSON.parse(el.textContent || '[]'); } catch (e) { console.error('reportPartnersData parse failed', e); return []; }
     })(),
     employees: (() => {
         const el = document.getElementById('reportEmployeesData');
-        return el ? JSON.parse(el.textContent || '[]') : [];
+        if (!el) return [];
+        try { return JSON.parse(el.textContent || '[]'); } catch (e) { console.error('reportEmployeesData parse failed', e); return []; }
     })(),
     agents: (() => {
         const el = document.getElementById('reportAgentsData');
-        return el ? JSON.parse(el.textContent || '[]') : [];
+        if (!el) return [];
+        try { return JSON.parse(el.textContent || '[]'); } catch (e) { console.error('reportAgentsData parse failed', e); return []; }
     })(),
 };
 

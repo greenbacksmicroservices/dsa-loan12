@@ -1052,7 +1052,7 @@ def _admin_report_status_label(status_key):
 
 
 def _report_period_bounds(request):
-    period = (request.GET.get('period') or '1month').strip()
+    period = (request.GET.get('period') or '1year').strip()
     from_date = (request.GET.get('from_date') or request.GET.get('date_from') or '').strip()
     to_date = (request.GET.get('to_date') or request.GET.get('date_to') or '').strip()
     now = timezone.now()
@@ -1070,8 +1070,10 @@ def _report_period_bounds(request):
         return period, from_date, to_date, now - timedelta(days=180), now
     if period == '1year':
         return period, from_date, to_date, now - timedelta(days=365), now
+    if period == 'all':
+        return period, from_date, to_date, timezone.make_aware(datetime(2000, 1, 1)), now + timedelta(days=1)
 
-    return '1month', from_date, to_date, now - timedelta(days=30), now
+    return '1year', from_date, to_date, now - timedelta(days=365), now
 
 
 @login_required
@@ -1080,33 +1082,37 @@ def admin_reports(request):
     if request.user.role != 'admin':
         return redirect('dashboard')
 
+    period, from_date, to_date, start_date, end_date = _report_period_bounds(request)
+    search_query = (request.GET.get('q') or '').strip()
+    status_filter = (request.GET.get('status') or '').strip()
+    employee_filter = (request.GET.get('employee') or '').strip()
+    partner_filter = (request.GET.get('partner') or '').strip()
+    agent_filter = (request.GET.get('agent') or '').strip()
+    loan_id_filter = (request.GET.get('loan_id') or '').strip()
+
+    status_alias_map = {
+        'processing': 'waiting',
+        'waiting_for_processing': 'waiting',
+        'updated': UPDATED_DOCUMENT_STATUS_KEY,
+        'banking': 'follow_up',
+        'followup_pending': 'follow_up_pending',
+    }
+    status_filter = status_alias_map.get(status_filter, status_filter)
+
+    from .admin_panel_helpers import (
+        build_admin_filtered_report_loans,
+        build_admin_reports_empty_context,
+        build_agent_report_rows,
+        build_employee_report_rows,
+        build_partner_report_rows,
+        report_effective_status_key,
+        report_status_label,
+    )
+
+    report_loans = []
+    report_error = None
+
     try:
-        period, from_date, to_date, start_date, end_date = _report_period_bounds(request)
-        search_query = (request.GET.get('q') or '').strip()
-        status_filter = (request.GET.get('status') or '').strip()
-        employee_filter = (request.GET.get('employee') or '').strip()
-        partner_filter = (request.GET.get('partner') or '').strip()
-        agent_filter = (request.GET.get('agent') or '').strip()
-        loan_id_filter = (request.GET.get('loan_id') or '').strip()
-
-        status_alias_map = {
-            'processing': 'waiting',
-            'waiting_for_processing': 'waiting',
-            'updated': UPDATED_DOCUMENT_STATUS_KEY,
-            'banking': 'follow_up',
-            'followup_pending': 'follow_up_pending',
-        }
-        status_filter = status_alias_map.get(status_filter, status_filter)
-
-        from .admin_panel_helpers import (
-            build_admin_filtered_report_loans,
-            build_agent_report_rows,
-            build_employee_report_rows,
-            build_partner_report_rows,
-            report_effective_status_key,
-            report_status_label,
-        )
-
         report_loans = build_admin_filtered_report_loans(
             start_date=start_date,
             end_date=end_date,
@@ -1117,115 +1123,150 @@ def admin_reports(request):
             agent_filter=agent_filter,
             loan_id_filter=loan_id_filter,
         )
+    except Exception as exc:
+        logger.exception('Admin reports loan query failed: %s', exc)
+        report_error = (
+            'Some report data could not be loaded. '
+            'Please refresh the page. If this continues, run database migrations on the server.'
+        )
 
-        if request.GET.get('download'):
-            from .report_exports import export_loans_csv, export_loans_excel
-            format_type = (request.GET.get('format') or 'csv').lower()
+    if request.GET.get('download'):
+        if report_error:
+            messages.error(request, report_error)
+            return redirect('admin_reports')
+        from .report_exports import export_loans_csv, export_loans_excel
+        format_type = (request.GET.get('format') or 'csv').lower()
 
-            def _report_status_key_getter(row):
-                return getattr(row, 'report_status_key', None) or report_effective_status_key(
-                    loan_obj=getattr(row, '_legacy_loan', row),
-                    loan_app=getattr(row, '_related_app', None),
-                )
+        def _report_status_key_getter(row):
+            return getattr(row, 'report_status_key', None) or report_effective_status_key(
+                loan_obj=getattr(row, '_legacy_loan', row),
+                loan_app=getattr(row, '_related_app', None),
+            )
 
-            if format_type in ['excel', 'xlsx']:
-                return export_loans_excel(
-                    report_loans,
-                    period,
-                    'admin_loans_report',
-                    _report_status_key_getter,
-                    report_status_label,
-                )
-            return export_loans_csv(
+        if format_type in ['excel', 'xlsx']:
+            return export_loans_excel(
                 report_loans,
                 period,
                 'admin_loans_report',
                 _report_status_key_getter,
                 report_status_label,
             )
-
-        total_applications = len(report_loans)
-        status_counts = {
-            'new_entry': 0,
-            'waiting': 0,
-            UPDATED_DOCUMENT_STATUS_KEY: 0,
-            'follow_up': 0,
-            'follow_up_pending': 0,
-            'approved': 0,
-            'rejected': 0,
-            'disbursed': 0,
-        }
-        for loan in report_loans:
-            status_counts[loan.report_status_key] = status_counts.get(loan.report_status_key, 0) + 1
-
-        new_count = status_counts.get('new_entry', 0)
-        processing_count = status_counts.get('waiting', 0)
-        updated_document_count = status_counts.get(UPDATED_DOCUMENT_STATUS_KEY, 0)
-        followup_count = status_counts.get('follow_up', 0)
-        followup_pending_count = status_counts.get('follow_up_pending', 0)
-        approved_count = status_counts.get('approved', 0)
-        rejected_count = status_counts.get('rejected', 0)
-        disbursed_count = status_counts.get('disbursed', 0)
-
-        def percent(value):
-            return int((value / total_applications * 100)) if total_applications > 0 else 0
-
-        new_percent = percent(new_count)
-        processing_percent = percent(processing_count)
-        followup_percent = percent(followup_count)
-        approved_percent = percent(approved_count)
-        rejected_percent = percent(rejected_count)
-        disbursed_percent = percent(disbursed_count)
-
-        total_amount = sum((loan.loan_amount or 0) for loan in report_loans)
-        approved_amount = sum((loan.loan_amount or 0) for loan in report_loans if loan.report_status_key == 'approved')
-        disbursed_amount = sum(
-            (getattr(loan, 'report_disbursed_amount', 0) or 0)
-            for loan in report_loans
-            if getattr(loan, 'report_status_key', '') == 'disbursed'
+        return export_loans_csv(
+            report_loans,
+            period,
+            'admin_loans_report',
+            _report_status_key_getter,
+            report_status_label,
         )
-        pending_amount = total_amount - disbursed_amount
-        avg_loan_value = (total_amount / total_applications) if total_applications > 0 else 0
 
-        # Team data
-        employees = User.objects.filter(role='employee')
-        total_employees = employees.count()
-        active_employees = employees.filter(is_active=True).count()
+    if report_error and not report_loans:
+        context = build_admin_reports_empty_context(
+            period=period,
+            from_date=from_date,
+            to_date=to_date,
+            search_query=search_query,
+            status_filter=status_filter,
+            employee_filter=employee_filter,
+            partner_filter=partner_filter,
+            agent_filter=agent_filter,
+            report_error=report_error,
+        )
+        response = render(request, 'core/admin/admin_reports_enhanced.html', context)
+        response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        response['Pragma'] = 'no-cache'
+        return response
 
-        agents = Agent.objects.all()
-        total_agents = agents.count()
-        active_agents = agents.filter(status='active').count()
+    total_applications = len(report_loans)
+    status_counts = {
+        'new_entry': 0,
+        'waiting': 0,
+        UPDATED_DOCUMENT_STATUS_KEY: 0,
+        'follow_up': 0,
+        'follow_up_pending': 0,
+        'approved': 0,
+        'rejected': 0,
+        'disbursed': 0,
+    }
+    for loan in report_loans:
+        status_counts[loan.report_status_key] = status_counts.get(loan.report_status_key, 0) + 1
 
-        subadmins = User.objects.filter(role='subadmin')
-        total_subadmins = subadmins.count()
+    new_count = status_counts.get('new_entry', 0)
+    processing_count = status_counts.get('waiting', 0)
+    updated_document_count = status_counts.get(UPDATED_DOCUMENT_STATUS_KEY, 0)
+    followup_count = status_counts.get('follow_up', 0)
+    followup_pending_count = status_counts.get('follow_up_pending', 0)
+    approved_count = status_counts.get('approved', 0)
+    rejected_count = status_counts.get('rejected', 0)
+    disbursed_count = status_counts.get('disbursed', 0)
 
-        # Download selector list: employees + agents + subadmins (deduplicated by name)
-        download_people = []
-        seen_names = set()
+    def percent(value):
+        return int((value / total_applications * 100)) if total_applications > 0 else 0
 
-        def append_download_person(raw_name, role_label):
-            raw_name = (raw_name or '').strip()
-            if not raw_name:
-                return
-            key = raw_name.lower()
-            if key in seen_names:
-                return
-            seen_names.add(key)
-            download_people.append({
-                'name': raw_name,
-                'role': role_label,
-            })
+    new_percent = percent(new_count)
+    processing_percent = percent(processing_count)
+    followup_percent = percent(followup_count)
+    approved_percent = percent(approved_count)
+    rejected_percent = percent(rejected_count)
+    disbursed_percent = percent(disbursed_count)
 
-        for emp in employees.order_by('first_name', 'last_name', 'username'):
-            append_download_person(emp.get_full_name() or emp.username, 'Employee')
+    total_amount = sum((loan.loan_amount or 0) for loan in report_loans)
+    approved_amount = sum((loan.loan_amount or 0) for loan in report_loans if loan.report_status_key == 'approved')
+    disbursed_amount = sum(
+        (getattr(loan, 'report_disbursed_amount', 0) or 0)
+        for loan in report_loans
+        if getattr(loan, 'report_status_key', '') == 'disbursed'
+    )
+    pending_amount = total_amount - disbursed_amount
+    avg_loan_value = (total_amount / total_applications) if total_applications > 0 else 0
 
-        for ag in agents.order_by('name', 'id'):
-            append_download_person(ag.name or (ag.user.get_full_name() if ag.user else ''), 'Channel Partner')
+    employees = User.objects.filter(role='employee')
+    total_employees = employees.count()
+    active_employees = employees.filter(is_active=True).count()
 
-        for subadmin in subadmins.order_by('first_name', 'last_name', 'username'):
-            append_download_person(subadmin.get_full_name() or subadmin.username, 'Partner')
+    agents = Agent.objects.all()
+    total_agents = agents.count()
+    active_agents = agents.filter(status='active').count()
 
-        download_people.sort(key=lambda person: (person['name'].lower(), person['role']))
+    subadmins = User.objects.filter(role='subadmin')
+    total_subadmins = subadmins.count()
+
+    download_people = []
+    seen_names = set()
+
+    def append_download_person(raw_name, role_label):
+        raw_name = (raw_name or '').strip()
+        if not raw_name:
+            return
+        key = raw_name.lower()
+        if key in seen_names:
+            return
+        seen_names.add(key)
+        download_people.append({
+            'name': raw_name,
+            'role': role_label,
+        })
+
+    for emp in employees.order_by('first_name', 'last_name', 'username'):
+        append_download_person(emp.get_full_name() or emp.username, 'Employee')
+
+    for ag in agents.order_by('name', 'id'):
+        append_download_person(ag.name or (ag.user.get_full_name() if ag.user else ''), 'Channel Partner')
+
+    for subadmin in subadmins.order_by('first_name', 'last_name', 'username'):
+        append_download_person(subadmin.get_full_name() or subadmin.username, 'Partner')
+
+    download_people.sort(key=lambda person: (person['name'].lower(), person['role']))
+
+    partner_rows = []
+    employee_rows = []
+    agent_rows = []
+
+    try:
+        from .admin_panel_helpers import (
+            _resolve_report_channel_partner,
+            _resolve_report_employee_user,
+            _resolve_report_partner_user,
+        )
 
         partners_qs = User.objects.filter(role='subadmin').order_by('-date_joined')
         employees_qs = User.objects.filter(role='employee').select_related(
@@ -1255,22 +1296,9 @@ def admin_reports(request):
             parts = [p for p in [city, f"PIN {pin}" if pin else ''] if p]
             agent_location[ag.id] = ' | '.join(parts) if parts else '-'
 
-        partner_application_map = {}
-        employee_application_map = {}
-        agent_application_map = {}
-
-        for partner in partners_qs:
-            partner_application_map[partner.id] = []
-        for employee in employees_qs:
-            employee_application_map[employee.id] = []
-        for agent in agents_qs:
-            agent_application_map[agent.id] = []
-
-        from .admin_panel_helpers import (
-            _resolve_report_channel_partner,
-            _resolve_report_employee_user,
-            _resolve_report_partner_user,
-        )
+        partner_application_map = {partner.id: [] for partner in partners_qs}
+        employee_application_map = {employee.id: [] for employee in employees_qs}
+        agent_application_map = {agent.id: [] for agent in agents_qs}
 
         seen_agent_loan_ids = {agent.id: set() for agent in agents_qs}
         for loan in report_loans:
@@ -1303,67 +1331,62 @@ def admin_reports(request):
             agent_location,
             agent_application_map,
         )
+    except Exception as exc:
+        logger.exception('Admin reports team tables failed: %s', exc)
+        if not report_error:
+            report_error = 'Team summary tables could not be fully loaded. Loan filters below are still available.'
 
-        context = {
-            'page_title': 'Reports & Analytics',
-            'report_partner_rows': partner_rows,
-            'report_employee_rows': employee_rows,
-            'report_agent_rows': agent_rows,
-            'total_applications': total_applications,
-            'new_count': new_count,
-            'processing_count': processing_count,
-            'updated_document_count': updated_document_count,
-            'followup_count': followup_count,
-            'followup_pending_count': followup_pending_count,
-            'approved_count': approved_count,
-            'rejected_count': rejected_count,
-            'disbursed_count': disbursed_count,
-            'new_percent': new_percent,
-            'processing_percent': processing_percent,
-            'followup_percent': followup_percent,
-            'approved_percent': approved_percent,
-            'rejected_percent': rejected_percent,
-            'disbursed_percent': disbursed_percent,
-            'total_amount': total_amount,
-            'approved_amount': approved_amount,
-            'disbursed_amount': disbursed_amount,
-            'pending_amount': pending_amount,
-            'avg_loan_value': avg_loan_value,
-            'total_employees': total_employees,
-            'active_employees': active_employees,
-            'total_agents': total_agents,
-            'active_agents': active_agents,
-            'total_subadmins': total_subadmins,
-            'download_people': download_people,
-            'filtered_report_loans': report_loans,
-            'period': period,
-            'from_date': from_date,
-            'to_date': to_date,
-            'search_query': search_query,
-            'status_filter': status_filter,
-            'employee_filter': employee_filter,
-            'partner_filter': partner_filter,
-            'agent_filter': agent_filter,
-            'employee_options': employees.order_by('first_name', 'last_name', 'username'),
-            'partner_options': subadmins.order_by('first_name', 'last_name', 'username'),
-            'agent_options': agents.order_by('name', 'id'),
-            'report_refreshed_at': timezone.now(),
-        }
-        
-        response = render(request, 'core/admin/admin_reports_enhanced.html', context)
-        response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
-        response['Pragma'] = 'no-cache'
-        return response
-    except Exception as e:
-        logger.error(f"Error loading reports: {str(e)}")
-        context = {
-            'page_title': 'Reports & Analytics',
-            'error': str(e),
-            'report_partner_rows': [],
-            'report_employee_rows': [],
-            'report_agent_rows': [],
-        }
-        return render(request, 'core/admin/admin_reports.html', context)
+    context = {
+        'page_title': 'Reports & Analytics',
+        'report_partner_rows': partner_rows,
+        'report_employee_rows': employee_rows,
+        'report_agent_rows': agent_rows,
+        'total_applications': total_applications,
+        'new_count': new_count,
+        'processing_count': processing_count,
+        'updated_document_count': updated_document_count,
+        'followup_count': followup_count,
+        'followup_pending_count': followup_pending_count,
+        'approved_count': approved_count,
+        'rejected_count': rejected_count,
+        'disbursed_count': disbursed_count,
+        'new_percent': new_percent,
+        'processing_percent': processing_percent,
+        'followup_percent': followup_percent,
+        'approved_percent': approved_percent,
+        'rejected_percent': rejected_percent,
+        'disbursed_percent': disbursed_percent,
+        'total_amount': total_amount,
+        'approved_amount': approved_amount,
+        'disbursed_amount': disbursed_amount,
+        'pending_amount': pending_amount,
+        'avg_loan_value': avg_loan_value,
+        'total_employees': total_employees,
+        'active_employees': active_employees,
+        'total_agents': total_agents,
+        'active_agents': active_agents,
+        'total_subadmins': total_subadmins,
+        'download_people': download_people,
+        'filtered_report_loans': report_loans,
+        'period': period,
+        'from_date': from_date,
+        'to_date': to_date,
+        'search_query': search_query,
+        'status_filter': status_filter,
+        'employee_filter': employee_filter,
+        'partner_filter': partner_filter,
+        'agent_filter': agent_filter,
+        'employee_options': employees.order_by('first_name', 'last_name', 'username'),
+        'partner_options': subadmins.order_by('first_name', 'last_name', 'username'),
+        'agent_options': agents.order_by('name', 'id'),
+        'report_refreshed_at': timezone.now(),
+        'report_error': report_error,
+    }
+
+    response = render(request, 'core/admin/admin_reports_enhanced.html', context)
+    response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    response['Pragma'] = 'no-cache'
+    return response
 
 
 @login_required

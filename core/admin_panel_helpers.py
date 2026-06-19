@@ -4,6 +4,7 @@ from decimal import Decimal
 from types import SimpleNamespace
 
 from django.db.models import Q
+from django.utils import timezone
 
 from .loan_helpers import display_loan_id, display_user_name
 from .loan_sync import extract_assignment_context, find_related_loan, find_related_loan_application
@@ -236,14 +237,31 @@ def _resolve_report_channel_partner(loan_obj=None, loan_app=None):
 
 def _resolve_report_disbursement_amount(loan_obj=None, loan_app=None, status_key=''):
     status_key = str(status_key or '').strip().lower()
+    if status_key != 'disbursed':
+        return 0.0
     if loan_app and loan_app.disbursement_amount is not None:
         return _decimal_to_float(loan_app.disbursement_amount)
-    if status_key == 'disbursed':
-        if loan_obj and loan_obj.loan_amount is not None:
-            return _decimal_to_float(loan_obj.loan_amount)
-        if loan_app and getattr(getattr(loan_app, 'applicant', None), 'loan_amount', None) is not None:
-            return _decimal_to_float(loan_app.applicant.loan_amount)
+    if loan_obj and loan_obj.loan_amount is not None:
+        return _decimal_to_float(loan_obj.loan_amount)
+    if loan_app and getattr(getattr(loan_app, 'applicant', None), 'loan_amount', None) is not None:
+        return _decimal_to_float(loan_app.applicant.loan_amount)
     return 0.0
+
+
+def _report_document_count(loan_obj):
+    document_source = getattr(loan_obj, 'documents', None)
+    if document_source is None:
+        return 0
+    try:
+        if hasattr(document_source, 'count'):
+            return int(document_source.count())
+    except (TypeError, ValueError):
+        pass
+    try:
+        document_iter = document_source.all() if hasattr(document_source, 'all') else document_source
+        return sum(1 for _ in document_iter)
+    except Exception:
+        return 0
 
 
 def format_report_currency(amount):
@@ -281,6 +299,7 @@ def enrich_admin_report_row(row, loan_obj=None, loan_app=None):
     )
     row.report_disbursed_amount = disbursed_amount
     row.report_disbursed_amount_display = format_report_currency(disbursed_amount)
+    row.report_document_count = _report_document_count(loan_obj)
     row._related_app = loan_app
     row._legacy_loan = loan_obj
     return row
@@ -329,16 +348,26 @@ def build_admin_filtered_report_loans(
     loan_id_filter='',
 ):
     """Build enriched report rows from legacy loans and workflow-only applications."""
-    loans_qs = Loan.objects.select_related(
-        'created_by',
-        'assigned_employee',
-        'assigned_agent',
-        'assigned_agent__created_by',
-        'assigned_agent__user',
-    ).prefetch_related('documents').filter(
-        created_at__gte=start_date,
-        created_at__lt=end_date,
-    )
+    import logging
+
+    report_logger = logging.getLogger(__name__)
+    related_app_ids = set()
+    enriched_rows = []
+
+    try:
+        loans_qs = Loan.objects.select_related(
+            'created_by',
+            'assigned_employee',
+            'assigned_agent',
+            'assigned_agent__created_by',
+            'assigned_agent__user',
+        ).prefetch_related('documents').filter(
+            created_at__gte=start_date,
+            created_at__lt=end_date,
+        )
+    except Exception:
+        report_logger.exception('Failed to query legacy loans for admin reports')
+        loans_qs = Loan.objects.none()
 
     if loan_id_filter:
         try:
@@ -357,21 +386,22 @@ def build_admin_filtered_report_loans(
             search_filter |= Q(id=int(search_query))
         loans_qs = loans_qs.filter(search_filter)
 
-    apps_qs = LoanApplication.objects.select_related(
-        'applicant',
-        'assigned_employee',
-        'assigned_agent',
-        'assigned_agent__created_by',
-        'assigned_agent__user',
-        'assigned_by',
-        'lead_received_by',
-    ).filter(
-        created_at__gte=start_date,
-        created_at__lt=end_date,
-    )
-
-    related_app_ids = set()
-    enriched_rows = []
+    try:
+        apps_qs = LoanApplication.objects.select_related(
+            'applicant',
+            'assigned_employee',
+            'assigned_agent',
+            'assigned_agent__created_by',
+            'assigned_agent__user',
+            'assigned_by',
+            'lead_received_by',
+        ).filter(
+            created_at__gte=start_date,
+            created_at__lt=end_date,
+        )
+    except Exception:
+        report_logger.exception('Failed to query loan applications for admin reports')
+        apps_qs = LoanApplication.objects.none()
 
     for loan in loans_qs.order_by('-created_at'):
         related_app = find_related_loan_application(loan)
@@ -389,9 +419,18 @@ def build_admin_filtered_report_loans(
         if status_filter and status_key != status_filter:
             continue
 
-        enriched_rows.append(enrich_admin_report_row(loan, loan_obj=loan, loan_app=related_app))
+        try:
+            enriched_rows.append(enrich_admin_report_row(loan, loan_obj=loan, loan_app=related_app))
+        except Exception:
+            report_logger.exception('Failed to enrich legacy loan %s for reports', getattr(loan, 'id', '?'))
 
-    for loan_app in apps_qs.order_by('-created_at'):
+    try:
+        app_iterator = apps_qs.order_by('-created_at')
+    except Exception:
+        report_logger.exception('Failed to iterate loan applications for admin reports')
+        app_iterator = []
+
+    for loan_app in app_iterator:
         if loan_app.id in related_app_ids:
             continue
 
@@ -424,7 +463,10 @@ def build_admin_filtered_report_loans(
         if status_filter and status_key != status_filter:
             continue
 
-        enriched_rows.append(application_to_report_row(loan_app))
+        try:
+            enriched_rows.append(application_to_report_row(loan_app))
+        except Exception:
+            report_logger.exception('Failed to enrich application %s for reports', getattr(loan_app, 'id', '?'))
 
     enriched_rows.sort(
         key=lambda item: getattr(item, 'created_at', None) or start_date,
@@ -550,7 +592,12 @@ def serialize_report_application(loan_obj):
 
 
 def _member_row_base(*, member_id, code, name, email, phone, status, joined, applications):
-    app_rows = [serialize_report_application(loan_obj) for loan_obj in applications]
+    app_rows = []
+    for loan_obj in applications or []:
+        try:
+            app_rows.append(serialize_report_application(loan_obj))
+        except Exception:
+            continue
     approved_count = sum(1 for row in app_rows if row['status'] in ['approved', 'disbursed'])
     disbursed_count = sum(1 for row in app_rows if row['status'] == 'disbursed')
     approved_amount = round(sum(row['approved_amount'] for row in app_rows), 2)
@@ -644,3 +691,73 @@ def build_agent_report_rows(agents, agent_location_display=None, agent_applicati
         })
         rows.append(base)
     return rows
+
+
+def build_admin_reports_filter_options():
+    """Load dropdown filter options for the admin reports page."""
+    employees = User.objects.filter(role='employee').order_by('first_name', 'last_name', 'username')
+    partners = User.objects.filter(role='subadmin').order_by('first_name', 'last_name', 'username')
+    agents = Agent.objects.order_by('name', 'id')
+    return employees, partners, agents
+
+
+def build_admin_reports_empty_context(
+    *,
+    period='1year',
+    from_date='',
+    to_date='',
+    search_query='',
+    status_filter='',
+    employee_filter='',
+    partner_filter='',
+    agent_filter='',
+    report_error=None,
+):
+    """Safe defaults so the reports template always renders."""
+    employees, partners, agents = build_admin_reports_filter_options()
+    return {
+        'page_title': 'Reports & Analytics',
+        'report_partner_rows': [],
+        'report_employee_rows': [],
+        'report_agent_rows': [],
+        'filtered_report_loans': [],
+        'total_applications': 0,
+        'new_count': 0,
+        'processing_count': 0,
+        'updated_document_count': 0,
+        'followup_count': 0,
+        'followup_pending_count': 0,
+        'approved_count': 0,
+        'rejected_count': 0,
+        'disbursed_count': 0,
+        'new_percent': 0,
+        'processing_percent': 0,
+        'followup_percent': 0,
+        'approved_percent': 0,
+        'rejected_percent': 0,
+        'disbursed_percent': 0,
+        'total_amount': 0,
+        'approved_amount': 0,
+        'disbursed_amount': 0,
+        'pending_amount': 0,
+        'avg_loan_value': 0,
+        'total_employees': employees.count(),
+        'active_employees': employees.filter(is_active=True).count(),
+        'total_agents': agents.count(),
+        'active_agents': agents.filter(status='active').count(),
+        'total_subadmins': partners.count(),
+        'download_people': [],
+        'period': period,
+        'from_date': from_date,
+        'to_date': to_date,
+        'search_query': search_query,
+        'status_filter': status_filter,
+        'employee_filter': employee_filter,
+        'partner_filter': partner_filter,
+        'agent_filter': agent_filter,
+        'employee_options': employees,
+        'partner_options': partners,
+        'agent_options': agents,
+        'report_refreshed_at': timezone.now(),
+        'report_error': report_error,
+    }
