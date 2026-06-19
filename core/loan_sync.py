@@ -106,7 +106,7 @@ def find_related_loan_application(loan_obj):
             "applicant__email__iexact": loan_obj.email,
             "applicant__full_name__iexact": loan_obj.full_name,
         })
-    if loan_obj.username:
+    if getattr(loan_obj, 'username', None):
         strict_filters.append({
             "applicant__username__iexact": loan_obj.username,
         })

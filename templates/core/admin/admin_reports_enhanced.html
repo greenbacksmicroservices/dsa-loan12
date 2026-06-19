@@ -698,7 +698,7 @@
                         <div style="font-size:12px; color:#64748b;">{{ loan.email|default:"No email" }}</div>
                     </td>
                     <td>{{ loan.mobile_number|default:"-" }}</td>
-                    <td>{% if loan.get_loan_type_display %}{{ loan.get_loan_type_display|default:loan.loan_type|default:"-" }}{% else %}{{ loan.loan_type|default:"-" }}{% endif %}</td>
+                    <td>{{ loan.report_loan_type_display|default:"-" }}</td>
                     <td><strong>&#8377;{{ loan.loan_amount|default:0|floatformat:0 }}</strong></td>
                     <td><strong>{{ loan.report_disbursed_amount_display|default:"-" }}</strong></td>
                     <td><span class="loan-status-chip">{{ loan.report_status_label }}</span></td>

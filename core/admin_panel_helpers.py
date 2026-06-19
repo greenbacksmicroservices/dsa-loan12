@@ -199,6 +199,11 @@ def _decimal_to_float(value):
         return 0.0
 
 
+def report_amount(value):
+    """Normalize currency values for safe report math in views/templates."""
+    return _decimal_to_float(value)
+
+
 def _report_has_revert_marker(text):
     return 'revert remark' in str(text or '').lower()
 
@@ -327,6 +332,19 @@ def format_report_currency(amount):
     return f'₹{value:,.0f}'
 
 
+def _report_loan_type_display(loan_obj):
+    if not loan_obj:
+        return '-'
+    if hasattr(loan_obj, 'get_loan_type_display'):
+        try:
+            display = loan_obj.get_loan_type_display()
+            if display:
+                return display
+        except Exception:
+            pass
+    return loan_type_display(getattr(loan_obj, 'loan_type', '')) or '-'
+
+
 def enrich_admin_report_row(row, loan_obj=None, loan_app=None):
     """Attach latest report display fields to a legacy loan or workflow row."""
     if loan_obj and not loan_app:
@@ -355,7 +373,8 @@ def enrich_admin_report_row(row, loan_obj=None, loan_app=None):
     )
     row.report_disbursed_amount = disbursed_amount
     row.report_disbursed_amount_display = format_report_currency(disbursed_amount)
-    row.report_document_count = _report_document_count(loan_obj)
+    row.report_document_count = _report_document_count(loan_obj or row)
+    row.report_loan_type_display = _report_loan_type_display(loan_obj or row)
     row._related_app = loan_app
     row._legacy_loan = loan_obj
     return row

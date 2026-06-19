@@ -1103,10 +1103,7 @@ def admin_reports(request):
         logger.exception('Admin reports page failed: %s', exc)
         from .admin_panel_helpers import build_admin_reports_empty_context
         context = build_admin_reports_empty_context(
-            report_error=(
-                'Reports could not be loaded. Please refresh the page. '
-                'If this continues on the live server, run: python manage.py migrate'
-            ),
+            report_error='Unable to load reports right now. Please refresh the page.',
         )
         return _render_admin_reports_page(request, context)
 
@@ -1135,6 +1132,7 @@ def _admin_reports_response(request):
         build_agent_report_rows,
         build_employee_report_rows,
         build_partner_report_rows,
+        report_amount,
         report_effective_status_key,
         report_status_label,
     )
@@ -1155,10 +1153,7 @@ def _admin_reports_response(request):
         )
     except Exception as exc:
         logger.exception('Admin reports loan query failed: %s', exc)
-        report_error = (
-            'Some report data could not be loaded. '
-            'Please refresh the page. If this continues, run database migrations on the server.'
-        )
+        report_error = 'Some report data could not be loaded. Please refresh the page.'
 
     if request.GET.get('download'):
         if report_error:
@@ -1237,19 +1232,19 @@ def _admin_reports_response(request):
     rejected_percent = percent(rejected_count)
     disbursed_percent = percent(disbursed_count)
 
-    total_amount = sum((getattr(loan, 'loan_amount', 0) or 0) for loan in report_loans)
+    total_amount = sum(report_amount(getattr(loan, 'loan_amount', 0)) for loan in report_loans)
     approved_amount = sum(
-        (getattr(loan, 'loan_amount', 0) or 0)
+        report_amount(getattr(loan, 'loan_amount', 0))
         for loan in report_loans
         if getattr(loan, 'report_status_key', '') == 'approved'
     )
     disbursed_amount = sum(
-        (getattr(loan, 'report_disbursed_amount', 0) or 0)
+        report_amount(getattr(loan, 'report_disbursed_amount', 0))
         for loan in report_loans
         if getattr(loan, 'report_status_key', '') == 'disbursed'
     )
     pending_amount = total_amount - disbursed_amount
-    avg_loan_value = (total_amount / total_applications) if total_applications > 0 else 0
+    avg_loan_value = (total_amount / total_applications) if total_applications > 0 else 0.0
 
     employees = User.objects.filter(role='employee')
     total_employees = employees.count()
@@ -1334,22 +1329,25 @@ def _admin_reports_response(request):
 
         seen_agent_loan_ids = {agent.id: set() for agent in agents_qs}
         for loan in report_loans:
-            legacy_loan = getattr(loan, '_legacy_loan', loan)
-            related_app = getattr(loan, '_related_app', None)
+            try:
+                legacy_loan = getattr(loan, '_legacy_loan', loan)
+                related_app = getattr(loan, '_related_app', None)
 
-            partner_user = _resolve_report_partner_user(loan_obj=legacy_loan, loan_app=related_app)
-            if partner_user and partner_user.id in partner_application_map:
-                partner_application_map[partner_user.id].append(loan)
+                partner_user = _resolve_report_partner_user(loan_obj=legacy_loan, loan_app=related_app)
+                if partner_user and partner_user.id in partner_application_map:
+                    partner_application_map[partner_user.id].append(loan)
 
-            employee_user = _resolve_report_employee_user(loan_obj=legacy_loan, loan_app=related_app)
-            if employee_user and employee_user.id in employee_application_map:
-                employee_application_map[employee_user.id].append(loan)
+                employee_user = _resolve_report_employee_user(loan_obj=legacy_loan, loan_app=related_app)
+                if employee_user and employee_user.id in employee_application_map:
+                    employee_application_map[employee_user.id].append(loan)
 
-            channel_partner = _resolve_report_channel_partner(loan_obj=legacy_loan, loan_app=related_app)
-            if channel_partner and channel_partner.id in agent_application_map:
-                if loan.id not in seen_agent_loan_ids[channel_partner.id]:
-                    agent_application_map[channel_partner.id].append(loan)
-                    seen_agent_loan_ids[channel_partner.id].add(loan.id)
+                channel_partner = _resolve_report_channel_partner(loan_obj=legacy_loan, loan_app=related_app)
+                if channel_partner and channel_partner.id in agent_application_map:
+                    if loan.id not in seen_agent_loan_ids[channel_partner.id]:
+                        agent_application_map[channel_partner.id].append(loan)
+                        seen_agent_loan_ids[channel_partner.id].add(loan.id)
+            except Exception:
+                logger.exception('Failed to map report loan %s to team tables', getattr(loan, 'id', '?'))
 
         partner_rows = build_partner_report_rows(partners_qs, partner_application_map)
         employee_rows = build_employee_report_rows(
