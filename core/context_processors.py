@@ -149,34 +149,48 @@ def _resolve_agent_hierarchy(agent_obj):
     if not agent_obj:
         return {'employee_name': '', 'subadmin_name': '', 'bdm': {}, 'employee': {}}
 
+    from .loan_helpers import (
+        get_leader_bdm_name_for_user,
+        get_leader_bdm_partner_user,
+        is_sub_channel_partner_agent,
+        _resolve_agent_employee as resolve_agent_employee,
+    )
+
+    hierarchy_agent = agent_obj
+    if is_sub_channel_partner_agent(agent_obj) and agent_obj.created_by:
+        parent_agent = (
+            Agent.objects.filter(user=agent_obj.created_by)
+            .select_related('under_employee', 'created_by')
+            .first()
+        )
+        if parent_agent:
+            hierarchy_agent = parent_agent
+
     employee_user = None
     latest_assignment = (
-        AgentAssignment.objects.filter(agent=agent_obj)
+        AgentAssignment.objects.filter(agent=hierarchy_agent)
         .select_related('employee')
         .order_by('-assigned_at')
         .first()
     )
     if latest_assignment and latest_assignment.employee:
         employee_user = latest_assignment.employee
-    elif agent_obj.created_by and getattr(agent_obj.created_by, 'role', '') == 'employee':
-        employee_user = agent_obj.created_by
+    elif hierarchy_agent.created_by and getattr(hierarchy_agent.created_by, 'role', '') == 'employee':
+        employee_user = hierarchy_agent.created_by
+    if not employee_user:
+        employee_user = resolve_agent_employee(hierarchy_agent)
 
     employee_name = _clean_display_name(
         (employee_user.get_full_name() or employee_user.username)
         if employee_user else ''
     )
 
-    subadmin_user = None
-    if employee_user:
-        subadmin_user = _resolve_subadmin_user_for_employee(employee_user)
-        if not subadmin_user and agent_obj.created_by and getattr(agent_obj.created_by, 'role', '') == 'subadmin':
-            subadmin_user = agent_obj.created_by
-    elif agent_obj.created_by and getattr(agent_obj.created_by, 'role', '') == 'subadmin':
-        subadmin_user = agent_obj.created_by
-
-    bdm_info = _contact_payload(subadmin_user, fallback_role='BDM') if subadmin_user else _contact_payload(
-        _default_admin_user(agent_obj.created_by),
-        fallback_role='BDM',
+    partner_user = get_leader_bdm_partner_user(user=agent_obj.user, agent=agent_obj)
+    leader_name = get_leader_bdm_name_for_user(user=agent_obj.user, agent=agent_obj)
+    bdm_info = (
+        _contact_payload(partner_user, fallback_role='BDM')
+        if partner_user
+        else _contact_payload(_default_admin_user(), fallback_name=leader_name, fallback_role='BDM')
     )
     employee_info = _contact_payload(employee_user, fallback_role='Employee') if employee_user else {}
 
@@ -212,10 +226,15 @@ def agent_profile_context(request):
     if role == 'agent':
         try:
             agent = Agent.objects.get(user=request.user)
-            from .loan_helpers import can_create_sub_channel_partner, is_sub_channel_partner_agent
+            from .loan_helpers import (
+                can_create_sub_channel_partner,
+                get_leader_bdm_name_for_user,
+                is_sub_channel_partner_agent,
+            )
             context['agent_profile'] = agent
             context['can_create_sub_channel_partner'] = can_create_sub_channel_partner(request.user)
             context['is_sub_channel_partner_user'] = is_sub_channel_partner_agent(agent)
+            context['leader_bdm_name'] = get_leader_bdm_name_for_user(user=request.user, agent=agent)
             hierarchy = _resolve_agent_hierarchy(agent)
             items = []
             if hierarchy.get('bdm'):

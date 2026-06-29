@@ -337,39 +337,8 @@ def _latest_bank_remark(loan_obj):
     return " | ".join(unique)[:700] if unique else '-'
 
 
-def _find_related_loan_application(loan_obj):
-    if not loan_obj:
-        return None
-
-    if loan_obj.email and loan_obj.mobile_number:
-        app = LoanApplication.objects.filter(
-            applicant__email__iexact=loan_obj.email,
-            applicant__mobile=loan_obj.mobile_number,
-        ).select_related('applicant').first()
-        if app:
-            return app
-
-    if loan_obj.full_name and loan_obj.mobile_number:
-        app = LoanApplication.objects.filter(
-            applicant__full_name__iexact=loan_obj.full_name,
-            applicant__mobile=loan_obj.mobile_number,
-        ).select_related('applicant').first()
-        if app:
-            return app
-
-    if loan_obj.email and loan_obj.full_name:
-        app = LoanApplication.objects.filter(
-            applicant__email__iexact=loan_obj.email,
-            applicant__full_name__iexact=loan_obj.full_name,
-        ).select_related('applicant').first()
-        if app:
-            return app
-
-    return None
-
-
 def _serialize_subadmin_loan_details(loan_obj):
-    loan_app = _find_related_loan_application(loan_obj)
+    loan_app = find_related_loan_application(loan_obj)
     applicant = loan_app.applicant if loan_app else None
 
     created_by = loan_obj.created_by
@@ -1390,7 +1359,7 @@ def subadmin_loan_detail(request, loan_id):
 
     # LoanStatusHistory is linked with LoanApplication, so map through related application
     history_timeline = []
-    loan_application = _find_related_loan_application(loan)
+    loan_application = find_related_loan_application(loan)
     if loan_application:
         for history in loan_application.status_history.select_related('changed_by').order_by('-changed_at')[:60]:
             history_timeline.append({
@@ -1601,7 +1570,7 @@ def subadmin_assign_employee_api(request, loan_id):
             return JsonResponse({'error': 'Employee ID required'}, status=400)
         
         employee = get_object_or_404(_subadmin_managed_employees_qs(request.user), id=employee_id)
-        related_application = _find_related_loan_application(loan)
+        related_application = find_related_loan_application(loan)
         previous_app_status_key = application_status_to_loan_status(related_application.status) if related_application else None
         previous_assigned_employee_id = related_application.assigned_employee_id if related_application else None
 

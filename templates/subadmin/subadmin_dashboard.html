@@ -355,6 +355,13 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
+const PARTNER_CHART_DATA_URL = "{% url 'api_partner_chart_data' %}";
+const PARTNER_DASHBOARD_STATS_URL = "{% url 'api_subadmin_dashboard_stats' %}";
+const PARTNER_STATUS_CHART_LABELS = [
+    'New', 'Document Pending', 'Updated Document', 'Banking Processing',
+    'Follow Up', 'Approved', 'Rejected', 'Disbursed'
+];
+
 let autoRefreshInterval = null;
 let statusDistributionChart = null;
 let partnerLoanStatusChart = null;
@@ -374,6 +381,29 @@ function statusBadgeClass(statusKey) {
     return map[statusKey] || 'bg-gray-100 text-gray-800';
 }
 
+function destroyChartOnCanvas(canvas) {
+    if (!canvas || typeof Chart === 'undefined') return;
+    const existing = Chart.getChart(canvas);
+    if (existing) existing.destroy();
+}
+
+async function fetchJson(url) {
+    const response = await fetch(url, {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        credentials: 'same-origin',
+        cache: 'no-store',
+    });
+    const contentType = (response.headers.get('content-type') || '').toLowerCase();
+    if (!contentType.includes('application/json')) {
+        throw new Error(`Expected JSON from ${url}, received ${contentType || 'unknown content'}`);
+    }
+    const payload = await response.json();
+    if (!response.ok) {
+        throw new Error((payload && (payload.error || payload.message)) || `HTTP ${response.status}`);
+    }
+    return payload;
+}
+
 function startAutoRefresh() {
     if (autoRefreshInterval) clearInterval(autoRefreshInterval);
     autoRefreshInterval = setInterval(refreshDashboard, 10000);
@@ -391,6 +421,7 @@ function updateStatusDistributionChart(newEntry, waiting, updatedDocument, banki
     const values = [newEntry, waiting, updatedDocument, banking, followUpPending, approved, rejected, disbursed];
 
     if (!statusDistributionChart) {
+        destroyChartOnCanvas(chartElement);
         statusDistributionChart = new Chart(chartElement, {
             type: 'doughnut',
             data: {
@@ -434,18 +465,7 @@ function updateStatusDistributionChart(newEntry, waiting, updatedDocument, banki
 }
 
 function loadDashboardStats() {
-    fetch('/api/subadmin/dashboard-stats/', {
-        headers: { 'X-Requested-With': 'XMLHttpRequest' },
-        credentials: 'same-origin',
-        cache: 'no-store',
-    })
-        .then(async (response) => {
-            const data = await response.json().catch(() => ({}));
-            if (!response.ok) {
-                throw new Error(data.error || `HTTP ${response.status}`);
-            }
-            return data;
-        })
+    fetchJson(`${PARTNER_DASHBOARD_STATS_URL}?_t=${Date.now()}`)
         .then(data => {
             const stats = data.status_stats || data.stats || data || {};
             const total = Number(stats.total || 0);
@@ -653,23 +673,16 @@ function ensurePartnerChart(canvas, existingChart, config) {
     if (existingChart) {
         return existingChart;
     }
+    destroyChartOnCanvas(canvas);
     return new Chart(canvas, config);
 }
 
 function loadPartnerCharts() {
-    fetch(`/api/subadmin/chart-data/?_t=${Date.now()}`, {
-        headers: { 'X-Requested-With': 'XMLHttpRequest' },
-        credentials: 'same-origin',
-        cache: 'no-store',
-    })
-        .then(async (response) => {
-            const payload = await response.json().catch(() => null);
-            if (!response.ok || !payload || !payload.success) {
-                throw new Error((payload && payload.error) || `HTTP ${response.status}`);
-            }
-            return payload;
-        })
+    fetchJson(`${PARTNER_CHART_DATA_URL}?_t=${Date.now()}`)
         .then(payload => {
+            if (!payload || !payload.success) {
+                throw new Error('Chart API returned unsuccessful response');
+            }
             const loanStatus = payload.partner_loan_status_overview || { labels: [], data: [] };
             const team = payload.partner_team_application_overview || { labels: [], data: [] };
             const loanCanvas = document.getElementById('partner-loan-status-chart');
@@ -723,9 +736,12 @@ function loadPartnerCharts() {
 
             renderPartnerChartStamp(`Updated ${new Date().toLocaleTimeString('en-IN')}`);
         })
-        .catch(() => {
-            const emptyLabels = ['No Data'];
-            const emptyData = [0];
+        .catch((err) => {
+            console.error('Partner chart data error:', err);
+            const emptyLabels = PARTNER_STATUS_CHART_LABELS;
+            const emptyData = emptyLabels.map(() => 0);
+            const teamLabels = ['Employees', 'Channel Partners', 'Sub Channel Partners', 'Total Applications'];
+            const teamData = teamLabels.map(() => 0);
             const loanCanvas = document.getElementById('partner-loan-status-chart');
             const teamCanvas = document.getElementById('partner-team-overview-chart');
 
@@ -743,11 +759,11 @@ function loadPartnerCharts() {
             if (teamCanvas && typeof Chart !== 'undefined') {
                 partnerTeamOverviewChart = ensurePartnerChart(teamCanvas, partnerTeamOverviewChart, {
                     type: 'line',
-                    data: { labels: emptyLabels, datasets: [{ label: 'Count', data: emptyData, borderColor: '#94a3b8', backgroundColor: 'rgba(148, 163, 184, 0.15)', fill: true, tension: 0.35 }] },
+                    data: { labels: teamLabels, datasets: [{ label: 'Count', data: teamData, borderColor: '#94a3b8', backgroundColor: 'rgba(148, 163, 184, 0.15)', fill: true, tension: 0.35 }] },
                     options: { responsive: true, scales: { y: { beginAtZero: true } } }
                 });
-                partnerTeamOverviewChart.data.labels = emptyLabels;
-                partnerTeamOverviewChart.data.datasets[0].data = emptyData;
+                partnerTeamOverviewChart.data.labels = teamLabels;
+                partnerTeamOverviewChart.data.datasets[0].data = teamData;
                 partnerTeamOverviewChart.update();
             }
 

@@ -974,6 +974,10 @@ function parseProcessMeta(v) {
     return meta;
 }
 
+function buildProcessingMeta(loan) {
+    return parseProcessMeta(loan || {});
+}
+
 function formatDsaName(value) {
     const text = String(value || '').trim();
     return text || 'Not Added';
@@ -1045,15 +1049,60 @@ function prefillDisburseModal(v) {
     setInputValue('disburseDate', new Date().toISOString().slice(0, 10));
 }
 
+function resolveLatestBankName(v, fullRows) {
+    const direct = String(
+        v?.latest_saved_bank_name
+        || v?.bank_name
+        || v?.bankName
+        || v?.bank_details?.bank_name
+        || v?.banking_details?.bank_name
+        || v?.processing_details?.bank_name
+        || ''
+    ).trim();
+    if (direct) return direct;
+
+    const meta = buildProcessingMeta(v);
+    if (meta.bank_name) return String(meta.bank_name).trim();
+
+    const rows = Array.isArray(fullRows) ? fullRows : [];
+    const bankRow = rows.find((row) => String(row?.label || '').trim().toLowerCase() === 'bank name');
+    const rowValue = String(bankRow?.value || '').trim();
+    if (rowValue && rowValue !== '-') return rowValue;
+    return '';
+}
+
+function buildLatestSavedFieldRows(loanObj, fullRows) {
+    let rows = (Array.isArray(fullRows) ? fullRows : []).filter((row) => {
+        if (isDuplicateLoanIdLabel(row?.label)) return false;
+        if (hideBankerDetails && isHiddenLeadReceiveLabel(row?.label)) return false;
+        if (hideBankerDetails && isHiddenBankDetailLabel(row?.label)) return false;
+        return true;
+    });
+
+    const bankName = resolveLatestBankName(loanObj, fullRows);
+    const bankLabel = 'bank name';
+    let hasBankNameRow = false;
+    rows = rows.map((row) => {
+        if (String(row?.label || '').trim().toLowerCase() !== bankLabel) {
+            return row;
+        }
+        hasBankNameRow = true;
+        return {
+            ...row,
+            value: bankName || String(row?.value || '').trim() || 'Not Added',
+        };
+    });
+    if (!hasBankNameRow) {
+        rows.push({ label: 'Bank Name', value: bankName || 'Not Added' });
+    }
+    return rows;
+}
+
 function renderCapturedDetails(fullRows) {
     const container = document.getElementById('allCapturedDetails');
     if (!container) return;
-    const rows = (Array.isArray(fullRows) ? fullRows : []).filter((row) => {
-        if (isDuplicateLoanIdLabel(row?.label)) return false;
-        if (hideBankerDetails && isHiddenLeadReceiveLabel(row?.label)) return false;
-        if (!hideBankerDetails) return true;
-        return !isHiddenBankDetailLabel(row?.label) && !isHiddenLeadReceiveLabel(row?.label);
-    });
+
+    const rows = buildLatestSavedFieldRows(loan, fullRows);
     if (!rows.length) {
         container.innerHTML = '<div class="text-muted small">No captured details available.</div>';
         return;
@@ -1062,8 +1111,8 @@ function renderCapturedDetails(fullRows) {
         <div class="captured-grid">
             ${rows.map((row) => `
                 <div class="captured-item">
-                    <small>${row.label || '-'}</small>
-                    <strong style="white-space:pre-wrap;word-break:break-word;">${row.value || '-'}</strong>
+                    <small>${escapeHtmlText(row.label || '-')}</small>
+                    <strong style="white-space:pre-wrap;word-break:break-word;">${escapeHtmlText(row.value || '-')}</strong>
                 </div>
             `).join('')}
         </div>
@@ -1430,6 +1479,7 @@ function fill() {
         fromMap('lead receive employee name', 'employee name', 'employee')
     ));
     set('leadLeaderName', pick(
+        v.leader_bdm_name,
         v.lead_receive_leader_name,
         fromMap('lead receive leader name', 'leader name')
     ));

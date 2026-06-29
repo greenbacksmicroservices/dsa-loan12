@@ -467,18 +467,48 @@
 </div>
 
 <!-- Include Chart.js Library -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
 <script>
-    // Display current stats dynamically (you can connect to API later)
+    const ADMIN_CHART_DATA_URL = "{% url 'api_admin_chart_data' %}";
+    const ADMIN_DASHBOARD_STATS_URL = "{% url 'api_dashboard_realtime_stats' %}";
+    const STATUS_CHART_LABELS = [
+        'New', 'Document Pending', 'Updated Document', 'Banking Processing',
+        'Follow Up', 'Approved', 'Rejected', 'Disbursed'
+    ];
+
     let statusChart = null;
     let monthlyChart = null;
     let hierarchyChart = null;
     let todayStatusChart = null;
 
+    function destroyChartOnCanvas(canvas) {
+        if (!canvas || typeof Chart === 'undefined') return;
+        const existing = Chart.getChart(canvas);
+        if (existing) existing.destroy();
+    }
+
+    async function fetchJson(url) {
+        const response = await fetch(url, {
+            cache: 'no-store',
+            credentials: 'same-origin',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        });
+        const contentType = (response.headers.get('content-type') || '').toLowerCase();
+        if (!contentType.includes('application/json')) {
+            throw new Error(`Expected JSON from ${url}, received ${contentType || 'unknown content'}`);
+        }
+        const payload = await response.json();
+        if (!response.ok) {
+            throw new Error((payload && (payload.error || payload.message)) || `HTTP ${response.status}`);
+        }
+        return payload;
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
         const ctx1 = document.getElementById('monthlyApplicationsChart');
         if (ctx1) {
+            destroyChartOnCanvas(ctx1);
             monthlyChart = new Chart(ctx1, {
                 type: 'line',
                 data: {
@@ -503,10 +533,11 @@
 
         const ctx2 = document.getElementById('statusDistributionChart');
         if (ctx2) {
+            destroyChartOnCanvas(ctx2);
             statusChart = new Chart(ctx2, {
                 type: 'doughnut',
                 data: {
-                    labels: ['New Application', 'Document Pending', 'Updated Document', 'Bank Login Process', 'Follow Up', 'Approved', 'Rejected', 'Disbursed'],
+                    labels: STATUS_CHART_LABELS,
                     datasets: [{
                         data: [0, 0, 0, 0, 0, 0, 0, 0],
                         backgroundColor: ['#3b82f6', '#f59e0b', '#16a34a', '#8b5cf6', '#f97316', '#10b981', '#ef4444', '#06b6d4'],
@@ -520,10 +551,11 @@
 
         const ctx3 = document.getElementById('userHierarchyChart');
         if (ctx3) {
+            destroyChartOnCanvas(ctx3);
             hierarchyChart = new Chart(ctx3, {
                 type: 'line',
                 data: {
-                    labels: ['Partner', 'Employee', 'Channel Partner', 'Sub Channel Partner'],
+                    labels: ['Partners', 'Employees', 'Channel Partners', 'Sub Channel Partners'],
                     datasets: [{
                         label: 'Users',
                         data: [0, 0, 0, 0],
@@ -539,6 +571,7 @@
 
         const ctx4 = document.getElementById('todayStatusChart');
         if (ctx4) {
+            destroyChartOnCanvas(ctx4);
             todayStatusChart = new Chart(ctx4, {
                 type: 'bar',
                 data: {
@@ -554,31 +587,34 @@
             });
         }
 
-        function refreshAdminCharts() {
-            fetch(`/api/admin/chart-data/?_t=${Date.now()}`, { cache: 'no-store' })
-                .then(r => r.json())
-                .then(payload => {
-                    if (!payload || !payload.success) return;
-                    const monthly = payload.monthly_loan_applications || {};
-                    if (monthlyChart) {
-                        monthlyChart.data.labels = monthly.labels || [];
-                        monthlyChart.data.datasets[0].data = monthly.data || [];
-                        monthlyChart.update();
-                    }
-                    const hierarchy = payload.user_hierarchy_overview || {};
-                    if (hierarchyChart) {
-                        hierarchyChart.data.labels = hierarchy.labels || [];
-                        hierarchyChart.data.datasets[0].data = hierarchy.data || [];
-                        hierarchyChart.update();
-                    }
-                    const today = payload.today_applications_by_status || {};
-                    if (todayStatusChart) {
-                        todayStatusChart.data.labels = today.labels || [];
-                        todayStatusChart.data.datasets[0].data = today.data || [];
-                        todayStatusChart.update();
-                    }
-                })
-                .catch(err => console.error('Admin chart data error:', err));
+        async function refreshAdminCharts() {
+            try {
+                const payload = await fetchJson(`${ADMIN_CHART_DATA_URL}?_t=${Date.now()}`);
+                if (!payload || !payload.success) return;
+
+                const monthly = payload.monthly_loan_applications || {};
+                if (monthlyChart) {
+                    monthlyChart.data.labels = monthly.labels || [];
+                    monthlyChart.data.datasets[0].data = (monthly.data || []).map(v => Number(v || 0));
+                    monthlyChart.update();
+                }
+
+                const hierarchy = payload.user_hierarchy_overview || {};
+                if (hierarchyChart) {
+                    hierarchyChart.data.labels = hierarchy.labels || [];
+                    hierarchyChart.data.datasets[0].data = (hierarchy.data || []).map(v => Number(v || 0));
+                    hierarchyChart.update();
+                }
+
+                const today = payload.today_applications_by_status || {};
+                if (todayStatusChart) {
+                    todayStatusChart.data.labels = today.labels || STATUS_CHART_LABELS;
+                    todayStatusChart.data.datasets[0].data = (today.data || []).map(v => Number(v || 0));
+                    todayStatusChart.update();
+                }
+            } catch (err) {
+                console.error('Admin chart data error:', err);
+            }
         }
         function applyDashboardStats(stats) {
             const setText = (id, value) => {
@@ -615,15 +651,15 @@
             }
         }
 
-        function refreshDashboardStats() {
-            fetch(`/api/dashboard-realtime-stats/?_t=${Date.now()}`, { cache: 'no-store' })
-                .then(response => response.json())
-                .then(data => {
-                    if (data && data.success && data.data) {
-                        applyDashboardStats(data.data);
-                    }
-                })
-                .catch(error => console.error('Dashboard stats error:', error));
+        async function refreshDashboardStats() {
+            try {
+                const data = await fetchJson(`${ADMIN_DASHBOARD_STATS_URL}?_t=${Date.now()}`);
+                if (data && data.success && data.data) {
+                    applyDashboardStats(data.data);
+                }
+            } catch (error) {
+                console.error('Dashboard stats error:', error);
+            }
         }
 
         refreshDashboardStats();

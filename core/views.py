@@ -35,6 +35,7 @@ from .forms import (
 from .permissions import IsAdminUser, IsEmployeeUser, IsAgentUser, IsLoanOwnerOrAdmin
 from .loan_sync import (
     extract_assignment_context,
+    ensure_legacy_link,
     find_related_loan,
     find_related_loan_application,
     sync_loan_to_application,
@@ -61,6 +62,11 @@ from .loan_helpers import (
     read_document_password_for_save,
     resolve_stored_loan_id,
     strip_banker_fields_for_role,
+    attach_channel_partner_latest_saved_fields,
+    resolve_latest_saved_bank_name,
+    get_workflow_submitted_by_label,
+    get_submitted_processed_display,
+    get_leader_bdm_name_for_user,
 )
 
 logger = logging.getLogger(__name__)
@@ -6008,7 +6014,7 @@ def _persist_banking_processing_from_payload(loan_app=None, legacy=None, payload
 
     related_legacy = legacy
     if loan_app and not related_legacy:
-        related_legacy = find_related_loan(loan_app)
+        related_legacy = loan_app.legacy_loan if getattr(loan_app, 'legacy_loan_id', None) else find_related_loan(loan_app, strict=True)
     if related_legacy and (bank_name or account_number):
         legacy_fields = []
         if bank_name and related_legacy.bank_name != bank_name:
@@ -6205,7 +6211,11 @@ def _next_revert_index_from_history(loan_app):
 
 
 def _append_related_loan_remark(loan_app, line, status_override=None):
-    related_loan = find_related_loan(loan_app)
+    related_loan = None
+    if getattr(loan_app, 'legacy_loan_id', None):
+        related_loan = Loan.objects.filter(pk=loan_app.legacy_loan_id).first()
+    if not related_loan:
+        related_loan = find_related_loan(loan_app, strict=True)
     if not related_loan:
         return None
 
@@ -6323,6 +6333,48 @@ def _normalize_entity_source(payload):
         'loan': 'legacy',
     }
     return source_map.get(raw, '')
+
+
+def _resolve_workflow_targets(loan_id, payload=None, *, loan_app=None, legacy=None):
+    """
+    Resolve the exact LoanApplication / legacy Loan pair for a processing action.
+    Avoids cross-updating unrelated CP/SCP records that share customer identity fields.
+    """
+    preferred_source = _normalize_entity_source(payload or {})
+    resolved_app = loan_app if loan_app is not None else LoanApplication.objects.filter(pk=loan_id).first()
+    resolved_legacy = legacy if legacy is not None else Loan.objects.filter(pk=loan_id).first()
+
+    if preferred_source == 'application':
+        app = LoanApplication.objects.filter(pk=loan_id).first()
+        if not app:
+            return None, None
+        linked_legacy = app.legacy_loan if getattr(app, 'legacy_loan_id', None) else find_related_loan(app, strict=True)
+        return app, linked_legacy
+
+    if preferred_source == 'legacy':
+        leg = Loan.objects.filter(pk=loan_id).first()
+        if not leg:
+            return None, None
+        app = find_related_loan_application(leg, strict=True)
+        if app:
+            ensure_legacy_link(app, leg)
+        return app, leg
+
+    if resolved_app and (not resolved_legacy or resolved_legacy.id != resolved_app.id):
+        linked_legacy = (
+            resolved_app.legacy_loan
+            if getattr(resolved_app, 'legacy_loan_id', None)
+            else find_related_loan(resolved_app, strict=True)
+        )
+        return resolved_app, linked_legacy
+
+    if resolved_legacy:
+        app = find_related_loan_application(resolved_legacy, strict=True)
+        if app:
+            ensure_legacy_link(app, resolved_legacy)
+        return app, resolved_legacy
+
+    return None, None
 
 
 def _loan_status_to_workflow(status_key):
@@ -6563,6 +6615,36 @@ def _append_uploaded_document_rows(rows, documents):
             rows.append(row)
             label_index[key] = row
     return rows
+
+
+def _attach_leader_bdm_context(loan_data):
+    """Attach Leader/BDM from submitter hierarchy for CP/SCP loan detail views."""
+    if not isinstance(loan_data, dict):
+        return loan_data
+
+    submitter = None
+    legacy_id = loan_data.get('legacy_loan_id')
+    if legacy_id:
+        legacy_obj = Loan.objects.filter(pk=legacy_id).select_related('created_by').first()
+        if legacy_obj and legacy_obj.created_by:
+            submitter = legacy_obj.created_by
+
+    if not submitter and str(loan_data.get('entity_type') or '').strip().lower() == 'application':
+        app_id = loan_data.get('loan_application_id') or loan_data.get('id')
+        if app_id:
+            app_obj = (
+                LoanApplication.objects.filter(pk=app_id)
+                .select_related('assigned_agent__user')
+                .first()
+            )
+            if app_obj and app_obj.assigned_agent and app_obj.assigned_agent.user:
+                submitter = app_obj.assigned_agent.user
+
+    leader = get_leader_bdm_name_for_user(user=submitter)
+    loan_data['leader_bdm_name'] = leader
+    if not str(loan_data.get('lead_receive_leader_name') or '').strip():
+        loan_data['lead_receive_leader_name'] = leader
+    return loan_data
 
 
 def _attach_official_loan_id(loan_data, *, legacy_loan=None, loan_application=None):
@@ -7146,19 +7228,8 @@ def employee_assigned_loan_detail(request, loan_id):
                 if loan.assigned_by and loan.assigned_by.role == 'subadmin'
                 else 'Visible in Admin panel'
             )
-            submitted_by = '-'
-            if loan.assigned_agent:
-                submitted_by = (
-                    loan.assigned_agent.name
-                    or (loan.assigned_agent.user.get_full_name() if loan.assigned_agent.user else '')
-                    or '-'
-                )
-            elif related_legacy and related_legacy.assigned_agent:
-                submitted_by = (
-                    related_legacy.assigned_agent.name
-                    or (related_legacy.assigned_agent.user.get_full_name() if related_legacy.assigned_agent.user else '')
-                    or '-'
-                )
+            submitted_by = get_workflow_submitted_by_label(loan=related_legacy, loan_application=loan)
+            submitted_by_meta = get_submitted_processed_display(loan=related_legacy, loan_application=loan)
             processed_by = (
                 loan.assigned_employee.get_full_name() or loan.assigned_employee.username
                 if loan.assigned_employee else '-'
@@ -7261,6 +7332,9 @@ def employee_assigned_loan_detail(request, loan_id):
                 'assigned_by_role': assigned_by_role,
                 'assignment_visibility': assignment_visibility,
                 'submitted_by': submitted_by,
+                'submitted_by_lines': submitted_by_meta.get('lines', []),
+                'parent_channel_partner': submitted_by_meta.get('channel_partner_name', ''),
+                'scp_name': submitted_by_meta.get('scp_name', ''),
                 'processed_by': processed_by,
                 'partner_under': partner_under,
                 'entity_type': 'application',
@@ -7388,19 +7462,8 @@ def employee_assigned_loan_detail(request, loan_id):
             role_map = dict(User.ROLE_CHOICES)
             assigned_by_role = role_map.get(role_key, legacy.created_by.get_role_display() if legacy.created_by else 'System')
             assignment_visibility = 'Visible in both Partner and Admin panels' if role_key == 'subadmin' else 'Visible in Admin panel'
-            submitted_by = '-'
-            if legacy.assigned_agent:
-                submitted_by = (
-                    legacy.assigned_agent.name
-                    or (legacy.assigned_agent.user.get_full_name() if legacy.assigned_agent.user else '')
-                    or '-'
-                )
-            elif related_app and related_app.assigned_agent:
-                submitted_by = (
-                    related_app.assigned_agent.name
-                    or (related_app.assigned_agent.user.get_full_name() if related_app.assigned_agent.user else '')
-                    or '-'
-                )
+            submitted_by = get_workflow_submitted_by_label(loan=legacy, loan_application=related_app)
+            submitted_by_meta = get_submitted_processed_display(loan=legacy, loan_application=related_app)
             processed_by = '-'
             if legacy.assigned_employee:
                 processed_by = legacy.assigned_employee.get_full_name() or legacy.assigned_employee.username or '-'
@@ -7526,6 +7589,9 @@ def employee_assigned_loan_detail(request, loan_id):
                 'assigned_by_role': assigned_by_role,
                 'assignment_visibility': assignment_visibility,
                 'submitted_by': submitted_by,
+                'submitted_by_lines': submitted_by_meta.get('lines', []),
+                'parent_channel_partner': submitted_by_meta.get('channel_partner_name', ''),
+                'scp_name': submitted_by_meta.get('scp_name', ''),
                 'processed_by': processed_by,
                 'partner_under': partner_under,
                 'entity_type': 'legacy',
@@ -7662,7 +7728,14 @@ def employee_assigned_loan_detail(request, loan_id):
 
         account_payload = account_number_api_payload(parsed_details=loan_data)
         loan_data.update(account_payload)
+        loan_data = _attach_leader_bdm_context(loan_data)
+        latest_bank_name = resolve_latest_saved_bank_name(loan_data)
         loan_data = strip_banker_fields_for_role(loan_data, request.user)
+        loan_data = attach_channel_partner_latest_saved_fields(
+            loan_data,
+            request.user,
+            latest_bank_name,
+        )
 
         return Response({
             'success': True,
@@ -8095,8 +8168,7 @@ def employee_collect_for_banking(request, loan_id):
     try:
         payload = request.data or {}
         preferred_source = _normalize_entity_source(payload)
-        loan_app = LoanApplication.objects.filter(id=loan_id).first()
-        legacy = Loan.objects.filter(id=loan_id).first()
+        loan_app, legacy = _resolve_workflow_targets(loan_id, payload)
         dsa_loan_app, dsa_legacy = _default_dsa_context(preferred_source, loan_app, legacy)
         payload = _with_default_channel_partner_dsa(payload, dsa_loan_app, dsa_legacy)
         banking_details, validation_error = _validate_banking_processing_fields(payload)
@@ -8328,8 +8400,7 @@ def employee_mark_updated_document(request, loan_id):
         preferred_source = _normalize_entity_source(payload)
         remark = str(payload.get('remark') or payload.get('updated_document_remark') or '').strip()
         update_note = _build_updated_document_note(remark, request.user)
-        loan_app = LoanApplication.objects.filter(id=loan_id).first()
-        legacy = Loan.objects.filter(id=loan_id).first()
+        loan_app, legacy = _resolve_workflow_targets(loan_id, payload)
 
         def _source_order():
             if preferred_source == 'legacy':
@@ -8477,8 +8548,7 @@ def employee_move_to_document_pending(request, loan_id):
                 'error': 'Remark is required to move into Document Pending.'
             }, status=status.HTTP_400_BAD_REQUEST)
 
-        loan_app = LoanApplication.objects.filter(id=loan_id).first()
-        legacy = Loan.objects.filter(id=loan_id).first()
+        loan_app, legacy = _resolve_workflow_targets(loan_id, payload)
         note_line = _build_document_pending_note(remark, request.user)
 
         def _source_order():
@@ -8668,8 +8738,7 @@ def employee_revert_loan_to_agent(request, loan_id):
     try:
         payload = request.data or {}
         preferred_source = _normalize_entity_source(payload)
-        loan_app = LoanApplication.objects.filter(id=loan_id).first()
-        legacy = Loan.objects.filter(id=loan_id).first()
+        loan_app, legacy = _resolve_workflow_targets(loan_id, payload)
 
         revert_remark = str(payload.get('revert_remark', '')).strip()
         if not revert_remark:
@@ -8823,8 +8892,7 @@ def employee_sign_off_loan(request, loan_id):
     try:
         requested = request.data or {}
         preferred_source = _normalize_entity_source(requested)
-        loan_app = LoanApplication.objects.filter(id=loan_id).first()
-        legacy = Loan.objects.filter(id=loan_id).first()
+        loan_app, legacy = _resolve_workflow_targets(loan_id, requested)
 
         def _source_order():
             if preferred_source == 'legacy':
@@ -9012,8 +9080,7 @@ def employee_approve_loan(request, loan_id):
     try:
         payload = request.data or {}
         preferred_source = _normalize_entity_source(payload)
-        default_loan_app = LoanApplication.objects.filter(id=loan_id).first()
-        default_legacy = Loan.objects.filter(id=loan_id).first()
+        default_loan_app, default_legacy = _resolve_workflow_targets(loan_id, payload)
         dsa_loan_app, dsa_legacy = _default_dsa_context(preferred_source, default_loan_app, default_legacy)
         payload = _with_default_channel_partner_dsa(payload, dsa_loan_app, dsa_legacy)
         approval_notes = str(payload.get('approval_notes', '')).strip()
@@ -9193,8 +9260,7 @@ def employee_reject_loan(request, loan_id):
     try:
         payload = request.data or {}
         preferred_source = _normalize_entity_source(payload)
-        loan_app = LoanApplication.objects.filter(id=loan_id).first()
-        legacy = Loan.objects.filter(id=loan_id).first()
+        loan_app, legacy = _resolve_workflow_targets(loan_id, payload)
 
         rejection_reason = str(payload.get('rejection_reason', '')).strip()
         if not rejection_reason:
@@ -9346,8 +9412,7 @@ def employee_disburse_loan(request, loan_id):
     try:
         payload = request.data or {}
         preferred_source = _normalize_entity_source(payload)
-        loan_app = LoanApplication.objects.filter(id=loan_id).first()
-        legacy = Loan.objects.filter(id=loan_id).first()
+        loan_app, legacy = _resolve_workflow_targets(loan_id, payload)
         dsa_loan_app, dsa_legacy = _default_dsa_context(preferred_source, loan_app, legacy)
         payload = _with_default_channel_partner_dsa(payload, dsa_loan_app, dsa_legacy)
         loan_id_in_payload = 'loan_id' in payload or 'manual_loan_id' in payload
@@ -9694,8 +9759,10 @@ def reprocess_rejected_loan(request, loan_id):
         if not is_valid:
             return Response({'success': False, 'error': message}, status=status.HTTP_400_BAD_REQUEST)
 
-    loan_app = LoanApplication.objects.filter(id=loan_id).select_related('applicant').first()
-    legacy = Loan.objects.filter(id=loan_id).first()
+    loan_app, legacy = _resolve_workflow_targets(
+        loan_id,
+        payload if isinstance(payload, dict) else {'entity_type': request.POST.get('entity_type')},
+    )
 
     def _source_order():
         if preferred_source == 'legacy':

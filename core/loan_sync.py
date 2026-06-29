@@ -74,107 +74,116 @@ def normalize_gender(value):
     return "other"
 
 
-def find_related_loan_application(loan_obj):
-    if not loan_obj:
-        return None
-
-    base_qs = LoanApplication.objects.select_related(
+def _application_base_qs():
+    return LoanApplication.objects.select_related(
         "applicant",
         "assigned_by",
         "assigned_employee",
         "assigned_agent",
+        "legacy_loan",
     )
 
-    created_at = loan_obj.created_at or timezone.now()
-    window_start = created_at - timedelta(days=7)
-    window_end = created_at + timedelta(days=7)
 
-    # Prefer strict identity matches first.
-    strict_filters = []
+def _legacy_base_qs():
+    return Loan.objects.select_related("created_by", "assigned_employee", "assigned_agent")
+
+
+def _scoped_application_qs(base_qs, loan_obj):
+    qs = base_qs
+    if getattr(loan_obj, "assigned_agent_id", None):
+        qs = qs.filter(assigned_agent_id=loan_obj.assigned_agent_id)
+    if getattr(loan_obj, "created_by_id", None):
+        qs = qs.filter(
+            Q(assigned_by_id=loan_obj.created_by_id)
+            | Q(assigned_agent__user_id=loan_obj.created_by_id)
+        )
+    return qs
+
+
+def _scoped_legacy_qs(base_qs, loan_app):
+    qs = base_qs
+    if getattr(loan_app, "assigned_agent_id", None):
+        qs = qs.filter(assigned_agent_id=loan_app.assigned_agent_id)
+    if getattr(loan_app, "assigned_by_id", None):
+        qs = qs.filter(created_by_id=loan_app.assigned_by_id)
+    return qs
+
+
+def _strict_identity_filters_for_application(loan_obj):
+    filters = []
     if loan_obj.email and loan_obj.mobile_number:
-        strict_filters.append({
+        filters.append({
             "applicant__email__iexact": loan_obj.email,
             "applicant__mobile": loan_obj.mobile_number,
         })
     if loan_obj.full_name and loan_obj.mobile_number:
-        strict_filters.append({
+        filters.append({
             "applicant__full_name__iexact": loan_obj.full_name,
             "applicant__mobile": loan_obj.mobile_number,
         })
     if loan_obj.email and loan_obj.full_name:
-        strict_filters.append({
+        filters.append({
             "applicant__email__iexact": loan_obj.email,
             "applicant__full_name__iexact": loan_obj.full_name,
         })
-    if getattr(loan_obj, 'username', None):
-        strict_filters.append({
+    if getattr(loan_obj, "username", None):
+        filters.append({
             "applicant__username__iexact": loan_obj.username,
         })
-
-    # Try in date-window first, then global fallback so older records still map.
-    for filters in strict_filters:
-        match = (
-            base_qs.filter(**filters, created_at__gte=window_start, created_at__lte=window_end)
-            .order_by("-created_at")
-            .first()
-        )
-        if match:
-            return match
-
-    for filters in strict_filters:
-        match = base_qs.filter(**filters).order_by("-created_at").first()
-        if match:
-            return match
-
-    # Last-resort fuzzy OR match.
-    queries = []
-    if loan_obj.email:
-        queries.append(Q(applicant__email__iexact=loan_obj.email))
-    if loan_obj.mobile_number:
-        queries.append(Q(applicant__mobile=loan_obj.mobile_number))
-    if loan_obj.full_name:
-        queries.append(Q(applicant__full_name__iexact=loan_obj.full_name))
-
-    if not queries:
-        return None
-
-    condition = queries.pop(0)
-    for query in queries:
-        condition |= query
-
-    return base_qs.filter(condition).order_by("-created_at").first()
+    return filters
 
 
-def find_related_loan(loan_app):
-    if not loan_app or not loan_app.applicant:
-        return None
-
-    applicant = loan_app.applicant
-    base_qs = Loan.objects.select_related("created_by", "assigned_employee", "assigned_agent")
-    created_at = loan_app.created_at or timezone.now()
-    window_start = created_at - timedelta(days=7)
-    window_end = created_at + timedelta(days=7)
-
-    strict_filters = []
+def _strict_identity_filters_for_legacy(applicant):
+    filters = []
     if applicant.email and applicant.mobile:
-        strict_filters.append({
+        filters.append({
             "email__iexact": applicant.email,
             "mobile_number": applicant.mobile,
         })
     if applicant.full_name and applicant.mobile:
-        strict_filters.append({
+        filters.append({
             "full_name__iexact": applicant.full_name,
             "mobile_number": applicant.mobile,
         })
     if applicant.email and applicant.full_name:
-        strict_filters.append({
+        filters.append({
             "email__iexact": applicant.email,
             "full_name__iexact": applicant.full_name,
         })
     if applicant.username:
-        strict_filters.append({
+        filters.append({
             "username__iexact": applicant.username,
         })
+    return filters
+
+
+def ensure_legacy_link(loan_app, legacy_loan):
+    """Persist one-to-one workflow link between application and legacy loan."""
+    if not loan_app or not legacy_loan:
+        return loan_app
+    if loan_app.legacy_loan_id == legacy_loan.id:
+        return loan_app
+    if LoanApplication.objects.filter(legacy_loan_id=legacy_loan.id).exclude(pk=loan_app.pk).exists():
+        return loan_app
+    loan_app.legacy_loan = legacy_loan
+    loan_app._skip_sync_to_loan = True
+    loan_app.save(update_fields=["legacy_loan", "updated_at"])
+    return loan_app
+
+
+def find_related_loan_application(loan_obj, *, strict=True):
+    if not loan_obj:
+        return None
+
+    linked = _application_base_qs().filter(legacy_loan_id=loan_obj.id).first()
+    if linked:
+        return linked
+
+    base_qs = _scoped_application_qs(_application_base_qs(), loan_obj)
+    created_at = loan_obj.created_at or timezone.now()
+    window_start = created_at - timedelta(days=7)
+    window_end = created_at + timedelta(days=7)
+    strict_filters = _strict_identity_filters_for_application(loan_obj)
 
     for filters in strict_filters:
         match = (
@@ -183,29 +192,56 @@ def find_related_loan(loan_app):
             .first()
         )
         if match:
-            return match
+            return ensure_legacy_link(match, loan_obj)
+
+    if strict:
+        return None
 
     for filters in strict_filters:
         match = base_qs.filter(**filters).order_by("-created_at").first()
         if match:
-            return match
+            return ensure_legacy_link(match, loan_obj)
 
-    queries = []
-    if applicant.email:
-        queries.append(Q(email__iexact=applicant.email))
-    if applicant.mobile:
-        queries.append(Q(mobile_number=applicant.mobile))
-    if applicant.full_name:
-        queries.append(Q(full_name__iexact=applicant.full_name))
+    return None
 
-    if not queries:
+
+def find_related_loan(loan_app, *, strict=True):
+    if not loan_app:
         return None
 
-    condition = queries.pop(0)
-    for query in queries:
-        condition |= query
+    if getattr(loan_app, "legacy_loan_id", None):
+        return _legacy_base_qs().filter(pk=loan_app.legacy_loan_id).first()
 
-    return base_qs.filter(condition).order_by("-created_at").first()
+    if not loan_app.applicant:
+        return None
+
+    applicant = loan_app.applicant
+    base_qs = _scoped_legacy_qs(_legacy_base_qs(), loan_app)
+    created_at = loan_app.created_at or timezone.now()
+    window_start = created_at - timedelta(days=7)
+    window_end = created_at + timedelta(days=7)
+    strict_filters = _strict_identity_filters_for_legacy(applicant)
+
+    for filters in strict_filters:
+        match = (
+            base_qs.filter(**filters, created_at__gte=window_start, created_at__lte=window_end)
+            .order_by("-created_at")
+            .first()
+        )
+        if match:
+            ensure_legacy_link(loan_app, match)
+            return match
+
+    if strict:
+        return None
+
+    for filters in strict_filters:
+        match = base_qs.filter(**filters).order_by("-created_at").first()
+        if match:
+            ensure_legacy_link(loan_app, match)
+            return match
+
+    return None
 
 
 def resolve_user_by_role_and_name(role, raw_name):
@@ -351,6 +387,7 @@ def sync_loan_to_application(loan_obj, assigned_by_user=None, create_if_missing=
             assigned_agent=loan_obj.assigned_agent,
             assigned_at=loan_obj.assigned_at if mapped_status in ["Waiting for Processing", "Required Follow-up"] else None,
             assigned_by=assigner,
+            legacy_loan=loan_obj,
             banking_processing_started_at=getattr(loan_obj, "banking_processing_started_at", None),
             sm_name=loan_obj.sm_name,
             sm_phone_number=loan_obj.sm_phone_number,
@@ -361,6 +398,9 @@ def sync_loan_to_application(loan_obj, assigned_by_user=None, create_if_missing=
         return loan_app
 
     update_fields = []
+    if not loan_app.legacy_loan_id:
+        loan_app.legacy_loan = loan_obj
+        update_fields.append("legacy_loan")
     applicant = loan_app.applicant
 
     applicant_updates = {
@@ -445,7 +485,11 @@ def sync_application_to_loan(loan_app):
     if not loan_app or not getattr(loan_app, "applicant", None):
         return None
 
-    loan_obj = find_related_loan(loan_app)
+    loan_obj = None
+    if getattr(loan_app, "legacy_loan_id", None):
+        loan_obj = _legacy_base_qs().filter(pk=loan_app.legacy_loan_id).first()
+    if not loan_obj:
+        loan_obj = find_related_loan(loan_app, strict=False)
     if not loan_obj:
         return None
 

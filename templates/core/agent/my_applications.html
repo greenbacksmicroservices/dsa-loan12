@@ -269,7 +269,7 @@
                             </thead>
                             <tbody>
                                 {% for loan in loans %}
-                                <tr id="loan-row-{{ loan.id }}" class="status-{{ loan.status }} {% if focus_loan_id and focus_loan_id == loan.id|stringformat:'s' %}focus-row{% endif %}" data-status="{% if loan.has_revert_pending %}follow_up_pending{% else %}{{ loan.status }}{% endif %}">
+                                <tr id="loan-row-{{ loan.entity_type|default:'legacy' }}-{{ loan.id }}" class="status-{{ loan.status }} {% if focus_loan_id and focus_loan_id == loan.id|stringformat:'s' %}focus-row{% endif %}" data-loan-id="{{ loan.id }}" data-entity-type="{{ loan.entity_type|default:'legacy' }}" data-status="{% if loan.has_revert_pending %}follow_up_pending{% else %}{{ loan.status }}{% endif %}">
                                     <td class="fw-600 align-middle">{{ loan.full_name }}</td>
                                     <td class="align-middle"><span class="badge bg-light text-dark">{% if loan.loan_id %}{{ loan.loan_id }}{% else %}Not Assigned Yet{% endif %}</span></td>
                                     <td class="align-middle"><a href="tel:{{ loan.mobile_number }}">{{ loan.mobile_number }}</a></td>
@@ -520,11 +520,9 @@ function findMatchingUploadedDocument(requiredName, uploadedDocuments) {
 }
 
 const BANKER_HIDDEN_LABELS = new Set([
-    'bank name',
     'banker name',
     'banker phone',
     'banker email',
-    'processing bank name',
 ]);
 
 function isHiddenBankDetailLabel(label) {
@@ -536,6 +534,51 @@ function isHiddenBankDetailLabel(label) {
 
 function filterBankerDetailRows(rows) {
     return (Array.isArray(rows) ? rows : []).filter((row) => !isHiddenBankDetailLabel(row?.label));
+}
+
+const LEAD_RECEIVE_HIDDEN_LABELS = new Set([
+    'channel partner name',
+    'employee name',
+    'leader name',
+    'lead source',
+    'lead description',
+    'lead receive channel partner name',
+    'lead receive employee name',
+    'lead receive leader name',
+    'lead receive source',
+    'lead receive description',
+    'lead receive',
+]);
+
+function isHiddenLeadReceiveLabel(label) {
+    const key = String(label || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+    if (!key) return false;
+    if (LEAD_RECEIVE_HIDDEN_LABELS.has(key)) return true;
+    return key.includes('lead receive') || key.startsWith('lead ');
+}
+
+function buildLatestSavedFieldsHtml(loan) {
+    const fullRows = Array.isArray(loan.full_application_details) ? loan.full_application_details : [];
+    let rows = filterBankerDetailRows(fullRows).filter((row) => !isHiddenLeadReceiveLabel(row?.label));
+    const bankName = String(loan.latest_saved_bank_name || loan.bank_name || '').trim() || 'Not Added';
+    const hasBankName = rows.some((row) => String(row?.label || '').trim().toLowerCase() === 'bank name');
+    if (!hasBankName) {
+        rows = [...rows, { label: 'Bank Name', value: bankName }];
+    } else {
+        rows = rows.map((row) => {
+            if (String(row?.label || '').trim().toLowerCase() !== 'bank name') return row;
+            return { ...row, value: String(loan.latest_saved_bank_name || loan.bank_name || row.value || '').trim() || 'Not Added' };
+        });
+    }
+    if (!rows.length) {
+        return '<div class="text-muted small">No captured details available.</div>';
+    }
+    return rows.map((row) => `
+        <div class="mb-2">
+            <div class="small text-muted">${row.label || '-'}</div>
+            <div class="fw-semibold">${row.value || '-'}</div>
+        </div>
+    `).join('');
 }
 
 function buildServiceDocumentRows(fullDetails, uploadedDocuments) {
@@ -596,6 +639,7 @@ function viewLoanDetails(loanId, loanName, entityType = '') {
         }[String(loan.status_key || '').toLowerCase()] || 'secondary';
 
         const details = filterBankerDetailRows(loan.full_application_details);
+        const latestSavedHtml = buildLatestSavedFieldsHtml(loan);
         const documents = Array.isArray(loan.documents) ? loan.documents : [];
         const detailsHtml = details.length
             ? details.map((item) => `<tr><td class="fw-semibold">${item.label || '-'}</td><td>${item.value || '-'}</td></tr>`).join('')
@@ -643,6 +687,12 @@ function viewLoanDetails(loanId, loanName, entityType = '') {
                 <div class="col-12 mb-3">
                     <label class="form-label small text-muted">Address</label>
                     <p class="form-control-plaintext">${loan.permanent_address || '-'}</p>
+                </div>
+                <div class="col-12 mb-3">
+                    <label class="form-label small text-muted mb-1">LATEST SAVED FIELDS (REALTIME)</label>
+                    <div class="border rounded p-3 bg-light">
+                        ${latestSavedHtml}
+                    </div>
                 </div>
                 <div class="col-12 mb-3">
                     <div class="d-flex justify-content-between align-items-center">

@@ -184,42 +184,63 @@ def _resolve_agent_employee(agent):
     return None
 
 
-def get_leader_name(user=None, agent=None):
+def get_leader_bdm_partner_user(user=None, agent=None):
     """
-    Resolve the leader shown in hierarchy views:
-    Partner name when a partner exists in the upper chain, otherwise Admin.
+    Return the Partner (subadmin) user in the upper hierarchy for CP/SCP/Employee.
+    Walks SCP -> parent CP -> Employee -> Partner when needed.
     """
     if agent is None and user is not None:
         agent = Agent.objects.filter(user=user).select_related('created_by', 'under_employee').first()
 
-    partner = None
-    role = normalize_user_role(getattr(user, 'role', ''))
+    if user and is_partner_role(getattr(user, 'role', '')) and user.is_active:
+        return user
 
-    if is_employee_role(role):
-        partner = get_employee_partner(user)
-    elif is_partner_role(role):
-        return display_user_name(_first_active_admin()) or 'Admin'
-    elif is_channel_partner_role(role) or agent:
-        partner = get_channel_partner_partner(user) if user else None
-        if not partner and agent:
-            created_by = getattr(agent, 'created_by', None)
-            if created_by:
-                if is_partner_role(getattr(created_by, 'role', '')):
-                    partner = created_by
-                elif is_employee_role(getattr(created_by, 'role', '')):
-                    partner = get_employee_partner(created_by)
-                elif is_channel_partner_role(getattr(created_by, 'role', '')):
-                    parent_agent = Agent.objects.filter(user=created_by).select_related('created_by').first()
-                    if parent_agent:
-                        partner = get_channel_partner_partner(created_by)
-                        if not partner:
-                            parent_employee = _resolve_agent_employee(parent_agent)
-                            if parent_employee:
-                                partner = get_employee_partner(parent_employee)
+    if user and is_employee_role(getattr(user, 'role', '')):
+        return get_employee_partner(user)
 
+    agents_to_check = []
+    if agent:
+        agents_to_check.append(agent)
+        if is_sub_channel_partner_agent(agent) and getattr(agent, 'created_by', None):
+            parent_agent = (
+                Agent.objects.filter(user=agent.created_by)
+                .select_related('created_by', 'under_employee')
+                .first()
+            )
+            if parent_agent and parent_agent not in agents_to_check:
+                agents_to_check.append(parent_agent)
+
+    for ag in agents_to_check:
+        ag_user = getattr(ag, 'user', None)
+        if ag_user:
+            partner = get_channel_partner_partner(ag_user)
+            if partner:
+                return partner
+
+        creator = getattr(ag, 'created_by', None)
+        if creator and is_partner_role(getattr(creator, 'role', '')) and creator.is_active:
+            return creator
+
+        employee = _resolve_agent_employee(ag)
+        if employee:
+            partner = get_employee_partner(employee)
+            if partner:
+                return partner
+
+    return None
+
+
+def get_leader_bdm_name_for_user(user=None, agent=None):
+    """Leader/BDM label: Partner name from upper hierarchy, otherwise Admin."""
+    partner = get_leader_bdm_partner_user(user=user, agent=agent)
     if partner:
         return display_user_name(partner)
     return display_user_name(_first_active_admin()) or 'Admin'
+
+
+def get_leader_name(user=None, agent=None):
+    """Backward-compatible alias for leader/BDM display."""
+    return get_leader_bdm_name_for_user(user=user, agent=agent)
 
 
 def get_assigned_employee_for_submitter(user):
@@ -422,16 +443,12 @@ CHANNEL_PARTNER_ROLE_ALIASES = frozenset({
 })
 
 BANKER_HIDDEN_DETAIL_LABELS = frozenset({
-    'bank name',
     'banker name',
     'banker phone',
     'banker email',
-    'processing bank name',
 })
 
 BANKER_HIDDEN_PAYLOAD_KEYS = (
-    'bank_name',
-    'processing_bank_name',
     'banker_name',
     'banker_phone',
     'banker_email',
@@ -506,11 +523,42 @@ def _is_hidden_detail_label_for_channel_partner(label_key):
         return True
     if any(token in label_key for token in ('banker name', 'banker phone', 'banker email')):
         return True
-    if label_key == 'bank name' or label_key.startswith('bank name '):
-        return True
     if 'lead receive' in label_key or label_key.startswith('lead '):
         return True
     return False
+
+
+def resolve_latest_saved_bank_name(payload):
+    """Return the saved bank name for channel partner latest-saved display."""
+    if not isinstance(payload, dict):
+        return ''
+    direct = str(
+        payload.get('bank_name')
+        or payload.get('processing_bank_name')
+        or ''
+    ).strip()
+    if direct:
+        return direct
+    for row in payload.get('full_application_details') or []:
+        if not isinstance(row, dict):
+            continue
+        if _normalize_detail_label(row.get('label')) != 'bank name':
+            continue
+        value = str(row.get('value') or '').strip()
+        if value and value != '-':
+            return value
+    return ''
+
+
+def attach_channel_partner_latest_saved_fields(payload, user_or_role, bank_name=''):
+    """Expose bank name for CP/SCP latest-saved UI while keeping other banker fields hidden."""
+    if not is_channel_partner(user_or_role) or not isinstance(payload, dict):
+        return payload
+    cleaned = dict(payload)
+    name = str(bank_name or '').strip()
+    cleaned['latest_saved_bank_name'] = name
+    cleaned['bank_name'] = name
+    return cleaned
 
 
 def filter_application_details_for_role(rows, user_or_role):
@@ -793,7 +841,7 @@ def delete_loan_by_primary_key(loan_id, entity_type=None, allow_disbursed=False)
                 'status_code': 400,
             }
         applicant = app_obj.applicant
-        linked_legacy = find_related_loan(app_obj)
+        linked_legacy = app_obj.legacy_loan if getattr(app_obj, 'legacy_loan_id', None) else find_related_loan(app_obj, strict=True)
         with transaction.atomic():
             app_obj.delete()
             if linked_legacy:
@@ -910,7 +958,10 @@ def get_submitted_processed_display(loan=None, loan_application=None):
     if legacy and not app:
         app = find_related_loan_application(legacy)
     if app and not legacy:
-        legacy = find_related_loan(app)
+        if getattr(app, 'legacy_loan_id', None):
+            legacy = app.legacy_loan
+        else:
+            legacy = find_related_loan(app)
 
     creator = None
     if legacy and getattr(legacy, 'created_by_id', None):
@@ -1016,4 +1067,19 @@ def get_submitted_processed_display(loan=None, loan_application=None):
         'employee_name': employee_name,
         'partner_name': partner_name or '-',
     }
+
+
+def get_workflow_submitted_by_label(loan=None, loan_application=None):
+    """Single-line submitted-by label distinguishing CP vs SCP applications."""
+    meta = get_submitted_processed_display(loan=loan, loan_application=loan_application)
+    scp_name = str(meta.get('scp_name') or '').strip()
+    cp_name = str(meta.get('channel_partner_name') or '').strip()
+    if scp_name:
+        parent = f" (Parent CP: {cp_name})" if cp_name else ''
+        return f"Sub Channel Partner - {scp_name}{parent}"
+    if cp_name:
+        return f"Channel Partner - {cp_name}"
+    if loan and getattr(loan, 'created_by', None):
+        return get_loan_submitted_by_display(loan)
+    return '-'
 
