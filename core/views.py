@@ -5899,7 +5899,7 @@ def _build_banking_processing_note(payload):
     bank_remark = str(payload.get('bank_remark', '')).strip()
     verified_loan_amount = str(payload.get('verified_loan_amount') or payload.get('verified_amount') or payload.get('verified_loan_ammount') or '').strip()
     final_loan_amount = str(payload.get('final_loan_amount') or payload.get('final_amount') or payload.get('final_loan_ammount') or '').strip()
-    dsa_name = str(payload.get('dsa_name') or payload.get('sm_name') or '').strip()
+    dsa_name = str(payload.get('dsa_name') or '').strip()
     banker_name = str(payload.get('banker_name', '')).strip()
     banker_phone = str(payload.get('banker_phone', '')).strip()
     banker_email = str(payload.get('banker_email', '')).strip()
@@ -5969,7 +5969,7 @@ def _collect_banking_processing_fields(payload):
         or payload.get('final_loan_ammount')
         or ''
     ).strip()
-    dsa_name = str(payload.get('dsa_name') or payload.get('sm_name') or '').strip()
+    dsa_name = str(payload.get('dsa_name') or '').strip()
     banker_description = str(payload.get('banker_description') or '').strip()
     bank_remark = str(payload.get('bank_remark') or '').strip()
 
@@ -6086,7 +6086,7 @@ def _extract_processing_details(*raw_blocks):
         'loan_account_number': pick('loan account number', 'current loan account number', 'account number', 'bank account number'),
         'verified_loan_amount': pick('verified loan amount', 'verified amount', 'verified loan ammount'),
         'final_loan_amount': pick('final loan amount', 'final amount', 'final loan ammount', 'disbursement amount', 'disbursed amount'),
-        'dsa_name': pick('dsa name', 'channel partner name', 'sm name'),
+        'dsa_name': pick('dsa name'),
         'banker_description': pick('description', 'banker description'),
         'bank_remark': pick('bank remark', 'remark', 'remarks'),
     }
@@ -6122,18 +6122,8 @@ def _channel_partner_name_for_case(loan_app=None, legacy_loan=None):
 
 
 def _with_default_channel_partner_dsa(payload, loan_app=None, legacy_loan=None):
-    normalized_payload = dict(payload or {})
-    existing_dsa = _first_clean_value(
-        normalized_payload.get('dsa_name'),
-        normalized_payload.get('sm_name'),
-    )
-    if existing_dsa:
-        return normalized_payload
-
-    channel_partner_name = _channel_partner_name_for_case(loan_app, legacy_loan)
-    if channel_partner_name:
-        normalized_payload['dsa_name'] = channel_partner_name
-    return normalized_payload
+    """Return payload unchanged — DSA Name must be entered manually, never auto-filled."""
+    return dict(payload or {})
 
 
 def _default_dsa_context(preferred_source, loan_app=None, legacy_loan=None):
@@ -6487,7 +6477,7 @@ def _build_full_application_details(loan_data, parsed_details):
     add('Account Number', loan_data.get('account_number') or loan_data.get('loan_account_number'))
     add('Verified Loan Amount', loan_data.get('verified_loan_amount'))
     add('Final Loan Amount', loan_data.get('final_loan_amount'))
-    add('DSA Name', loan_data.get('dsa_name'))
+    add('DSA Name', loan_data.get('dsa_name') or 'Not Added')
     add('Description', loan_data.get('banker_description'))
     add('Bank Remark', loan_data.get('bank_remark'))
     add('Bank Type', loan_data.get('bank_type'))
@@ -6984,9 +6974,12 @@ def employee_assigned_loan_detail(request, loan_id):
         app_lookup_filter = Q(assigned_employee=request.user)
         legacy_lookup_kwargs = {'assigned_employee': request.user}
     elif request.user.role == 'agent':
-        app_lookup_kwargs = {'assigned_agent': agent_profile}
+        from .loan_helpers import get_agent_loan_visibility_filter, get_sub_channel_partner_users_for_parent_agent
+        scp_users = get_sub_channel_partner_users_for_parent_agent(agent_profile)
         app_lookup_filter = Q(assigned_agent=agent_profile) | Q(assigned_by=request.user)
-        legacy_lookup_kwargs = {'assigned_agent': agent_profile}
+        if scp_users.exists():
+            app_lookup_filter |= Q(assigned_agent__user__in=scp_users)
+        legacy_lookup_kwargs = {}
     preferred_source = _normalize_entity_source(request.query_params)
 
     def _history_status_label(raw_status):
@@ -7376,10 +7369,13 @@ def employee_assigned_loan_detail(request, loan_id):
                     id=loan_id,
                 )
             else:
-                legacy = Loan.objects.select_related('created_by').prefetch_related('documents').get(
-                    id=loan_id,
-                    **legacy_lookup_kwargs,
-                )
+                legacy_qs = Loan.objects.select_related('created_by').prefetch_related('documents')
+                if request.user.role == 'agent' and agent_profile:
+                    from .loan_helpers import get_agent_loan_visibility_filter
+                    legacy_qs = legacy_qs.filter(get_agent_loan_visibility_filter(request.user, agent_profile))
+                elif legacy_lookup_kwargs:
+                    legacy_qs = legacy_qs.filter(**legacy_lookup_kwargs)
+                legacy = legacy_qs.get(id=loan_id)
             related_app = find_related_loan_application(legacy)
             related_applicant = related_app.applicant if related_app else None
             parsed_legacy = _parse_colon_details(legacy.remarks)
@@ -8149,8 +8145,6 @@ def employee_collect_for_banking(request, loan_id):
             loan_app.follow_up_scheduled_at = timezone.now()
             loan_app.follow_up_notified_at = timezone.now()
             loan_app.follow_up_count = (loan_app.follow_up_count or 0) + 1
-            if processing_dsa_name:
-                loan_app.sm_name = processing_dsa_name
             loan_app.is_sm_signed = False
             loan_app.sm_signed_at = None
             loan_app.approval_notes = _append_note_line(loan_app.approval_notes, banking_note)
@@ -8160,7 +8154,6 @@ def employee_collect_for_banking(request, loan_id):
                 'follow_up_scheduled_at',
                 'follow_up_notified_at',
                 'follow_up_count',
-                'sm_name',
                 'is_sm_signed',
                 'sm_signed_at',
                 'approval_notes',
@@ -8198,9 +8191,6 @@ def employee_collect_for_banking(request, loan_id):
                 if processing_bank_name and related_loan.bank_name != processing_bank_name:
                     related_loan.bank_name = processing_bank_name
                     related_fields.append('bank_name')
-                if processing_dsa_name and related_loan.sm_name != processing_dsa_name:
-                    related_loan.sm_name = processing_dsa_name
-                    related_fields.append('sm_name')
                 if processing_loan_account_number and related_loan.bank_account_number != processing_loan_account_number:
                     related_loan.bank_account_number = processing_loan_account_number
                     related_fields.append('bank_account_number')
@@ -8222,8 +8212,6 @@ def employee_collect_for_banking(request, loan_id):
             legacy.action_taken_at = timezone.now()
             if processing_bank_name:
                 legacy.bank_name = processing_bank_name
-            if processing_dsa_name:
-                legacy.sm_name = processing_dsa_name
             if processing_loan_account_number:
                 legacy.bank_account_number = processing_loan_account_number
             legacy.is_sm_signed = False
@@ -8235,7 +8223,6 @@ def employee_collect_for_banking(request, loan_id):
                 'action_taken_at',
                 'bank_name',
                 'bank_account_number',
-                'sm_name',
                 'is_sm_signed',
                 'sm_signed_at',
                 'remarks',
@@ -8255,8 +8242,6 @@ def employee_collect_for_banking(request, loan_id):
                 synced_application.follow_up_scheduled_at = timezone.now()
                 synced_application.follow_up_notified_at = timezone.now()
                 synced_application.follow_up_count = (synced_application.follow_up_count or 0) + 1
-                if processing_dsa_name:
-                    synced_application.sm_name = processing_dsa_name
                 if not synced_application.assigned_at:
                     synced_application.assigned_at = timezone.now()
                 synced_application.approval_notes = _append_note_line(
@@ -8272,7 +8257,6 @@ def employee_collect_for_banking(request, loan_id):
                         'follow_up_scheduled_at',
                         'follow_up_notified_at',
                         'follow_up_count',
-                        'sm_name',
                         'approval_notes',
                         'updated_at',
                     ]
@@ -9429,10 +9413,10 @@ def employee_disburse_loan(request, loan_id):
                     'error': 'Invalid disbursement amount or date'
                 }, status=status.HTTP_400_BAD_REQUEST)
 
-            if disbursement_amount > float(applicant.loan_amount or 0):
+            if disbursement_amount < 0:
                 return Response({
                     'success': False,
-                    'error': f'Disbursement amount cannot exceed loan amount ({applicant.loan_amount})'
+                    'error': 'Disbursement amount must be zero or greater'
                 }, status=status.HTTP_400_BAD_REQUEST)
 
             sm_phone = (payload_sm_phone or (loan_app.sm_phone_number or '')).strip()
@@ -9517,11 +9501,8 @@ def employee_disburse_loan(request, loan_id):
             except (TypeError, ValueError):
                 return Response({'success': False, 'error': 'Invalid disbursement amount'}, status=status.HTTP_400_BAD_REQUEST)
 
-            if disbursement_amount > float(legacy.loan_amount or 0):
-                return Response({
-                    'success': False,
-                    'error': f'Disbursement amount cannot exceed loan amount ({legacy.loan_amount})'
-                }, status=status.HTTP_400_BAD_REQUEST)
+            if disbursement_amount < 0:
+                return Response({'success': False, 'error': 'Disbursement amount must be zero or greater'}, status=status.HTTP_400_BAD_REQUEST)
 
             disbursement_date = disbursement_date_raw
             if not disbursement_date:

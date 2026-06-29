@@ -80,7 +80,7 @@
                 <tbody class="divide-y divide-gray-200">
                     {% if loans %}
                         {% for loan in loans %}
-                        <tr class="hover:bg-gray-50">
+                        <tr class="hover:bg-gray-50" data-loan-id="{{ loan.id }}" data-entity-type="{{ loan.entity_type|default:'legacy' }}">
                             <td class="px-4 py-3 text-sm font-semibold text-gray-900">{% if loan.loan_id %}{{ loan.loan_id }}{% else %}Not Assigned Yet{% endif %}</td>
                             <td class="px-4 py-3 text-sm text-gray-800">{{ loan.applicant_name }}</td>
                             <td class="px-4 py-3 text-sm text-gray-700">
@@ -112,15 +112,14 @@
                             </td>
                             <td class="px-4 py-3 text-sm text-gray-700">{{ loan.created_under }}</td>
                             <td class="px-4 py-3 text-sm text-gray-700">
-                                <div><strong>Channel Partner:</strong> {{ loan.submitted_by|default:'-' }}</div>
-                                <div><strong>Employee:</strong> {{ loan.processed_by|default:'-' }}</div>
-                                <div><strong>Partner:</strong> {{ loan.partner_under|default:'-' }}</div>
+                                {% include 'includes/submitted_processed_lines.html' with lines=loan.submitted_processed_lines %}
                             </td>
                             <td class="px-4 py-3 text-sm text-gray-700">{{ loan.assigned_by }}</td>
                             <td class="px-4 py-3 text-sm text-gray-700">{{ loan.created_date|date:"M d, Y H:i" }}</td>
                             <td class="px-4 py-3 text-sm">
                                 <div class="flex flex-wrap gap-2">
                                     <button type="button" onclick="openLoanDetailsModal({{ loan.id }}, '{{ loan.entity_type|default:'legacy' }}')" class="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700">View</button>
+                                    <button type="button" onclick="openPartnerSimpleEditModal({{ loan.id }}, '{{ loan.entity_type|default:'legacy' }}')" class="px-2 py-1 bg-indigo-600 text-white rounded text-xs hover:bg-indigo-700">Edit</button>
                                     {% if loan.status_key == 'rejected' %}
                                     <button type="button" onclick="openReprocessModal({{ loan.id }}, '{{ loan.entity_type|default:'legacy' }}', { loan_type: '{{ loan.loan_type|default:''|escapejs }}', loan_amount: '{{ loan.amount|default:0 }}' })" class="px-2 py-1 bg-amber-600 text-white rounded text-xs hover:bg-amber-700">Reprocess</button>
                                     {% endif %}
@@ -317,6 +316,58 @@
     </div>
 </div>
 
+<div id="partnerSimpleEditModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-[60] p-4">
+    <div class="bg-white rounded-lg w-full max-w-2xl p-6 shadow-xl max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between mb-4 border-b border-gray-200 pb-3">
+            <div>
+                <h3 class="text-lg font-semibold text-gray-900">Edit Loan Application</h3>
+                <p class="text-xs text-gray-500 mt-1">Update applicant and loan details only.</p>
+            </div>
+            <button type="button" onclick="closePartnerSimpleEditModal()" class="text-gray-500 hover:text-gray-700 text-2xl leading-none">&times;</button>
+        </div>
+        <form id="partnerSimpleEditForm" onsubmit="event.preventDefault(); submitPartnerSimpleEdit();" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Applicant Name *</label>
+                <input id="partnerEditApplicantName" type="text" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-indigo-500">
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Mobile Number *</label>
+                    <input id="partnerEditMobile" type="text" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <input id="partnerEditEmail" type="email" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Loan Type *</label>
+                    <select id="partnerEditLoanType" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-indigo-500">
+                        <option value="personal">Personal Loan</option>
+                        <option value="lap">LAP (Loan Against Property)</option>
+                        <option value="home">Home Loan</option>
+                        <option value="business">Business Loan</option>
+                        <option value="education">Education Loan</option>
+                        <option value="car">Auto Loan</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Loan Amount *</label>
+                    <input id="partnerEditLoanAmount" type="number" min="0" step="0.01" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Tenure (Months)</label>
+                    <input id="partnerEditTenure" type="number" min="0" step="1" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-indigo-500">
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+                <button type="button" onclick="closePartnerSimpleEditModal()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
+                <button type="submit" id="partnerSimpleEditSubmitBtn" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
 function getCookie(name) {
     let cookieValue = null;
@@ -338,6 +389,111 @@ let CURRENT_LOAN_DETAILS = null;
 let PARTNER_BANKING_ACTION = null;
 let PARTNER_BANKING_LOAN_ID = null;
 let PARTNER_BANKING_ENTITY_TYPE = 'legacy';
+let PARTNER_EDIT_LOAN_ID = null;
+let PARTNER_EDIT_ENTITY_TYPE = 'legacy';
+
+const PARTNER_LOAN_TYPE_LABELS = {
+    personal: 'Personal Loan',
+    lap: 'LAP (Loan Against Property)',
+    home: 'Home Loan',
+    business: 'Business Loan',
+    education: 'Education Loan',
+    car: 'Auto Loan',
+    other: 'Other',
+};
+
+function closePartnerSimpleEditModal() {
+    const modal = document.getElementById('partnerSimpleEditModal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+}
+
+function normalizePartnerLoanTypeValue(rawValue) {
+    const value = String(rawValue || '').trim().toLowerCase();
+    if (!value || value === '-') return 'personal';
+    if (PARTNER_LOAN_TYPE_LABELS[value]) return value;
+    const match = Object.entries(PARTNER_LOAN_TYPE_LABELS).find(([, label]) => label.toLowerCase() === value);
+    return match ? match[0] : 'personal';
+}
+
+async function openPartnerSimpleEditModal(loanId, entityType = 'legacy') {
+    PARTNER_EDIT_LOAN_ID = loanId;
+    PARTNER_EDIT_ENTITY_TYPE = entityType || 'legacy';
+    try {
+        const response = await fetch(`/api/subadmin/loan/${loanId}/details/?entity_type=${encodeURIComponent(PARTNER_EDIT_ENTITY_TYPE)}`, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            credentials: 'same-origin',
+            cache: 'no-store',
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.success) {
+            throw new Error(payload.error || 'Unable to load loan details');
+        }
+        const data = payload.data || payload.loan || {};
+        document.getElementById('partnerEditApplicantName').value = data.full_name && data.full_name !== '-' ? data.full_name : '';
+        document.getElementById('partnerEditMobile').value = data.mobile_number && data.mobile_number !== '-' ? data.mobile_number : '';
+        document.getElementById('partnerEditEmail').value = data.email && data.email !== '-' ? data.email : '';
+        document.getElementById('partnerEditLoanType').value = normalizePartnerLoanTypeValue(data.loan_type_value || data.loan_type);
+        document.getElementById('partnerEditLoanAmount').value = data.loan_amount ?? '';
+        document.getElementById('partnerEditTenure').value = data.tenure_months && data.tenure_months !== '-' ? data.tenure_months : '';
+
+        const modal = document.getElementById('partnerSimpleEditModal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    } catch (error) {
+        alert(error.message || 'Failed to load loan details for editing.');
+    }
+}
+
+function updatePartnerLoanTableRow(loanData) {
+    if (!loanData || !loanData.id) return;
+    const row = document.querySelector(`tr[data-loan-id="${loanData.id}"]`);
+    if (!row) return;
+    const cells = row.querySelectorAll('td');
+    if (cells.length < 5) return;
+    cells[1].textContent = loanData.applicant_name || '-';
+    cells[2].innerHTML = `<div>${loanData.phone || '-'}</div><div class="text-xs text-gray-500">${loanData.email || '-'}</div>`;
+    cells[3].textContent = loanData.loan_type || '-';
+    cells[4].textContent = `Rs. ${Number(loanData.amount || 0).toLocaleString('en-IN')}`;
+}
+
+async function submitPartnerSimpleEdit() {
+    if (!PARTNER_EDIT_LOAN_ID) return;
+    const submitBtn = document.getElementById('partnerSimpleEditSubmitBtn');
+    if (submitBtn) submitBtn.disabled = true;
+    try {
+        const response = await fetch(`/api/subadmin/loan/${PARTNER_EDIT_LOAN_ID}/edit/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken,
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+                entity_type: PARTNER_EDIT_ENTITY_TYPE || 'legacy',
+                full_name: document.getElementById('partnerEditApplicantName').value.trim(),
+                mobile_number: document.getElementById('partnerEditMobile').value.trim(),
+                email: document.getElementById('partnerEditEmail').value.trim(),
+                loan_type: document.getElementById('partnerEditLoanType').value,
+                loan_amount: document.getElementById('partnerEditLoanAmount').value,
+                tenure_months: document.getElementById('partnerEditTenure').value,
+            }),
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+            throw new Error(data.error || 'Unable to save loan');
+        }
+        updatePartnerLoanTableRow(data.loan || {});
+        closePartnerSimpleEditModal();
+    } catch (error) {
+        alert(error.message || 'Failed to save loan changes.');
+    } finally {
+        if (submitBtn) submitBtn.disabled = false;
+    }
+}
 
 function postPartnerJson(url, payload) {
     return fetch(url, {

@@ -552,12 +552,14 @@
                     <span>My Applications</span>
                 </a>
             </li>
+            {% if can_create_sub_channel_partner %}
             <li>
                 <a href="{% url 'agent_sub_agents' %}" class="{% if request.resolver_match.url_name == 'agent_sub_agents' %}active{% endif %}">
                     <i class="fas fa-project-diagram"></i>
                     <span>Sub Channel Partners</span>
                 </a>
             </li>
+            {% endif %}
             <li>
                 <a href="{% url 'agent_reports' %}" class="{% if request.resolver_match.url_name == 'agent_reports' %}active{% endif %}">
                     <i class="fas fa-chart-bar"></i>

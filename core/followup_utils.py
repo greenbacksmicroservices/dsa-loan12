@@ -8,6 +8,8 @@ from .models import ActivityLog, Loan, LoanApplication, LoanStatusHistory
 
 FOLLOW_UP_TIMEOUT_HOURS = 4
 BANKING_PROCESS_TIMEOUT_HOURS = 4
+BANKING_APPLICATION_STATUS = 'Required Follow-up'
+BANKING_LEGACY_STATUS = 'follow_up'
 
 
 def _append_note_line(existing_text, new_line):
@@ -52,49 +54,6 @@ def _build_auto_revert_reason(loan_app=None, legacy_loan=None):
     return f"Revert Remark {next_idx}: Auto follow up after {BANKING_PROCESS_TIMEOUT_HOURS}h in Bank Login Process"
 
 
-def _legacy_banking_anchor(loan_obj):
-    return (
-        loan_obj.action_taken_at
-        or loan_obj.follow_up_triggered_at
-        or loan_obj.updated_at
-        or loan_obj.assigned_at
-    )
-
-
-def _move_application_waiting_to_banking(app_obj):
-    app_obj.trigger_follow_up()
-    ActivityLog.objects.create(
-        action="follow_up_triggered_auto",
-        description=(
-            f"Auto moved to Bank Login Process after {FOLLOW_UP_TIMEOUT_HOURS}h: "
-            f"{app_obj.applicant.full_name}"
-        ),
-        user=None,
-    )
-
-
-def _move_legacy_waiting_to_banking(loan_obj, now):
-    loan_obj.status = "follow_up"
-    loan_obj.requires_follow_up = True
-    loan_obj.follow_up_triggered_at = now
-    if not loan_obj.action_taken_at:
-        loan_obj.action_taken_at = now
-    loan_obj.save(
-        update_fields=[
-            "status",
-            "requires_follow_up",
-            "follow_up_triggered_at",
-            "action_taken_at",
-            "updated_at",
-        ]
-    )
-    ActivityLog.objects.create(
-        action="follow_up_triggered_auto",
-        description=f"Auto moved to Bank Login Process after {FOLLOW_UP_TIMEOUT_HOURS}h: {loan_obj.full_name}",
-        user=None,
-    )
-
-
 def _move_application_banking_to_follow_up_pending(app_obj, reason_line, now):
     previous_status = app_obj.status
     app_obj.status = "Waiting for Processing"
@@ -115,7 +74,7 @@ def _move_application_banking_to_follow_up_pending(app_obj, reason_line, now):
 
     LoanStatusHistory.objects.create(
         loan_application=app_obj,
-        from_status="follow_up" if previous_status == "Required Follow-up" else "waiting",
+        from_status="follow_up" if previous_status == BANKING_APPLICATION_STATUS else "waiting",
         to_status="waiting",
         changed_by=None,
         reason=reason_line,
@@ -146,7 +105,10 @@ def _move_application_banking_to_follow_up_pending(app_obj, reason_line, now):
 
     ActivityLog.objects.create(
         action="follow_up_pending_triggered_auto",
-        description=f"Auto moved to Follow Up after {BANKING_PROCESS_TIMEOUT_HOURS}h in Bank Login Process: {app_obj.applicant.full_name}",
+        description=(
+            f"Auto moved to Follow Up after {BANKING_PROCESS_TIMEOUT_HOURS}h in Bank Login Process: "
+            f"{app_obj.applicant.full_name}"
+        ),
         user=None,
     )
 
@@ -197,7 +159,7 @@ def _move_legacy_banking_to_follow_up_pending(loan_obj, reason_line, now):
         )
         LoanStatusHistory.objects.create(
             loan_application=synced_app,
-            from_status="follow_up" if app_prev == "Required Follow-up" else "waiting",
+            from_status="follow_up" if app_prev == BANKING_APPLICATION_STATUS else "waiting",
             to_status="waiting",
             changed_by=None,
             reason=reason_line,
@@ -210,7 +172,10 @@ def _move_legacy_banking_to_follow_up_pending(loan_obj, reason_line, now):
 
     ActivityLog.objects.create(
         action="follow_up_pending_triggered_auto",
-        description=f"Auto moved to Follow Up after {BANKING_PROCESS_TIMEOUT_HOURS}h in Bank Login Process: {loan_obj.full_name}",
+        description=(
+            f"Auto moved to Follow Up after {BANKING_PROCESS_TIMEOUT_HOURS}h in Bank Login Process: "
+            f"{loan_obj.full_name}"
+        ),
         user=None,
     )
 
@@ -218,11 +183,11 @@ def _move_legacy_banking_to_follow_up_pending(loan_obj, reason_line, now):
 def auto_move_overdue_to_follow_up():
     """
     Real-time automation:
-    1) Bank Login Process -> Follow Up (revert-pending) after 4h
+    Only applications currently in Banking Login Process move to Follow Up
+    after 4 hours from banking_processing_started_at.
 
-    Note:
-    Waiting / Document Pending records stay in place until a processor
-    explicitly moves them to Bank Login Process.
+    New / Document Pending / Updated Document / Approved / Rejected / Disbursed
+    records are never auto-moved.
     """
     now = timezone.now()
     banking_cutoff = now - timedelta(hours=BANKING_PROCESS_TIMEOUT_HOURS)
@@ -232,23 +197,23 @@ def auto_move_overdue_to_follow_up():
         "loans_to_follow_up_pending": 0,
     }
 
-    banking_apps = LoanApplication.objects.filter(status="Required Follow-up")
+    banking_apps = LoanApplication.objects.filter(status=BANKING_APPLICATION_STATUS)
     for app in banking_apps:
         if _has_revert_marker(app.approval_notes):
             continue
-        banking_anchor = app.follow_up_scheduled_at or app.follow_up_notified_at or app.updated_at
+        banking_anchor = app.banking_processing_started_at
         if not banking_anchor or banking_anchor > banking_cutoff:
             continue
         auto_reason = _build_auto_revert_reason(loan_app=app)
         _move_application_banking_to_follow_up_pending(app, auto_reason, now)
         moved["applications_to_follow_up_pending"] += 1
 
-    banking_loans = Loan.objects.filter(status="follow_up")
+    banking_loans = Loan.objects.filter(status=BANKING_LEGACY_STATUS)
     for loan in banking_loans:
         if _has_revert_marker(loan.remarks):
             continue
-        anchor = _legacy_banking_anchor(loan)
-        if not anchor or anchor > banking_cutoff:
+        banking_anchor = loan.banking_processing_started_at
+        if not banking_anchor or banking_anchor > banking_cutoff:
             continue
         auto_reason = _build_auto_revert_reason(legacy_loan=loan)
         _move_legacy_banking_to_follow_up_pending(loan, auto_reason, now)

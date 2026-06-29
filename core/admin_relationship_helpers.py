@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .loan_helpers import display_user_name, get_employee_partner, get_active_admins
+from .loan_helpers import display_user_name, get_employee_partner, get_active_admins, get_leader_name
 from .models import Agent, AgentAssignment
 
 
@@ -146,7 +146,7 @@ def build_employee_relationship_view(employee_user):
 
     return {
         'partner': display_user_name(partner) if partner else '',
-        'leader': display_user_name(admin_user) if not partner else '',
+        'leader': get_leader_name(user=employee_user),
         'has_partner': bool(partner),
         'channel_partner_names': channel_partner_names,
         'lines': [
@@ -175,7 +175,7 @@ def build_channel_partner_relationship_view(agent):
 
     return {
         'partner': display_user_name(partner) if partner else '',
-        'leader': display_user_name(admin_user) if not partner else '',
+        'leader': get_leader_name(user=getattr(agent, 'user', None), agent=agent),
         'has_partner': bool(partner),
         'employee_name': employee_name,
         'lines': [

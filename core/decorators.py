@@ -1,6 +1,21 @@
 from functools import wraps
 from django.shortcuts import redirect
 from django.contrib import messages
+from django.http import JsonResponse
+
+
+def _partner_panel_role(user):
+    role = str(getattr(user, 'role', '') or '').lower()
+    return role in ('subadmin', 'partner')
+
+
+def _wants_json_response(request):
+    if str(getattr(request, 'path', '') or '').startswith('/api/'):
+        return True
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return True
+    accept = request.headers.get('Accept', '')
+    return 'application/json' in accept
 
 
 def admin_required(view_func):
@@ -69,15 +84,19 @@ def subadmin_required(view_func):
     @wraps(view_func)
     def _wrapped_view(request, *args, **kwargs):
         if not request.user.is_authenticated:
+            if _wants_json_response(request):
+                return JsonResponse({'success': False, 'error': 'Authentication required'}, status=401)
             messages.warning(request, 'Please login to access this page.')
             return redirect('admin_login')
-        
-        if request.user.role != 'subadmin':
+
+        if not _partner_panel_role(request.user):
+            if _wants_json_response(request):
+                return JsonResponse({'success': False, 'error': 'Unauthorized access'}, status=403)
             messages.error(request, 'Unauthorized access. SubAdmin privileges required.')
             return redirect('admin_login')
-        
+
         return view_func(request, *args, **kwargs)
-    
+
     return _wrapped_view
 
 

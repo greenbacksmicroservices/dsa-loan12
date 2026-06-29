@@ -1,0 +1,5 @@
+{% for line in lines %}
+<div><strong>{{ line.label }}:</strong> {{ line.value|default:"-" }}</div>
+{% empty %}
+<div><strong>Partner:</strong> -</div>
+{% endfor %}

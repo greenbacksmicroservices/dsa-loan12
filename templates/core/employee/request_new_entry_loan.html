@@ -1082,7 +1082,7 @@
         document.getElementById('collect-loan-account-number').value = selectedLoan.loan_account_number || selectedLoan.account_number || '';
         document.getElementById('collect-verified-amount').value = selectedLoan.verified_loan_amount || selectedLoan.loan_amount || '';
         document.getElementById('collect-final-amount').value = selectedLoan.final_loan_amount || selectedLoan.loan_amount || '';
-        document.getElementById('collect-dsa-name').value = selectedLoan.dsa_name || selectedLoan.lead_receive_channel_partner_name || selectedLoan.submitted_by || selectedLoan.assigned_agent_name || '';
+        document.getElementById('collect-dsa-name').value = selectedLoan.dsa_name || '';
         document.getElementById('collect-info').innerHTML = `
             Move <strong>${applicantName}</strong> to Bank Login Process
         `;

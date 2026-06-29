@@ -1,0 +1,84 @@
+{% extends "core/base.html" %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+        <div>
+            <p class="text-muted small mb-1">
+                {% if detail_type == 'sub_channel_partner' %}Sub Channel Partner Details{% else %}Channel Partner Details{% endif %}
+            </p>
+            <h1 class="h3 mb-1">{{ profile.name }}</h1>
+            <p class="text-muted mb-0">{{ profile.agent_id }} | {{ profile.email|default:"No email" }} | {{ profile.phone|default:"No phone" }}</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{{ back_url }}" class="btn btn-outline-secondary">Back To My Channel Partners</a>
+            {% if detail_type == 'sub_channel_partner' and can_edit %}
+            <a href="{% url 'employee_sub_channel_partner_edit' profile.id %}" class="btn btn-primary">Edit</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-3"><div class="card shadow-sm h-100"><div class="card-body"><div class="text-muted small">Role</div><div class="fw-semibold">{{ profile.agent_type }}</div>{% if profile.parent_channel_partner_name %}<div class="text-muted small mt-1">{{ profile.parent_channel_partner_name }}</div>{% endif %}</div></div></div>
+        <div class="col-md-3"><div class="card shadow-sm h-100"><div class="card-body"><div class="text-muted small">Status</div><div class="fw-semibold text-capitalize">{{ profile.status }}</div></div></div></div>
+        <div class="col-md-3"><div class="card shadow-sm h-100"><div class="card-body"><div class="text-muted small">Under Employee</div><div class="fw-semibold">{{ profile.under_employee }}</div></div></div></div>
+        <div class="col-md-3"><div class="card shadow-sm h-100"><div class="card-body"><div class="text-muted small">Joined</div><div class="fw-semibold">{{ profile.created_at|default:"-" }}</div></div></div></div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-3"><div class="card shadow-sm h-100"><div class="card-body"><div class="text-muted small">Total Applications</div><div class="fw-bold fs-4">{{ summary.total_applications|default:0 }}</div></div></div></div>
+        <div class="col-md-3"><div class="card shadow-sm h-100"><div class="card-body"><div class="text-muted small">Approved</div><div class="fw-bold fs-4 text-success">{{ summary.approved|default:0 }}</div></div></div></div>
+        <div class="col-md-3"><div class="card shadow-sm h-100"><div class="card-body"><div class="text-muted small">Rejected</div><div class="fw-bold fs-4 text-danger">{{ summary.rejected|default:0 }}</div></div></div></div>
+        <div class="col-md-3"><div class="card shadow-sm h-100"><div class="card-body"><div class="text-muted small">Disbursed</div><div class="fw-bold fs-4 text-primary">{{ summary.disbursed|default:0 }}</div></div></div></div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header fw-semibold">Profile Details</div>
+        <div class="card-body row g-3">
+            <div class="col-md-4"><span class="text-muted small d-block">Name</span><span>{{ profile.name }}</span></div>
+            <div class="col-md-4"><span class="text-muted small d-block">Email</span><span>{{ profile.email|default:"-" }}</span></div>
+            <div class="col-md-4"><span class="text-muted small d-block">Phone</span><span>{{ profile.phone|default:"-" }}</span></div>
+            <div class="col-md-4"><span class="text-muted small d-block">State</span><span>{{ profile.state|default:"-" }}</span></div>
+            <div class="col-md-4"><span class="text-muted small d-block">City</span><span>{{ profile.city|default:"-" }}</span></div>
+            <div class="col-md-4"><span class="text-muted small d-block">Created Under</span><span>{{ profile.created_under|default:"-" }}</span></div>
+            <div class="col-12"><span class="text-muted small d-block">Address</span><span>{{ profile.address|default:"-" }}</span></div>
+        </div>
+    </div>
+
+    {% if customers %}
+    <div class="card shadow-sm">
+        <div class="card-header fw-semibold">Recent Applications</div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th>Loan ID</th>
+                        <th>Customer</th>
+                        <th>Mobile</th>
+                        <th>Loan Type</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in customers %}
+                    <tr>
+                        <td class="fw-semibold">{{ item.loan_uid|default:"-" }}</td>
+                        <td>{{ item.customer_name|default:"-" }}</td>
+                        <td>{{ item.mobile|default:"-" }}</td>
+                        <td>{{ item.loan_type|default:"-" }}</td>
+                        <td>Rs. {{ item.loan_amount|default:0 }}</td>
+                        <td>{{ item.status_display|default:"-" }}</td>
+                        <td>{{ item.created_at|default:"-" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

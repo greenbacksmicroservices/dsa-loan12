@@ -1,9 +1,7 @@
 """
 Signals for workflow automation and model synchronization.
 """
-from datetime import timedelta
-
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 from django.utils import timezone
 
@@ -13,6 +11,42 @@ from .loan_sync import (
     sync_application_to_loan,
     sync_loan_to_application,
 )
+
+
+@receiver(pre_save, sender=LoanApplication)
+def stamp_banking_processing_started_for_application(sender, instance, **kwargs):
+    if kwargs.get("raw", False):
+        return
+    if instance.status != "Required Follow-up":
+        return
+    if instance.banking_processing_started_at:
+        return
+    if not instance.pk:
+        instance.banking_processing_started_at = timezone.now()
+        return
+    previous_status = (
+        LoanApplication.objects.filter(pk=instance.pk)
+        .values_list("status", flat=True)
+        .first()
+    )
+    if previous_status != "Required Follow-up":
+        instance.banking_processing_started_at = timezone.now()
+
+
+@receiver(pre_save, sender=Loan)
+def stamp_banking_processing_started_for_loan(sender, instance, **kwargs):
+    if kwargs.get("raw", False):
+        return
+    if instance.status != "follow_up":
+        return
+    if instance.banking_processing_started_at:
+        return
+    if not instance.pk:
+        instance.banking_processing_started_at = timezone.now()
+        return
+    previous_status = Loan.objects.filter(pk=instance.pk).values_list("status", flat=True).first()
+    if previous_status != "follow_up":
+        instance.banking_processing_started_at = timezone.now()
 
 
 @receiver(post_save, sender=LoanApplication)
@@ -74,24 +108,10 @@ def mirror_loan_to_application(sender, instance, created, **kwargs):
 
 def check_and_trigger_followups():
     """
-    Move overdue waiting applications to Banking Process (stored as Required Follow-up).
+    Deprecated waiting->banking automation.
+    Banking Login Process aging is handled by auto_move_overdue_to_follow_up().
     """
-    cutoff_time = timezone.now() - timedelta(hours=4)
-    overdue_applications = LoanApplication.objects.filter(
-        status="Waiting for Processing",
-        assigned_at__lte=cutoff_time,
-        approved_at__isnull=True,
-        rejected_at__isnull=True,
-    )
+    from .followup_utils import auto_move_overdue_to_follow_up
 
-    count = 0
-    for app in overdue_applications:
-        app.trigger_follow_up()
-        ActivityLog.objects.create(
-            action="status_updated",
-            description=f"Auto moved to Banking Process for {app.applicant.full_name} after 4h wait",
-            user=None,
-        )
-        count += 1
-
-    return count
+    moved = auto_move_overdue_to_follow_up()
+    return moved.get("applications_to_follow_up_pending", 0) + moved.get("loans_to_follow_up_pending", 0)

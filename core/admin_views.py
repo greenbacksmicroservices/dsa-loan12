@@ -27,7 +27,15 @@ from .onboarding_utils import (
 from .followup_utils import auto_move_overdue_to_follow_up
 from .upload_limits import validate_loan_document_batch
 from .id_utils import generate_agent_sequence_id, generate_user_sequence_id, normalize_manual_loan_id, display_manual_loan_id
-from .loan_helpers import display_loan_id, get_lead_receive_options, resolve_lead_receive_name, is_password_protected_document_name
+from .loan_helpers import (
+    display_loan_id,
+    get_assigned_employee_for_submitter,
+    get_leader_name,
+    get_lead_receive_options,
+    get_submitted_processed_display,
+    resolve_lead_receive_name,
+    is_password_protected_document_name,
+)
 from .updated_document_utils import (
     UPDATED_DOCUMENT_LABEL,
     UPDATED_DOCUMENT_STATUS_KEY,
@@ -162,7 +170,7 @@ def _lead_receive_defaults_for_user(user_obj):
     defaults = {
         'lead_receive_channel_partner_name': '',
         'lead_receive_employee_name': '',
-        'lead_receive_leader_name': '',
+        'lead_receive_leader_name': get_leader_name(user=user_obj),
     }
     role = getattr(user_obj, 'role', '')
     if role == 'agent':
@@ -170,12 +178,8 @@ def _lead_receive_defaults_for_user(user_obj):
         defaults['lead_receive_channel_partner_name'] = (
             getattr(agent_profile, 'name', '') if agent_profile else ''
         ) or _display_user_name(user_obj)
-        if agent_profile and getattr(getattr(agent_profile, 'created_by', None), 'role', '') == 'subadmin':
-            defaults['lead_receive_leader_name'] = _display_user_name(agent_profile.created_by)
     elif role == 'employee':
         defaults['lead_receive_employee_name'] = _display_user_name(user_obj)
-    elif role == 'subadmin':
-        defaults['lead_receive_leader_name'] = _display_user_name(user_obj)
     return defaults
 
 
@@ -799,44 +803,11 @@ def admin_all_loans(request):
         if partner_filter and str(getattr(partner_user, 'id', '') or '') != partner_filter:
             continue
 
-        submitted_by_display = 'N/A'
-        if loan.assigned_agent:
-            submitted_by_display = _agent_name_or_na(loan.assigned_agent)
-        elif related_app and related_app.assigned_agent:
-            submitted_by_display = _agent_name_or_na(related_app.assigned_agent)
-        elif creator and creator.role == 'agent':
-            submitted_by_display = _user_name_or_na(creator)
-        elif related_app and related_app.assigned_by and related_app.assigned_by.role == 'agent':
-            submitted_by_display = _user_name_or_na(related_app.assigned_by)
-        if submitted_by_display == 'N/A' and lead_names.get('channel_partner'):
-            submitted_by_display = lead_names['channel_partner']
-
-        processed_by_display = 'N/A'
-        if loan.assigned_employee:
-            processed_by_display = _user_name_or_na(loan.assigned_employee)
-        elif related_app and related_app.assigned_employee:
-            processed_by_display = _user_name_or_na(related_app.assigned_employee)
-        elif creator and creator.role == 'employee':
-            processed_by_display = _user_name_or_na(creator)
-        if processed_by_display == 'N/A' and lead_names.get('employee'):
-            processed_by_display = lead_names['employee']
-
-        partner_under_display = 'N/A'
-        if partner_user:
-            partner_under_display = _user_name_or_na(partner_user)
-        elif assignment_context.get('role') == 'subadmin':
-            partner_under_display = assignment_context.get('assigned_by_name') or 'N/A'
-        elif loan.assigned_agent and loan.assigned_agent.created_by and loan.assigned_agent.created_by.role == 'subadmin':
-            partner_under_display = _user_name_or_na(loan.assigned_agent.created_by)
-        elif related_app and related_app.assigned_by and related_app.assigned_by.role == 'subadmin':
-            partner_under_display = _user_name_or_na(related_app.assigned_by)
-        elif creator and creator.role == 'subadmin':
-            partner_under_display = _user_name_or_na(creator)
-        if partner_under_display == 'N/A' and lead_names.get('leader'):
-            partner_under_display = lead_names['leader']
-        loan.submitted_by_display = submitted_by_display
-        loan.processed_by_display = processed_by_display
-        loan.partner_under_display = partner_under_display
+        sp_display = get_submitted_processed_display(loan, related_app)
+        loan.submitted_processed_lines = sp_display.get('lines', [])
+        loan.submitted_by_display = sp_display.get('channel_partner_name') or sp_display.get('scp_name') or 'N/A'
+        loan.processed_by_display = sp_display.get('employee_name') or 'N/A'
+        loan.partner_under_display = sp_display.get('partner_name') or 'N/A'
         loan.partner_under_id = getattr(partner_user, 'id', '') or ''
         loan.follow_up_pending = follow_up_pending
         loan.status_key_display = effective_status_key or loan.status
@@ -1142,6 +1113,126 @@ def admin_edit_loan(request, loan_id):
         'loan': loan,
     }
     return render(request, 'core/admin/all_loans_edit.html', context)
+
+
+@login_required(login_url='admin_login')
+@admin_required
+@require_POST
+def api_admin_loan_fields_edit(request, loan_id):
+    """Admin-only edit for core loan applicant fields (+ banking fields when disbursed)."""
+    from .loan_helpers import can_admin_edit_loan
+    from .loan_sync import find_related_loan, find_related_loan_application, sync_loan_to_application
+    from .views import _persist_banking_processing_from_payload
+
+    try:
+        payload = json.loads(request.body.decode('utf-8') or '{}')
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        payload = request.POST.dict()
+
+    entity_type = str(payload.get('entity_type') or payload.get('source') or 'legacy').strip().lower()
+    legacy = Loan.objects.filter(id=loan_id).first()
+    loan_app = LoanApplication.objects.filter(id=loan_id).select_related('applicant').first()
+
+    if entity_type == 'application' and not loan_app:
+        return JsonResponse({'success': False, 'error': 'Loan application not found'}, status=404)
+    if entity_type != 'application' and not legacy and not loan_app:
+        return JsonResponse({'success': False, 'error': 'Loan not found'}, status=404)
+
+    target = legacy or loan_app
+    if not can_admin_edit_loan(request.user, target):
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+
+    full_name = str(payload.get('full_name') or payload.get('applicant_name') or '').strip()
+    mobile_number = str(payload.get('mobile_number') or payload.get('mobile') or '').strip()
+    email = str(payload.get('email') or '').strip()
+    loan_type = str(payload.get('loan_type') or '').strip()
+    loan_amount_raw = payload.get('loan_amount')
+    tenure_raw = payload.get('tenure_months') or payload.get('tenure')
+
+    if not full_name:
+        return JsonResponse({'success': False, 'error': 'Applicant name is required'}, status=400)
+    if mobile_number and not re.fullmatch(r'[0-9+\-\s]{7,15}', mobile_number):
+        return JsonResponse({'success': False, 'error': 'Enter a valid mobile number'}, status=400)
+    if email and '@' not in email:
+        return JsonResponse({'success': False, 'error': 'Enter a valid email address'}, status=400)
+
+    try:
+        loan_amount = float(loan_amount_raw) if loan_amount_raw not in (None, '') else None
+        if loan_amount is not None and loan_amount < 0:
+            raise ValueError('negative amount')
+    except (TypeError, ValueError):
+        return JsonResponse({'success': False, 'error': 'Enter a valid loan amount'}, status=400)
+
+    try:
+        tenure_months = int(tenure_raw) if tenure_raw not in (None, '') else None
+        if tenure_months is not None and tenure_months < 0:
+            raise ValueError('negative tenure')
+    except (TypeError, ValueError):
+        return JsonResponse({'success': False, 'error': 'Enter a valid tenure in months'}, status=400)
+
+    is_disbursed = False
+    if legacy and str(getattr(legacy, 'status', '') or '').lower() == 'disbursed':
+        is_disbursed = True
+    if loan_app and str(getattr(loan_app, 'status', '') or '').lower() == 'disbursed':
+        is_disbursed = True
+
+    with transaction.atomic():
+        if legacy:
+            legacy.full_name = full_name
+            if mobile_number:
+                legacy.mobile_number = mobile_number
+            if email:
+                legacy.email = email
+            if loan_type:
+                legacy.loan_type = loan_type
+            if loan_amount is not None:
+                legacy.loan_amount = loan_amount
+            if tenure_months is not None:
+                legacy.tenure_months = tenure_months
+            legacy.save(update_fields=[
+                'full_name', 'mobile_number', 'email', 'loan_type',
+                'loan_amount', 'tenure_months', 'updated_at',
+            ])
+
+        if loan_app and loan_app.applicant:
+            applicant = loan_app.applicant
+            applicant.full_name = full_name
+            if mobile_number:
+                applicant.mobile = mobile_number
+            if email:
+                applicant.email = email
+            if loan_type:
+                applicant.loan_type = loan_type
+            if loan_amount is not None:
+                applicant.loan_amount = loan_amount
+            if tenure_months is not None:
+                applicant.tenure_months = tenure_months
+            applicant.save(update_fields=[
+                'full_name', 'mobile', 'email', 'loan_type',
+                'loan_amount', 'tenure_months', 'updated_at',
+            ])
+
+        if is_disbursed:
+            banking_payload = {
+                'bank_name': str(payload.get('bank_name') or '').strip(),
+                'banker_name': str(payload.get('banker_name') or '').strip(),
+                'banker_phone': str(payload.get('banker_phone') or '').strip(),
+                'banker_email': str(payload.get('banker_email') or '').strip(),
+                'loan_account_number': str(payload.get('account_number') or payload.get('loan_account_number') or '').strip(),
+                'verified_loan_amount': payload.get('verified_loan_amount'),
+                'final_loan_amount': payload.get('final_loan_amount'),
+                'dsa_name': str(payload.get('dsa_name') or '').strip(),
+            }
+            _persist_banking_processing_from_payload(
+                loan_app=loan_app or find_related_loan_application(legacy),
+                legacy=legacy or find_related_loan(loan_app),
+                payload=banking_payload,
+            )
+
+        if legacy and not loan_app:
+            sync_loan_to_application(legacy, create_if_missing=True)
+
+    return JsonResponse({'success': True, 'message': 'Loan updated successfully'})
 
 
 def _redirect_after_loan_delete(request, fallback_name='admin_all_loans'):
@@ -1793,8 +1884,9 @@ def api_create_subadmin(request):
                 'error': 'PIN code must be 6 digits'
             }, status=400)
         
-        # Check if username exists
-        if User.objects.filter(username=username).exists():
+        # Check if username exists among active accounts.
+        from .uniqueness_helpers import active_username_taken
+        if active_username_taken(username):
             return JsonResponse({
                 'success': False,
                 'error': 'Username already exists'
@@ -1995,7 +2087,8 @@ def api_update_subadmin(request, subadmin_id):
             'error': 'Username, Email, and Phone are required.'
         }, status=400)
 
-    if User.objects.filter(username=username).exclude(id=subadmin.id).exists():
+    from .uniqueness_helpers import active_username_taken
+    if active_username_taken(username, exclude_user_id=subadmin.id):
         return JsonResponse({'success': False, 'error': 'Username already exists'}, status=400)
     if User.objects.filter(email__iexact=email, is_active=True).exclude(id=subadmin.id).exists():
         return JsonResponse({'success': False, 'error': 'Email already exists for an active partner'}, status=400)
@@ -2571,6 +2664,7 @@ def admin_add_loan(request):
             if request.user.role == 'agent':
                 agent_profile = Agent.objects.filter(user=request.user).first()
 
+            assigned_employee = get_assigned_employee_for_submitter(request.user)
             loan = Loan.objects.create(
                 full_name=applicant_name,
                 user_id=loan_uid or None,
@@ -2592,8 +2686,8 @@ def admin_add_loan(request):
                 bank_ifsc_code=(request.POST.get('ifsc_code') or '').strip() or None,
                 status='new_entry',
                 applicant_type='agent' if request.user.role == 'agent' else 'employee',
-                assigned_employee=request.user if request.user.role == 'employee' else None,
-                assigned_at=timezone.now() if request.user.role == 'employee' else None,
+                assigned_employee=assigned_employee,
+                assigned_at=timezone.now() if assigned_employee else None,
                 assigned_agent=agent_profile,
                 created_by=request.user,
                 remarks="\n".join(remarks_lines) if remarks_lines else None,

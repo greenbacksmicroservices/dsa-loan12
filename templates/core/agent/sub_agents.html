@@ -25,9 +25,11 @@
                         <i class="bi bi-list-ul"></i> Sub Channel Partners List
                         <span class="badge bg-light text-dark ms-2">{{ sub_agents|length }} sub channel partners</span>
                     </h5>
+                    {% if can_create_sub_channel_partner %}
                     <a href="{% url 'agent_add_employee' %}" class="btn sub-agent-add-btn fw-semibold">
                         <i class="bi bi-plus-lg"></i> Add Sub Channel Partner
                     </a>
+                    {% endif %}
                 </div>
                 <div class="card-body p-0">
                     {% if sub_agents %}

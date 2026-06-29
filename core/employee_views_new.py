@@ -27,7 +27,7 @@ from decimal import Decimal
 from datetime import timedelta
 
 from .models import User, Loan, LoanApplication, Agent, ActivityLog, LoanDocument, AgentAssignment
-from .loan_helpers import display_loan_id, is_channel_partner
+from .loan_helpers import display_loan_id, is_channel_partner, get_agent_type_label, get_sub_channel_partner_users_for_parent_agent, display_agent_name_only, is_sub_channel_partner_agent
 from .followup_utils import auto_move_overdue_to_follow_up
 from .loan_sync import find_related_loan, find_related_loan_application
 from .id_utils import generate_agent_sequence_id
@@ -270,6 +270,9 @@ def _employee_agent_scope_loans(employee_user, agent):
     base_filter = Q(assigned_agent=agent)
     if getattr(agent, 'user_id', None):
         base_filter |= Q(created_by=agent.user)
+    scp_users = get_sub_channel_partner_users_for_parent_agent(agent)
+    if scp_users.exists():
+        base_filter |= Q(created_by__in=scp_users)
 
     return Loan.objects.filter(base_filter).filter(
         Q(assigned_employee=employee_user) |
@@ -321,6 +324,43 @@ def _employee_customer_row_from_loan(loan, source):
     }
 
 
+def _employee_scoped_agents_qs(employee_user):
+    return Agent.objects.filter(
+        Q(created_by=employee_user) |
+        Q(under_employee=employee_user) |
+        Q(employee_assignments__employee=employee_user)
+    ).distinct()
+
+
+def _employee_get_scoped_agent(employee_user, agent_id):
+    return get_object_or_404(
+        Agent.objects.select_related('user', 'created_by', 'under_employee'),
+        Q(id=agent_id) & (
+            Q(created_by=employee_user) |
+            Q(under_employee=employee_user) |
+            Q(employee_assignments__employee=employee_user)
+        )
+    )
+
+
+def _employee_can_manage_agent(employee_user, agent):
+    if agent.created_by_id == employee_user.id:
+        return True
+    if not is_sub_channel_partner_agent(agent):
+        return False
+    parent_user = getattr(agent, 'created_by', None)
+    if not parent_user:
+        return False
+    parent_agent = Agent.objects.filter(user=parent_user).first()
+    if not parent_agent:
+        return False
+    return (
+        parent_agent.created_by_id == employee_user.id
+        or parent_agent.under_employee_id == employee_user.id
+        or AgentAssignment.objects.filter(employee=employee_user, agent=parent_agent).exists()
+    )
+
+
 def _build_employee_agent_payload(employee_user, agent, include_customers=True):
     scoped_loans_qs = _employee_agent_scope_loans(employee_user, agent)
     loans_list = list(scoped_loans_qs)
@@ -355,11 +395,29 @@ def _build_employee_agent_payload(employee_user, agent, include_customers=True):
     user_documents = collect_user_document_payload(agent.user) if getattr(agent, 'user', None) else []
     document_lookup = {doc.get('type'): doc.get('url') for doc in user_documents if doc.get('url')}
 
+    agent_type = get_agent_type_label(agent)
+    agent_id_fallback = (
+        f'EDC-SCP-{agent.id:04d}'
+        if agent_type == 'Sub Channel Partner'
+        else f'EDC-CP-{agent.id:04d}'
+    )
+
+    parent_channel_partner_name = ''
+    if is_sub_channel_partner_agent(agent) and getattr(agent, 'created_by', None):
+        parent_agent = Agent.objects.filter(user=agent.created_by).only('id', 'name', 'agent_id').first()
+        if parent_agent:
+            parent_channel_partner_name = display_agent_name_only(parent_agent)
+
+    clean_name = display_agent_name_only(agent)
+
     return {
         'agent': {
             'id': agent.id,
-            'agent_id': agent.agent_id or f'EDC-SCP-{agent.id:04d}',
-            'name': agent.name or _display_user(getattr(agent, 'user', None), 'Channel Partner'),
+            'agent_id': agent.agent_id or agent_id_fallback,
+            'agent_type': agent_type,
+            'role_display': agent_type,
+            'name': clean_name,
+            'parent_channel_partner_name': parent_channel_partner_name,
             'email': agent.email or (getattr(agent.user, 'email', '') if getattr(agent, 'user', None) else ''),
             'phone': agent.phone or (getattr(agent.user, 'phone', '') if getattr(agent, 'user', None) else ''),
             'gender': agent.gender or (getattr(agent.user, 'gender', '') if getattr(agent, 'user', None) else '') or 'Other',
@@ -370,14 +428,15 @@ def _build_employee_agent_payload(employee_user, agent, include_customers=True):
             'status': agent.status or 'active',
             'photo_url': _employee_agent_photo_url(agent),
             'created_under': created_under,
-            'created_by_label': _employee_role_label(creator) if creator else 'System',
+            'created_by_label': agent_type,
+            'role_display': agent_type,
             'under_employee': _display_user(agent.under_employee, 'Not Assigned') if getattr(agent, 'under_employee', None) else 'Not Assigned',
             'created_at': agent.created_at.strftime('%Y-%m-%d %H:%M') if agent.created_at else '',
             'documents': user_documents,
             'pan_card_url': document_lookup.get('pan_card', ''),
             'aadhar_card_url': document_lookup.get('aadhaar_card', ''),
             'bank_details_url': document_lookup.get('bank_statement', ''),
-            'can_manage': agent.created_by_id == employee_user.id,
+            'can_manage': _employee_can_manage_agent(employee_user, agent),
         },
         'summary': summary,
         'customers': customers,
@@ -1394,6 +1453,122 @@ def employee_my_agents_page(request):
 
 @login_required
 @require_http_methods(["GET"])
+def employee_channel_partner_view(request, agent_id):
+    if request.user.role != 'employee':
+        return redirect('dashboard')
+
+    agent = _employee_get_scoped_agent(request.user, agent_id)
+    if is_sub_channel_partner_agent(agent):
+        return redirect('employee_sub_channel_partner_view', agent_id=agent.id)
+
+    payload = _build_employee_agent_payload(request.user, agent, include_customers=True)
+    return render(request, 'core/employee/agent_detail.html', {
+        'page_title': f'Channel Partner - {payload["agent"]["name"]}',
+        'detail_type': 'channel_partner',
+        'profile': payload['agent'],
+        'summary': payload['summary'],
+        'customers': payload['customers'],
+        'back_url': reverse('employee_my_agents_page'),
+    })
+
+
+@login_required
+@require_http_methods(["GET"])
+def employee_sub_channel_partner_view(request, agent_id):
+    if request.user.role != 'employee':
+        return redirect('dashboard')
+
+    agent = _employee_get_scoped_agent(request.user, agent_id)
+    if not is_sub_channel_partner_agent(agent):
+        return redirect('employee_channel_partner_view', agent_id=agent.id)
+
+    payload = _build_employee_agent_payload(request.user, agent, include_customers=True)
+    return render(request, 'core/employee/agent_detail.html', {
+        'page_title': f'Sub Channel Partner - {payload["agent"]["name"]}',
+        'detail_type': 'sub_channel_partner',
+        'profile': payload['agent'],
+        'summary': payload['summary'],
+        'customers': payload['customers'],
+        'back_url': reverse('employee_my_agents_page'),
+        'can_edit': _employee_can_manage_agent(request.user, agent),
+    })
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def employee_sub_channel_partner_edit(request, agent_id):
+    if request.user.role != 'employee':
+        return redirect('dashboard')
+
+    agent = _employee_get_scoped_agent(request.user, agent_id)
+    if not is_sub_channel_partner_agent(agent):
+        messages.error(request, 'Only Sub Channel Partner records can be edited here.')
+        return redirect('employee_channel_partner_view', agent_id=agent.id)
+
+    if not _employee_can_manage_agent(request.user, agent):
+        messages.error(request, 'You are not allowed to edit this Sub Channel Partner.')
+        return redirect('employee_sub_channel_partner_view', agent_id=agent.id)
+
+    if request.method == 'POST':
+        from .uniqueness_helpers import active_agent_email_taken, active_agent_phone_taken
+
+        name = request.POST.get('name', '').strip()
+        phone = request.POST.get('phone', '').strip()
+        email = request.POST.get('email', '').strip()
+        status_value = request.POST.get('status', '').strip() or agent.status
+
+        if not name:
+            messages.error(request, 'Name is required.')
+            return redirect('employee_sub_channel_partner_edit', agent_id=agent.id)
+
+        if phone and active_agent_phone_taken(
+            phone,
+            exclude_agent_id=agent.id,
+            exclude_user_id=getattr(agent.user, 'id', None),
+        ):
+            messages.error(request, 'Phone number already exists for an active channel partner.')
+            return redirect('employee_sub_channel_partner_edit', agent_id=agent.id)
+
+        if email and active_agent_email_taken(
+            email,
+            exclude_agent_id=agent.id,
+            exclude_user_id=getattr(agent.user, 'id', None),
+        ):
+            messages.error(request, 'Email already exists for an active channel partner.')
+            return redirect('employee_sub_channel_partner_edit', agent_id=agent.id)
+
+        agent.name = name
+        if phone:
+            agent.phone = phone
+        if email:
+            agent.email = email
+        if status_value in {'active', 'blocked'}:
+            agent.status = status_value
+        agent.save()
+
+        if agent.user:
+            parts = name.split()
+            agent.user.first_name = parts[0]
+            agent.user.last_name = ' '.join(parts[1:]) if len(parts) > 1 else ''
+            if phone:
+                agent.user.phone = phone
+            if email:
+                agent.user.email = email
+            agent.user.save()
+
+        messages.success(request, 'Sub Channel Partner updated successfully.')
+        return redirect('employee_sub_channel_partner_view', agent_id=agent.id)
+
+    payload = _build_employee_agent_payload(request.user, agent, include_customers=False)
+    return render(request, 'core/employee/scp_edit.html', {
+        'page_title': f'Edit Sub Channel Partner - {payload["agent"]["name"]}',
+        'agent': payload['agent'],
+        'back_url': reverse('employee_sub_channel_partner_view', kwargs={'agent_id': agent.id}),
+    })
+
+
+@login_required
+@require_http_methods(["GET"])
 def employee_add_channel_partner_page(request):
     """Standalone page for employee-created channel partners."""
     if request.user.role != 'employee':
@@ -1465,26 +1640,51 @@ def _write_employee_report_csv(rows, filename):
 @login_required
 @require_http_methods(["GET"])
 def employee_reports_page(request):
-    """Employee reports table with row and full-table downloads."""
+    """Employee reports table with filters and download."""
     if request.user.role != 'employee':
         return redirect('dashboard')
 
-    rows = [_employee_report_row(loan) for loan in _employee_report_queryset(request.user)]
-    loan_id = request.GET.get('loan_id')
-    if request.GET.get('download') == 'application' and loan_id:
-        selected_rows = [row for row in rows if str(row['id']) == str(loan_id)]
-        return _write_employee_report_csv(selected_rows, f'employee-application-{loan_id}.csv')
-    if request.GET.get('download') == 'table':
-        return _write_employee_report_csv(rows, 'employee-reports.csv')
+    from .report_helpers import (
+        build_report_row,
+        export_standard_report_csv,
+        get_child_channel_partners,
+        get_child_sub_channel_partners,
+        get_report_queryset_for_user,
+        paginate_rows,
+    )
+
+    filters = {
+        'q': request.GET.get('q', ''),
+        'status': request.GET.get('status', ''),
+        'channel_partner': request.GET.get('channel_partner', ''),
+        'sub_channel_partner': request.GET.get('sub_channel_partner', ''),
+    }
+    loans_qs = get_report_queryset_for_user(request.user, filters)
+    all_rows = [build_report_row(loan, status_label_getter=_employee_status_label) for loan in loans_qs]
+    for row in all_rows:
+        row['view_url'] = reverse('employee_loan_detail', kwargs={'loan_id': row['id']})
+
+    if request.GET.get('download') in {'table', '1', 'csv'}:
+        return export_standard_report_csv(all_rows, 'employee-reports.csv')
+
+    page_info = paginate_rows(
+        all_rows,
+        page=request.GET.get('page', 1),
+        per_page=request.GET.get('per_page', 10),
+    )
 
     status_summary = {
-        'total': len(rows),
-        'approved': sum(1 for row in rows if row['status'] == 'approved'),
-        'rejected': sum(1 for row in rows if row['status'] == 'rejected'),
-        'disbursed': sum(1 for row in rows if row['status'] == 'disbursed'),
+        'total': len(all_rows),
+        'approved': sum(1 for row in all_rows if row['status'] == 'approved'),
+        'rejected': sum(1 for row in all_rows if row['status'] == 'rejected'),
+        'disbursed': sum(1 for row in all_rows if row['status'] == 'disbursed'),
     }
     return render(request, 'core/employee/reports.html', {
-        'rows': rows,
+        'rows': page_info['rows'],
+        'page_info': page_info,
+        'filters': filters,
+        'channel_partners': get_child_channel_partners(request.user),
+        'sub_channel_partners': get_child_sub_channel_partners(request.user),
         'status_summary': status_summary,
     })
 
@@ -1585,14 +1785,7 @@ def employee_agent_detail_api(request, agent_id):
         return Response({'error': 'Only employees can access'}, status=status.HTTP_403_FORBIDDEN)
 
     try:
-        agent = get_object_or_404(
-            Agent.objects.select_related('user', 'created_by', 'under_employee'),
-            Q(id=agent_id) & (
-                Q(created_by=request.user) |
-                Q(under_employee=request.user) |
-                Q(employee_assignments__employee=request.user)
-            )
-        )
+        agent = _employee_get_scoped_agent(request.user, agent_id)
         payload = _build_employee_agent_payload(request.user, agent, include_customers=True)
         return Response({'success': True, **payload}, status=status.HTTP_200_OK)
     except Exception as e:
@@ -1745,7 +1938,9 @@ def employee_update_agent_api(request, agent_id):
         return Response({'error': 'Only employees can update agents'}, status=status.HTTP_403_FORBIDDEN)
 
     try:
-        agent = get_object_or_404(Agent, id=agent_id, created_by=request.user)
+        agent = _employee_get_scoped_agent(request.user, agent_id)
+        if not _employee_can_manage_agent(request.user, agent):
+            return Response({'error': 'You are not allowed to update this channel partner'}, status=status.HTTP_403_FORBIDDEN)
         data = request.data
 
         name = data.get('name', '').strip()
@@ -1835,14 +2030,10 @@ def employee_delete_agent_api(request, agent_id):
         return Response({'error': 'Only employees can delete agents'}, status=status.HTTP_403_FORBIDDEN)
 
     try:
+        from .uniqueness_helpers import release_agent_unique_identity
+
         agent = get_object_or_404(Agent, id=agent_id, created_by=request.user)
-
-        agent.status = 'blocked'
-        agent.save()
-
-        if agent.user:
-            agent.user.is_active = False
-            agent.user.save()
+        release_agent_unique_identity(agent, save=True)
 
         return Response({
             'success': True,

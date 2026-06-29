@@ -19,6 +19,7 @@ from . import admin_assign_views
 from . import subadmin_views
 from . import loan_api
 from . import password_reset_otp_views
+from . import chart_views
 
 router = DefaultRouter()
 router.register(r'users', views.UserViewSet, basename='user')
@@ -53,6 +54,7 @@ urlpatterns = [
     path('admin/dashboard/', admin_views.admin_dashboard, name='admin_dashboard'),
     path('admin/new-entry-assign/', views.admin_new_entry_assign, name='admin_new_entry_assign'),
     path('admin/all-loans/', admin_views.admin_all_loans, name='admin_all_loans'),
+    path('api/admin/loan/<int:loan_id>/edit/', admin_views.api_admin_loan_fields_edit, name='api_admin_loan_fields_edit'),
     path('admin/loans/<int:loan_id>/delete/', admin_views.delete_loan, name='admin_delete_loan'),
     path('admin/add-loan/', admin_views.admin_add_loan, name='admin_add_loan'),
     path('admin/all-employees/', views.admin_all_employees, name='admin_all_employees'),
@@ -107,6 +109,7 @@ urlpatterns = [
     path('api/subadmin/dashboard-stats/', subadmin_views.api_subadmin_dashboard_stats, name='api_subadmin_dashboard_stats'),
     path('api/subadmin/recent-loans/', subadmin_views.api_subadmin_recent_loans, name='api_subadmin_recent_loans'),
     path('api/subadmin/loan/<int:loan_id>/details/', subadmin_views.api_subadmin_loan_details, name='api_subadmin_loan_details'),
+    path('api/subadmin/loan/<int:loan_id>/edit/', subadmin_views.api_partner_loan_fields_edit, name='api_partner_loan_fields_edit'),
     path('subadmin/add-loan/', subadmin_views.subadmin_add_loan, name='subadmin_add_loan'),
     path('subadmin/all-loans/', subadmin_views.subadmin_all_loans, name='subadmin_all_loans'),
     path('subadmin/loans/<int:loan_id>/delete/', admin_views.delete_loan, name='subadmin_delete_loan'),
@@ -181,6 +184,9 @@ urlpatterns = [
     path('employee/loan/<int:loan_id>/bank-processing/', employee_views_new.employee_bank_processing_page, name='employee_bank_processing_detail'),
     path('employee/my-agents/', employee_views_new.employee_my_agents_page, name='employee_my_agents_page'),
     path('employee/my-agents/add/', employee_views_new.employee_add_channel_partner_page, name='employee_add_channel_partner'),
+    path('employee/channel-partners/<int:agent_id>/view/', employee_views_new.employee_channel_partner_view, name='employee_channel_partner_view'),
+    path('employee/sub-channel-partners/<int:agent_id>/view/', employee_views_new.employee_sub_channel_partner_view, name='employee_sub_channel_partner_view'),
+    path('employee/sub-channel-partners/<int:agent_id>/edit/', employee_views_new.employee_sub_channel_partner_edit, name='employee_sub_channel_partner_edit'),
     path('employee/reports/', employee_views_new.employee_reports_page, name='employee_reports'),
     
     # Employee Panel - New APIs (Fintech UI)
@@ -440,6 +446,8 @@ urlpatterns = [
     
     # Dashboard Real-time API
     path('api/dashboard-realtime-stats/', loan_management_api.api_dashboard_stats, name='api_dashboard_realtime_stats'),
+    path('api/admin/chart-data/', chart_views.api_admin_chart_data, name='api_admin_chart_data'),
+    path('api/subadmin/chart-data/', chart_views.api_partner_chart_data, name='api_partner_chart_data'),
     path('api/recent-complaints/', loan_management_api.api_get_recent_complaints, name='api_recent_complaints'),
     
     # Employee Management API (Admin only)
@@ -517,11 +525,11 @@ urlpatterns = [
     path('api/employee/agents/<int:agent_id>/update/', employee_views_new.employee_update_agent_api, name='api_employee_update_agent'),
     path('api/employee/agents/<int:agent_id>/delete/', employee_views_new.employee_delete_agent_api, name='api_employee_delete_agent'),
     
-    # Employee Loan Detail & Actions
-    path('api/employee/loan/<int:loan_id>/detail/', employee_views_new.employee_loan_detail_api, name='api_employee_loan_detail_new'),
-    path('api/employee/loan/<int:loan_id>/approve/', employee_views_new.employee_approve_loan_api, name='api_employee_approve_loan'),
-    path('api/employee/loan/<int:loan_id>/reject/', employee_views_new.employee_reject_loan_api, name='api_employee_reject_loan'),
-    path('api/employee/loan/<int:loan_id>/disburse/', employee_views_new.employee_disburse_loan_api, name='api_employee_disburse_loan'),
+    # Employee Loan Detail & Actions (use full workflow handlers from views.py)
+    path('api/employee/loan/<int:loan_id>/detail/', views.employee_assigned_loan_detail, name='api_employee_loan_detail_new'),
+    path('api/employee/loan/<int:loan_id>/approve/', views.employee_approve_loan, name='api_employee_approve_loan'),
+    path('api/employee/loan/<int:loan_id>/reject/', views.employee_reject_loan, name='api_employee_reject_loan'),
+    path('api/employee/loan/<int:loan_id>/disburse/', views.employee_disburse_loan, name='api_employee_disburse_loan'),
     
     # Employee Agent Management
     path('api/employee/agents/', employee_views_new.employee_my_agents_api, name='api_employee_my_agents'),

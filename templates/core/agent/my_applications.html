@@ -261,6 +261,7 @@
                                     <th style="width: 12%"><small class="fw-600">Loan Amount</small></th>
                                     <th style="width: 12%"><small class="fw-600">Loan Type</small></th>
                                     <th style="width: 12%"><small class="fw-600">Status</small></th>
+                                    <th style="width: 14%"><small class="fw-600">Submitted By</small></th>
                                     <th style="width: 12%"><small class="fw-600">Stage</small></th>
                                     <th style="width: 15%"><small class="fw-600">Created Date</small></th>
                                     <th style="width: 22%"><small class="fw-600">Actions</small></th>
@@ -296,6 +297,7 @@
                                             </span>
                                         {% endif %}
                                     </td>
+                                    <td class="align-middle"><small>{{ loan.submitted_by_display|default:"-" }}</small></td>
                                     <td class="align-middle">
                                         {% if loan.has_revert_pending %}
                                             <span class="stage-badge bg-warning text-dark">Follow Up</span>

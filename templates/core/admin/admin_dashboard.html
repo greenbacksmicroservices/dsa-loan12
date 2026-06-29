@@ -424,8 +424,7 @@
 
     <!-- ROW 3: Charts Section -->
     <div class="row" style="margin-top: 30px;">
-        <!-- Chart 1: Monthly Loan Applications -->
-        <div class="col-lg-6 col-md-12">
+        <div class="col-lg-6 col-md-12 mb-4">
             <div class="table-container">
                 <h4 style="margin-bottom: 20px; color: #2d3748; font-weight: 700; display: flex; align-items: center; gap: 10px;">
                     <i class="fas fa-chart-line" style="color: #3b82f6;"></i>
@@ -435,14 +434,33 @@
             </div>
         </div>
 
-        <!-- Chart 2: Loan Status Distribution -->
-        <div class="col-lg-6 col-md-12">
+        <div class="col-lg-6 col-md-12 mb-4">
             <div class="table-container">
                 <h4 style="margin-bottom: 20px; color: #2d3748; font-weight: 700; display: flex; align-items: center; gap: 10px;">
                     <i class="fas fa-chart-pie" style="color: #10b981;"></i>
                     Loan Status Distribution
                 </h4>
                 <canvas id="statusDistributionChart" style="max-height: 300px;"></canvas>
+            </div>
+        </div>
+
+        <div class="col-lg-6 col-md-12 mb-4">
+            <div class="table-container">
+                <h4 style="margin-bottom: 20px; color: #2d3748; font-weight: 700; display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-sitemap" style="color: #8b5cf6;"></i>
+                    User Hierarchy Overview
+                </h4>
+                <canvas id="userHierarchyChart" style="max-height: 300px;"></canvas>
+            </div>
+        </div>
+
+        <div class="col-lg-6 col-md-12 mb-4">
+            <div class="table-container">
+                <h4 style="margin-bottom: 20px; color: #2d3748; font-weight: 700; display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-chart-bar" style="color: #f59e0b;"></i>
+                    Today Applications by Status
+                </h4>
+                <canvas id="todayStatusChart" style="max-height: 300px;"></canvas>
             </div>
         </div>
     </div>
@@ -454,145 +472,114 @@
 <script>
     // Display current stats dynamically (you can connect to API later)
     let statusChart = null;
+    let monthlyChart = null;
+    let hierarchyChart = null;
+    let todayStatusChart = null;
 
     document.addEventListener('DOMContentLoaded', function() {
-        console.log('Admin Dashboard Loaded');
-        
-        // Chart 1: Monthly Loan Applications (Line Chart)
         const ctx1 = document.getElementById('monthlyApplicationsChart');
         if (ctx1) {
-            const monthlyChart = new Chart(ctx1, {
+            monthlyChart = new Chart(ctx1, {
                 type: 'line',
                 data: {
-                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-                    datasets: [
-                        {
-                            label: 'New Applications',
-                            data: [12, 19, 15, 25, 22, 18, 30, 28, 20, 25, 28, 32],
-                            borderColor: '#3b82f6',
-                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                            borderWidth: 3,
-                            tension: 0.4,
-                            fill: true,
-                            pointBackgroundColor: '#3b82f6',
-                            pointBorderColor: '#fff',
-                            pointBorderWidth: 2,
-                            pointRadius: 6,
-                            pointHoverRadius: 8,
-                        },
-                        {
-                            label: 'Approved Applications',
-                            data: [8, 12, 10, 18, 16, 14, 22, 20, 15, 18, 20, 25],
-                            borderColor: '#10b981',
-                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                            borderWidth: 3,
-                            tension: 0.4,
-                            fill: true,
-                            pointBackgroundColor: '#10b981',
-                            pointBorderColor: '#fff',
-                            pointBorderWidth: 2,
-                            pointRadius: 6,
-                            pointHoverRadius: 8,
-                        }
-                    ]
+                    labels: [],
+                    datasets: [{
+                        label: 'Applications',
+                        data: [],
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        borderWidth: 3,
+                        tension: 0.4,
+                        fill: true,
+                    }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: true,
-                            position: 'top',
-                            labels: {
-                                usePointStyle: true,
-                                padding: 15,
-                                font: {
-                                    size: 13,
-                                    weight: '600'
-                                },
-                                color: '#6b7280'
-                            }
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            grid: {
-                                color: 'rgba(229, 231, 235, 0.5)',
-                                drawBorder: false
-                            },
-                            ticks: {
-                                color: '#6b7280',
-                                font: {
-                                    size: 12
-                                }
-                            }
-                        },
-                        x: {
-                            grid: {
-                                display: false,
-                                drawBorder: false
-                            },
-                            ticks: {
-                                color: '#6b7280',
-                                font: {
-                                    size: 12
-                                }
-                            }
-                        }
-                    }
+                    scales: { y: { beginAtZero: true } }
                 }
             });
         }
-        
-        // Chart 2: Loan Status Distribution (Pie Chart)
+
         const ctx2 = document.getElementById('statusDistributionChart');
         if (ctx2) {
             statusChart = new Chart(ctx2, {
                 type: 'doughnut',
                 data: {
                     labels: ['New Application', 'Document Pending', 'Updated Document', 'Bank Login Process', 'Follow Up', 'Approved', 'Rejected', 'Disbursed'],
-                    datasets: [
-                        {
-                            data: [1, 0, 0, 0, 0, 2, 1, 1],
-                            backgroundColor: [
-                                '#3b82f6',
-                                '#f59e0b',
-                                '#16a34a',
-                                '#8b5cf6',
-                                '#f97316',
-                                '#10b981',
-                                '#ef4444',
-                                '#06b6d4'
-                            ],
-                            borderColor: '#fff',
-                            borderWidth: 2
-                        }
-                    ]
+                    datasets: [{
+                        data: [0, 0, 0, 0, 0, 0, 0, 0],
+                        backgroundColor: ['#3b82f6', '#f59e0b', '#16a34a', '#8b5cf6', '#f97316', '#10b981', '#ef4444', '#06b6d4'],
+                        borderColor: '#fff',
+                        borderWidth: 2
+                    }]
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: true,
-                            position: 'bottom',
-                            labels: {
-                                usePointStyle: true,
-                                padding: 15,
-                                font: {
-                                    size: 13,
-                                    weight: '600'
-                                },
-                                color: '#6b7280'
-                            }
-                        }
-                    }
-                }
+                options: { responsive: true, maintainAspectRatio: false }
             });
         }
 
-        // Real-time stats update
+        const ctx3 = document.getElementById('userHierarchyChart');
+        if (ctx3) {
+            hierarchyChart = new Chart(ctx3, {
+                type: 'line',
+                data: {
+                    labels: ['Partner', 'Employee', 'Channel Partner', 'Sub Channel Partner'],
+                    datasets: [{
+                        label: 'Users',
+                        data: [0, 0, 0, 0],
+                        borderColor: '#8b5cf6',
+                        backgroundColor: 'rgba(139, 92, 246, 0.15)',
+                        fill: true,
+                        tension: 0.35,
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+            });
+        }
+
+        const ctx4 = document.getElementById('todayStatusChart');
+        if (ctx4) {
+            todayStatusChart = new Chart(ctx4, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Today',
+                        data: [],
+                        backgroundColor: '#f59e0b',
+                        borderRadius: 6,
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+            });
+        }
+
+        function refreshAdminCharts() {
+            fetch(`/api/admin/chart-data/?_t=${Date.now()}`, { cache: 'no-store' })
+                .then(r => r.json())
+                .then(payload => {
+                    if (!payload || !payload.success) return;
+                    const monthly = payload.monthly_loan_applications || {};
+                    if (monthlyChart) {
+                        monthlyChart.data.labels = monthly.labels || [];
+                        monthlyChart.data.datasets[0].data = monthly.data || [];
+                        monthlyChart.update();
+                    }
+                    const hierarchy = payload.user_hierarchy_overview || {};
+                    if (hierarchyChart) {
+                        hierarchyChart.data.labels = hierarchy.labels || [];
+                        hierarchyChart.data.datasets[0].data = hierarchy.data || [];
+                        hierarchyChart.update();
+                    }
+                    const today = payload.today_applications_by_status || {};
+                    if (todayStatusChart) {
+                        todayStatusChart.data.labels = today.labels || [];
+                        todayStatusChart.data.datasets[0].data = today.data || [];
+                        todayStatusChart.update();
+                    }
+                })
+                .catch(err => console.error('Admin chart data error:', err));
+        }
         function applyDashboardStats(stats) {
             const setText = (id, value) => {
                 const el = document.getElementById(id);
@@ -640,7 +627,9 @@
         }
 
         refreshDashboardStats();
+        refreshAdminCharts();
         setInterval(refreshDashboardStats, 30000);
+        setInterval(refreshAdminCharts, 30000);
     });
 </script>
 {% endblock %}

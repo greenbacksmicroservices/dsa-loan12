@@ -693,16 +693,14 @@ def api_create_employee(request):
                 'error': 'Missing required fields'
             }, status=400)
         
-        # Check if email or employee_id already exists
-        if User.objects.filter(email=email).exists():
+        from .uniqueness_helpers import active_email_taken, employee_id_taken, generate_available_username
+
+        if active_email_taken(email):
             return JsonResponse({'error': 'Email already exists'}, status=400)
-        if User.objects.filter(employee_id=employee_id).exists():
+        if employee_id_taken(employee_id):
             return JsonResponse({'error': 'Employee ID already exists'}, status=400)
         
-        # Create user
-        username = email.split('@')[0]
-        while User.objects.filter(username=username).exists():
-            username = f"{username}{User.objects.count()}"
+        username = generate_available_username(email.split('@')[0])
         
         user = User.objects.create_user(
             username=username,
@@ -751,9 +749,10 @@ def api_delete_employee(request, employee_id):
     Soft delete employee (deactivate account)
     """
     try:
+        from .uniqueness_helpers import release_user_unique_identity
+
         employee = User.objects.get(id=employee_id, role='employee')
-        employee.is_active = False
-        employee.save()
+        release_user_unique_identity(employee, save=True)
         
         ActivityLog.objects.create(
             action='status_updated',

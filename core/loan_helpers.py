@@ -32,6 +32,33 @@ def display_user_name(user_obj):
     return (user_obj.username or user_obj.email or '').strip()
 
 
+_ROLE_NAME_PREFIXES = (
+    'channel partner - ',
+    'sub channel partner - ',
+    'employee - ',
+    'partner - ',
+)
+
+
+def display_agent_name_only(agent=None, raw_name=''):
+    """Return person/company name without role prefix for table display."""
+    name = str(raw_name or '').strip()
+    if agent is not None:
+        name = (
+            str(getattr(agent, 'name', '') or '').strip()
+            or display_user_name(getattr(agent, 'user', None))
+            or name
+        )
+    if not name:
+        return '-'
+    lowered = name.lower()
+    for prefix in _ROLE_NAME_PREFIXES:
+        if lowered.startswith(prefix):
+            cleaned = name[len(prefix):].strip()
+            return cleaned or name
+    return name
+
+
 def _extract_subadmin_id(notes):
     match = re.search(r'\[subadmin:(\d+)\]', str(notes or ''), flags=re.IGNORECASE)
     if not match:
@@ -104,6 +131,162 @@ def get_channel_partner_partner(user):
     if created_by and is_partner_role(getattr(created_by, 'role', '')) and created_by.is_active:
         return created_by
     return None
+
+
+def get_agent_type_label(agent):
+    """Distinguish Channel Partner vs Sub Channel Partner from agent profile metadata."""
+    if not agent:
+        return '-'
+    agent_code = str(getattr(agent, 'agent_id', '') or '').upper()
+    if agent_code.startswith('EDC-SCP-'):
+        return 'Sub Channel Partner'
+    creator = getattr(agent, 'created_by', None)
+    if getattr(creator, 'role', None) == 'agent':
+        return 'Sub Channel Partner'
+    return 'Channel Partner'
+
+
+def is_sub_channel_partner_agent(agent):
+    return get_agent_type_label(agent) == 'Sub Channel Partner'
+
+
+def get_user_role_display(user=None, agent=None):
+    if agent:
+        return get_agent_type_label(agent)
+    if not user:
+        return '-'
+    role = normalize_user_role(getattr(user, 'role', ''))
+    mapping = {
+        'admin': 'Admin',
+        'subadmin': 'Partner',
+        'partner': 'Partner',
+        'employee': 'Employee',
+        'agent': 'Channel Partner',
+    }
+    return mapping.get(role, str(getattr(user, 'role', '') or 'User').title())
+
+
+def _resolve_agent_employee(agent):
+    if not agent:
+        return None
+    if getattr(agent, 'under_employee', None):
+        return agent.under_employee
+    from .models import AgentAssignment
+
+    assignment = (
+        AgentAssignment.objects.filter(agent=agent)
+        .select_related('employee')
+        .order_by('-assigned_at', '-id')
+        .first()
+    )
+    if assignment and assignment.employee and is_employee_role(getattr(assignment.employee, 'role', '')):
+        return assignment.employee
+    return None
+
+
+def get_leader_name(user=None, agent=None):
+    """
+    Resolve the leader shown in hierarchy views:
+    Partner name when a partner exists in the upper chain, otherwise Admin.
+    """
+    if agent is None and user is not None:
+        agent = Agent.objects.filter(user=user).select_related('created_by', 'under_employee').first()
+
+    partner = None
+    role = normalize_user_role(getattr(user, 'role', ''))
+
+    if is_employee_role(role):
+        partner = get_employee_partner(user)
+    elif is_partner_role(role):
+        return display_user_name(_first_active_admin()) or 'Admin'
+    elif is_channel_partner_role(role) or agent:
+        partner = get_channel_partner_partner(user) if user else None
+        if not partner and agent:
+            created_by = getattr(agent, 'created_by', None)
+            if created_by:
+                if is_partner_role(getattr(created_by, 'role', '')):
+                    partner = created_by
+                elif is_employee_role(getattr(created_by, 'role', '')):
+                    partner = get_employee_partner(created_by)
+                elif is_channel_partner_role(getattr(created_by, 'role', '')):
+                    parent_agent = Agent.objects.filter(user=created_by).select_related('created_by').first()
+                    if parent_agent:
+                        partner = get_channel_partner_partner(created_by)
+                        if not partner:
+                            parent_employee = _resolve_agent_employee(parent_agent)
+                            if parent_employee:
+                                partner = get_employee_partner(parent_employee)
+
+    if partner:
+        return display_user_name(partner)
+    return display_user_name(_first_active_admin()) or 'Admin'
+
+
+def get_assigned_employee_for_submitter(user):
+    """Auto-assign loan applications submitted by CP/SCP to their hierarchy employee."""
+    if not user:
+        return None
+    role = normalize_user_role(getattr(user, 'role', ''))
+    if is_employee_role(role):
+        return user
+    if not is_channel_partner_role(role):
+        return None
+
+    agent = Agent.objects.filter(user=user).select_related('under_employee', 'created_by').first()
+    if not agent:
+        return None
+
+    employee = _resolve_agent_employee(agent)
+    if employee:
+        return employee
+
+    if is_sub_channel_partner_agent(agent):
+        parent_user = agent.created_by
+        if parent_user:
+            parent_agent = Agent.objects.filter(user=parent_user).select_related('under_employee').first()
+            if parent_agent:
+                return _resolve_agent_employee(parent_agent)
+    return None
+
+
+def get_sub_channel_partner_users_for_parent_agent(parent_agent):
+    """Users for SCP profiles created directly under a parent channel partner."""
+    if not parent_agent or not getattr(parent_agent, 'user', None):
+        return User.objects.none()
+    scp_user_ids = []
+    for child_agent in Agent.objects.filter(created_by=parent_agent.user).select_related('user'):
+        if child_agent.user_id and is_sub_channel_partner_agent(child_agent):
+            scp_user_ids.append(child_agent.user_id)
+    if not scp_user_ids:
+        return User.objects.none()
+    return User.objects.filter(id__in=scp_user_ids)
+
+
+def get_agent_loan_visibility_filter(user, agent):
+    """Q filter for loans visible to a channel partner (own + child SCP submissions)."""
+    visibility = Q(created_by=user) | Q(assigned_agent=agent)
+    scp_users = get_sub_channel_partner_users_for_parent_agent(agent)
+    if scp_users.exists():
+        visibility |= Q(created_by__in=scp_users)
+    return visibility
+
+
+def get_loan_submitted_by_display(loan):
+    """Human-readable submitter label for parent CP visibility."""
+    creator = getattr(loan, 'created_by', None)
+    if not creator:
+        return '-'
+    if getattr(creator, 'role', '') != 'agent':
+        return get_user_role_display(user=creator)
+
+    creator_agent = Agent.objects.filter(user=creator).only('agent_id', 'name', 'created_by_id').first()
+    if creator_agent and is_sub_channel_partner_agent(creator_agent):
+        name = (
+            str(getattr(creator_agent, 'name', '') or '').strip()
+            or display_user_name(creator)
+        )
+        return f'Sub Channel Partner - {name}'
+    return get_user_role_display(user=creator, agent=creator_agent)
 
 
 def get_lead_receive_options(user):
@@ -694,3 +877,143 @@ def mirror_legacy_documents_to_application(legacy_loan, loan_application=None):
                 'document_password': loan_doc.document_password,
             },
         )
+
+
+def can_create_sub_channel_partner(user):
+    """Only Channel Partners (not SCP) may create Sub Channel Partners in the agent panel."""
+    if not user or not getattr(user, 'is_authenticated', False) or not user.is_authenticated:
+        return False
+    role = normalize_user_role(getattr(user, 'role', ''))
+    if role == 'admin':
+        return True
+    if not is_channel_partner_role(role):
+        return False
+    agent = Agent.objects.filter(user=user).only('id', 'agent_id', 'created_by_id').first()
+    if not agent:
+        return False
+    return not is_sub_channel_partner_agent(agent)
+
+
+def can_admin_edit_loan(user, loan=None):
+    return bool(user and getattr(user, 'role', '') == 'admin')
+
+
+def get_submitted_processed_display(loan=None, loan_application=None):
+    """
+    Structured Submitted / Processed hierarchy lines for loan tables.
+    Returns dict with lines: [{label, value}, ...]
+    """
+    from .loan_sync import find_related_loan, find_related_loan_application
+
+    legacy = loan
+    app = loan_application
+    if legacy and not app:
+        app = find_related_loan_application(legacy)
+    if app and not legacy:
+        legacy = find_related_loan(app)
+
+    creator = None
+    if legacy and getattr(legacy, 'created_by_id', None):
+        creator = legacy.created_by
+    elif app and getattr(app, 'assigned_by_id', None):
+        creator = app.assigned_by
+
+    def _clean(value):
+        text = str(value or '').strip()
+        if not text or text in {'-', 'N/A', 'Not available', 'Not Added'}:
+            return ''
+        return text
+
+    def _partner_for_employee(employee_user):
+        if not employee_user:
+            return ''
+        return _clean(display_user_name(get_employee_partner(employee_user)))
+
+    scp_name = ''
+    cp_name = ''
+    employee_name = ''
+    partner_name = ''
+
+    creator_agent = None
+    if creator and normalize_user_role(getattr(creator, 'role', '')) in {'agent', 'channel_partner', 'cp'}:
+        creator_agent = Agent.objects.filter(user=creator).select_related(
+            'created_by', 'under_employee'
+        ).first()
+
+    if creator_agent and is_sub_channel_partner_agent(creator_agent):
+        scp_name = _clean(creator_agent.name) or _clean(display_user_name(creator))
+        parent_user = getattr(creator_agent, 'created_by', None)
+        parent_agent = None
+        if parent_user:
+            parent_agent = Agent.objects.filter(user=parent_user).select_related('under_employee').first()
+            if parent_agent:
+                cp_name = _clean(parent_agent.name) or _clean(display_user_name(parent_user))
+
+        employee = _resolve_agent_employee(creator_agent)
+        if not employee and parent_agent:
+            employee = _resolve_agent_employee(parent_agent)
+        if not employee and legacy and getattr(legacy, 'assigned_employee', None):
+            employee = legacy.assigned_employee
+        if not employee and app and getattr(app, 'assigned_employee', None):
+            employee = app.assigned_employee
+        if employee:
+            employee_name = _clean(display_user_name(employee))
+            partner_name = _partner_for_employee(employee)
+        if not partner_name and parent_user:
+            partner_name = _clean(display_user_name(get_channel_partner_partner(parent_user)))
+
+    elif creator_agent:
+        cp_name = _clean(creator_agent.name) or _clean(display_user_name(creator))
+        employee = _resolve_agent_employee(creator_agent)
+        if not employee and legacy and getattr(legacy, 'assigned_employee', None):
+            employee = legacy.assigned_employee
+        if not employee and app and getattr(app, 'assigned_employee', None):
+            employee = app.assigned_employee
+        if employee:
+            employee_name = _clean(display_user_name(employee))
+            partner_name = _partner_for_employee(employee)
+
+    elif creator and is_employee_role(getattr(creator, 'role', '')):
+        employee_name = _clean(display_user_name(creator))
+        partner_name = _partner_for_employee(creator)
+
+    elif creator and is_partner_role(getattr(creator, 'role', '')):
+        partner_name = _clean(display_user_name(creator))
+
+    elif creator and is_admin_role(getattr(creator, 'role', '')):
+        partner_name = _clean(display_user_name(creator)) or 'Admin'
+
+    # Fallbacks from assignment when creator chain is incomplete
+    if not cp_name and legacy and getattr(legacy, 'assigned_agent', None):
+        assigned = legacy.assigned_agent
+        if assigned and not is_sub_channel_partner_agent(assigned):
+            cp_name = _clean(assigned.name)
+    if not employee_name:
+        emp = None
+        if legacy and getattr(legacy, 'assigned_employee', None):
+            emp = legacy.assigned_employee
+        elif app and getattr(app, 'assigned_employee', None):
+            emp = app.assigned_employee
+        if emp:
+            employee_name = _clean(display_user_name(emp))
+            if not partner_name:
+                partner_name = _partner_for_employee(emp)
+
+    lines = []
+    if scp_name:
+        lines.append({'label': 'Sub Channel Partner', 'value': scp_name})
+    if cp_name:
+        lines.append({'label': 'Channel Partner', 'value': cp_name})
+    if employee_name:
+        lines.append({'label': 'Employee', 'value': employee_name})
+    if partner_name or not lines:
+        lines.append({'label': 'Partner', 'value': partner_name or '-'})
+
+    return {
+        'lines': lines,
+        'scp_name': scp_name,
+        'channel_partner_name': cp_name,
+        'employee_name': employee_name,
+        'partner_name': partner_name or '-',
+    }
+

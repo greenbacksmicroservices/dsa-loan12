@@ -200,6 +200,8 @@ def agent_profile_context(request):
         'sidebar_user_code_label': 'ID',
         'panel_hierarchy_line': '',
         'panel_hierarchy_items': [],
+        'can_create_sub_channel_partner': False,
+        'is_sub_channel_partner_user': False,
     }
 
     if not request.user.is_authenticated:
@@ -210,7 +212,10 @@ def agent_profile_context(request):
     if role == 'agent':
         try:
             agent = Agent.objects.get(user=request.user)
+            from .loan_helpers import can_create_sub_channel_partner, is_sub_channel_partner_agent
             context['agent_profile'] = agent
+            context['can_create_sub_channel_partner'] = can_create_sub_channel_partner(request.user)
+            context['is_sub_channel_partner_user'] = is_sub_channel_partner_agent(agent)
             hierarchy = _resolve_agent_hierarchy(agent)
             items = []
             if hierarchy.get('bdm'):
@@ -221,12 +226,18 @@ def agent_profile_context(request):
             context['panel_hierarchy_line'] = "  ".join(
                 _format_contact_line(item['label'], item) for item in items if item
             )
-            context['sidebar_profile_label'] = 'Channel Partner'
-            context['sidebar_user_code'] = agent.agent_id or f"EDC-CP-{agent.id:04d}"
+            context['sidebar_profile_label'] = (
+                'Sub Channel Partner' if context['is_sub_channel_partner_user'] else 'Channel Partner'
+            )
+            context['sidebar_user_code'] = agent.agent_id or (
+                f"EDC-SCP-{agent.id:04d}" if context['is_sub_channel_partner_user'] else f"EDC-CP-{agent.id:04d}"
+            )
         except Agent.DoesNotExist:
             context['panel_hierarchy_line'] = ""
             context['sidebar_profile_label'] = 'Channel Partner'
             context['sidebar_user_code'] = getattr(request.user, 'employee_id', '') or ''
+            context['can_create_sub_channel_partner'] = False
+            context['is_sub_channel_partner_user'] = False
 
     elif role == 'employee':
         bdm_info = _resolve_bdm_contact_for_employee(request.user)

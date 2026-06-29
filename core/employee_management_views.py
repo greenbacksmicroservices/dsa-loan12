@@ -910,11 +910,10 @@ def api_delete_employee(request, employee_id):
     Sets is_active to False instead of hard delete
     """
     try:
+        from .uniqueness_helpers import release_user_unique_identity
+
         user = get_object_or_404(User, id=employee_id, role='employee')
-        
-        # Soft delete
-        user.is_active = False
-        user.save()
+        release_user_unique_identity(user, save=True)
         
         return JsonResponse({
             'success': True,

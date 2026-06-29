@@ -1,0 +1,50 @@
+{% extends "core/base.html" %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <p class="text-muted small mb-1">Edit Sub Channel Partner</p>
+            <h1 class="h4 mb-0">{{ agent.name }}</h1>
+        </div>
+        <a href="{{ back_url }}" class="btn btn-outline-secondary">Cancel</a>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <form method="post" class="row g-3">
+                {% csrf_token %}
+                <div class="col-md-6">
+                    <label class="form-label">Name *</label>
+                    <input type="text" name="name" class="form-control" value="{{ agent.name }}" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Email</label>
+                    <input type="email" name="email" class="form-control" value="{{ agent.email|default:'' }}">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Phone / Mobile</label>
+                    <input type="text" name="phone" class="form-control" value="{{ agent.phone|default:'' }}">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Status</label>
+                    <select name="status" class="form-select">
+                        <option value="active" {% if agent.status == 'active' %}selected{% endif %}>Active</option>
+                        <option value="blocked" {% if agent.status == 'blocked' %}selected{% endif %}>Blocked</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Parent Channel Partner</label>
+                    <input type="text" class="form-control" value="{{ agent.parent_channel_partner_name|default:'-' }}" disabled>
+                </div>
+                <div class="col-12 d-flex justify-content-end gap-2">
+                    <a href="{{ back_url }}" class="btn btn-outline-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

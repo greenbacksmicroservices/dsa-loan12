@@ -37,11 +37,47 @@
     
     
 
+    <section class="filter-shell" style="margin-bottom: 22px;">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label small fw-semibold">Search</label>
+                <input type="search" class="form-control" name="q" value="{{ search_query }}" placeholder="Loan ID, name, email, phone">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small fw-semibold">Status</label>
+                <select class="form-select" name="status">
+                    <option value="">All Statuses</option>
+                    <option value="new_entry" {% if status_filter == 'new_entry' %}selected{% endif %}>New Application</option>
+                    <option value="waiting" {% if status_filter == 'waiting' %}selected{% endif %}>Document Pending</option>
+                    <option value="follow_up" {% if status_filter == 'follow_up' %}selected{% endif %}>Bank Login Process</option>
+                    <option value="approved" {% if status_filter == 'approved' %}selected{% endif %}>Approved</option>
+                    <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>Rejected</option>
+                    <option value="disbursed" {% if status_filter == 'disbursed' %}selected{% endif %}>Disbursed</option>
+                </select>
+            </div>
+            {% if sub_channel_partners %}
+            <div class="col-md-3">
+                <label class="form-label small fw-semibold">Sub Channel Partner</label>
+                <select class="form-select" name="sub_channel_partner">
+                    <option value="">All Sub Channel Partners</option>
+                    {% for scp in sub_channel_partners %}
+                    <option value="{{ scp.id }}" {% if scp_filter == scp.id|stringformat:'s' %}selected{% endif %}>{{ scp.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+            <div class="col-md-2 d-flex gap-2">
+                <button type="submit" class="btn btn-primary w-100">Filter</button>
+                <a class="btn btn-success w-100" href="?{% if search_query %}q={{ search_query|urlencode }}&{% endif %}{% if status_filter %}status={{ status_filter|urlencode }}&{% endif %}{% if scp_filter %}sub_channel_partner={{ scp_filter|urlencode }}&{% endif %}download=1">Download</a>
+            </div>
+        </form>
+    </section>
+
     <section class="report-table-shell">
         <div class="table-head">
             <div>
-                <h2 class="h5 fw-bold mb-1">Application Report Details</h2>
-                <p class="text-muted mb-0">Every application in the selected range is listed here with direct view and download actions.</p>
+                <h2 class="h5 fw-bold mb-1">Application Reports</h2>
+                <p class="text-muted mb-0">Loan ID, customer contact, applied and disbursed amounts.</p>
             </div>
             <div class="table-head-note" id="reports-refreshed-at">Updated just now</div>
         </div>
@@ -50,83 +86,63 @@
                 <thead>
                     <tr>
                         <th>Loan ID</th>
-                        <th>Customer</th>
-                        <th>Contact</th>
-                        <th>Loan Type</th>
-                        <th>Amount</th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Applied Amount</th>
+                        <th>Disbursed Amount</th>
+                        <th>Disbursed Date</th>
                         <th>Status</th>
-                        <th>Assigned Employee</th>
-                        <th>Channel Partner</th>
-                        <th>Created On</th>
-                        <th>Updated On</th>
-                        <th>Action Time</th>
-                        <th>Documents</th>
-                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for loan in loans %}
+                    {% for row in rows %}
                     <tr>
-                        <td class="fw-semibold text-nowrap">{{ loan.user_id|default:loan.id }}</td>
-                        <td>
-                            <div class="fw-semibold text-dark">{{ loan.full_name|default:"Not available" }}</div>
-                            <small class="text-muted">{{ loan.email|default:"No email" }}</small>
-                        </td>
-                        <td>
-                            <div>{{ loan.mobile_number|default:"Not available" }}</div>
-                            <small class="text-muted">{{ loan.city|default:"-" }}, {{ loan.state|default:"-" }}</small>
-                        </td>
-                        <td>{{ loan.get_loan_type_display|default:loan.loan_type|default:"Not available" }}</td>
-                        <td class="fw-semibold text-nowrap">Rs. {{ loan.loan_amount|default:0|floatformat:0 }}</td>
-                        <td>
-                            {% if loan.status == 'approved' %}
-                                <span class="status-chip status-approved">Approved</span>
-                            {% elif loan.status == 'rejected' %}
-                                <span class="status-chip status-rejected">Rejected</span>
-                            {% elif loan.status == 'disbursed' %}
-                                <span class="status-chip status-disbursed">Disbursed</span>
-                            {% elif loan.status == 'follow_up' %}
-                                <span class="status-chip status-banking">Bank Login Process</span>
-                            {% elif loan.status == 'updated_document' %}
-                                <span class="status-chip status-updated">Pending Document Cleared</span>
-                            {% elif loan.status == 'waiting' %}
-                                <span class="status-chip status-waiting">Document Pending</span>
-                            {% else %}
-                                <span class="status-chip status-new">{{ loan.status|default:"New Application"|title }}</span>
-                            {% endif %}
-                        </td>
-                        <td>{{ loan.assigned_employee.get_full_name|default:"Pending Assignment" }}</td>
-                        <td>{{ loan.assigned_agent.name|default:"-" }}</td>
-                        <td class="text-nowrap">{{ loan.created_at|date:"d M Y, h:i A" }}</td>
-                        <td class="text-nowrap">{{ loan.updated_at|date:"d M Y, h:i A" }}</td>
-                        <td class="text-nowrap">{{ loan.action_taken_at|date:"d M Y, h:i A"|default:"-" }}</td>
-                        <td>
-                            <div class="document-stack">
-                                {% for doc in loan.documents.all %}
-                                <div class="document-pill">
-                                    <span>{{ doc.get_document_type_display }}</span>
-                                    <a href="{{ doc.file.url }}" target="_blank" rel="noopener">View</a>
-                                    <a href="{{ doc.file.url }}" download>Download</a>
-                                </div>
-                                {% empty %}
-                                <span class="empty-copy">View and download options will appear after upload</span>
-                                {% endfor %}
-                            </div>
-                        </td>
-                        <td>
-                            <div class="table-actions">
-                                <a href="{% url 'agent_loan_detail' loan.id %}" class="table-action-btn primary-action">View Details</a>
-                                <a href="?{{ request.GET.urlencode }}{% if request.GET.urlencode %}&{% endif %}loan_id={{ loan.id }}&download=1&format=excel" class="table-action-btn secondary-action">Download</a>
-                            </div>
-                        </td>
+                        <td class="fw-semibold text-nowrap">{{ row.loan_id }}</td>
+                        <td>{{ row.name }}</td>
+                        <td>{{ row.email }}</td>
+                        <td>{{ row.phone }}</td>
+                        <td class="fw-semibold text-nowrap">Rs. {{ row.applied_amount|floatformat:0 }}</td>
+                        <td class="text-nowrap">{% if row.disbursed_amount %}Rs. {{ row.disbursed_amount|floatformat:0 }}{% else %}-{% endif %}</td>
+                        <td class="text-nowrap">{{ row.disbursed_date|default:"-" }}</td>
+                        <td><span class="status-chip status-new">{{ row.status_display }}</span></td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="13" class="text-center py-5 text-muted">No applications found for the selected report range.</td>
+                        <td colspan="8" class="text-center py-5 text-muted">No report records found.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
+        </div>
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 p-3 border-top">
+            <form method="get" class="d-flex align-items-center gap-2">
+                <input type="hidden" name="q" value="{{ search_query }}">
+                <input type="hidden" name="status" value="{{ status_filter }}">
+                <input type="hidden" name="sub_channel_partner" value="{{ scp_filter }}">
+                <label class="small mb-0">Show</label>
+                <select class="form-select form-select-sm" name="per_page" onchange="this.form.submit()" style="width:auto;">
+                    <option value="5" {% if page_info.per_page == 5 %}selected{% endif %}>5</option>
+                    <option value="10" {% if page_info.per_page == 10 %}selected{% endif %}>10</option>
+                    <option value="25" {% if page_info.per_page == 25 %}selected{% endif %}>25</option>
+                </select>
+                <span class="small text-muted">Entries</span>
+            </form>
+            <div class="small text-muted">
+                Showing {{ page_info.start }} to {{ page_info.end }} of {{ page_info.total }} Entries
+            </div>
+            <div class="d-flex gap-2">
+                {% if page_info.page > 1 %}
+                <a class="table-action-btn secondary-action" href="?page={{ page_info.page|add:'-1' }}&per_page={{ page_info.per_page }}&q={{ search_query|urlencode }}&status={{ status_filter|urlencode }}&sub_channel_partner={{ scp_filter|urlencode }}">Previous</a>
+                {% else %}
+                <span class="table-action-btn secondary-action" style="opacity:.5;">Previous</span>
+                {% endif %}
+                {% if page_info.page < page_info.total_pages %}
+                <a class="table-action-btn secondary-action" href="?page={{ page_info.page|add:'1' }}&per_page={{ page_info.per_page }}&q={{ search_query|urlencode }}&status={{ status_filter|urlencode }}&sub_channel_partner={{ scp_filter|urlencode }}">Next</a>
+                {% else %}
+                <span class="table-action-btn secondary-action" style="opacity:.5;">Next</span>
+                {% endif %}
+            </div>
         </div>
     </section>
 
@@ -414,7 +430,7 @@
     }
 
     .report-grid-table {
-        min-width: 1680px;
+        min-width: 980px;
         margin-bottom: 0;
     }
 

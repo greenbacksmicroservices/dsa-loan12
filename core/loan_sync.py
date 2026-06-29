@@ -351,6 +351,7 @@ def sync_loan_to_application(loan_obj, assigned_by_user=None, create_if_missing=
             assigned_agent=loan_obj.assigned_agent,
             assigned_at=loan_obj.assigned_at if mapped_status in ["Waiting for Processing", "Required Follow-up"] else None,
             assigned_by=assigner,
+            banking_processing_started_at=getattr(loan_obj, "banking_processing_started_at", None),
             sm_name=loan_obj.sm_name,
             sm_phone_number=loan_obj.sm_phone_number,
             sm_email=loan_obj.sm_email,

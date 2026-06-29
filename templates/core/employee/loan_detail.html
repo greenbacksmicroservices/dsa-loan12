@@ -752,11 +752,9 @@ const currentRole = '{{ request.user.role|default:"employee" }}';
 const hideBankerDetails = {{ hide_banker_details|default:False|yesno:"true,false" }};
 const LOAN_ID_EMPTY_LABEL = 'Not Assigned Yet';
 const BANKER_HIDDEN_LABELS = new Set([
-    'bank name',
     'banker name',
     'banker phone',
     'banker email',
-    'processing bank name',
 ]);
 const DUPLICATE_LOAN_ID_LABELS = new Set([
     'loan id manual',
@@ -976,6 +974,15 @@ function parseProcessMeta(v) {
     return meta;
 }
 
+function formatDsaName(value) {
+    const text = String(value || '').trim();
+    return text || 'Not Added';
+}
+
+function resolveDsaNameOnly(v, meta = {}) {
+    return String(meta?.dsa_name || v?.dsa_name || '').trim();
+}
+
 function resolveChannelPartnerName(v) {
     const candidates = [
         v?.lead_receive_channel_partner_name,
@@ -995,7 +1002,7 @@ function prefillBankProcessingModal(v) {
     setInputValue('processingLoanAccountNumberInput', meta.loan_account_number || v?.loan_account_number || v?.account_number || '');
     setInputValue('verifiedLoanAmountInput', meta.verified_loan_amount || v?.loan_amount || '');
     setInputValue('finalLoanAmountInput', meta.final_loan_amount || v?.loan_amount || '');
-    setInputValue('processingDsaNameInput', meta.dsa_name || resolveChannelPartnerName(v) || v?.sm_name || '');
+    setInputValue('processingDsaNameInput', resolveDsaNameOnly(v, meta));
     setInputValue('bankerDescriptionInput', meta.banker_description);
     setInputValue('bankRemarkInput', meta.bank_remark);
     setInputValue('processingManualLoanIdInput', resolveDisplayLoanId(v) === LOAN_ID_EMPTY_LABEL ? '' : resolveDisplayLoanId(v));
@@ -1015,7 +1022,7 @@ function prefillApproveModal(v, force = false) {
     setInputValue('approveLoanIdInput', currentLoanId === LOAN_ID_EMPTY_LABEL ? '' : currentLoanId);
     setInputValue('approveVerifiedLoanAmountInput', meta.verified_loan_amount || v?.loan_amount || '');
     setInputValue('approveFinalLoanAmountInput', meta.final_loan_amount || v?.loan_amount || '');
-    setInputValue('approveDsaNameInput', meta.dsa_name || resolveChannelPartnerName(v) || v?.sm_name || '');
+    setInputValue('approveDsaNameInput', resolveDsaNameOnly(v, meta));
     setInputValue('approveDescriptionInput', meta.banker_description);
     setInputValue('approveRemark', '');
     setInputValue('approveBankDetails', meta.bank_remark);
@@ -1029,7 +1036,7 @@ function prefillDisburseModal(v) {
     setInputValue('disburseBankerEmailInput', meta.banker_email);
     setInputValue('disburseVerifiedLoanAmountInput', meta.verified_loan_amount || v?.loan_amount || '');
     setInputValue('disburseFinalLoanAmountInput', meta.final_loan_amount || v?.loan_amount || '');
-    setInputValue('disburseDsaNameInput', meta.dsa_name || resolveChannelPartnerName(v) || v?.sm_name || '');
+    setInputValue('disburseDsaNameInput', resolveDsaNameOnly(v, meta));
     setInputValue('disburseDescriptionInput', meta.banker_description);
     setInputValue('disburseBankNotes', meta.bank_remark);
     setInputValue('disburseLoanAccountNumber', meta.loan_account_number || v?.loan_account_number || v?.account_number || '');

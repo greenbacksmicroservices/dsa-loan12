@@ -10,7 +10,7 @@
             <h1>Reports</h1>
             <p>All applications handled under your employee panel.</p>
         </div>
-        <a class="report-btn primary" href="?download=table">
+        <a class="report-btn primary" href="?{% if filters.q %}q={{ filters.q|urlencode }}&{% endif %}{% if filters.status %}status={{ filters.status|urlencode }}&{% endif %}{% if filters.channel_partner %}channel_partner={{ filters.channel_partner|urlencode }}&{% endif %}{% if filters.sub_channel_partner %}sub_channel_partner={{ filters.sub_channel_partner|urlencode }}&{% endif %}download=table">
             <i class="bi bi-download"></i>
             <span>Download Table</span>
         </a>
@@ -23,50 +23,112 @@
         <div class="report-summary accent-blue"><span>Disbursed</span><strong>{{ status_summary.disbursed }}</strong></div>
     </div>
 
+    <section class="reports-table-shell" style="padding:20px 24px; margin-bottom:18px;">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label small fw-semibold">Search</label>
+                <input type="search" class="form-control" name="q" value="{{ filters.q }}" placeholder="Loan ID, name, email, phone">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-semibold">Status</label>
+                <select class="form-select" name="status">
+                    <option value="">All Statuses</option>
+                    <option value="new_entry" {% if filters.status == 'new_entry' %}selected{% endif %}>New Application</option>
+                    <option value="waiting" {% if filters.status == 'waiting' %}selected{% endif %}>Document Pending</option>
+                    <option value="follow_up" {% if filters.status == 'follow_up' %}selected{% endif %}>Bank Login Process</option>
+                    <option value="approved" {% if filters.status == 'approved' %}selected{% endif %}>Approved</option>
+                    <option value="rejected" {% if filters.status == 'rejected' %}selected{% endif %}>Rejected</option>
+                    <option value="disbursed" {% if filters.status == 'disbursed' %}selected{% endif %}>Disbursed</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small fw-semibold">Channel Partner</label>
+                <select class="form-select" name="channel_partner">
+                    <option value="">All Channel Partners</option>
+                    {% for cp in channel_partners %}
+                    <option value="{{ cp.id }}" {% if filters.channel_partner == cp.id|stringformat:'s' %}selected{% endif %}>{{ cp.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small fw-semibold">Sub Channel Partner</label>
+                <select class="form-select" name="sub_channel_partner">
+                    <option value="">All Sub Channel Partners</option>
+                    {% for scp in sub_channel_partners %}
+                    <option value="{{ scp.id }}" {% if filters.sub_channel_partner == scp.id|stringformat:'s' %}selected{% endif %}>{{ scp.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-1">
+                <button type="submit" class="report-btn primary w-100">Filter</button>
+            </div>
+        </form>
+    </section>
+
     <section class="reports-table-shell">
         <div class="table-responsive">
             <table class="table table-grid align-middle mb-0">
                 <thead>
                     <tr>
                         <th>Loan ID</th>
-                        <th>Applicant</th>
-                        <th>Mobile</th>
-                        <th>Loan Type</th>
-                        <th>Amount</th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Applied Amount</th>
+                        <th>Disbursed Amount</th>
+                        <th>Disbursed Date</th>
                         <th>Status</th>
-                        <th>Channel Partner</th>
-                        <th>Created</th>
-                        <th>Action</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for row in rows %}
                     <tr>
                         <td class="fw-semibold">{{ row.loan_id }}</td>
-                        <td>
-                            <div class="fw-semibold">{{ row.applicant_name }}</div>
-                            <small class="text-muted">{{ row.email }}</small>
-                        </td>
-                        <td>{{ row.mobile }}</td>
-                        <td>{{ row.loan_type }}</td>
-                        <td>Rs. {{ row.loan_amount|floatformat:0 }}</td>
+                        <td>{{ row.name }}</td>
+                        <td>{{ row.email }}</td>
+                        <td>{{ row.phone }}</td>
+                        <td>Rs. {{ row.applied_amount|floatformat:0 }}</td>
+                        <td>{% if row.disbursed_amount %}Rs. {{ row.disbursed_amount|floatformat:0 }}{% else %}-{% endif %}</td>
+                        <td>{{ row.disbursed_date|default:"-" }}</td>
                         <td><span class="status-pill">{{ row.status_display }}</span></td>
-                        <td>{{ row.channel_partner }}</td>
-                        <td>{{ row.created_at }}</td>
-                        <td>
-                            <div class="table-actions">
-                                <a href="{{ row.view_url }}" class="report-btn small">View</a>
-                                <a href="?download=application&loan_id={{ row.id }}" class="report-btn small download">Download</a>
-                            </div>
-                        </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="9" class="text-center text-muted py-5">No report records found.</td>
+                        <td colspan="8" class="text-center text-muted py-5">No report records found.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
+        </div>
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 p-3 border-top">
+            <form method="get" class="d-flex align-items-center gap-2">
+                <input type="hidden" name="q" value="{{ filters.q }}">
+                <input type="hidden" name="status" value="{{ filters.status }}">
+                <input type="hidden" name="channel_partner" value="{{ filters.channel_partner }}">
+                <input type="hidden" name="sub_channel_partner" value="{{ filters.sub_channel_partner }}">
+                <label class="small mb-0">Show</label>
+                <select class="form-select form-select-sm" name="per_page" onchange="this.form.submit()" style="width:auto;">
+                    <option value="5" {% if page_info.per_page == 5 %}selected{% endif %}>5</option>
+                    <option value="10" {% if page_info.per_page == 10 %}selected{% endif %}>10</option>
+                    <option value="25" {% if page_info.per_page == 25 %}selected{% endif %}>25</option>
+                </select>
+                <span class="small text-muted">Entries</span>
+            </form>
+            <div class="small text-muted">
+                Showing {{ page_info.start }} to {{ page_info.end }} of {{ page_info.total }} Entries
+            </div>
+            <div class="d-flex gap-2">
+                {% if page_info.page > 1 %}
+                <a class="report-btn small" href="?page={{ page_info.page|add:'-1' }}&per_page={{ page_info.per_page }}&q={{ filters.q|urlencode }}&status={{ filters.status|urlencode }}&channel_partner={{ filters.channel_partner|urlencode }}&sub_channel_partner={{ filters.sub_channel_partner|urlencode }}">Previous</a>
+                {% else %}
+                <span class="report-btn small" style="opacity:.5;">Previous</span>
+                {% endif %}
+                {% if page_info.page < page_info.total_pages %}
+                <a class="report-btn small" href="?page={{ page_info.page|add:'1' }}&per_page={{ page_info.per_page }}&q={{ filters.q|urlencode }}&status={{ filters.status|urlencode }}&channel_partner={{ filters.channel_partner|urlencode }}&sub_channel_partner={{ filters.sub_channel_partner|urlencode }}">Next</a>
+                {% else %}
+                <span class="report-btn small" style="opacity:.5;">Next</span>
+                {% endif %}
+            </div>
         </div>
     </section>
 </div>

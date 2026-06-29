@@ -22,61 +22,28 @@ logger = logging.getLogger(__name__)
 @shared_task(bind=True, max_retries=3)
 def check_and_trigger_follow_ups(self):
     """
-    Check for applications waiting > 4 hours and move to follow-up status.
-    Runs every 1 hour via Celery beat.
+    Move Banking Login Process applications to Follow Up after 4 hours.
+    Runs periodically via Celery beat.
     """
     try:
-        # Get current time minus 4 hours
-        cutoff_time = timezone.now() - timedelta(hours=4)
-        
-        # Find applications that are "Waiting for Processing" and older than 4 hours
-        applications_needing_followup = LoanApplication.objects.filter(
-            status='Waiting for Processing',
-            assigned_at__lt=cutoff_time,
-            assigned_at__isnull=False
-        ).exclude(
-            follow_up_scheduled_at__isnull=False
+        from .followup_utils import auto_move_overdue_to_follow_up
+
+        moved = auto_move_overdue_to_follow_up()
+        updated_count = (
+            moved.get('applications_to_follow_up_pending', 0)
+            + moved.get('loans_to_follow_up_pending', 0)
         )
-        
-        updated_count = 0
-        
-        for application in applications_needing_followup:
-            try:
-                # Move to Required Follow-up
-                application.trigger_follow_up()
-                
-                # Get assigned user for notification
-                assigned_user = application.assigned_employee or (
-                    application.assigned_agent.user if application.assigned_agent else None
-                )
-                
-                # Get admin user for notification
-                admin_users = User.objects.filter(role='admin')
-                
-                # Create activity log
-                ActivityLog.objects.create(
-                    action='follow_up_triggered',
-                    description=f"Application {application.applicant.full_name} moved to Required Follow-up (4+ hours waiting)",
-                    user=None,  # System action
-                )
-                
-                # Send notifications
-                send_follow_up_notifications(application, assigned_user, admin_users)
-                
-                updated_count += 1
-                logger.info(f"Follow-up triggered for application {application.id}: {application.applicant.full_name}")
-                
-            except Exception as e:
-                logger.error(f"Error processing application {application.id}: {str(e)}")
-                continue
-        
-        logger.info(f"Follow-up check completed: {updated_count} applications moved to follow-up status")
+
+        logger.info(
+            'Banking follow-up check completed: %s record(s) moved to Follow Up',
+            updated_count,
+        )
         return {
             'status': 'success',
             'applications_updated': updated_count,
             'timestamp': timezone.now().isoformat()
         }
-        
+
     except Exception as exc:
         logger.error(f"Error in check_and_trigger_follow_ups: {str(exc)}")
         # Retry after 5 minutes
@@ -203,32 +170,18 @@ class WorkflowScheduler:
     
     @staticmethod
     def check_follow_ups_apscheduler():
-        """APScheduler version of follow-up check"""
+        """APScheduler version of banking follow-up aging."""
         try:
-            from django.utils import timezone
-            from datetime import timedelta
-            
-            cutoff_time = timezone.now() - timedelta(hours=4)
-            applications_needing_followup = LoanApplication.objects.filter(
-                status='Waiting for Processing',
-                assigned_at__lt=cutoff_time,
-                assigned_at__isnull=False,
-                follow_up_scheduled_at__isnull=True
+            from .followup_utils import auto_move_overdue_to_follow_up
+
+            moved = auto_move_overdue_to_follow_up()
+            updated_count = (
+                moved.get('applications_to_follow_up_pending', 0)
+                + moved.get('loans_to_follow_up_pending', 0)
             )
-            
-            updated_count = 0
-            for application in applications_needing_followup:
-                application.trigger_follow_up()
-                updated_count += 1
-                
-                ActivityLog.objects.create(
-                    action='follow_up_triggered',
-                    description=f"Application {application.applicant.full_name} moved to Required Follow-up"
-                )
-            
-            logger.info(f"APScheduler: {updated_count} applications moved to follow-up")
+            logger.info(f"APScheduler: {updated_count} record(s) moved to Follow Up")
             return updated_count
-            
+
         except Exception as e:
             logger.error(f"APScheduler error: {str(e)}")
             return 0

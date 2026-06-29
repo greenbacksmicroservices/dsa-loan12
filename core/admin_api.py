@@ -929,8 +929,8 @@ def api_create_employee(request):
                 'error': 'Phone number already exists for an active employee'
             }, status=400)
         
-        # Check if username already exists
-        if User.objects.filter(username=data['username']).exists():
+        from .uniqueness_helpers import active_username_taken
+        if active_username_taken(data['username']):
             return JsonResponse({
                 'success': False,
                 'error': 'Username already exists'
@@ -1014,8 +1014,8 @@ def api_create_agent(request):
                 'error': 'Phone number already exists for an active channel partner'
             }, status=400)
         
-        # Check if username already exists
-        if User.objects.filter(username=data['username']).exists():
+        from .uniqueness_helpers import active_username_taken
+        if active_username_taken(data['username']):
             return JsonResponse({
                 'success': False,
                 'error': 'Username already exists'
@@ -1776,13 +1776,10 @@ def api_update_agent(request, agent_id):
 def api_delete_agent(request, agent_id):
     """API Endpoint: Delete (soft block) agent"""
     try:
-        agent = get_object_or_404(Agent, id=agent_id)
-        agent.status = 'blocked'
-        agent.save()
+        from .uniqueness_helpers import release_agent_unique_identity
 
-        if agent.user:
-            agent.user.is_active = False
-            agent.user.save()
+        agent = get_object_or_404(Agent, id=agent_id)
+        release_agent_unique_identity(agent, save=True)
 
         return JsonResponse({
             'success': True,

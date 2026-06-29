@@ -137,6 +137,7 @@
                         <th>Channel Partner ID</th>
                         <th>Photo</th>
                         <th>Name</th>
+                        <th>Role</th>
                         <th>Email</th>
                         <th>Phone</th>
                         <th>State</th>
@@ -150,7 +151,7 @@
                 </thead>
                 <tbody id="channel-partners-body">
                     <tr>
-                        <td colspan="12" class="text-center text-muted py-5">Loading channel partners...</td>
+                        <td colspan="13" class="text-center text-muted py-5">Loading channel partners...</td>
                     </tr>
                 </tbody>
             </table>
@@ -998,11 +999,14 @@ function normalizeAgentRow(agent) {
     const statusValue = typeof agent.is_active === 'boolean'
         ? (agent.is_active ? 'active' : 'blocked')
         : (agent.status || 'active');
+    const cleanName = agent.name || agent.agent_name || '-';
     return {
         ...agent,
         id: agent.id || agent.pk || '',
         agent_id: agent.agent_id || agent.code || '-',
-        name: agent.name || agent.agent_name || 'Channel Partner',
+        agent_type: agent.agent_type || agent.role_display || 'Channel Partner',
+        name: cleanName,
+        parent_channel_partner_name: agent.parent_channel_partner_name || '',
         status: statusValue,
         total_loans: agent.total_loans ?? agent.total_applications ?? 0,
         approved_count: agent.approved_count ?? agent.approved_loans ?? 0,
@@ -1046,11 +1050,19 @@ function renderActionButtons(agent) {
     if (!Number.isFinite(id) || id <= 0) {
         return '<span class="text-muted small">Details unavailable</span>';
     }
+    const isScp = String(agent.agent_type || '').toLowerCase() === 'sub channel partner';
+    const viewUrl = isScp
+        ? `/employee/sub-channel-partners/${id}/view/`
+        : `/employee/channel-partners/${id}/view/`;
     const actions = [
-        `<button type="button" class="table-action-btn view-link" data-partner-action="view" data-agent-id="${id}">View</button>`,
+        `<a href="${viewUrl}" class="table-action-btn view-link">View</a>`,
     ];
     if (agent.can_manage) {
-        actions.push(`<button type="button" class="table-action-btn edit-link" data-partner-action="edit" data-agent-id="${id}">Edit</button>`);
+        if (isScp) {
+            actions.push(`<a href="/employee/sub-channel-partners/${id}/edit/" class="table-action-btn edit-link">Edit</a>`);
+        } else {
+            actions.push(`<button type="button" class="table-action-btn edit-link" data-partner-action="edit" data-agent-id="${id}">Edit</button>`);
+        }
     }
     return `<div class="table-actions">${actions.join('')}</div>`;
 }
@@ -1060,7 +1072,7 @@ function renderPartnerRows(agents) {
     if (!rows.length) {
         partnerTableBody.innerHTML = `
             <tr>
-                <td colspan="12" class="text-center text-muted py-5">No channel partners found for the current employee scope.</td>
+                <td colspan="13" class="text-center text-muted py-5">No channel partners found for the current employee scope.</td>
             </tr>
         `;
         return;
@@ -1072,7 +1084,10 @@ function renderPartnerRows(agents) {
             <td>${renderPartnerPhoto(agent)}</td>
             <td>
                 <div class="fw-semibold text-dark">${escapeHtml(agent.name || '-')}</div>
-                <small class="text-muted">${escapeHtml(agent.created_by_label || '-')}</small>
+            </td>
+            <td>
+                <div class="fw-semibold text-dark">${escapeHtml(agent.agent_type || agent.role_display || '-')}</div>
+                ${agent.parent_channel_partner_name ? `<small class="text-muted d-block">${escapeHtml(agent.parent_channel_partner_name)}</small>` : ''}
             </td>
             <td>${agent.email ? `<a href="mailto:${escapeHtml(agent.email)}">${escapeHtml(agent.email)}</a>` : '<span class="text-muted">Not available</span>'}</td>
             <td>${agent.phone ? `<a href="tel:${escapeHtml(agent.phone)}">${escapeHtml(agent.phone)}</a>` : '<span class="text-muted">Not available</span>'}</td>
@@ -1111,14 +1126,10 @@ async function loadChannelPartners(showErrors = false) {
         renderTopStats(data.stats || {});
         renderPartnerRows(data.agents || []);
         setLastUpdated();
-
-        if (currentModalPartnerId && currentModalMode === 'view') {
-            await loadPartnerDetail(currentModalPartnerId, currentModalMode, false);
-        }
     } catch (error) {
         partnerTableBody.innerHTML = `
             <tr>
-                <td colspan="12" class="text-center text-danger py-5">${escapeHtml(error.message || 'Unable to load data')}</td>
+                <td colspan="13" class="text-center text-danger py-5">${escapeHtml(error.message || 'Unable to load data')}</td>
             </tr>
         `;
         if (showErrors) {
@@ -1240,7 +1251,7 @@ async function loadPartnerDetail(agentId, mode = 'view', showModal = true) {
         const customers = data.customers || [];
 
         document.getElementById('partner-modal-title').textContent = agent.name || 'Channel Partner';
-        document.getElementById('partner-modal-subtitle').textContent = agent.agent_id || '';
+        document.getElementById('partner-modal-subtitle').textContent = `${agent.agent_id || ''}${agent.agent_type ? ` | ${agent.agent_type}` : ''}`;
         document.getElementById('partner-modal-name').textContent = agent.name || '-';
         document.getElementById('partner-modal-meta').textContent = `${agent.email || 'No email'} | ${agent.phone || 'No phone'} | ${agent.under_employee || 'Not assigned'}`;
         document.getElementById('partner-modal-created-under').textContent = `Created under: ${agent.created_under || '-'}`;
@@ -1411,9 +1422,7 @@ partnerTableBody.addEventListener('click', (event) => {
     if (!agentId) {
         return;
     }
-    if (actionBtn.dataset.partnerAction === 'view') {
-        openPartnerModal(agentId, 'view');
-    } else if (actionBtn.dataset.partnerAction === 'edit') {
+    if (actionBtn.dataset.partnerAction === 'edit') {
         openPartnerModal(agentId, 'edit');
     } else if (actionBtn.dataset.partnerAction === 'block') {
         blockChannelPartner(agentId, actionBtn.dataset.agentName || 'Channel Partner');
@@ -1421,23 +1430,6 @@ partnerTableBody.addEventListener('click', (event) => {
 });
 partnerSearchInput.addEventListener('input', () => loadChannelPartners(false));
 partnerStatusFilter.addEventListener('change', () => loadChannelPartners(false));
-
-document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) {
-        loadChannelPartners(false);
-    }
-});
-
-window.addEventListener('focus', () => loadChannelPartners(false));
-partnerModalElement.addEventListener('hidden.bs.modal', () => {
-    currentModalPartnerId = null;
-    currentModalMode = 'view';
-    currentModalCanManage = false;
-    document.getElementById('partner-modal-loading').innerHTML = `
-        <div class="spinner-border text-primary mb-3" role="status"></div>
-        <div>Loading channel partner details...</div>
-    `;
-});
 
 document.addEventListener('DOMContentLoaded', async () => {
     const pageParams = new URLSearchParams(window.location.search);
@@ -1452,7 +1444,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         showPageAlert('success', 'Channel partner added and table refreshed.');
         window.history.replaceState({}, document.title, window.location.pathname);
     }
-    schedulePartnerRefresh();
 });
 </script>
 {% endblock %}

@@ -25,6 +25,7 @@ from .models import (
     UserOnboardingDocument,
 )
 from .loan_sync import find_related_loan_application, sync_loan_to_application
+from .loan_helpers import get_agent_loan_visibility_filter, get_loan_submitted_by_display, can_create_sub_channel_partner
 from .followup_utils import auto_move_overdue_to_follow_up
 from .role_decorators import agent_required
 from .upload_limits import validate_loan_document_batch
@@ -56,9 +57,10 @@ def get_agent_loan_queryset(user, agent):
     Unified queryset for agent-owned data:
     - Loans created by this agent user
     - Loans currently assigned to this agent profile
+    - Loans submitted by child Sub Channel Partners (parent CP visibility)
     """
     return Loan.objects.filter(
-        Q(created_by=user) | Q(assigned_agent=agent)
+        get_agent_loan_visibility_filter(user, agent)
     ).distinct()
 
 
@@ -271,12 +273,15 @@ def agent_add_loan(request):
 
 
 @agent_required
-@agent_required
 def agent_sub_agents(request):
     """
-    Allow agents to create and manage their sub-agents.
-    Only agents created by this agent are shown.
+    Allow channel partners to create and manage sub channel partners.
+    Sub Channel Partners cannot access this section.
     """
+    if not can_create_sub_channel_partner(request.user):
+        messages.error(request, 'Sub Channel Partners cannot manage or create other Sub Channel Partners.')
+        return redirect('agent_my_applications')
+
     agent = Agent.objects.get(user=request.user)
     
     # Get sub-agents created by this agent
@@ -293,8 +298,13 @@ def agent_sub_agents(request):
 @agent_required
 def agent_add_employee(request):
     """
-    Form page to add a new sub-agent/team member
+    Form page to add a new sub-agent/team member.
+    Sub Channel Partners cannot access this page.
     """
+    if not can_create_sub_channel_partner(request.user):
+        messages.error(request, 'Sub Channel Partners cannot create other Sub Channel Partners.')
+        return redirect('agent_my_applications')
+
     agent = Agent.objects.get(user=request.user)
     context = {
         'agent': agent,
@@ -310,6 +320,12 @@ def create_sub_agent(request):
     Create a new sub-agent/team member under the current agent.
     Accepts FormData including photo upload
     """
+    if not can_create_sub_channel_partner(request.user):
+        return JsonResponse({
+            'success': False,
+            'error': 'Sub Channel Partners cannot create other Sub Channel Partners.',
+        }, status=403)
+
     try:
         parent_agent = Agent.objects.get(user=request.user)
         
@@ -459,6 +475,7 @@ def agent_my_applications(request):
         loan_obj.status_raw = loan_obj.status
         loan_obj.status = status_key
         loan_obj.has_revert_pending = status_key == 'follow_up_pending'
+        loan_obj.submitted_by_display = get_loan_submitted_by_display(loan_obj)
         return loan_obj
 
     all_display_rows = [_prepare_legacy_row(loan) for loan in all_loans] + workflow_rows
@@ -920,6 +937,14 @@ def agent_reports(request):
     if partner_filter:
         loans = loans.filter(assigned_agent_id=partner_filter)
 
+    scp_filter = (request.GET.get('sub_channel_partner') or '').strip()
+    if scp_filter:
+        scp_agent = Agent.objects.filter(id=scp_filter).first()
+        if scp_agent and scp_agent.user_id:
+            loans = loans.filter(created_by_id=scp_agent.user_id)
+        else:
+            loans = loans.none()
+
     if search_query:
         loans = loans.filter(
             Q(full_name__icontains=search_query) |
@@ -929,12 +954,33 @@ def agent_reports(request):
         )
     
     # Handle download
+    from .report_helpers import build_report_row, export_standard_report_csv, get_child_sub_channel_partners, paginate_rows
+
+    def _agent_status_label(status_key):
+        labels = {
+            'new_entry': 'New Application',
+            'waiting': 'Document Pending',
+            'updated_document': UPDATED_DOCUMENT_LABEL,
+            'follow_up': 'Bank Login Process',
+            'follow_up_pending': 'Follow Up',
+            'approved': 'Approved',
+            'rejected': 'Rejected',
+            'disbursed': 'Disbursed',
+        }
+        return labels.get(status_key, str(status_key or '-').replace('_', ' ').title())
+
+    report_rows = [build_report_row(loan, status_label_getter=_agent_status_label) for loan in loans]
+    for row in report_rows:
+        row['view_url'] = reverse('agent_loan_detail', kwargs={'loan_id': row['id']})
+
     if request.GET.get('download'):
-        format_type = request.GET.get('format', 'csv')
-        if format_type == 'csv':
-            return export_loans_csv(loans, period)
-        elif format_type in ['excel', 'xlsx']:
-            return export_loans_excel(loans, period)
+        return export_standard_report_csv(report_rows, f'channel-partner-reports-{period}.csv')
+
+    page_info = paginate_rows(
+        report_rows,
+        page=request.GET.get('page', 1),
+        per_page=request.GET.get('per_page', 10),
+    )
 
     employee_options = User.objects.filter(
         id__in=get_agent_loan_queryset(request.user, agent)
@@ -949,22 +995,20 @@ def agent_reports(request):
     ).order_by('name')
     
     context = {
-        'loans': loans,
+        'rows': page_info['rows'],
+        'page_info': page_info,
         'period': period,
         'from_date': from_date,
         'to_date': to_date,
         'status_filter': status_filter,
         'employee_filter': employee_filter,
         'partner_filter': partner_filter,
+        'scp_filter': scp_filter,
         'search_query': search_query,
         'employee_options': employee_options,
         'partner_options': partner_options,
-        'total_loans': loans.count(),
-        'total_amount': loans.aggregate(Sum('loan_amount'))['loan_amount__sum'] or 0,
-        'approved_count': loans.filter(status='approved').count(),
-        'approved_loans': loans.filter(status='approved').count(),
-        'disbursed_loans': loans.filter(status='disbursed').count(),
-        'rejected_loans': loans.filter(status='rejected').count(),
+        'sub_channel_partners': get_child_sub_channel_partners(request.user, channel_partner_id=agent.id),
+        'total_loans': page_info['total'],
         'generated_reports': [],
     }
     return render(request, 'core/agent/reports.html', context)

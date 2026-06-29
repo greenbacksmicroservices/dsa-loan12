@@ -42,7 +42,7 @@ from .updated_document_utils import (
     loan_has_updated_documents,
 )
 from .id_utils import generate_agent_sequence_id, generate_user_sequence_id
-from .loan_helpers import display_loan_id
+from .loan_helpers import display_loan_id, get_submitted_processed_display
 from .account_notifications import send_account_credentials_email
 from .onboarding_utils import collect_user_document_payload
 from .workflow_rows import (
@@ -54,6 +54,7 @@ from django.utils import timezone
 from datetime import datetime, timedelta, timezone as datetime_timezone
 import json
 import logging
+import re
 
 logger = logging.getLogger(__name__)
 FOLLOW_UP_PENDING_LABEL = 'Follow Up'
@@ -139,13 +140,8 @@ def _sync_subadmin_employee_channel_partners(subadmin_user, employee_user, partn
 
 
 def _agent_type_label(agent):
-    if not agent:
-        return '-'
-    agent_code = str(getattr(agent, 'agent_id', '') or '').upper()
-    creator = getattr(agent, 'created_by', None)
-    if agent_code.startswith('EDC-SCP-') or getattr(creator, 'role', None) == 'agent':
-        return 'Sub Channel Partner'
-    return 'Channel Partner'
+    from .loan_helpers import get_agent_type_label
+    return get_agent_type_label(agent)
 
 
 def _display_user_name(user_obj, fallback='-'):
@@ -579,6 +575,8 @@ def _serialize_subadmin_loan_details(loan_obj):
         'current_address': loan_obj.current_address or '-',
 
         'loan_type': loan_obj.get_loan_type_display() if hasattr(loan_obj, 'get_loan_type_display') else (loan_obj.loan_type or '-'),
+        'loan_type_value': str(loan_obj.loan_type or '').strip(),
+        'entity_type': 'legacy',
         'loan_amount': float(loan_obj.loan_amount or 0),
         'tenure_months': loan_obj.tenure_months or '-',
         'interest_rate': float(loan_obj.interest_rate or 0) if loan_obj.interest_rate is not None else '-',
@@ -1243,28 +1241,7 @@ def subadmin_all_loans(request):
             assigned_to = f"Employee - {loan.assigned_employee.get_full_name() or loan.assigned_employee.username}"
         elif loan.assigned_agent:
             assigned_to = f"Channel Partner - {loan.assigned_agent.name}"
-        submitted_by = '-'
-        if loan.assigned_agent:
-            submitted_by = (
-                loan.assigned_agent.name
-                or (loan.assigned_agent.user.get_full_name() if loan.assigned_agent.user else '')
-                or '-'
-            )
-        elif loan.created_by and loan.created_by.role == 'agent':
-            submitted_by = loan.created_by.get_full_name() or loan.created_by.username or '-'
-        processed_by = (
-            loan.assigned_employee.get_full_name() or loan.assigned_employee.username
-            if loan.assigned_employee else '-'
-        )
-        partner_under = '-'
-        if assignment_context.get('role') == 'subadmin':
-            partner_under = assignment_context.get('assigned_by_name') or '-'
-        elif loan.assigned_agent and loan.assigned_agent.created_by and loan.assigned_agent.created_by.role == 'subadmin':
-            partner_under = (
-                loan.assigned_agent.created_by.get_full_name()
-                or loan.assigned_agent.created_by.username
-                or '-'
-            )
+        sp_display = get_submitted_processed_display(loan)
         follow_up_pending = status_key == 'follow_up_pending'
 
         filtered_rows.append({
@@ -1279,9 +1256,10 @@ def subadmin_all_loans(request):
             'agent': loan.assigned_agent.name if loan.assigned_agent else 'Unassigned',
             'employee': loan.assigned_employee.get_full_name() if loan.assigned_employee else 'Unassigned',
             'assigned_to': assigned_to,
-            'submitted_by': submitted_by,
-            'processed_by': processed_by,
-            'partner_under': partner_under,
+            'submitted_by': sp_display.get('channel_partner_name') or sp_display.get('scp_name') or '-',
+            'processed_by': sp_display.get('employee_name') or '-',
+            'partner_under': sp_display.get('partner_name') or '-',
+            'submitted_processed_lines': sp_display.get('lines', []),
             'status': status_key,
             'status_raw': loan.status,
             'status_key': status_key,
@@ -1335,6 +1313,7 @@ def subadmin_all_loans(request):
             'submitted_by': app_row.submitted_by,
             'processed_by': app_row.processed_by,
             'partner_under': app_row.partner_under,
+            'submitted_processed_lines': getattr(app_row, 'submitted_processed_lines', []),
             'status': status_key,
             'status_raw': app_row.status_raw,
             'status_key': status_key,
@@ -1441,7 +1420,34 @@ def subadmin_loan_detail(request, loan_id):
 @require_GET
 def api_subadmin_loan_details(request, loan_id):
     """Scoped full loan details for subadmin loan view modal/page."""
+    entity_type = str(request.GET.get('entity_type') or 'legacy').strip().lower()
     try:
+        if entity_type == 'application':
+            app_obj = _partner_scoped_loan_record(request.user, loan_id, 'application')
+            if not app_obj:
+                return JsonResponse({'success': False, 'error': 'Loan not found'}, status=404)
+            legacy = find_related_loan(app_obj)
+            if legacy:
+                payload = _serialize_subadmin_loan_details(legacy)
+                payload['entity_type'] = 'application'
+                payload['id'] = app_obj.id
+                return JsonResponse({'success': True, 'data': payload})
+
+            applicant = getattr(app_obj, 'applicant', None)
+            loan_type_value = str(getattr(applicant, 'loan_type', '') or '').strip()
+            payload = {
+                'id': app_obj.id,
+                'entity_type': 'application',
+                'full_name': getattr(applicant, 'full_name', '') or '-',
+                'mobile_number': getattr(applicant, 'mobile', '') or '-',
+                'email': getattr(applicant, 'email', '') or '-',
+                'loan_type': applicant.get_loan_type_display() if applicant and hasattr(applicant, 'get_loan_type_display') else loan_type_value or '-',
+                'loan_type_value': loan_type_value,
+                'loan_amount': float(getattr(applicant, 'loan_amount', 0) or 0),
+                'tenure_months': getattr(applicant, 'tenure_months', '') or '-',
+            }
+            return JsonResponse({'success': True, 'data': payload})
+
         loan = get_object_or_404(
             _subadmin_scoped_loans_qs(request.user).select_related(
                 'created_by',
@@ -1455,6 +1461,127 @@ def api_subadmin_loan_details(request, loan_id):
     except Exception as e:
         logger.error(f"Error in api_subadmin_loan_details: {str(e)}")
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+
+def _partner_scoped_loan_record(user, loan_id, entity_type='legacy'):
+    """Return scoped legacy loan or workflow application for partner edit."""
+    entity_type = str(entity_type or 'legacy').strip().lower()
+    if entity_type == 'application':
+        scoped_loans = list(_subadmin_scoped_loans_qs(user))
+        return _subadmin_workflow_only_applications(user, scoped_loans).filter(id=loan_id).select_related('applicant').first()
+    return _subadmin_scoped_loans_qs(user).filter(id=loan_id).first()
+
+
+@login_required(login_url='login')
+@subadmin_required
+@require_POST
+def api_partner_loan_fields_edit(request, loan_id):
+    """Partner-scoped edit for core applicant/loan fields only."""
+    from .loan_sync import find_related_loan, find_related_loan_application, sync_loan_to_application
+
+    try:
+        payload = json.loads(request.body.decode('utf-8') or '{}')
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        payload = request.POST.dict()
+
+    entity_type = str(payload.get('entity_type') or payload.get('source') or 'legacy').strip().lower()
+    scoped_record = _partner_scoped_loan_record(request.user, loan_id, entity_type)
+    if not scoped_record:
+        return JsonResponse({'success': False, 'error': 'Loan not found or unauthorized'}, status=404)
+
+    legacy = scoped_record if entity_type != 'application' else find_related_loan(scoped_record)
+    loan_app = scoped_record if entity_type == 'application' else find_related_loan_application(scoped_record)
+    if entity_type == 'application' and not loan_app:
+        loan_app = scoped_record
+
+    full_name = str(payload.get('full_name') or payload.get('applicant_name') or '').strip()
+    mobile_number = str(payload.get('mobile_number') or payload.get('mobile') or '').strip()
+    email = str(payload.get('email') or '').strip()
+    loan_type = str(payload.get('loan_type') or '').strip()
+    loan_amount_raw = payload.get('loan_amount')
+    tenure_raw = payload.get('tenure_months') or payload.get('tenure')
+
+    if not full_name:
+        return JsonResponse({'success': False, 'error': 'Applicant name is required'}, status=400)
+    if mobile_number and not re.fullmatch(r'[0-9+\-\s]{7,15}', mobile_number):
+        return JsonResponse({'success': False, 'error': 'Enter a valid mobile number'}, status=400)
+    if email and '@' not in email:
+        return JsonResponse({'success': False, 'error': 'Enter a valid email address'}, status=400)
+
+    try:
+        loan_amount = float(loan_amount_raw) if loan_amount_raw not in (None, '') else None
+        if loan_amount is not None and loan_amount < 0:
+            raise ValueError('negative amount')
+    except (TypeError, ValueError):
+        return JsonResponse({'success': False, 'error': 'Enter a valid loan amount'}, status=400)
+
+    try:
+        tenure_months = int(tenure_raw) if tenure_raw not in (None, '') else None
+        if tenure_months is not None and tenure_months < 0:
+            raise ValueError('negative tenure')
+    except (TypeError, ValueError):
+        return JsonResponse({'success': False, 'error': 'Enter a valid tenure in months'}, status=400)
+
+    with transaction.atomic():
+        if legacy:
+            legacy.full_name = full_name
+            if mobile_number:
+                legacy.mobile_number = mobile_number
+            if email:
+                legacy.email = email
+            if loan_type:
+                legacy.loan_type = loan_type
+            if loan_amount is not None:
+                legacy.loan_amount = loan_amount
+            if tenure_months is not None:
+                legacy.tenure_months = tenure_months
+            legacy.save(update_fields=[
+                'full_name', 'mobile_number', 'email', 'loan_type',
+                'loan_amount', 'tenure_months', 'updated_at',
+            ])
+
+        if loan_app and getattr(loan_app, 'applicant', None):
+            applicant = loan_app.applicant
+            applicant.full_name = full_name
+            if mobile_number:
+                applicant.mobile = mobile_number
+            if email:
+                applicant.email = email
+            if loan_type:
+                applicant.loan_type = loan_type
+            if loan_amount is not None:
+                applicant.loan_amount = loan_amount
+            if tenure_months is not None:
+                applicant.tenure_months = tenure_months
+            applicant.save(update_fields=[
+                'full_name', 'mobile', 'email', 'loan_type',
+                'loan_amount', 'tenure_months', 'updated_at',
+            ])
+
+        if legacy and not loan_app:
+            sync_loan_to_application(legacy, create_if_missing=True)
+
+    display_loan_type = loan_type
+    if legacy and hasattr(legacy, 'get_loan_type_display'):
+        display_loan_type = legacy.get_loan_type_display()
+    elif loan_app and getattr(loan_app, 'applicant', None) and hasattr(loan_app.applicant, 'get_loan_type_display'):
+        display_loan_type = loan_app.applicant.get_loan_type_display()
+
+    return JsonResponse({
+        'success': True,
+        'message': 'Loan updated successfully',
+        'loan': {
+            'id': loan_id,
+            'entity_type': entity_type,
+            'applicant_name': full_name,
+            'phone': mobile_number,
+            'email': email or '-',
+            'loan_type': display_loan_type,
+            'loan_type_value': loan_type,
+            'amount': loan_amount if loan_amount is not None else (float(getattr(legacy, 'loan_amount', 0) or 0) if legacy else 0),
+            'tenure_months': tenure_months,
+        },
+    })
 
 
 @login_required(login_url='login')
@@ -1869,9 +1996,12 @@ def subadmin_update_agent(request, agent_id):
                 return JsonResponse({'success': False, 'error': 'Email already exists for an active channel partner'}, status=400)
 
         if agent_id_val:
-            if Agent.objects.filter(agent_id=agent_id_val).exclude(id=agent.id).exists():
-                return JsonResponse({'success': False, 'error': 'Agent ID already exists'}, status=400)
-            if User.objects.filter(username=agent_id_val).exclude(id=getattr(agent.user, 'id', None)).exists():
+            from .uniqueness_helpers import agent_id_taken
+            if agent_id_taken(
+                agent_id_val,
+                exclude_agent_id=agent.id,
+                exclude_user_id=getattr(agent.user, 'id', None),
+            ):
                 return JsonResponse({'success': False, 'error': 'Agent ID already exists'}, status=400)
 
         if phone:
@@ -1972,13 +2102,10 @@ def subadmin_update_agent(request, agent_id):
 @require_POST
 def subadmin_delete_agent(request, agent_id):
     try:
-        agent = get_object_or_404(_subadmin_managed_agents_qs(request.user), id=agent_id)
-        agent.status = 'blocked'
-        agent.save()
+        from .uniqueness_helpers import release_agent_unique_identity
 
-        if agent.user:
-            agent.user.is_active = False
-            agent.user.save()
+        agent = get_object_or_404(_subadmin_managed_agents_qs(request.user), id=agent_id)
+        release_agent_unique_identity(agent, save=True)
 
         return JsonResponse({'success': True, 'message': 'Channel Partner deleted successfully'})
     except Exception as e:
@@ -2263,7 +2390,8 @@ def subadmin_update_employee(request, employee_id):
                 return JsonResponse({'success': False, 'error': 'Email already exists for an active employee'}, status=400)
 
         if employee_id_val:
-            if User.objects.filter(employee_id=employee_id_val).exclude(id=user.id).exists():
+            from .uniqueness_helpers import employee_id_taken
+            if employee_id_taken(employee_id_val, exclude_user_id=user.id):
                 return JsonResponse({'success': False, 'error': 'Employee ID already exists'}, status=400)
 
         if phone:
@@ -2320,9 +2448,10 @@ def subadmin_update_employee(request, employee_id):
 @require_POST
 def subadmin_delete_employee(request, employee_id):
     try:
+        from .uniqueness_helpers import release_user_unique_identity
+
         user = get_object_or_404(_subadmin_managed_employees_qs(request.user), id=employee_id)
-        user.is_active = False
-        user.save()
+        release_user_unique_identity(user, save=True)
         return JsonResponse({'success': True, 'message': 'Employee deleted successfully'})
     except Exception as e:
         logger.error(f"Error deleting employee: {str(e)}")
@@ -2424,7 +2553,7 @@ def subadmin_reports(request):
         'assigned_agent__user',
     ).prefetch_related('documents')
 
-    if request.GET.get('download'):
+    if request.GET.get('download') and request.GET.get('download') != 'table':
         from .report_exports import export_loans_csv, export_loans_excel
         format_type = (request.GET.get('format') or 'csv').lower()
         if format_type in ['excel', 'xlsx']:
@@ -2587,34 +2716,29 @@ def subadmin_reports(request):
         })
 
     report_loans = []
-    for loan in all_loans.select_related('created_by', 'assigned_employee', 'assigned_agent').order_by('-created_at'):
-        payload = _serialize_subadmin_loan_details(loan)
-        report_loans.append({
-            'id': loan.id,
-            'loan_id': payload.get('loan_id'),
-            'customer': payload.get('full_name'),
-            'mobile': payload.get('mobile_number'),
-            'email': payload.get('email'),
-            'loan_type': payload.get('loan_type'),
-            'loan_amount': payload.get('loan_amount'),
-            'status': payload.get('status_display'),
-            'created_at': payload.get('created_at'),
-            'updated_at': payload.get('updated_at'),
-            'assigned_employee': payload.get('assigned_employee'),
-            'assigned_agent': payload.get('assigned_agent'),
-            'documents': payload.get('documents', []),
-        })
+    from .report_helpers import build_report_row, export_standard_report_csv, paginate_rows
+    report_rows = [
+        build_report_row(loan, status_label_getter=_status_label)
+        for loan in all_loans.order_by('-created_at')
+    ]
+    if request.GET.get('download') == 'table':
+        return export_standard_report_csv(report_rows, 'partner-loan-reports.csv')
+
+    page_info = paginate_rows(
+        report_rows,
+        page=request.GET.get('page', 1),
+        per_page=request.GET.get('per_page', 10),
+    )
+    report_loans = page_info['rows']
 
     context = {
         'page_title': 'Reports & Analytics',
         'report_stats': report_stats,
-        'employee_performance': employee_performance,
-        'agent_performance': agent_performance,
-        'monthly_trend': monthly_trend,
         'reports': reports,
         'report_employees': report_employees,
         'report_agents': report_agents,
         'report_loans': report_loans,
+        'page_info': page_info,
         'search_query': search_query,
         'status_filter': status_filter,
         'employee_filter': employee_filter,

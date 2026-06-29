@@ -73,34 +73,15 @@ def prevent_form_rendering(status):
 
 def check_and_move_to_followup():
     """
-    Celery-like background task (can be called via cron or Celery)
-    Auto-move applications from Waiting to Follow-up after 4 hours
+    Auto-move applications from Banking Login Process to Follow Up after 4 hours.
     """
-    cutoff_time = timezone.now() - timedelta(hours=4)
-    
-    # Find all waiting applications assigned >4 hours ago with no action
-    applications_to_move = LoanApplication.objects.filter(
-        status='Waiting for Processing',
-        assigned_at__lt=cutoff_time,
-        approved_at__isnull=True,
-        rejected_at__isnull=True
+    from .followup_utils import auto_move_overdue_to_follow_up
+
+    moved = auto_move_overdue_to_follow_up()
+    return (
+        moved.get('applications_to_follow_up_pending', 0)
+        + moved.get('loans_to_follow_up_pending', 0)
     )
-    
-    moved_count = 0
-    for app in applications_to_move:
-        app.status = 'Required Follow-up'
-        app.follow_up_scheduled_at = timezone.now()
-        app.follow_up_count = (app.follow_up_count or 0) + 1
-        app.save()
-        
-        ActivityLog.objects.create(
-            action='status_updated',
-            description=f"Auto-moved {app.applicant.full_name} from Waiting to Follow-up (4hr timeout)",
-            user=None  # System action
-        )
-        moved_count += 1
-    
-    return moved_count
 
 
 # ============================================================================

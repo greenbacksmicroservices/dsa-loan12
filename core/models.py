@@ -184,6 +184,11 @@ class Loan(models.Model):
     assigned_at = models.DateTimeField(null=True, blank=True)  # When assigned to employee/agent
     action_taken_at = models.DateTimeField(null=True, blank=True)  # When approved/rejected
     follow_up_triggered_at = models.DateTimeField(null=True, blank=True)  # When auto-moved to follow-up
+    banking_processing_started_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='When the application entered Banking Login Process',
+    )
     requires_follow_up = models.BooleanField(default=False)  # Tracks if follow-up was auto-triggered
     
     # Co-applicant
@@ -551,6 +556,11 @@ class LoanApplication(models.Model):
     # Follow-up Fields (Automation)
     follow_up_scheduled_at = models.DateTimeField(null=True, blank=True, help_text="When follow-up was scheduled")
     follow_up_notified_at = models.DateTimeField(null=True, blank=True, help_text="When follow-up notification was sent")
+    banking_processing_started_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='When the application entered Banking Login Process',
+    )
     follow_up_count = models.IntegerField(default=0, help_text="Number of follow-ups triggered")
     
     # Disbursement Fields
@@ -609,11 +619,13 @@ class LoanApplication(models.Model):
         return False
     
     def trigger_follow_up(self):
-        """Move status to Required Follow-up"""
+        """Move status to Required Follow-up (Banking Login Process)."""
         from django.utils import timezone
+        now = timezone.now()
         self.status = 'Required Follow-up'
-        self.follow_up_scheduled_at = timezone.now()
-        self.follow_up_notified_at = timezone.now()
+        self.follow_up_scheduled_at = now
+        self.follow_up_notified_at = now
+        self.banking_processing_started_at = now
         self.follow_up_count += 1
         self.save()
         return True

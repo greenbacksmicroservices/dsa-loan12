@@ -77,7 +77,21 @@ def _save_otp(email, user_id, otp):
     cache.set(_otp_cooldown_key(email), int(time.time()), timeout=OTP_RESEND_COOLDOWN_SECONDS)
 
 
+def _email_config_error():
+    host_password = str(getattr(settings, 'EMAIL_HOST_PASSWORD', '') or '').strip()
+    host_user = str(getattr(settings, 'EMAIL_HOST_USER', '') or '').strip()
+    if not host_user:
+        return 'EMAIL_HOST_USER is not configured on this server'
+    if not host_password:
+        return 'EMAIL_HOST_PASSWORD is missing on this server'
+    return ''
+
+
 def _send_otp_email(to_email, otp_code):
+    config_error = _email_config_error()
+    if config_error:
+        raise RuntimeError(config_error)
+
     subject = 'DSA Loans Password Reset OTP'
     message = (
         "Your OTP for password reset is:\n\n"
@@ -95,6 +109,10 @@ def _send_otp_email(to_email, otp_code):
 
 
 def _send_new_password_email(to_email, new_password):
+    config_error = _email_config_error()
+    if config_error:
+        raise RuntimeError(config_error)
+
     subject = 'DSA Loans - Your New Password'
     message = (
         "Your password has been reset successfully.\n\n"

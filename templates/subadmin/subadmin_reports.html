@@ -275,102 +275,6 @@
         </form>
     </section>
 
-    <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-            <div class="px-4 py-3 border-b border-gray-200 bg-gray-50">
-                <h3 class="font-semibold text-gray-900">Top Employees</h3>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-sm">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-4 py-2 text-left">Employee</th>
-                            <th class="px-4 py-2 text-left">Total</th>
-                            <th class="px-4 py-2 text-left">Approved</th>
-                            <th class="px-4 py-2 text-left">Rate</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-200">
-                        {% for row in employee_performance %}
-                        <tr>
-                            <td class="px-4 py-2">{{ row.name|default:'-' }}</td>
-                            <td class="px-4 py-2">{{ row.total|default:0 }}</td>
-                            <td class="px-4 py-2 text-emerald-700 font-semibold">{{ row.approved|default:0 }}</td>
-                            <td class="px-4 py-2">{{ row.rate|default:0 }}%</td>
-                        </tr>
-                        {% empty %}
-                        <tr><td colspan="4" class="px-4 py-6 text-center text-gray-500">No employee data.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-            <div class="px-4 py-3 border-b border-gray-200 bg-gray-50">
-                <h3 class="font-semibold text-gray-900">Top Agents</h3>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-sm">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-4 py-2 text-left">Agent</th>
-                            <th class="px-4 py-2 text-left">Total</th>
-                            <th class="px-4 py-2 text-left">Approved</th>
-                            <th class="px-4 py-2 text-left">Rate</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-200">
-                        {% for row in agent_performance %}
-                        <tr>
-                            <td class="px-4 py-2">{{ row.name|default:'-' }}</td>
-                            <td class="px-4 py-2">{{ row.total|default:0 }}</td>
-                            <td class="px-4 py-2 text-emerald-700 font-semibold">{{ row.approved|default:0 }}</td>
-                            <td class="px-4 py-2">{{ row.rate|default:0 }}%</td>
-                        </tr>
-                        {% empty %}
-                        <tr><td colspan="4" class="px-4 py-6 text-center text-gray-500">No agent data.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        <div class="px-4 py-3 border-b border-gray-200 bg-gray-50">
-            <h3 class="font-semibold text-gray-900">Monthly Trend</h3>
-        </div>
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm">
-                <thead class="bg-gray-50">
-                    <tr>
-                        <th class="px-4 py-2 text-left">Month</th>
-                        <th class="px-4 py-2 text-left">Applications</th>
-                        <th class="px-4 py-2 text-left">Approved</th>
-                        <th class="px-4 py-2 text-left">Rejected</th>
-                        <th class="px-4 py-2 text-left">Disbursed</th>
-                        <th class="px-4 py-2 text-left">Value</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-200">
-                    {% for row in monthly_trend %}
-                    <tr>
-                        <td class="px-4 py-2">{{ row.month }}</td>
-                        <td class="px-4 py-2">{{ row.applications }}</td>
-                        <td class="px-4 py-2 text-emerald-700 font-semibold">{{ row.approved }}</td>
-                        <td class="px-4 py-2 text-rose-700 font-semibold">{{ row.rejected }}</td>
-                        <td class="px-4 py-2 text-indigo-700 font-semibold">{{ row.disbursed }}</td>
-                        <td class="px-4 py-2">Rs. {{ row.value|default:0 }}</td>
-                    </tr>
-                    {% empty %}
-                    <tr><td colspan="6" class="px-4 py-6 text-center text-gray-500">No monthly data.</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         <div class="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between gap-3">
             <h3 class="font-semibold text-gray-900">Employee Full Details</h3>
@@ -493,66 +397,71 @@
 
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         <div class="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between gap-3">
-            <h3 class="font-semibold text-gray-900">All Loan Application Forms</h3>
-            <button type="button" onclick="downloadTableCsv('loans-report-table', 'loan-applications-report.csv')" class="px-3 py-2 bg-emerald-600 text-white rounded-lg text-xs hover:bg-emerald-700">Download</button>
+            <h3 class="font-semibold text-gray-900">Loan Reports</h3>
+            <a href="?{% if search_query %}q={{ search_query|urlencode }}&{% endif %}{% if status_filter %}status={{ status_filter|urlencode }}&{% endif %}{% if employee_filter %}employee={{ employee_filter|urlencode }}&{% endif %}{% if agent_filter %}partner={{ agent_filter|urlencode }}&{% endif %}{% if period %}period={{ period|urlencode }}&{% endif %}{% if from_date %}from_date={{ from_date|urlencode }}&{% endif %}{% if to_date %}to_date={{ to_date|urlencode }}&{% endif %}download=table" class="px-3 py-2 bg-emerald-600 text-white rounded-lg text-xs hover:bg-emerald-700">Download Reports</a>
         </div>
         <div class="overflow-x-auto">
-            <table id="loans-report-table" class="w-full min-w-[1600px] text-sm">
+            <table id="loans-report-table" class="w-full min-w-[1100px] text-sm">
                 <thead class="bg-gray-50">
                     <tr>
                         <th class="px-4 py-2 text-left">Loan ID</th>
-                        <th class="px-4 py-2 text-left">Customer</th>
-                        <th class="px-4 py-2 text-left">Mobile</th>
+                        <th class="px-4 py-2 text-left">Name</th>
                         <th class="px-4 py-2 text-left">Email</th>
-                        <th class="px-4 py-2 text-left">Loan Type</th>
-                        <th class="px-4 py-2 text-left">Amount</th>
+                        <th class="px-4 py-2 text-left">Phone</th>
+                        <th class="px-4 py-2 text-left">Applied Amount</th>
+                        <th class="px-4 py-2 text-left">Disbursed Amount</th>
+                        <th class="px-4 py-2 text-left">Disbursed Date</th>
                         <th class="px-4 py-2 text-left">Status</th>
-                        <th class="px-4 py-2 text-left">Employee</th>
-                        <th class="px-4 py-2 text-left">Channel Partner</th>
-                        <th class="px-4 py-2 text-left">Created</th>
-                        <th class="px-4 py-2 text-left">Updated</th>
-                        <th class="px-4 py-2 text-left">Documents</th>
-                        <th class="px-4 py-2 text-left">Actions</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-200">
                     {% for row in report_loans %}
                     <tr>
                         <td class="px-4 py-2 font-semibold">{{ row.loan_id }}</td>
-                        <td class="px-4 py-2">{{ row.customer }}</td>
-                        <td class="px-4 py-2">{{ row.mobile }}</td>
+                        <td class="px-4 py-2">{{ row.name }}</td>
                         <td class="px-4 py-2">{{ row.email }}</td>
-                        <td class="px-4 py-2">{{ row.loan_type }}</td>
-                        <td class="px-4 py-2 font-semibold">Rs. {{ row.loan_amount }}</td>
-                        <td class="px-4 py-2">{{ row.status }}</td>
-                        <td class="px-4 py-2">{{ row.assigned_employee }}</td>
-                        <td class="px-4 py-2">{{ row.assigned_agent }}</td>
-                        <td class="px-4 py-2">{{ row.created_at }}</td>
-                        <td class="px-4 py-2">{{ row.updated_at }}</td>
-                        <td class="px-4 py-2">
-                            <div class="flex gap-1 flex-wrap">
-                                {% for doc in row.documents %}
-                                    {% if doc.url %}
-                                    <a href="{{ doc.url }}" target="_blank" class="px-2 py-1 bg-blue-600 text-white rounded text-xs">{{ doc.name|default:"View" }}</a>
-                                    <a href="{{ doc.url }}" download class="px-2 py-1 bg-emerald-600 text-white rounded text-xs">Download</a>
-                                    {% endif %}
-                                {% empty %}
-                                    <span class="text-gray-400">No docs</span>
-                                {% endfor %}
-                            </div>
-                        </td>
-                        <td class="px-4 py-2">
-                            <div class="flex gap-2 flex-wrap">
-                                <a href="{% url 'subadmin_loan_detail' row.id %}" class="px-3 py-1 bg-blue-600 text-white rounded text-xs">View</a>
-                                <button type="button" onclick="downloadTableRowCsv(this, 'loan-{{ row.loan_id }}.csv')" class="px-3 py-1 bg-emerald-600 text-white rounded text-xs">Download</button>
-                            </div>
-                        </td>
+                        <td class="px-4 py-2">{{ row.phone }}</td>
+                        <td class="px-4 py-2 font-semibold">Rs. {{ row.applied_amount|floatformat:0 }}</td>
+                        <td class="px-4 py-2">{% if row.disbursed_amount %}Rs. {{ row.disbursed_amount|floatformat:0 }}{% else %}-{% endif %}</td>
+                        <td class="px-4 py-2">{{ row.disbursed_date|default:"-" }}</td>
+                        <td class="px-4 py-2">{{ row.status_display }}</td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="13" class="px-4 py-6 text-center text-gray-500">No loan applications.</td></tr>
+                    <tr><td colspan="8" class="px-4 py-6 text-center text-gray-500">No loan applications.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
+        </div>
+        <div class="px-4 py-3 border-t border-gray-200 flex flex-wrap items-center justify-between gap-3 text-sm text-gray-600">
+            <form method="get" class="flex items-center gap-2">
+                <input type="hidden" name="q" value="{{ search_query }}">
+                <input type="hidden" name="status" value="{{ status_filter }}">
+                <input type="hidden" name="employee" value="{{ employee_filter }}">
+                <input type="hidden" name="partner" value="{{ agent_filter }}">
+                <input type="hidden" name="period" value="{{ period }}">
+                <input type="hidden" name="from_date" value="{{ from_date }}">
+                <input type="hidden" name="to_date" value="{{ to_date }}">
+                <span>Show</span>
+                <select name="per_page" class="border border-gray-300 rounded px-2 py-1" onchange="this.form.submit()">
+                    <option value="5" {% if page_info.per_page == 5 %}selected{% endif %}>5</option>
+                    <option value="10" {% if page_info.per_page == 10 %}selected{% endif %}>10</option>
+                    <option value="25" {% if page_info.per_page == 25 %}selected{% endif %}>25</option>
+                </select>
+                <span>Entries</span>
+            </form>
+            <div>Showing {{ page_info.start }} to {{ page_info.end }} of {{ page_info.total }} Entries</div>
+            <div class="flex gap-2">
+                {% if page_info.page > 1 %}
+                <a class="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50" href="?page={{ page_info.page|add:'-1' }}&per_page={{ page_info.per_page }}&q={{ search_query|urlencode }}&status={{ status_filter|urlencode }}&employee={{ employee_filter|urlencode }}&partner={{ agent_filter|urlencode }}&period={{ period|urlencode }}&from_date={{ from_date|urlencode }}&to_date={{ to_date|urlencode }}">Previous</a>
+                {% else %}
+                <span class="px-3 py-1 border border-gray-200 rounded text-gray-400">Previous</span>
+                {% endif %}
+                {% if page_info.page < page_info.total_pages %}
+                <a class="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50" href="?page={{ page_info.page|add:'1' }}&per_page={{ page_info.per_page }}&q={{ search_query|urlencode }}&status={{ status_filter|urlencode }}&employee={{ employee_filter|urlencode }}&partner={{ agent_filter|urlencode }}&period={{ period|urlencode }}&from_date={{ from_date|urlencode }}&to_date={{ to_date|urlencode }}">Next</a>
+                {% else %}
+                <span class="px-3 py-1 border border-gray-200 rounded text-gray-400">Next</span>
+                {% endif %}
+            </div>
         </div>
     </div>
 </div>

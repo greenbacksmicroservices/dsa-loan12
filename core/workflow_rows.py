@@ -7,7 +7,7 @@ workflow-only records with the same shape as legacy rows.
 
 from types import SimpleNamespace
 
-from .loan_helpers import display_loan_id, resolve_stored_loan_id
+from .loan_helpers import display_loan_id, get_submitted_processed_display, resolve_stored_loan_id
 from .loan_sync import find_related_loan
 from .models import Applicant, Loan
 from .updated_document_utils import (
@@ -156,6 +156,8 @@ def build_application_display_row(app_obj, status_key=None):
         legacy_loan=related_legacy,
         loan_application=app_obj,
     )
+    sp_display = get_submitted_processed_display(related_legacy, app_obj)
+    submitted_processed_lines = sp_display.get('lines', [])
 
     return WorkflowApplicationRow(
         id=app_obj.id,
@@ -202,6 +204,7 @@ def build_application_display_row(app_obj, status_key=None):
         partner_under_id=partner_under_id,
         agent=agent_display(assigned_agent, "Unassigned"),
         employee=user_display(assigned_employee, "Unassigned"),
+        submitted_processed_lines=submitted_processed_lines,
     )
 
 

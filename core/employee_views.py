@@ -93,12 +93,12 @@ def add_employee(request):
             if User.objects.filter(phone=phone, is_active=True).exists():
                 return JsonResponse({'error': 'Phone number already exists for an active employee'}, status=400)
             
-            # Check if employee_id already exists
-            if User.objects.filter(employee_id=employee_id).exists():
+            from .uniqueness_helpers import employee_id_taken, generate_available_username
+
+            if employee_id_taken(employee_id):
                 return JsonResponse({'error': 'Employee ID already exists'}, status=400)
             
-            # Create user
-            username = email.split('@')[0]  # Use email prefix as username
+            username = generate_available_username(email.split('@')[0])
             user = User.objects.create_user(
                 username=username,
                 email=email,
@@ -198,11 +198,10 @@ def api_delete_employee(request, employee_id):
         return Response({'error': 'Access denied'}, status=403)
     
     try:
+        from .uniqueness_helpers import release_user_unique_identity
+
         employee = User.objects.get(id=employee_id, role='employee')
-        
-        # Soft delete - mark as inactive
-        employee.is_active = False
-        employee.save()
+        release_user_unique_identity(employee, save=True)
         
         return Response({'success': True, 'message': 'Employee deleted successfully'})
     except User.DoesNotExist:
