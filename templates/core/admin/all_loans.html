@@ -1229,18 +1229,8 @@
                     </div>
                 </div>
 
-                <!-- Reject Option -->
-                <div style="border: 2px solid #fee2e2; border-radius: 8px; padding: 15px; cursor: pointer; transition: all 0.2s; flex: 1 1 180px;" onclick="selectAction('reject')" id="rejectOption">
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        <div style="width: 20px; height: 20px; border: 2px solid #dc2626; border-radius: 50%; display: flex; align-items: center; justify-content: center;" id="rejectRadio">
-                            <div style="display: none; width: 10px; height: 10px; background: #dc2626; border-radius: 50%;"></div>
-                        </div>
-                        <div>
-                            <p style="color: #dc2626; font-weight: 700; margin: 0 0 5px 0; font-size: 14px;">Reject Application</p>
-                            <p style="color: #666; margin: 0; font-size: 12px;">Mark this loan application as rejected with reason</p>
-                        </div>
-                    </div>
-                </div>
+                <!-- Reject Option (removed from admin Loan Management) -->
+                <div style="display: none;" id="rejectOption"></div>
 
                 <!-- Move to Bank Login Process -->
                 <div style="border: 2px solid #cffafe; border-radius: 8px; padding: 15px; cursor: pointer; transition: all 0.2s; flex: 1 1 180px; display: none;" onclick="selectAction('collect')" id="collectOption">
@@ -1281,18 +1271,8 @@
                     </div>
                 </div>
 
-                <!-- Update Details Option -->
-                <div style="border: 2px solid #dbeafe; border-radius: 8px; padding: 15px; cursor: pointer; transition: all 0.2s; flex: 1 1 180px;" onclick="selectAction('update_disbursed')" id="updateDisbursedOption">
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        <div style="width: 20px; height: 20px; border: 2px solid #2563eb; border-radius: 50%; display: flex; align-items: center; justify-content: center;" id="updateDisbursedRadio">
-                            <div style="display: none; width: 10px; height: 10px; background: #2563eb; border-radius: 50%;"></div>
-                        </div>
-                        <div>
-                            <p id="updateDetailsTitle" style="color: #2563eb; font-weight: 700; margin: 0 0 5px 0; font-size: 14px;">Update Loan Details</p>
-                            <p id="updateDetailsSubtitle" style="color: #666; margin: 0; font-size: 12px;">Edit applicant, loan, and remark details for this loan</p>
-                        </div>
-                    </div>
-                </div>
+                <!-- Update Details Option (removed from admin Loan Management) -->
+                <div style="display: none;" id="updateDisbursedOption"></div>
             </div>
         </div>
         
@@ -1325,7 +1305,7 @@
                     <input id="collectLoanAccountNumber" type="text" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px;" placeholder="Enter loan account number">
                 </div>
                 <div>
-                    <label style="display: block; color: #1a202c; font-weight: 700; margin-bottom: 8px; font-size: 13px;">Manual Loan ID *</label>
+                    <label style="display: block; color: #1a202c; font-weight: 700; margin-bottom: 8px; font-size: 13px;">Loan ID</label>
                     <input id="collectManualLoanId" type="text" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px;" placeholder="Enter manual Loan ID">
                 </div>
                 <div>
@@ -1356,14 +1336,11 @@
         
         <!-- Disbursement Details -->
         <div id="disbursementDetailsDiv" style="display: none; margin-bottom: 30px;">
-            <label style="display: block; color: #1a202c; font-weight: 700; margin-bottom: 10px; font-size: 14px;">Loan ID</label>
-            <input id="disbursementManualLoanId" type="text" style="width: 100%; padding: 12px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 14px; margin-bottom: 12px; box-sizing: border-box;" placeholder="Edit manual Loan ID if needed">
-            <label style="display: block; color: #1a202c; font-weight: 700; margin-bottom: 10px; font-size: 14px;">Disbursed Amount *</label>
-            <input id="disbursementAmount" type="number" min="0" step="0.01" style="width: 100%; padding: 12px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 14px; margin-bottom: 12px; box-sizing: border-box;" placeholder="Enter disbursed amount">
-            <label style="display: block; color: #1a202c; font-weight: 700; margin-bottom: 10px; font-size: 14px;">Disbursed Date *</label>
+            <p style="margin: 0 0 12px 0; color: #1a202c; font-weight: 700; font-size: 14px;">Disbursement Details</p>
+            <label style="display: block; color: #1a202c; font-weight: 700; margin-bottom: 10px; font-size: 14px;">Disbursement Amount *</label>
+            <input id="disbursementAmount" type="number" min="0" step="0.01" style="width: 100%; padding: 12px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 14px; margin-bottom: 12px; box-sizing: border-box;" placeholder="Enter disbursement amount">
+            <label style="display: block; color: #1a202c; font-weight: 700; margin-bottom: 10px; font-size: 14px;">Disbursement Date *</label>
             <input id="disbursementDate" type="date" style="width: 100%; padding: 12px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 14px; margin-bottom: 12px; box-sizing: border-box;">
-            <label style="display: block; color: #1a202c; font-weight: 700; margin-bottom: 10px; font-size: 14px;">Disbursement Remark</label>
-            <textarea id="disbursementNotes" style="width: 100%; padding: 12px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 14px; font-family: inherit; resize: vertical; min-height: 100px; box-sizing: border-box;" placeholder="Add any notes about the disbursement"></textarea>
         </div>
 
         <!-- Disbursed Edit Details -->
@@ -1734,19 +1711,7 @@ function normalizeBankTypeKey(value) {
 
 function toggleDisbursedUpdateOption(statusKey) {
     const option = document.getElementById('updateDisbursedOption');
-    if (!option) return;
-    const title = document.getElementById('updateDetailsTitle');
-    const subtitle = document.getElementById('updateDetailsSubtitle');
-    const note = document.getElementById('editDetailNote');
-    const isDisbursed = statusKey === 'disbursed';
-    option.style.display = 'block';
-    if (title) title.textContent = isDisbursed ? 'Update Disbursed Details' : 'Update Loan Details';
-    if (subtitle) subtitle.textContent = isDisbursed
-        ? 'Edit disbursement, sign, and remark details for this already-disbursed loan'
-        : 'Edit applicant, loan, and remark details for this loan';
-    if (note) note.textContent = isDisbursed
-        ? 'Update disbursement and sign details for this loan.'
-        : 'Disbursement fields apply only after the loan is disbursed.';
+    if (option) option.style.display = 'none';
 }
 
 function updateWorkflowActionAvailability(statusKey) {
@@ -3160,9 +3125,6 @@ function resetActionSelection() {
     if (collectDsaName) collectDsaName.value = existingDsaName;
     if (collectBankerDescription) collectBankerDescription.value = existingDescription;
     document.getElementById('revertRemark').value = '';
-    document.getElementById('disbursementNotes').value = '';
-    const disbursementManualLoanId = document.getElementById('disbursementManualLoanId');
-    if (disbursementManualLoanId) disbursementManualLoanId.value = currentManualLoanId;
     const disbursementAmount = document.getElementById('disbursementAmount');
     if (disbursementAmount) {
         disbursementAmount.value = firstMeaningfulValue(
@@ -3179,7 +3141,8 @@ function resetActionSelection() {
     
     // Reset radio buttons
     document.getElementById('approveOption').style.borderColor = '#dcfce7';
-    document.getElementById('rejectOption').style.borderColor = '#fee2e2';
+    const rejectOption = document.getElementById('rejectOption');
+    if (rejectOption && rejectOption.style) rejectOption.style.borderColor = '#fee2e2';
     const collectOption = document.getElementById('collectOption');
     if (collectOption) {
         collectOption.style.borderColor = '#cffafe';
@@ -3193,8 +3156,10 @@ function resetActionSelection() {
     if (updateDisbursedOption) {
         updateDisbursedOption.style.borderColor = '#dbeafe';
     }
-    document.getElementById('approveRadio').querySelector('div').style.display = 'none';
-    document.getElementById('rejectRadio').querySelector('div').style.display = 'none';
+    const approveRadio = document.getElementById('approveRadio');
+    if (approveRadio) approveRadio.querySelector('div').style.display = 'none';
+    const rejectRadio = document.getElementById('rejectRadio');
+    if (rejectRadio) rejectRadio.querySelector('div').style.display = 'none';
     const collectRadio = document.getElementById('collectRadio');
     if (collectRadio) {
         collectRadio.querySelector('div').style.display = 'none';
@@ -3214,7 +3179,6 @@ function resetActionSelection() {
 function selectAction(action) {
     currentAction = action;
     document.getElementById('approveOption').style.borderColor = action === 'approve' ? '#10b981' : '#dcfce7';
-    document.getElementById('rejectOption').style.borderColor = action === 'reject' ? '#dc2626' : '#fee2e2';
     const collectOption = document.getElementById('collectOption');
     if (collectOption && collectOption.style.display !== 'none') {
         collectOption.style.borderColor = action === 'collect' ? '#0891b2' : '#cffafe';
@@ -3224,56 +3188,111 @@ function selectAction(action) {
         revertOption.style.borderColor = action === 'revert' ? '#ea580c' : '#ffedd5';
     }
     document.getElementById('disburseOption').style.borderColor = action === 'disburse' ? '#10b981' : '#dcfce7';
-    const updateDisbursedOption = document.getElementById('updateDisbursedOption');
-    if (updateDisbursedOption && updateDisbursedOption.style.display !== 'none') {
-        updateDisbursedOption.style.borderColor = action === 'update_disbursed' ? '#2563eb' : '#dbeafe';
-    }
-    document.getElementById('approveRadio').querySelector('div').style.display = action === 'approve' ? 'block' : 'none';
-    document.getElementById('rejectRadio').querySelector('div').style.display = action === 'reject' ? 'block' : 'none';
+
+    const approveRadio = document.getElementById('approveRadio');
+    if (approveRadio) approveRadio.querySelector('div').style.display = action === 'approve' ? 'block' : 'none';
     const collectRadio = document.getElementById('collectRadio');
-    if (collectRadio) {
-        collectRadio.querySelector('div').style.display = action === 'collect' ? 'block' : 'none';
-    }
+    if (collectRadio) collectRadio.querySelector('div').style.display = action === 'collect' ? 'block' : 'none';
     const revertRadio = document.getElementById('revertRadio');
-    if (revertRadio) {
-        revertRadio.querySelector('div').style.display = action === 'revert' ? 'block' : 'none';
-    }
-    document.getElementById('disburseRadio').querySelector('div').style.display = action === 'disburse' ? 'block' : 'none';
-    const updateDisbursedRadio = document.getElementById('updateDisbursedRadio');
-    if (updateDisbursedRadio) {
-        updateDisbursedRadio.querySelector('div').style.display = action === 'update_disbursed' ? 'block' : 'none';
-    }
-    
-    document.getElementById('rejectionReasonDiv').style.display = action === 'reject' ? 'block' : 'none';
-    document.getElementById('collectRemarkDiv').style.display = (action === 'collect' || action === 'reject' || action === 'approve') ? 'block' : 'none';
+    if (revertRadio) revertRadio.querySelector('div').style.display = action === 'revert' ? 'block' : 'none';
+    const disburseRadio = document.getElementById('disburseRadio');
+    if (disburseRadio) disburseRadio.querySelector('div').style.display = action === 'disburse' ? 'block' : 'none';
+
+    document.getElementById('rejectionReasonDiv').style.display = 'none';
+    document.getElementById('collectRemarkDiv').style.display = (action === 'collect' || action === 'approve' || action === 'disburse') ? 'block' : 'none';
     const bankingGrid = document.getElementById('collectBankingFieldsGrid');
     if (bankingGrid) {
-        bankingGrid.style.display = (action === 'collect' || action === 'approve') ? 'grid' : 'none';
+        bankingGrid.style.display = (action === 'collect' || action === 'approve' || action === 'disburse') ? 'grid' : 'none';
     }
     document.getElementById('revertRemarkDiv').style.display = action === 'revert' ? 'block' : 'none';
     document.getElementById('disbursementDetailsDiv').style.display = action === 'disburse' ? 'block' : 'none';
-    document.getElementById('disbursedEditDiv').style.display = action === 'update_disbursed' ? 'block' : 'none';
+    document.getElementById('disbursedEditDiv').style.display = 'none';
+
     const collectRemarkLabel = document.getElementById('collectRemarkLabel');
     const collectRemarkInput = document.getElementById('collectRemark');
     if (collectRemarkLabel) {
-        if (action === 'reject') {
-            collectRemarkLabel.textContent = 'Rejection Remark / Description';
-        } else if (action === 'approve') {
+        if (action === 'approve') {
             collectRemarkLabel.textContent = 'Approval Remark *';
+        } else if (action === 'disburse') {
+            collectRemarkLabel.textContent = 'Remark';
         } else {
             collectRemarkLabel.textContent = 'Bank Login Process Remark';
         }
     }
     if (collectRemarkInput) {
-        if (action === 'reject') {
-            collectRemarkInput.placeholder = 'Add rejection remark or description...';
-        } else if (action === 'approve') {
+        if (action === 'approve') {
             collectRemarkInput.placeholder = 'Add approval remark...';
+        } else if (action === 'disburse') {
+            collectRemarkInput.placeholder = 'Add remark...';
         } else {
             collectRemarkInput.placeholder = 'Add remark before moving to Bank Login Process...';
         }
     }
     document.getElementById('submitActionBtn').style.display = 'block';
+}
+
+function collectBankingFormValues() {
+    return {
+        bankName: document.getElementById('collectBankName')?.value.trim() || '',
+        bankerName: document.getElementById('collectBankerName')?.value.trim() || '',
+        bankerPhone: document.getElementById('collectBankerPhone')?.value.trim() || '',
+        bankerEmail: document.getElementById('collectBankerEmail')?.value.trim() || '',
+        loanAccountNumber: document.getElementById('collectLoanAccountNumber')?.value.trim() || '',
+        manualLoanId: document.getElementById('collectManualLoanId')?.value.trim() || '',
+        verifiedLoanAmount: document.getElementById('collectVerifiedLoanAmount')?.value.trim() || '',
+        finalLoanAmount: document.getElementById('collectFinalLoanAmount')?.value.trim() || '',
+        dsaName: document.getElementById('collectDsaName')?.value.trim() || '',
+        bankerDescription: document.getElementById('collectBankerDescription')?.value.trim() || '',
+        remark: document.getElementById('collectRemark')?.value.trim() || '',
+    };
+}
+
+function validateBankingFields(values, requireApprovalRemark) {
+    if (!values.bankName || !values.bankerName || !values.bankerPhone || !values.bankerEmail || !values.verifiedLoanAmount || !values.finalLoanAmount || !values.dsaName) {
+        alert('Please fill Bank Name, Banker details, Verified/Final Loan Amount, and DSA Name.');
+        return false;
+    }
+    if (requireApprovalRemark && !values.remark) {
+        alert('Please fill Approval Remark.');
+        return false;
+    }
+    const phoneDigits = values.bankerPhone.replace(/\D/g, '');
+    if (phoneDigits.length < 10 || phoneDigits.length > 15) {
+        alert('Please enter valid banker phone (10-15 digits).');
+        return false;
+    }
+    if (!values.bankerEmail.includes('@')) {
+        alert('Please enter valid banker email.');
+        return false;
+    }
+    if (Number(values.verifiedLoanAmount) <= 0 || Number(values.finalLoanAmount) <= 0) {
+        alert('Verified and Final loan amount must be greater than zero.');
+        return false;
+    }
+    return true;
+}
+
+function buildBankingPayload(values, extra = {}) {
+    const payload = {
+        bank_name: values.bankName,
+        banker_name: values.bankerName,
+        banker_phone: values.bankerPhone,
+        banker_email: values.bankerEmail,
+        loan_account_number: values.loanAccountNumber,
+        account_number: values.loanAccountNumber,
+        verified_loan_amount: values.verifiedLoanAmount,
+        final_loan_amount: values.finalLoanAmount,
+        dsa_name: values.dsaName,
+        banker_description: values.bankerDescription,
+        description: values.bankerDescription,
+        bank_remark: values.remark,
+        ...extra,
+    };
+    if (values.manualLoanId) {
+        payload.loan_id = values.manualLoanId;
+        payload.manual_loan_id = values.manualLoanId;
+    }
+    return payload;
 }
 
 // Submit action
@@ -3288,55 +3307,15 @@ function submitAction() {
     const actionEntityType = currentEntityType || 'legacy';
     
     if (currentAction === 'approve') {
-        const bankName = document.getElementById('collectBankName')?.value.trim() || '';
-        const bankerName = document.getElementById('collectBankerName')?.value.trim() || '';
-        const bankerPhone = document.getElementById('collectBankerPhone')?.value.trim() || '';
-        const bankerEmail = document.getElementById('collectBankerEmail')?.value.trim() || '';
-        const loanAccountNumber = document.getElementById('collectLoanAccountNumber')?.value.trim() || '';
-        const manualLoanId = document.getElementById('collectManualLoanId')?.value.trim() || '';
-        const verifiedLoanAmount = document.getElementById('collectVerifiedLoanAmount')?.value.trim() || '';
-        const finalLoanAmount = document.getElementById('collectFinalLoanAmount')?.value.trim() || '';
-        const dsaName = document.getElementById('collectDsaName')?.value.trim() || '';
-        const bankerDescription = document.getElementById('collectBankerDescription')?.value.trim() || '';
-        const approvalRemark = document.getElementById('collectRemark')?.value.trim() || '';
-        if (!bankName || !bankerName || !bankerPhone || !bankerEmail || !manualLoanId || !verifiedLoanAmount || !finalLoanAmount || !dsaName || !approvalRemark) {
-            alert('Please fill all required approve fields including Approval Remark.');
-            return;
-        }
+        const values = collectBankingFormValues();
+        if (!validateBankingFields(values, true)) return;
         endpoint = `/api/employee/loan/${currentLoanId}/approve/`;
-        data = {
+        data = buildBankingPayload(values, {
             entity_type: actionEntityType,
-            bank_name: bankName,
-            banker_name: bankerName,
-            banker_phone: bankerPhone,
-            banker_email: bankerEmail,
-            loan_account_number: loanAccountNumber,
-            account_number: loanAccountNumber,
-            loan_id: manualLoanId,
-            manual_loan_id: manualLoanId,
-            verified_loan_amount: verifiedLoanAmount,
-            final_loan_amount: finalLoanAmount,
-            dsa_name: dsaName,
-            banker_description: bankerDescription,
-            description: bankerDescription,
-            approval_remark: approvalRemark,
-            approval_notes: approvalRemark,
-            bank_remark: approvalRemark,
-        };
-    } else if (currentAction === 'reject') {
-        const reason = document.getElementById('rejectionReason').value.trim();
-        const rejectionRemark = document.getElementById('collectRemark').value.trim();
-        if (!reason) {
-            alert('Please provide a reason for rejection');
-            return;
-        }
-        endpoint = `/api/employee/loan/${currentLoanId}/reject/`;
-        data = {
-            rejection_reason: reason,
-            bank_remark: rejectionRemark,
-            banker_description: rejectionRemark,
-            entity_type: actionEntityType
-        };
+            admin_fast_action: true,
+            approval_remark: values.remark,
+            approval_notes: values.remark,
+        });
     } else if (currentAction === 'collect') {
         const bankName = document.getElementById('collectBankName')?.value.trim() || '';
         const bankerName = document.getElementById('collectBankerName')?.value.trim() || '';
@@ -3393,84 +3372,26 @@ function submitAction() {
             entity_type: actionEntityType
         };
     } else if (currentAction === 'disburse') {
-        endpoint = `/api/employee/loan/${currentLoanId}/disburse/`;
-        const notes = document.getElementById('disbursementNotes').value.trim();
-        const manualLoanId = document.getElementById('disbursementManualLoanId')?.value.trim() || '';
+        const values = collectBankingFormValues();
+        if (!validateBankingFields(values, false)) return;
         const disbursementAmount = document.getElementById('disbursementAmount')?.value.trim() || '';
         const disbursementDate = document.getElementById('disbursementDate')?.value.trim() || '';
         if (!disbursementAmount || !disbursementDate) {
-            alert('Please enter disbursed amount and date.');
+            alert('Please enter disbursement amount and date.');
             return;
         }
         if (Number(disbursementAmount) < 0) {
-            alert('Disbursed amount must be zero or greater.');
+            alert('Disbursement amount must be zero or greater.');
             return;
         }
-        data = {
-            disbursement_notes: notes,
+        endpoint = `/api/employee/loan/${currentLoanId}/disburse/`;
+        data = buildBankingPayload(values, {
+            entity_type: actionEntityType,
+            admin_fast_action: true,
+            disbursement_notes: values.remark,
             disbursement_amount: disbursementAmount,
             disbursement_date: disbursementDate,
-            entity_type: actionEntityType
-        };
-        if (manualLoanId) {
-            data.manual_loan_id = manualLoanId;
-            data.loan_id = manualLoanId;
-        }
-    } else if (currentAction === 'update_disbursed') {
-        endpoint = `/api/loan/${currentLoanId}/disbursed-details/update/`;
-        const leaderName = document.getElementById('editLeaderName').value.trim();
-        const processingRemarks = [
-            leaderName ? `Leader Name: ${leaderName}` : '',
-            document.getElementById('editProcessingRemarks').value.trim()
-        ].filter(Boolean).join('\n');
-        data = {
-            disbursement_amount: document.getElementById('editDisbursedAmount').value || null,
-            disbursed_date: document.getElementById('editDisbursedDate').value || null,
-            full_name: document.getElementById('editApplicantName').value.trim(),
-            mobile_number: document.getElementById('editApplicantMobile').value.trim(),
-            email: document.getElementById('editApplicantEmail').value.trim(),
-            father_name: document.getElementById('editFatherName').value.trim(),
-            mother_name: document.getElementById('editMotherName').value.trim(),
-            gender: document.getElementById('editGender').value,
-            city: document.getElementById('editApplicantCity').value.trim(),
-            state: document.getElementById('editApplicantState').value.trim(),
-            pin_code: document.getElementById('editApplicantPin').value.trim(),
-            permanent_address: document.getElementById('editApplicantPermanentAddress').value.trim(),
-            current_address: document.getElementById('editApplicantCurrentAddress').value.trim(),
-            loan_type: document.getElementById('editApplicantLoanType').value,
-            loan_amount: document.getElementById('editApplicantLoanAmount').value || null,
-            tenure_months: document.getElementById('editLoanTenure').value || null,
-            interest_rate: document.getElementById('editLoanInterestRate').value || null,
-            loan_purpose: document.getElementById('editLoanPurpose').value.trim(),
-            bank_name: document.getElementById('editBankName').value.trim(),
-            bank_account_number: document.getElementById('editBankAccount').value.trim(),
-            bank_ifsc_code: document.getElementById('editBankIfsc').value.trim(),
-            bank_type: document.getElementById('editBankType').value,
-            has_co_applicant: document.getElementById('editHasCoApplicant').checked,
-            co_applicant_name: document.getElementById('editCoApplicantName').value.trim(),
-            co_applicant_phone: document.getElementById('editCoApplicantPhone').value.trim(),
-            co_applicant_email: document.getElementById('editCoApplicantEmail').value.trim(),
-            has_guarantor: document.getElementById('editHasGuarantor').checked,
-            guarantor_name: document.getElementById('editGuarantorName').value.trim(),
-            guarantor_phone: document.getElementById('editGuarantorPhone').value.trim(),
-            guarantor_email: document.getElementById('editGuarantorEmail').value.trim(),
-            sm_name: document.getElementById('editSmName').value.trim(),
-            sm_phone_number: document.getElementById('editSmPhone').value.trim(),
-            sm_email: document.getElementById('editSmEmail').value.trim(),
-            is_sm_signed: document.getElementById('editIsSmSigned').checked,
-            sm_signed_at: document.getElementById('editSmSignedAt').value || null,
-            remarks: document.getElementById('editDisbursedRemarks').value.trim(),
-            processing_remarks: processingRemarks,
-        };
-        const manualLoanId = document.getElementById('editManualLoanId').value.trim();
-        if (manualLoanId) {
-            data.manual_loan_id = manualLoanId;
-        }
-
-        const fullEnabled = document.getElementById('editFullRemarksEnabled')?.checked;
-        if (fullEnabled) {
-            data.remarks_full = document.getElementById('editRemarksFull')?.value || '';
-        }
+        });
     }
 
     if (!endpoint) {
@@ -3483,11 +3404,19 @@ function submitAction() {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'X-CSRFToken': getCookie('csrftoken')
+            'X-CSRFToken': getCookie('csrftoken'),
+            'X-Requested-With': 'XMLHttpRequest',
         },
+        credentials: 'same-origin',
         body: JSON.stringify(data)
     })
-    .then(response => response.json())
+    .then(async (response) => {
+        const contentType = (response.headers.get('content-type') || '').toLowerCase();
+        if (!contentType.includes('application/json')) {
+            throw new Error('Unexpected server response. Please refresh and try again.');
+        }
+        return response.json();
+    })
     .then(result => {
         if (result.success) {
             closeEditModal();

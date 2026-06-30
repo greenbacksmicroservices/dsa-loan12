@@ -9076,8 +9076,16 @@ def employee_approve_loan(request, loan_id):
     """
     Approve loan from Bank Login Process stage.
     Channel partner / leader / signature fields are optional and ignored.
+    Admin fast action (All Loans) may approve directly from earlier statuses.
     """
     try:
+        from .admin_loan_helpers import (
+            admin_fast_approvable_application,
+            admin_fast_approvable_legacy,
+            can_admin_fast_action,
+            ensure_banking_timestamps,
+        )
+
         payload = request.data or {}
         preferred_source = _normalize_entity_source(payload)
         default_loan_app, default_legacy = _resolve_workflow_targets(loan_id, payload)
@@ -9093,30 +9101,45 @@ def employee_approve_loan(request, loan_id):
         loan = default_loan_app
         legacy = default_legacy
 
+        admin_fast_requested = str(payload.get('admin_fast_action', '')).lower() in {'1', 'true', 'yes'}
+        use_admin_fast = admin_fast_requested and can_admin_fast_action(request.user)
+        if admin_fast_requested and not use_admin_fast:
+            return Response(
+                {'success': False, 'error': 'Admin permission required for this action.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         def _source_order():
             if preferred_source == 'legacy':
                 return ['legacy', 'application']
             return ['application', 'legacy']
 
         def _can_process_application():
-            return (
-                loan
-                and _is_authorized_processor(request.user, loan)
-                and loan.status == BANKING_PROCESS_STATUS
-            )
+            if not loan or not _is_authorized_processor(request.user, loan):
+                return False
+            if use_admin_fast:
+                return admin_fast_approvable_application(loan)
+            return loan.status == BANKING_PROCESS_STATUS
 
         def _can_process_legacy():
-            return (
-                legacy
-                and _is_authorized_processor(request.user, legacy)
-                and legacy.status == 'follow_up'
-            )
+            if not legacy or not _is_authorized_processor(request.user, legacy):
+                return False
+            if use_admin_fast:
+                return admin_fast_approvable_legacy(legacy)
+            return legacy.status == 'follow_up'
 
         def _process_application():
             if not _is_authorized_processor(request.user, loan):
                 return Response({'success': False, 'error': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
 
             related_loan = find_related_loan(loan)
+            _persist_banking_processing_from_payload(
+                loan_app=loan,
+                legacy=related_loan,
+                payload=payload,
+            )
+            if use_admin_fast:
+                ensure_banking_timestamps(loan_app=loan, legacy=related_loan)
             apply_official_loan_id_from_payload(
                 payload,
                 legacy_loan=related_loan,
@@ -9172,6 +9195,13 @@ def employee_approve_loan(request, loan_id):
                 return Response({'success': False, 'error': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
 
             related_app = find_related_loan_application(legacy)
+            _persist_banking_processing_from_payload(
+                loan_app=related_app,
+                legacy=legacy,
+                payload=payload,
+            )
+            if use_admin_fast:
+                ensure_banking_timestamps(loan_app=related_app, legacy=legacy)
             apply_official_loan_id_from_payload(
                 payload,
                 legacy_loan=legacy,
@@ -9232,11 +9262,21 @@ def employee_approve_loan(request, loan_id):
 
         for source in _source_order():
             if source == 'application' and loan and _is_authorized_processor(request.user, loan):
+                if use_admin_fast:
+                    return Response({
+                        'success': False,
+                        'error': f'Loan status is {loan.status}. Cannot approve from this status.',
+                    }, status=status.HTTP_400_BAD_REQUEST)
                 return Response({
                     'success': False,
                     'error': f'Loan status is {loan.status}. Can only approve from Bank Login Process.'
                 }, status=status.HTTP_400_BAD_REQUEST)
             if source == 'legacy' and legacy and _is_authorized_processor(request.user, legacy):
+                if use_admin_fast:
+                    return Response({
+                        'success': False,
+                        'error': f'Loan status is {legacy.status}. Cannot approve from this status.',
+                    }, status=status.HTTP_400_BAD_REQUEST)
                 return Response({
                     'success': False,
                     'error': f'Loan status is {legacy.status}. Can only approve from Bank Login Process.'
@@ -9410,12 +9450,26 @@ def employee_disburse_loan(request, loan_id):
     Notifies agent & admin
     """
     try:
+        from .admin_loan_helpers import (
+            admin_fast_disbursable_application,
+            admin_fast_disbursable_legacy,
+            can_admin_fast_action,
+        )
+
         payload = request.data or {}
         preferred_source = _normalize_entity_source(payload)
         loan_app, legacy = _resolve_workflow_targets(loan_id, payload)
         dsa_loan_app, dsa_legacy = _default_dsa_context(preferred_source, loan_app, legacy)
         payload = _with_default_channel_partner_dsa(payload, dsa_loan_app, dsa_legacy)
         loan_id_in_payload = 'loan_id' in payload or 'manual_loan_id' in payload
+
+        admin_fast_requested = str(payload.get('admin_fast_action', '')).lower() in {'1', 'true', 'yes'}
+        use_admin_fast = admin_fast_requested and can_admin_fast_action(request.user)
+        if admin_fast_requested and not use_admin_fast:
+            return Response(
+                {'success': False, 'error': 'Admin permission required for this action.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
         disbursement_amount_raw = payload.get('disbursement_amount')
         disbursement_date_raw = payload.get('disbursement_date')
@@ -9430,18 +9484,18 @@ def employee_disburse_loan(request, loan_id):
             return ['application', 'legacy']
 
         def _can_process_application():
-            return (
-                loan_app
-                and _is_authorized_processor(request.user, loan_app)
-                and loan_app.status == 'Approved'
-            )
+            if not loan_app or not _is_authorized_processor(request.user, loan_app):
+                return False
+            if use_admin_fast:
+                return admin_fast_disbursable_application(loan_app)
+            return loan_app.status == 'Approved'
 
         def _can_process_legacy():
-            return (
-                legacy
-                and _is_authorized_processor(request.user, legacy)
-                and legacy.status == 'approved'
-            )
+            if not legacy or not _is_authorized_processor(request.user, legacy):
+                return False
+            if use_admin_fast:
+                return admin_fast_disbursable_legacy(legacy)
+            return legacy.status == 'approved'
 
         def _apply_loan_id_if_sent(legacy_target=None, application_target=None):
             if not loan_id_in_payload:

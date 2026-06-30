@@ -180,6 +180,56 @@ def _move_legacy_banking_to_follow_up_pending(loan_obj, reason_line, now):
     )
 
 
+def _banking_anchor_for_application(app_obj):
+    return (
+        app_obj.banking_processing_started_at
+        or app_obj.follow_up_scheduled_at
+        or app_obj.assigned_at
+        or app_obj.updated_at
+    )
+
+
+def _banking_anchor_for_loan(loan_obj):
+    return (
+        loan_obj.banking_processing_started_at
+        or loan_obj.follow_up_triggered_at
+        or loan_obj.action_taken_at
+        or loan_obj.assigned_at
+        or loan_obj.updated_at
+    )
+
+
+def backfill_banking_processing_timestamps():
+    """
+    Backfill missing banking_processing_started_at for records already in
+    Bank Login Process so the 4-hour rule can evaluate them.
+    """
+    app_updates = 0
+    loan_updates = 0
+
+    for app in LoanApplication.objects.filter(
+        status=BANKING_APPLICATION_STATUS,
+        banking_processing_started_at__isnull=True,
+    ):
+        anchor = _banking_anchor_for_application(app)
+        if not anchor:
+            continue
+        LoanApplication.objects.filter(pk=app.pk).update(banking_processing_started_at=anchor)
+        app_updates += 1
+
+    for loan in Loan.objects.filter(
+        status=BANKING_LEGACY_STATUS,
+        banking_processing_started_at__isnull=True,
+    ):
+        anchor = _banking_anchor_for_loan(loan)
+        if not anchor:
+            continue
+        Loan.objects.filter(pk=loan.pk).update(banking_processing_started_at=anchor)
+        loan_updates += 1
+
+    return {'applications': app_updates, 'loans': loan_updates}
+
+
 def auto_move_overdue_to_follow_up():
     """
     Real-time automation:
@@ -189,6 +239,8 @@ def auto_move_overdue_to_follow_up():
     New / Document Pending / Updated Document / Approved / Rejected / Disbursed
     records are never auto-moved.
     """
+    backfill_banking_processing_timestamps()
+
     now = timezone.now()
     banking_cutoff = now - timedelta(hours=BANKING_PROCESS_TIMEOUT_HOURS)
 
@@ -201,9 +253,12 @@ def auto_move_overdue_to_follow_up():
     for app in banking_apps:
         if _has_revert_marker(app.approval_notes):
             continue
-        banking_anchor = app.banking_processing_started_at
+        banking_anchor = _banking_anchor_for_application(app)
         if not banking_anchor or banking_anchor > banking_cutoff:
             continue
+        if not app.banking_processing_started_at:
+            app.banking_processing_started_at = banking_anchor
+            app.save(update_fields=['banking_processing_started_at', 'updated_at'])
         auto_reason = _build_auto_revert_reason(loan_app=app)
         _move_application_banking_to_follow_up_pending(app, auto_reason, now)
         moved["applications_to_follow_up_pending"] += 1
@@ -212,9 +267,12 @@ def auto_move_overdue_to_follow_up():
     for loan in banking_loans:
         if _has_revert_marker(loan.remarks):
             continue
-        banking_anchor = loan.banking_processing_started_at
+        banking_anchor = _banking_anchor_for_loan(loan)
         if not banking_anchor or banking_anchor > banking_cutoff:
             continue
+        if not loan.banking_processing_started_at:
+            loan.banking_processing_started_at = banking_anchor
+            loan.save(update_fields=['banking_processing_started_at', 'updated_at'])
         auto_reason = _build_auto_revert_reason(legacy_loan=loan)
         _move_legacy_banking_to_follow_up_pending(loan, auto_reason, now)
         moved["loans_to_follow_up_pending"] += 1
